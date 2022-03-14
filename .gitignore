@@ -1,0 +1,27 @@
+# python
+venv/
+__pycache__
+pennylane_lightning_gpu/__pycache__/
+PennyLane_Lightning_GPU.egg-info/
+
+# testing
+tests/__pycache__/
+.pytest_cache/
+coverage_html_report/
+.coverage
+
+# docs
+doc/api/
+doc/code/api/
+doc/doxyoutput/
+doc/_build/
+doc/__pycache__/
+
+# build system
+build/
+dist/
+
+# misc
+.idea
+*.ipynp
+*.ipynb_checkpoints

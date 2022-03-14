@@ -1,0 +1,9 @@
+docutils==0.16
+sphinx
+sphinx-automodapi
+breathe
+exhale
+pybind11
+cmake
+ninja
+pennylane

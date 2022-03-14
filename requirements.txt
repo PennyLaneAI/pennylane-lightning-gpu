@@ -1,0 +1,10 @@
+ninja
+cmake
+flaky
+numpy
+pennylane>=0.22
+pennylane-lightning>=0.22
+pybind11
+pytest
+pytest-cov
+pytest-mock
