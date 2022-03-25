@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import re
 import pathlib
 import subprocess
 import sys
@@ -18,16 +19,28 @@ IGNORE_PATTERN = ["external"]
 
 DEFAULT_CLANG_FORMAT_VERSION=12
 
-BASE_CMD = (f"clang-format", f"-style={json.dumps(CLANG_FMT_STYLE_CFG)}")
+BASE_CMD = (f"clang-format-{DEFAULT_CLANG_FORMAT_VERSION}", f"-style={json.dumps(CLANG_FMT_STYLE_CFG)}")
+
+def parse_version(version_string):
+    version_rgx = "version (\d+)"
+
+    m = re.search(version_rgx, version_string)
+    return int(m.group(1))
 
 def check_bin():
+    command = f"clang-format-{DEFAULT_CLANG_FORMAT_VERSION}"
     try:
-        subprocess.run(
-            (f"clang-format", "--help"), universal_newlines=True, capture_output=True
-        )
+        p = subprocess.run([command, "--version"], 
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        version = parse_version(p.stdout)
+
+        if version < DEFAULT_CLANG_FORMAT_VERSION:
+            print(f"Using clang-format version {version}. \
+                    As this is lower than the version used for the CI, \
+                    the CI may fail even after formatting.")
     except FileNotFoundError as exc:
         raise FileNotFoundError(
-            f"clang-format-{DEFAULT_CLANG_FORMAT_VERSION} is not installed or is not in PATH."
+            f"{command} is not installed or is not in PATH."
         ) from exc
 
 
