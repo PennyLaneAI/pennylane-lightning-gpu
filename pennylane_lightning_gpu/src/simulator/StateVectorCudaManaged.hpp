@@ -123,7 +123,8 @@ class StateVectorCudaManaged
 
     {
         BaseType::initSV();
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(&handle));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
+            /* custatevecHandle_t* */ &handle));
     };
 
     StateVectorCudaManaged(const CFP_t *gpu_data, size_t length)
@@ -143,7 +144,8 @@ class StateVectorCudaManaged
     // StateVectorCudaManaged(StateVectorCudaManaged &&other) = delete;
 
     ~StateVectorCudaManaged() {
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(handle));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(
+            /* custatevecHandle_t */ handle));
     }
 
     /**
@@ -537,9 +539,16 @@ class StateVectorCudaManaged
             });
 
         PL_CUSTATEVEC_IS_SUCCESS(custatevecAbs2SumArray(
-            handle, BaseType::getData(), data_type, BaseType::getNumQubits(),
-            probabilities.data(), wires_int.data(), wires_int.size(),
-            maskBitString, maskOrdering, maskLen));
+            /* custatevecHandle_t */ handle,
+            /* const void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ BaseType::getNumQubits(),
+            /* double* */ probabilities.data(),
+            /* const int32_t* */ wires_int.data(),
+            /* const uint32_t */ wires_int.size(),
+            /* const int32_t* */ maskBitString,
+            /* const int32_t* */ maskOrdering,
+            /* const uint32_t */ maskLen));
 
         return probabilities;
     }
@@ -620,10 +629,18 @@ class StateVectorCudaManaged
         }
         const auto local_angle = (use_adjoint) ? param / 2 : -param / 2;
 
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyExp(
-            handle, BaseType::getData(), data_type, nIndexBits, local_angle,
-            pauli_enums.data(), tgtsInt.data(), tgts.size(), ctrlsInt.data(),
-            nullptr, ctrls.size()));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyPauliRotation(
+            /* custatevecHandle_t */ handle,
+            /* void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* double */ local_angle,
+            /* const custatevecPauli_t* */ pauli_enums.data(),
+            /* const int32_t* */ tgtsInt.data(),
+            /* const uint32_t */ tgts.size(),
+            /* const int32_t* */ ctrlsInt.data(),
+            /* const int32_t* */ nullptr,
+            /* const uint32_t */ ctrls.size()));
     }
 
     /**
@@ -675,7 +692,7 @@ class StateVectorCudaManaged
             /* custatevecHandle_t */ handle,
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
-            /* const void* */ matrix.data(), // double-check
+            /* const void* */ matrix,
             /* cudaDataType_t */ data_type,
             /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
             /* const int32_t */ use_adjoint,
@@ -696,14 +713,14 @@ class StateVectorCudaManaged
             /* void* */ BaseType::getData(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
-            /* const void* */ matrix.data(), // double-check
+            /* const void* */ matrix,
             /* cudaDataType_t */ data_type,
             /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
             /* const int32_t */ use_adjoint,
             /* const int32_t* */ tgtsInt.data(),
             /* const uint32_t */ tgts.size(),
             /* const int32_t* */ ctrlsInt.data(),
-            /* const int32_t*  */ nullptr, // double-check
+            /* const int32_t* */ nullptr,
             /* const uint32_t */ ctrls.size(),
             /* custatevecComputeType_t */ compute_type,
             /* void* */ extraWorkspace,
@@ -787,7 +804,7 @@ class StateVectorCudaManaged
             /* const int32_t* */ tgtsInt.data(),
             /* const uint32_t */ tgts.size(),
             /* const int32_t* */ ctrlsInt.data(),
-            /* const int32_t*  */ nullptr, // double-check
+            /* const int32_t* */ nullptr,
             /* const uint32_t */ ctrls.size(),
             /* custatevecComputeType_t */ compute_type,
             /* void* */ extraWorkspace,
@@ -916,7 +933,7 @@ class StateVectorCudaManaged
             /* custatevecHandle_t */ handle,
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
-            /* const void* */ matrix.data(), // double-check
+            /* const void* */ matrix,
             /* cudaDataType_t */ data_type,
             /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
             /* const uint32_t */ tgtsInt.size(),
@@ -939,7 +956,7 @@ class StateVectorCudaManaged
             /* void* */ &expect,
             /* cudaDataType_t */ data_type,
             /* double* */ nullptr,
-            /* const void* */ matrix.data(), // double-check
+            /* const void* */ matrix,
             /* cudaDataType_t */ data_type,
             /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
             /* const int32_t* */ tgtsInt.data(),
