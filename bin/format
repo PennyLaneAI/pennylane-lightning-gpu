@@ -18,12 +18,12 @@ IGNORE_PATTERN = ["external"]
 
 DEFAULT_CLANG_FORMAT_VERSION=12
 
-BASE_CMD = (f"clang-format-{DEFAULT_CLANG_FORMAT_VERSION}", f"-style={json.dumps(CLANG_FMT_STYLE_CFG)}")
+BASE_CMD = (f"clang-format", f"-style={json.dumps(CLANG_FMT_STYLE_CFG)}")
 
 def check_bin():
     try:
         subprocess.run(
-            (f"clang-format-{DEFAULT_CLANG_FORMAT_VERSION}", "--help"), universal_newlines=True, capture_output=True
+            (f"clang-format", "--help"), universal_newlines=True, capture_output=True
         )
     except FileNotFoundError as exc:
         raise FileNotFoundError(

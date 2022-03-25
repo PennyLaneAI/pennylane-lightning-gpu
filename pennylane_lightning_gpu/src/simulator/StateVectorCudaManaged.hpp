@@ -6,7 +6,7 @@
 
 #include <cuComplex.h> // cuDoubleComplex
 #include <cuda.h>
-#include <custatevec.h> // custatevecApplyMatrix
+#include <custatevec.h>
 
 #include "Error.hpp"
 #include "StateVectorCudaBase.hpp"
@@ -620,7 +620,7 @@ class StateVectorCudaManaged
         }
         const auto local_angle = (use_adjoint) ? param / 2 : -param / 2;
 
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyExp(
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyPauliRotation(
             handle, BaseType::getData(), data_type, nIndexBits, local_angle,
             pauli_enums.data(), tgtsInt.data(), tgts.size(), ctrlsInt.data(),
             nullptr, ctrls.size()));
@@ -671,7 +671,7 @@ class StateVectorCudaManaged
         }
 
         // check the size of external workspace
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrix_bufferSize(
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrixGetWorkspaceSize(
             handle, data_type, nIndexBits, matrix, data_type,
             CUSTATEVEC_MATRIX_LAYOUT_ROW, use_adjoint, tgts.size(),
             ctrls.size(), compute_type, &extraWorkspaceSizeInBytes));
@@ -735,7 +735,7 @@ class StateVectorCudaManaged
         }
 
         // check the size of external workspace
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrix_bufferSize(
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrixGetWorkspaceSize(
             handle, data_type, nIndexBits, matrix.data(), data_type,
             CUSTATEVEC_MATRIX_LAYOUT_ROW, use_adjoint, tgts.size(),
             ctrls.size(), compute_type, &extraWorkspaceSizeInBytes));
@@ -799,7 +799,7 @@ class StateVectorCudaManaged
             compute_type = CUSTATEVEC_COMPUTE_32F;
         }
 
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecExpectation_bufferSize(
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationGetWorkspaceSize(
             handle, data_type, nIndexBits, matrix.data(), data_type,
             CUSTATEVEC_MATRIX_LAYOUT_ROW, tgts.size(), compute_type,
             &extraWorkspaceSizeInBytes));
@@ -812,7 +812,7 @@ class StateVectorCudaManaged
         CFP_t expect;
 
         // compute expectation
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecExpectation(
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectation(
             handle, BaseType::getData(), data_type, nIndexBits, &expect,
             data_type, nullptr, matrix.data(), data_type,
             CUSTATEVEC_MATRIX_LAYOUT_ROW, tgtsInt.data(), tgts.size(),
@@ -854,7 +854,7 @@ class StateVectorCudaManaged
             compute_type = CUSTATEVEC_COMPUTE_32F;
         }
 
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecExpectation_bufferSize(
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationGetWorkspaceSize(
             handle, data_type, nIndexBits, matrix, data_type,
             CUSTATEVEC_MATRIX_LAYOUT_ROW, tgtsInt.size(), compute_type,
             &extraWorkspaceSizeInBytes));
@@ -867,7 +867,7 @@ class StateVectorCudaManaged
         CFP_t expect;
 
         // compute expectation
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecExpectation(
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectation(
             handle, BaseType::getData(), data_type, nIndexBits, &expect,
             data_type, nullptr, matrix, data_type, CUSTATEVEC_MATRIX_LAYOUT_ROW,
             tgtsInt.data(), tgtsInt.size(), compute_type, extraWorkspace,
