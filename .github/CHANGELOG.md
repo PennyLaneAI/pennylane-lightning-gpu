@@ -1,3 +1,19 @@
+# Release 0.23.0-dev
+
+### New features since last release
+
+### Breaking changes
+
+### Improvements
+
+### Documentation
+
+### Bug fixes
+
+### Contributors
+
+---
+
 # Release 0.22.0
 
 * Formal release with NVIDIA cuQuantum SDK 1.0 support. 
@@ -18,7 +34,7 @@
 This release contains contributions from (in alphabetical order):
 Ali Asadi, and Lee James O'Riordan
 
-
+---
 
 # Release 0.1.0
 
