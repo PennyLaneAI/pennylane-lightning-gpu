@@ -312,12 +312,11 @@ class TestAdjointJacobian:
             qml.expval(obs(wires=0))
             qml.expval(qml.PauliZ(wires=1))
 
-        tape.execute(dev_gpu)
-
         tape.trainable_params = set(range(1, 1 + op.num_params))
 
-        gtapes, fn = qml.gradients.param_shift(tape)
-        grad_PS = fn(qml.execute(gtapes, dev_gpu, gradient_fn=None))
+        grad_PS = (lambda t, fn: fn(qml.execute(t, dev_gpu, None)))(
+            *qml.gradients.param_shift(tape)
+        )
         grad_D = dev_gpu.adjoint_jacobian(tape)
 
         assert np.allclose(grad_D, grad_PS, atol=tol, rtol=0)
@@ -359,7 +358,7 @@ class TestAdjointJacobian:
 
         dM1 = dev_gpu.adjoint_jacobian(tape)
 
-        tape.execute(dev_gpu)
+        qml.execute([tape], dev_gpu, None)
         dM2 = dev_gpu.adjoint_jacobian(tape, use_device_state=True)
 
         assert np.allclose(dM1, dM2, atol=tol, rtol=0)
@@ -378,7 +377,7 @@ class TestAdjointJacobian:
 
         dM1 = dev_gpu.adjoint_jacobian(tape)
 
-        tape.execute(dev_gpu)
+        qml.execute([tape], dev_gpu, None)
         dM2 = dev_gpu.adjoint_jacobian(tape, starting_state=dev_gpu._pre_rotated_state)
 
         assert np.allclose(dM1, dM2, atol=tol, rtol=0)
