@@ -123,7 +123,8 @@ class StateVectorCudaManaged
 
     {
         BaseType::initSV();
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(&handle));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
+            /* custatevecHandle_t* */ &handle));
     };
 
     StateVectorCudaManaged(const CFP_t *gpu_data, size_t length)
@@ -143,7 +144,8 @@ class StateVectorCudaManaged
     // StateVectorCudaManaged(StateVectorCudaManaged &&other) = delete;
 
     ~StateVectorCudaManaged() {
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(handle));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(
+            /* custatevecHandle_t */ handle));
     }
 
     /**
@@ -537,9 +539,16 @@ class StateVectorCudaManaged
             });
 
         PL_CUSTATEVEC_IS_SUCCESS(custatevecAbs2SumArray(
-            handle, BaseType::getData(), data_type, BaseType::getNumQubits(),
-            probabilities.data(), wires_int.data(), wires_int.size(),
-            maskBitString, maskOrdering, maskLen));
+            /* custatevecHandle_t */ handle,
+            /* const void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ BaseType::getNumQubits(),
+            /* double* */ probabilities.data(),
+            /* const int32_t* */ wires_int.data(),
+            /* const uint32_t */ wires_int.size(),
+            /* const int32_t* */ maskBitString,
+            /* const int32_t* */ maskOrdering,
+            /* const uint32_t */ maskLen));
 
         return probabilities;
     }
@@ -620,10 +629,18 @@ class StateVectorCudaManaged
         }
         const auto local_angle = (use_adjoint) ? param / 2 : -param / 2;
 
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyExp(
-            handle, BaseType::getData(), data_type, nIndexBits, local_angle,
-            pauli_enums.data(), tgtsInt.data(), tgts.size(), ctrlsInt.data(),
-            nullptr, ctrls.size()));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyPauliRotation(
+            /* custatevecHandle_t */ handle,
+            /* void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* double */ local_angle,
+            /* const custatevecPauli_t* */ pauli_enums.data(),
+            /* const int32_t* */ tgtsInt.data(),
+            /* const uint32_t */ tgts.size(),
+            /* const int32_t* */ ctrlsInt.data(),
+            /* const int32_t* */ nullptr,
+            /* const uint32_t */ ctrls.size()));
     }
 
     /**
@@ -671,10 +688,18 @@ class StateVectorCudaManaged
         }
 
         // check the size of external workspace
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrix_bufferSize(
-            handle, data_type, nIndexBits, matrix, data_type,
-            CUSTATEVEC_MATRIX_LAYOUT_ROW, use_adjoint, tgts.size(),
-            ctrls.size(), compute_type, &extraWorkspaceSizeInBytes));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrixGetWorkspaceSize(
+            /* custatevecHandle_t */ handle,
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* const void* */ matrix,
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const int32_t */ use_adjoint,
+            /* const uint32_t */ tgts.size(),
+            /* const uint32_t */ ctrls.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* size_t* */ &extraWorkspaceSizeInBytes));
 
         // allocate external workspace if necessary
         if (extraWorkspaceSizeInBytes > 0) {
@@ -683,11 +708,23 @@ class StateVectorCudaManaged
         }
 
         // apply gate
-        (custatevecApplyMatrix(
-            handle, BaseType::getData(), data_type, nIndexBits, matrix,
-            data_type, CUSTATEVEC_MATRIX_LAYOUT_ROW, use_adjoint,
-            tgtsInt.data(), tgts.size(), ctrlsInt.data(), ctrls.size(), nullptr,
-            compute_type, extraWorkspace, extraWorkspaceSizeInBytes));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrix(
+            /* custatevecHandle_t */ handle,
+            /* void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* const void* */ matrix,
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const int32_t */ use_adjoint,
+            /* const int32_t* */ tgtsInt.data(),
+            /* const uint32_t */ tgts.size(),
+            /* const int32_t* */ ctrlsInt.data(),
+            /* const int32_t* */ nullptr,
+            /* const uint32_t */ ctrls.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* void* */ extraWorkspace,
+            /* size_t */ extraWorkspaceSizeInBytes));
         if (extraWorkspaceSizeInBytes)
             PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
     }
@@ -735,10 +772,18 @@ class StateVectorCudaManaged
         }
 
         // check the size of external workspace
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrix_bufferSize(
-            handle, data_type, nIndexBits, matrix.data(), data_type,
-            CUSTATEVEC_MATRIX_LAYOUT_ROW, use_adjoint, tgts.size(),
-            ctrls.size(), compute_type, &extraWorkspaceSizeInBytes));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrixGetWorkspaceSize(
+            /* custatevecHandle_t */ handle,
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* const void* */ matrix.data(),
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const int32_t */ use_adjoint,
+            /* const uint32_t */ tgts.size(),
+            /* const uint32_t */ ctrls.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* size_t* */ &extraWorkspaceSizeInBytes));
 
         // allocate external workspace if necessary
         if (extraWorkspaceSizeInBytes > 0) {
@@ -748,10 +793,22 @@ class StateVectorCudaManaged
 
         // apply gate
         PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrix(
-            handle, BaseType::getData(), data_type, nIndexBits, matrix.data(),
-            data_type, CUSTATEVEC_MATRIX_LAYOUT_ROW, use_adjoint,
-            tgtsInt.data(), tgts.size(), ctrlsInt.data(), ctrls.size(), nullptr,
-            compute_type, extraWorkspace, extraWorkspaceSizeInBytes));
+            /* custatevecHandle_t */ handle,
+            /* void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* const void* */ matrix.data(),
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const int32_t */ use_adjoint,
+            /* const int32_t* */ tgtsInt.data(),
+            /* const uint32_t */ tgts.size(),
+            /* const int32_t* */ ctrlsInt.data(),
+            /* const int32_t* */ nullptr,
+            /* const uint32_t */ ctrls.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* void* */ extraWorkspace,
+            /* size_t */ extraWorkspaceSizeInBytes));
         if (extraWorkspaceSizeInBytes)
             PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
     }
@@ -799,10 +856,17 @@ class StateVectorCudaManaged
             compute_type = CUSTATEVEC_COMPUTE_32F;
         }
 
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecExpectation_bufferSize(
-            handle, data_type, nIndexBits, matrix.data(), data_type,
-            CUSTATEVEC_MATRIX_LAYOUT_ROW, tgts.size(), compute_type,
-            &extraWorkspaceSizeInBytes));
+        // check the size of external workspace
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationGetWorkspaceSize(
+            /* custatevecHandle_t */ handle,
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* const void* */ matrix.data(),
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const uint32_t */ tgts.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* size_t* */ &extraWorkspaceSizeInBytes));
 
         if (extraWorkspaceSizeInBytes > 0) {
             PL_CUDA_IS_SUCCESS(
@@ -812,12 +876,22 @@ class StateVectorCudaManaged
         CFP_t expect;
 
         // compute expectation
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecExpectation(
-            handle, BaseType::getData(), data_type, nIndexBits, &expect,
-            data_type, nullptr, matrix.data(), data_type,
-            CUSTATEVEC_MATRIX_LAYOUT_ROW, tgtsInt.data(), tgts.size(),
-            compute_type, extraWorkspace, extraWorkspaceSizeInBytes));
-
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectation(
+            /* custatevecHandle_t */ handle,
+            /* void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* void* */ &expect,
+            /* cudaDataType_t */ data_type,
+            /* double* */ nullptr,
+            /* const void* */ matrix.data(),
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const int32_t* */ tgtsInt.data(),
+            /* const uint32_t */ tgts.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* void* */ extraWorkspace,
+            /* size_t */ extraWorkspaceSizeInBytes));
         if (extraWorkspaceSizeInBytes)
             PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
         return expect;
@@ -854,10 +928,17 @@ class StateVectorCudaManaged
             compute_type = CUSTATEVEC_COMPUTE_32F;
         }
 
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecExpectation_bufferSize(
-            handle, data_type, nIndexBits, matrix, data_type,
-            CUSTATEVEC_MATRIX_LAYOUT_ROW, tgtsInt.size(), compute_type,
-            &extraWorkspaceSizeInBytes));
+        // check the size of external workspace
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationGetWorkspaceSize(
+            /* custatevecHandle_t */ handle,
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* const void* */ matrix,
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const uint32_t */ tgtsInt.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* size_t* */ &extraWorkspaceSizeInBytes));
 
         if (extraWorkspaceSizeInBytes > 0) {
             PL_CUDA_IS_SUCCESS(
@@ -867,11 +948,22 @@ class StateVectorCudaManaged
         CFP_t expect;
 
         // compute expectation
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecExpectation(
-            handle, BaseType::getData(), data_type, nIndexBits, &expect,
-            data_type, nullptr, matrix, data_type, CUSTATEVEC_MATRIX_LAYOUT_ROW,
-            tgtsInt.data(), tgtsInt.size(), compute_type, extraWorkspace,
-            extraWorkspaceSizeInBytes));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectation(
+            /* custatevecHandle_t */ handle,
+            /* void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* void* */ &expect,
+            /* cudaDataType_t */ data_type,
+            /* double* */ nullptr,
+            /* const void* */ matrix,
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const int32_t* */ tgtsInt.data(),
+            /* const uint32_t */ tgtsInt.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* void* */ extraWorkspace,
+            /* size_t */ extraWorkspaceSizeInBytes));
 
         if (extraWorkspaceSizeInBytes)
             PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
