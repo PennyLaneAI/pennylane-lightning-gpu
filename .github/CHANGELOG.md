@@ -1,3 +1,41 @@
+# Release 0.23.0-dev
+
+### New features since last release
+
+### Breaking changes
+
+### Improvements
+
+### Documentation
+
+### Bug fixes
+
+### Contributors
+
+---
+
+# Release 0.22.0
+
+* Formal release with NVIDIA cuQuantum SDK 1.0 support. 
+
+### Improvements
+
+* Release semantic versioning matches PennyLane current release versioning.
+[(#6)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/6)
+
+### Bug fixes
+
+* This release updates the cuQuantum function calls to match the SDK 1.0 release.
+[(#6)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/6)
+
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+Ali Asadi, and Lee James O'Riordan
+
+---
+
 # Release 0.1.0
 
  * Initial release. The PennyLane-Lightning-GPU device adds support for CUDA-capable GPU simulation through use of the NVIDIA cuQuantum SDK.

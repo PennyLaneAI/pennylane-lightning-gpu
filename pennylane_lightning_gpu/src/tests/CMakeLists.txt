@@ -28,24 +28,24 @@ list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/contrib)
 include(CTest)
 include(Catch)
 
-add_executable(runner runner_main.cpp)
+add_executable(runner_gpu runner_main.cpp)
 if(ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
 	  target_link_libraries(runner INTERFACE OpenMP::OpenMP_CXX)
 endif()
-target_link_libraries(runner PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
+target_link_libraries(runner_gpu PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
 
-target_sources(runner PRIVATE Test_StateVectorCudaManaged_NonParam.cpp 
+target_sources(runner_gpu PRIVATE Test_StateVectorCudaManaged_NonParam.cpp 
                               Test_StateVectorCudaManaged_Param.cpp 
                               Test_AdjointDiffGPU.cpp 
                               Test_GateCache.cpp 
 )
 
-target_compile_options(runner PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")
+target_compile_options(runner_gpu PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")
 
 if(ENABLE_NATIVE)
     message(STATUS "ENABLE_NATIVE is ON. Use -march=native for cpptests.")
-    target_compile_options(runner PRIVATE -march=native)
+    target_compile_options(runner_gpu PRIVATE -march=native)
 endif()
 
-catch_discover_tests(runner)
+catch_discover_tests(runner_gpu)
