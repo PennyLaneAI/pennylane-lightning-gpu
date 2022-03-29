@@ -47,16 +47,30 @@ class StateVectorCudaManaged
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits),
           gate_cache_(true),
-          gate_wires_{
-              // Add mapping from function name to required wires.
-              {"PauliX", 1},   {"PauliY", 1},     {"PauliZ", 1},
-              {"Hadamard", 1}, {"T", 1},          {"S", 1},
-              {"RX", 1},       {"RY", 1},         {"RZ", 1},
-              {"Rot", 1},      {"PhaseShift", 1}, {"ControlledPhaseShift", 2},
-              {"CNOT", 2},     {"SWAP", 2},       {"CY", 2},
-              {"CZ", 2},       {"CRX", 2},        {"CRY", 2},
-              {"CRZ", 2},      {"CRot", 2},       {"CSWAP", 3},
-              {"Toffoli", 3}},
+          gate_wires_{// Add mapping from function name to required wires.
+                      {"Identity", 1},
+                      {"PauliX", 1},
+                      {"PauliY", 1},
+                      {"PauliZ", 1},
+                      {"Hadamard", 1},
+                      {"T", 1},
+                      {"S", 1},
+                      {"RX", 1},
+                      {"RY", 1},
+                      {"RZ", 1},
+                      {"Rot", 1},
+                      {"PhaseShift", 1},
+                      {"ControlledPhaseShift", 2},
+                      {"CNOT", 2},
+                      {"SWAP", 2},
+                      {"CY", 2},
+                      {"CZ", 2},
+                      {"CRX", 2},
+                      {"CRY", 2},
+                      {"CRZ", 2},
+                      {"CRot", 2},
+                      {"CSWAP", 3},
+                      {"Toffoli", 3}},
           par_gates_{
               {"RX",
                [&](auto &&wires, auto &&adjoint, auto &&params) {
@@ -279,6 +293,13 @@ class StateVectorCudaManaged
     //****************************************************************************//
     // Explicit gate calls for bindings
     //****************************************************************************//
+
+    void applyIdentity(const std::vector<std::size_t> &wires, bool adjoint) {
+        static const std::string name{"Identity"};
+        static const Precision param = 0.0;
+        static_cast<void>(wires);
+        static_cast<void>(adjoint);
+    }
 
     void applyPauliX(const std::vector<std::size_t> &wires, bool adjoint) {
         static const std::string name{"PauliX"};
@@ -563,10 +584,10 @@ class StateVectorCudaManaged
     custatevecHandle_t handle;
 
     const std::unordered_map<std::string, custatevecPauli_t> native_gates_{
-        {"RX", CUSTATEVEC_PAULI_X},  {"RY", CUSTATEVEC_PAULI_Y},
-        {"RZ", CUSTATEVEC_PAULI_Z},  {"CRX", CUSTATEVEC_PAULI_X},
-        {"CRY", CUSTATEVEC_PAULI_Y}, {"CRZ", CUSTATEVEC_PAULI_Z},
-        {"I", CUSTATEVEC_PAULI_I}};
+        {"RX", CUSTATEVEC_PAULI_X},       {"RY", CUSTATEVEC_PAULI_Y},
+        {"RZ", CUSTATEVEC_PAULI_Z},       {"CRX", CUSTATEVEC_PAULI_X},
+        {"CRY", CUSTATEVEC_PAULI_Y},      {"CRZ", CUSTATEVEC_PAULI_Z},
+        {"Identity", CUSTATEVEC_PAULI_I}, {"I", CUSTATEVEC_PAULI_I}};
 
     /**
      * @brief Normalize the index ordering to match PennyLane.
