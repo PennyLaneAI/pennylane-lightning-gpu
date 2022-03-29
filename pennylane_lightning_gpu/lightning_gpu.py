@@ -152,7 +152,13 @@ class LightningGPU(LightningQubit):
         return super().statistics(observables, shot_range, bin_size)
 
     def apply_cq(self, operations, **kwargs):
+        # Skip over identity operations instead of performing
+        # matrix multiplication with the identity.
+        skipped_ops = ["Identity"]
+
         for o in operations:
+            if o.base_name in skipped_ops:
+                continue
             name = o.name.split(".")[0]  # The split is because inverse gates have .inv appended
             method = getattr(self._gpu_state, name, None)
 
