@@ -279,7 +279,7 @@ class TestAdjointJacobian:
     qubit_ops = [getattr(qml, name) for name in qml.ops._qubit__ops__]
     ops = {qml.RX, qml.RY, qml.RZ, qml.PhaseShift, qml.CRX, qml.CRY, qml.CRZ, qml.Rot}
 
-    @pytest.mark.parametrize("obs", [qml.PauliX, qml.PauliY])
+    @pytest.mark.parametrize("obs", [qml.PauliX, qml.PauliY, qml.PauliZ, qml.Identity])
     @pytest.mark.parametrize(
         "op",
         [

@@ -278,17 +278,32 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
     int device_id_;
     CFP_t *data_;
     const std::unordered_set<std::string> const_gates_{
-        "PauliX", "PauliY", "PauliZ", "Hadamard", "T",      "S",
-        "CNOT",   "SWAP",   "CZ",     "CSWAP",    "Toffoli"};
+        "Identity", "PauliX", "PauliY", "PauliZ", "Hadamard", "T",
+        "S",        "CNOT",   "SWAP",   "CZ",     "CSWAP",    "Toffoli"};
     const std::unordered_map<std::string, std::size_t> ctrl_map_{
         // Add mapping from function name to required wires.
-        {"PauliX", 0},   {"PauliY", 0},     {"PauliZ", 0},
-        {"Hadamard", 0}, {"T", 0},          {"S", 0},
-        {"RX", 0},       {"RY", 0},         {"RZ", 0},
-        {"Rot", 0},      {"PhaseShift", 0}, {"ControlledPhaseShift", 1},
-        {"CNOT", 1},     {"SWAP", 0},       {"CZ", 1},
-        {"CRX", 1},      {"CRY", 1},        {"CRZ", 1},
-        {"CRot", 1},     {"CSWAP", 1},      {"Toffoli", 2}};
+        {"Identity", 0},
+        {"PauliX", 0},
+        {"PauliY", 0},
+        {"PauliZ", 0},
+        {"Hadamard", 0},
+        {"T", 0},
+        {"S", 0},
+        {"RX", 0},
+        {"RY", 0},
+        {"RZ", 0},
+        {"Rot", 0},
+        {"PhaseShift", 0},
+        {"ControlledPhaseShift", 1},
+        {"CNOT", 1},
+        {"SWAP", 0},
+        {"CZ", 1},
+        {"CRX", 1},
+        {"CRY", 1},
+        {"CRZ", 1},
+        {"CRot", 1},
+        {"CSWAP", 1},
+        {"Toffoli", 2}};
 };
 
 } // namespace Pennylane

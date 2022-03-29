@@ -25,6 +25,20 @@ namespace cuGates {
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of PauliX data.
  */
+template <class CFP_t>
+static constexpr auto getIdentity() -> std::vector<CFP_t> {
+    return {cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+            cuUtil::ONE<CFP_t>()};
+}
+
+/**
+ * @brief Create a matrix representation of the PauliX gate data in row-major
+ * format.
+ *
+ * @tparam T Required precision of gate (`float` or `double`).
+ * @return constexpr std::vector<CFP_t> Return constant expression
+ * of PauliX data.
+ */
 template <class CFP_t> static constexpr auto getPauliX() -> std::vector<CFP_t> {
     return {cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(), cuUtil::ONE<CFP_t>(),
             cuUtil::ZERO<CFP_t>()};
