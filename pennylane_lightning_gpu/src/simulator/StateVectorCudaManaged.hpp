@@ -297,8 +297,6 @@ class StateVectorCudaManaged
     //****************************************************************************//
 
     void applyIdentity(const std::vector<std::size_t> &wires, bool adjoint) {
-        static const std::string name{"Identity"};
-        static const Precision param = 0.0;
         static_cast<void>(wires);
         static_cast<void>(adjoint);
     }
