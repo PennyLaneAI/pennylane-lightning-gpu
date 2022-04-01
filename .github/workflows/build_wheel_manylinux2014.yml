@@ -13,7 +13,8 @@ env:
 
   # Python build settings
   CIBW_BEFORE_BUILD: |
-    pip install pybind11 ninja cmake auditwheel && pip install --no-deps cuquantum && yum install -y gcc gcc-c++
+    python -m pip install pybind11 ninja cmake auditwheel && python -m pip install --no-deps cuquantum 
+    yum install -y gcc gcc-c++
     yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
     yum clean all
     yum -y install cuda cmake git openssh wget
