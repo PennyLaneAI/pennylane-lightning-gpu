@@ -29,7 +29,8 @@ from pennylane import (
     QubitStateVector,
 )
 from pennylane_lightning import LightningQubit
-from pennylane.operation import Expectation, Tensor
+from pennylane.operation import Tensor
+from pennylane.measurements import Expectation
 from pennylane.wires import Wires
 
 # Remove after the next release of PL
