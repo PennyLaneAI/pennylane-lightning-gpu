@@ -1,5 +1,6 @@
 ninja
 cmake
+cuquantum>=22.3.0
 flaky
 numpy
 pennylane>=0.22

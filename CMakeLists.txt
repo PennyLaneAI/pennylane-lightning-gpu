@@ -58,6 +58,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+# Ensure the libraries can see additional libs at same level;
+# Required for external deps when loading in Python
+set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(CMAKE_BUILD_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/")
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/")
+
 if(ENABLE_CLANG_TIDY)
     if (NOT DEFINED CLANG_TIDY_BINARY)
         set(CLANG_TIDY_BINARY clang-tidy)
@@ -101,8 +108,10 @@ if(ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
 endif()
 
+find_package (Python COMPONENTS Interpreter Development)
+
 find_library(CUSTATEVEC_LIB
-    NAMES   libcustatevec custatevec
+    NAMES   libcustatevec.so.1 custatevec.so.1
     HINTS   /usr/lib
             /usr/local/cuda
             /usr/local/lib
@@ -115,6 +124,7 @@ find_library(CUSTATEVEC_LIB
             ${CUDAToolkit_LIBRARY_DIR}
             ${CUDA_TOOLKIT_ROOT_DIR}/lib
             ${CUDA_TOOLKIT_ROOT_DIR}/lib64
+            ${Python_SITELIB}/cuquantum/lib
             ENV LD_LIBRARY_PATH
 )
 
@@ -129,6 +139,7 @@ find_file( CUSTATEVEC_INC
             ${CUQUANTUM_SDK}/include
             ${CUDAToolkit_INCLUDE_DIRS}
             ${CUDA_TOOLKIT_ROOT_DIR}/include
+            ${Python_SITELIB}/cuquantum/include
             ENV CPATH
 )
 
@@ -158,6 +169,7 @@ if(ENABLE_PYTHON)
     pybind11_add_module(lightning_gpu_qubit_ops     "pennylane_lightning_gpu/src/bindings/Bindings.cpp")
     target_link_libraries(lightning_gpu_qubit_ops PRIVATE pennylane_lightning_gpu)
     set_target_properties(lightning_gpu_qubit_ops PROPERTIES CXX_VISIBILITY_PRESET hidden)
+    set_target_properties(lightning_gpu_qubit_ops PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/")
     target_compile_options(lightning_gpu_qubit_ops PRIVATE "$<$<CONFIG:RELEASE>:-W>")
     target_compile_definitions(lightning_gpu_qubit_ops PRIVATE VERSION_INFO=${VERSION_STRING})
     target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include)
@@ -168,6 +180,8 @@ endif()
 # string(REPLACE "libcudart_static.a" "libcudart.so" CUDA_SHARED_RT "${CUDA_LIBRARIES}")
 target_include_directories(pennylane_lightning_gpu INTERFACE ${CUDA_TOOLKIT_ROOT_DIR}/include)
 target_link_libraries(pennylane_lightning_gpu INTERFACE CUDA::cudart)
+set_target_properties(pennylane_lightning_gpu PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/")
+
 if(ENABLE_OPENMP)
 	target_link_libraries(pennylane_lightning_gpu INTERFACE OpenMP::OpenMP_CXX)
 endif()
