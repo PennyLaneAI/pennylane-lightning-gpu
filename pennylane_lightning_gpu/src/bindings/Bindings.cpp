@@ -78,6 +78,15 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 data_ptr, static_cast<std::size_t>(arr.size()));
         }))
         .def(
+            "Identity",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyIdentity(wires, adjoint);
+            },
+            "Apply the Identity gate.")
+
+        .def(
             "PauliX",
             [](StateVectorCudaManaged<PrecisionT> &sv,
                const std::vector<std::size_t> &wires, bool adjoint,

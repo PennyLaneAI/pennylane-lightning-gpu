@@ -53,6 +53,9 @@ template <class fp_t> class GateCache {
      *
      */
     void defaultPopulateCache() {
+        host_gates_[std::make_pair(std::string{"Identity"}, 0.0)] =
+            std::vector<CFP_t>{cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>()};
         host_gates_[std::make_pair(std::string{"PauliX"}, 0.0)] =
             std::vector<CFP_t>{cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
                                cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>()};

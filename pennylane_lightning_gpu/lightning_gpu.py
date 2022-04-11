@@ -29,7 +29,8 @@ from pennylane import (
     QubitStateVector,
 )
 from pennylane_lightning import LightningQubit
-from pennylane.operation import Expectation, Tensor
+from pennylane.operation import Tensor
+from pennylane.measurements import Expectation
 from pennylane.wires import Wires
 
 # Remove after the next release of PL
@@ -56,10 +57,12 @@ try:
 
     from ._serialize import _serialize_obs, _serialize_ops
     from ctypes.util import find_library
+    from importlib import util as imp_util
 
-    if find_library("custatevec") == None:
+    if find_library("custatevec") == None and not imp_util.find_spec("cuquantum"):
         raise ImportError(
-            'cuQuantum libraries not found. Please check "LD_LIBRARY_PATH" environment variable.'
+            'cuQuantum libraries not found. Please check your "LD_LIBRARY_PATH" environment variable,'
+            'or ensure you have installed the appropriate distributable "cuQuantum" package.'
         )
     if not is_gpu_supported():
         raise ValueError(f"CUDA device is an unsupported version: {get_gpu_arch()}")
@@ -152,7 +155,13 @@ class LightningGPU(LightningQubit):
         return super().statistics(observables, shot_range, bin_size)
 
     def apply_cq(self, operations, **kwargs):
+        # Skip over identity operations instead of performing
+        # matrix multiplication with the identity.
+        skipped_ops = ["Identity"]
+
         for o in operations:
+            if o.base_name in skipped_ops:
+                continue
             name = o.name.split(".")[0]  # The split is because inverse gates have .inv appended
             method = getattr(self._gpu_state, name, None)
 

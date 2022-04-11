@@ -420,8 +420,8 @@ template <class T = double> class AdjointJacobianGPU {
         size_t trainableParamNumber = tp_size - 1;
         size_t current_param_idx =
             num_param_ops - 1; // total number of parametric ops
-        const auto tp_begin = trainableParams.begin();
-        auto tp_it = trainableParams.end();
+        auto tp_it = trainableParams.rbegin();
+        const auto tp_rend = trainableParams.rend();
 
         // Create $U_{1:p}\vert \lambda \rangle$
         StateVectorCudaManaged<T> lambda(ref_data, length);
@@ -445,45 +445,47 @@ template <class T = double> class AdjointJacobianGPU {
             PL_ABORT_IF(ops.getOpsParams()[op_idx].size() > 1,
                         "The operation is not supported using the adjoint "
                         "differentiation method");
-            if ((ops_name[op_idx] != "QubitStateVector") &&
-                (ops_name[op_idx] != "BasisState")) {
-                mu.updateData(lambda);
-                applyOperationAdj(lambda, ops, op_idx);
-
-                if (ops.hasParams(op_idx)) {
-                    if (std::find(tp_begin, tp_it, current_param_idx) !=
-                        tp_it) {
-                        const T scalingFactor =
-                            applyGenerator(mu, ops.getOpsName()[op_idx],
-                                           ops.getOpsWires()[op_idx],
-                                           !ops.getOpsInverses()[op_idx]) *
-                            (2 * (0b1 ^ ops.getOpsInverses()[op_idx]) - 1);
-                        // clang-format off
-
-                        #if defined(_OPENMP)
-                            #pragma omp parallel for default(none)   \
-                            shared(H_lambda, jac, mu, scalingFactor, \
-                                trainableParamNumber, tp_it,         \
-                                num_observables)
-                        #endif
-
-                        // clang-format on
-                        for (size_t obs_idx = 0; obs_idx < num_observables;
-                             obs_idx++) {
-                            updateJacobian(H_lambda[obs_idx], mu, jac,
-                                           scalingFactor, obs_idx,
-                                           trainableParamNumber);
-                        }
-                        trainableParamNumber--;
-                        std::advance(tp_it, -1);
-                    }
-                    current_param_idx--;
-                }
-
-                applyOperationsAdj(H_lambda, ops, static_cast<size_t>(op_idx));
+            if ((ops_name[op_idx] == "QubitStateVector") ||
+                (ops_name[op_idx] == "BasisState")) {
+                continue;
             }
+            if (tp_it == tp_rend) {
+                break; // All done
+            }
+            mu.updateData(lambda);
+            applyOperationAdj(lambda, ops, op_idx);
+
+            if (ops.hasParams(op_idx)) {
+                if (current_param_idx == *tp_it) {
+                    const T scalingFactor =
+                        applyGenerator(mu, ops.getOpsName()[op_idx],
+                                       ops.getOpsWires()[op_idx],
+                                       !ops.getOpsInverses()[op_idx]) *
+                        (ops.getOpsInverses()[op_idx] ? -1 : 1);
+
+                    // clang-format off
+
+                    #if defined(_OPENMP)
+                        #pragma omp parallel for default(none)   \
+                        shared(H_lambda, jac, mu, scalingFactor, \
+                            trainableParamNumber, tp_it,         \
+                            num_observables)
+                    #endif
+
+                    // clang-format on
+                    for (size_t obs_idx = 0; obs_idx < num_observables;
+                         obs_idx++) {
+                        updateJacobian(H_lambda[obs_idx], mu, jac,
+                                       scalingFactor, obs_idx,
+                                       trainableParamNumber);
+                    }
+                    trainableParamNumber--;
+                    ++tp_it;
+                }
+                current_param_idx--;
+            }
+            applyOperationsAdj(H_lambda, ops, static_cast<size_t>(op_idx));
         }
-        // jac = Transpose(jac, jd.getNumParams(), num_observables);
     }
 
     /*template <class SVType = StateVectorCudaManaged<T>>
