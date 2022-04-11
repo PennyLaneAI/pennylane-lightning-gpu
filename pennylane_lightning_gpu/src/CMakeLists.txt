@@ -4,6 +4,7 @@ project(lightning_gpu_components LANGUAGES CXX CUDA)
 # Include all nested sources directories
 ###############################################################################
 set(COMPONENT_SUBDIRS      algorithms;
+                           interfaces;
                            simulator;
                            util;
 )
