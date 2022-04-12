@@ -463,7 +463,93 @@ class StateVectorCudaManaged
                                           bool adjoint, Precision param) {
         applyPhaseShift(wires, adjoint, param);
     }
-
+    inline void applySingleExcitation(const std::vector<std::size_t> &wires,
+                                      bool adjoint, Precision param) {
+        applyCNOT(wires, adjoint);
+        applyCRY(wires, adjoint, param);
+        applyCNOT(wires, adjoint);
+    }
+    inline void
+    applySingleExcitationMinus(const std::vector<std::size_t> &wires,
+                               bool adjoint, Precision param) {
+        static const Precision mp2 = -param / 2;
+        applyPauliX({wires[0]}, adjoint);
+        applyPauliX({wires[1]}, adjoint); // TODO
+        applyControlledPhaseShift({wires[1], wires[0]}, adjoint, mp2);
+        applyPauliX({wires[0]}, adjoint);
+        applyPauliX({wires[1]}, adjoint);
+        applyControlledPhaseShift(wires, adjoint, mp2);
+        applyCNOT(wires, adjoint);
+        applyCRY({wires[1], wires[0]}, adjoint, param);
+        applyCNOT(wires, adjoint);
+    }
+    inline void applySingleExcitationPlus(const std::vector<std::size_t> &wires,
+                                          bool adjoint, Precision param) {
+        static const Precision p2 = param / 2;
+        applyPauliX({wires[0]}, adjoint);
+        applyPauliX({wires[1]}, adjoint); // TODO
+        applyControlledPhaseShift({wires[1], wires[0]}, adjoint, p2);
+        applyPauliX({wires[0]}, adjoint);
+        applyPauliX({wires[1]}, adjoint);
+        applyControlledPhaseShift(wires, adjoint, p2);
+        applyCNOT(wires, adjoint);
+        applyCRY({wires[1], wires[0]}, adjoint, param);
+        applyCNOT(wires, adjoint);
+    }
+    inline void applyDoubleExcitation(const std::vector<std::size_t> &wires,
+                                      bool adjoint, Precision param) {
+        // This decomposition is the "upside down" version of that
+        // on p17 of https://arxiv.org/abs/2104.05695
+        static const Precision p8 = param / 8;
+        applyCNOT({wires[2], wires[3]}, adjoint);
+        applyCNOT({wires[0], wires[2]});
+        applyHadamard({wires[3]}, adjoint);
+        applyHadamard({wires[0]}, adjoint);
+        applyCNOT({wires[2], wires[3]}, adjoint);
+        applyCNOT({wires[0], wires[1]}, adjoint);
+        applyRY({wires[1]}, adjoint, p8);
+        applyRY({wires[0]}, adjoint, -p8);
+        applyCNOT({wires[0], wires[3]}, adjoint);
+        applyHadamard({wires[3]}, adjoint);
+        applyCNOT({wires[3], wires[1]}, adjoint);
+        applyRY({wires[1]}, p8);
+        applyRY({wires[0]}, -p8);
+        applyCNOT({wires[2], wires[1]}, adjoint);
+        applyCNOT({wires[2], wires[0]}, adjoint);
+        applyRY({wires[1]}, adjoint, -p8);
+        applyRY({wires[0]}, adjoint, p8);
+        applyCNOT({wires[3], wires[1]}, adjoint);
+        applyHadamard({wires[3]}, adjoint);
+        applyCNOT({wires[0], wires[3]}, adjoint);
+        applyRY({wires[1]}, -p8);
+        applyRY({wires[0]}, adjoint, p8);
+        applyCNOT({wires[0], wires[1]}, adjoint);
+        applyCNOT({wires[2], wires[0]}, adjoint);
+        applyHadamard({wires[0]}, adjoint);
+        applyHadamard({wires[3]}, adjoint);
+        applyCNOT({wires[0], wires[2]}, adjoint);
+        applyCNOT({wires[2], wires[3]}, adjoint);
+    }
+    inline void applyDoubleExcitation(const std::vector<std::size_t> &wires,
+                                      bool adjoint, Precision param) {
+        // TODO
+    }
+    inline void applyOrbitalRotation(const std::vector<std::size_t> &wires,
+                                     bool adjoint, Precision param) {
+        static const Precision p2 = param / 2;
+        applyHadamard({wires[3]}, adjoint);
+        applyHadamard({wires[2]}, adjoint);
+        applyCNOT({wires[3], wires[1]}, adjoint);
+        applyCNOT({wires[2], wires[0]}, adjoint);
+        applyRY({wires[3]}, adjoint, p2);
+        applyRY({wires[2]}, adjoint, p2);
+        applyRY({wires[1]}, adjoint, p2);
+        applyRY({wires[0]}, adjoint, p2);
+        applyCNOT({wires[3], wires[1]}, adjoint);
+        applyCNOT({wires[2], wires[0]}, adjoint);
+        applyHadamard({wires[3]}, adjoint);
+        applyHadamard({wires[2]}, adjoint);
+    }
     /**
      * @brief Utility method for expectation value calculations.
      *
