@@ -776,9 +776,8 @@ class StateVectorCudaManaged
             const Precision p2 = param / 2;
             const CFP_t c =
                 cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
-            const CFP_t neg_is =
-                -cuUtil::IMAG<CFP_t>() *
-                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
+            const CFP_t neg_is = cuUtil::complexToCu<std::complex<Precision>>(
+                {0, -std::sin(p2)});
             matrix_cu[0] = c;
             matrix_cu[3] = neg_is;
             matrix_cu[5] = c;
@@ -801,11 +800,9 @@ class StateVectorCudaManaged
             const CFP_t c =
                 cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
             const CFP_t pos_is =
-                cuUtil::IMAG<CFP_t>() *
-                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
-            const CFP_t neg_is =
-                cuUtil::IMAG<CFP_t>() *
-                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
+                cuUtil::complexToCu<std::complex<Precision>>({0, std::sin(p2)});
+            const CFP_t neg_is = cuUtil::complexToCu<std::complex<Precision>>(
+                {0, -std::sin(p2)});
             matrix_cu[0] = c;
             matrix_cu[3] = pos_is;
             matrix_cu[5] = c;
