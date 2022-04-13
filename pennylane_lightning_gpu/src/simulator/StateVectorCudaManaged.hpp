@@ -777,7 +777,7 @@ class StateVectorCudaManaged
             const CFP_t c =
                 cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
             const CFP_t neg_is =
-                -IMAG<CFP_t>() *
+                -cuUtil::IMAG<CFP_t>() *
                 cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
             matrix_cu[0] = c;
             matrix_cu[3] = neg_is;
@@ -801,18 +801,18 @@ class StateVectorCudaManaged
             const CFP_t c =
                 cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
             const CFP_t pos_is =
-                IMAG<CFP_t>() *
+                cuUtil::IMAG<CFP_t>() *
                 cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
             const CFP_t neg_is =
-                IMAG<CFP_t>() *
+                cuUtil::IMAG<CFP_t>() *
                 cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
             matrix_cu[0] = c;
-            matrix_cu[3] = is;
+            matrix_cu[3] = pos_is;
             matrix_cu[5] = c;
             matrix_cu[6] = neg_is;
             matrix_cu[9] = neg_is;
             matrix_cu[10] = c;
-            matrix_cu[12] = is;
+            matrix_cu[12] = pos_is;
             matrix_cu[15] = c;
         }
         applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
