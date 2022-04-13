@@ -696,7 +696,7 @@ class StateVectorCudaManaged
             const CFP_t s =
                 cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
             const CFP_t e = cuUtil::complexToCu<std::complex<Precision>>(
-                -std::exp(std::complex<Precision>(0, p2)));
+                std::exp(std::complex<Precision>(0, -p2)));
             matrix_cu[0] = e;
             matrix_cu[17] = e;
             matrix_cu[34] = e;
