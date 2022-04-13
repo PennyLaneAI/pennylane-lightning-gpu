@@ -602,7 +602,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applySingleExcitation",
 
     const std::vector<TestType> angles{0.3, 0.8};
 
-    std::vector<std::vector<cp_t>> expected_results(1 << num_qubits);
+    std::vector<cp_t> expected_results(1 << num_qubits);
     expected_results[0] = {1.0, 0.0};
 
     const auto init_state = svdat.sv.getDataVector();
@@ -714,7 +714,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitation",
 
     const std::vector<TestType> angles{0.3, 0.8, 2.4};
 
-    std::vector<std::vector<cp_t>> expected_results(1 << num_qubits);
+    std::vector<cp_t> expected_results(1 << num_qubits);
     expected_results[0] = {1.0, 0.0};
 
     const auto init_state = svdat.sv.getDataVector();
@@ -796,7 +796,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOrbitalRotation", "[LightningGPU_Param]",
 
     const std::vector<TestType> angles{0.3, 0.8};
 
-    std::vector<std::vector<cp_t>> expected_results(1 << num_qubits);
+    std::vector<cp_t> expected_results(1 << num_qubits);
     expected_results[0] = {1.0, 0.0};
 
     const auto init_state = svdat.sv.getDataVector();
