@@ -545,7 +545,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyCRY(wires, adjoint, param);
         // applyCNOT(wires, adjoint);
-        std::array<CFP_t, 4 * 4> matrix_cu;
+        std::array<CFP_t, 4 * 4> matrix_cu({0, 0});
         { /* generate matrix */
             const Precision p2 = param / 2;
             const CFP_t c =
@@ -575,7 +575,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyCRY({wires[1], wires[0]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        std::array<CFP_t, 4 * 4> matrix_cu;
+        std::array<CFP_t, 4 * 4> matrix_cu({0, 0});
         { /* generate matrix */
             const Precision p2 = param / 2;
             const CFP_t c =
@@ -605,7 +605,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyCRY({wires[1], wires[0]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        std::array<CFP_t, 4 * 4> matrix_cu;
+        std::array<CFP_t, 4 * 4> matrix_cu({0, 0});
         { /* generate matrix */
             const Precision p2 = param / 2;
             const CFP_t c =
@@ -656,7 +656,7 @@ class StateVectorCudaManaged
         // applyHadamard({wires[3]}, adjoint);
         // applyCNOT({wires[0], wires[2]}, adjoint);
         // applyCNOT({wires[2], wires[3]}, adjoint);
-        std::array<CFP_t, 16 * 16> matrix_cu;
+        std::array<CFP_t, 16 * 16> matrix_cu({0, 0});
         { /* generate matrix */
             const Precision p2 = param / 2;
             const CFP_t c =
@@ -688,7 +688,7 @@ class StateVectorCudaManaged
     inline void
     applyDoubleExcitationMinus(const std::vector<std::size_t> &wires,
                                bool adjoint, Precision param) {
-        std::array<CFP_t, 16 * 16> matrix_cu;
+        std::array<CFP_t, 16 * 16> matrix_cu({0, 0});
         { /* generate matrix */
             const Precision p2 = param / 2;
             const CFP_t c =
@@ -720,7 +720,7 @@ class StateVectorCudaManaged
     }
     inline void applyDoubleExcitationPlus(const std::vector<std::size_t> &wires,
                                           bool adjoint, Precision param) {
-        std::array<CFP_t, 16 * 16> matrix_cu;
+        std::array<CFP_t, 16 * 16> matrix_cu({0, 0});
         { /* generate matrix */
             const Precision p2 = param / 2;
             const CFP_t c =
@@ -771,7 +771,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyRX({wires[0]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        std::array<CFP_t, 4 * 4> matrix_cu;
+        std::array<CFP_t, 4 * 4> matrix_cu({0, 0});
         { /* generate matrix */
             const Precision p2 = param / 2;
             const CFP_t c =
@@ -794,7 +794,7 @@ class StateVectorCudaManaged
         // applyCY(wires, adjoint);
         // applyRY({wires[0]}, adjoint, param);
         // applyCY(wires, adjoint);
-        std::array<CFP_t, 4 * 4> matrix_cu;
+        std::array<CFP_t, 4 * 4> matrix_cu({0, 0});
         { /* generate matrix */
             const Precision p2 = param / 2;
             const CFP_t c =
@@ -819,7 +819,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyRZ({wires[1]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        std::array<CFP_t, 4 * 4> matrix_cu;
+        std::array<CFP_t, 4 * 4> matrix_cu({0, 0});
         { /* generate matrix */
             const Precision p2 = param / 2;
             const CFP_t pos_e = cuUtil::complexToCu<std::complex<Precision>>(
@@ -837,7 +837,7 @@ class StateVectorCudaManaged
                              bool adjoint, Precision param) {
         const size_t num_wires = wires.size();
         const size_t num_rows = 1 << num_wires;
-        std::vector<CFP_t> matrix_cu(num_rows * num_rows);
+        std::vector<CFP_t> matrix_cu(num_rows * num_rows, {0, 0});
         { /* generate matrix */
             std::vector<Precision> eigs;
             eigs.reserve(num_rows);
