@@ -689,6 +689,101 @@ class StateVectorCudaManaged
         applyHadamard({wires[3]}, adjoint);
         applyHadamard({wires[2]}, adjoint);
     }
+    inline void applyIsingXX(const std::vector<std::size_t> &wires,
+                             bool adjoint, Precision param) {
+        // applyCNOT(wires, adjoint);
+        // applyRX({wires[0]}, adjoint, param);
+        // applyCNOT(wires, adjoint);
+        std::array<CFP_t, 4 * 4> matrix_cu;
+        { /* generate matrix */
+            const Precision p2 = param / 2;
+            const CFP_t c =
+                cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
+            const CFP_t neg_is =
+                -IMAG<CFP_t>() *
+                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
+            matrix_cu[0] = c;
+            matrix_cu[3] = neg_is;
+            matrix_cu[5] = c;
+            matrix_cu[6] = neg_is;
+            matrix_cu[9] = neg_is;
+            matrix_cu[10] = c;
+            matrix_cu[12] = neg_is;
+            matrix_cu[15] = c;
+        }
+        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+    }
+    inline void applyIsingYY(const std::vector<std::size_t> &wires,
+                             bool adjoint, Precision param) {
+        // applyCY(wires, adjoint);
+        // applyRY({wires[0]}, adjoint, param);
+        // applyCY(wires, adjoint);
+        std::array<CFP_t, 4 * 4> matrix_cu;
+        { /* generate matrix */
+            const Precision p2 = param / 2;
+            const CFP_t c =
+                cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
+            const CFP_t pos_is =
+                IMAG<CFP_t>() *
+                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
+            const CFP_t neg_is =
+                IMAG<CFP_t>() *
+                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
+            matrix_cu[0] = c;
+            matrix_cu[3] = is;
+            matrix_cu[5] = c;
+            matrix_cu[6] = neg_is;
+            matrix_cu[9] = neg_is;
+            matrix_cu[10] = c;
+            matrix_cu[12] = is;
+            matrix_cu[15] = c;
+        }
+        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+    }
+    inline void applyIsingZZ(const std::vector<std::size_t> &wires,
+                             bool adjoint, Precision param) {
+        // applyCNOT(wires, adjoint);
+        // applyRZ({wires[1]}, adjoint, param);
+        // applyCNOT(wires, adjoint);
+        std::array<CFP_t, 4 * 4> matrix_cu;
+        { /* generate matrix */
+            const Precision p2 = param / 2;
+            const CFP_t pos_e = cuUtil::complexToCu<std::complex<Precision>>(
+                std::exp(std::complex<Precision>(0, p2)));
+            const CFP_t neg_e = cuUtil::complexToCu<std::complex<Precision>>(
+                std::exp(-std::complex<Precision>(0, p2)));
+            matrix_cu[0] = neg_e;
+            matrix_cu[5] = pos_e;
+            matrix_cu[10] = pos_e;
+            matrix_cu[15] = neg_e;
+        }
+        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+    }
+    inline void applyMultiRZ(const std::vector<std::size_t> &wires,
+                             bool adjoint, Precision param) {
+        const size_t num_wires = wires.size();
+        const size_t num_rows = 1 << num_wires;
+        std::vector<CFP_t> matrix_cu(num_rows * num_rows);
+        { /* generate matrix */
+            std::vector<Precision> eigs;
+            eigs.reserve(num_rows);
+            eigs.push_back(1.0);
+            eigs.push_back(-1.0);
+            for (size_t i = 1; i < num_wires; i++) {
+                const size_t sz = eigs.size();
+                for (size_t j = 0; j < sz; j++)
+                    eigs.push_back(-eigs[j]);
+            }
+
+            const Precision p2 = param / 2;
+            for (size_t idx = 0; idx < num_rows; idx++) {
+                matrix_cu[idx * num_rows + idx] =
+                    cuUtil::complexToCu<std::complex<Precision>>(
+                        std::exp(-std::complex<Precision>(0, p2 * eigs[idx])));
+            }
+        }
+        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+    }
     /**
      * @brief Utility method for expectation value calculations.
      *
