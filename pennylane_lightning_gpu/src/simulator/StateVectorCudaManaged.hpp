@@ -69,9 +69,18 @@ class StateVectorCudaManaged
                       {"CRY", 2},
                       {"CRZ", 2},
                       {"CRot", 2},
+                      {"IsingXX", 2},
+                      {"IsingYY", 2},
+                      {"IsingZZ", 2},
                       {"SingleExcitation", 2},
+                      {"SingleExcitationMinus", 2},
+                      {"SingleExcitationPlus", 2},
                       {"CSWAP", 3},
-                      {"Toffoli", 3}},
+                      {"Toffoli", 3},
+                      {"DoubleExcitation", 4},
+                      {"DoubleExcitationMinus", 4},
+                      {"DoubleExcitationPlus", 4},
+                      {"OrbitalRotation", 4}},
           par_gates_{
               {"RX",
                [&](auto &&wires, auto &&adjoint, auto &&params) {
@@ -134,6 +143,73 @@ class StateVectorCudaManaged
                    applyCRot(std::forward<decltype(wires)>(wires),
                              std::forward<decltype(adjoint)>(adjoint),
                              std::forward<decltype(params)>(params));
+               }},
+              {"IsingXX",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyIsingXX(std::forward<decltype(wires)>(wires),
+                                std::forward<decltype(adjoint)>(adjoint),
+                                std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"IsingYY",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyIsingYY(std::forward<decltype(wires)>(wires),
+                                std::forward<decltype(adjoint)>(adjoint),
+                                std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"IsingZZ",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyIsingZZ(std::forward<decltype(wires)>(wires),
+                                std::forward<decltype(adjoint)>(adjoint),
+                                std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"SingleExcitation",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applySingleExcitation(
+                       std::forward<decltype(wires)>(wires),
+                       std::forward<decltype(adjoint)>(adjoint),
+                       std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"SingleExcitationMinus",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applySingleExcitationMinus(
+                       std::forward<decltype(wires)>(wires),
+                       std::forward<decltype(adjoint)>(adjoint),
+                       std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"SingleExcitationPlus",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applySingleExcitationPlus(
+                       std::forward<decltype(wires)>(wires),
+                       std::forward<decltype(adjoint)>(adjoint),
+                       std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"DoubleExcitation",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyDoubleExcitation(
+                       std::forward<decltype(wires)>(wires),
+                       std::forward<decltype(adjoint)>(adjoint),
+                       std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"DoubleExcitationMinus",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyDoubleExcitationMinus(
+                       std::forward<decltype(wires)>(wires),
+                       std::forward<decltype(adjoint)>(adjoint),
+                       std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"DoubleExcitationPlus",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyDoubleExcitationPlus(
+                       std::forward<decltype(wires)>(wires),
+                       std::forward<decltype(adjoint)>(adjoint),
+                       std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"OrbitalRotation",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyOrbitalRotation(
+                       std::forward<decltype(wires)>(wires),
+                       std::forward<decltype(adjoint)>(adjoint),
+                       std::forward<decltype(params[0])>(params[0]));
                }}}
 
     {
@@ -609,8 +685,9 @@ class StateVectorCudaManaged
         }
         applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
     }
-    inline void applyDoubleExcitationPlus(const std::vector<std::size_t> &wires,
-                                          bool adjoint, Precision param) {
+    inline void
+    applyDoubleExcitationMinus(const std::vector<std::size_t> &wires,
+                               bool adjoint, Precision param) {
         std::array<CFP_t, 16 * 16> matrix_cu;
         { /* generate matrix */
             const Precision p2 = param / 2;
@@ -619,7 +696,7 @@ class StateVectorCudaManaged
             const CFP_t s =
                 cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
             const CFP_t e = cuUtil::complexToCu<std::complex<Precision>>(
-                std::exp(std::complex<Precision>(0, p2)));
+                -std::exp(std::complex<Precision>(0, p2)));
             matrix_cu[0] = e;
             matrix_cu[17] = e;
             matrix_cu[34] = e;
@@ -641,8 +718,8 @@ class StateVectorCudaManaged
         }
         applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
     }
-    inline void applyDoubleExcitation(const std::vector<std::size_t> &wires,
-                                      bool adjoint, Precision param) {
+    inline void applyDoubleExcitationPlus(const std::vector<std::size_t> &wires,
+                                          bool adjoint, Precision param) {
         std::array<CFP_t, 16 * 16> matrix_cu;
         { /* generate matrix */
             const Precision p2 = param / 2;
@@ -651,7 +728,7 @@ class StateVectorCudaManaged
             const CFP_t s =
                 cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
             const CFP_t e = cuUtil::complexToCu<std::complex<Precision>>(
-                -std::exp(std::complex<Precision>(0, p2)));
+                std::exp(std::complex<Precision>(0, p2)));
             matrix_cu[0] = e;
             matrix_cu[17] = e;
             matrix_cu[34] = e;
@@ -771,8 +848,9 @@ class StateVectorCudaManaged
             eigs.push_back(-1.0);
             for (size_t i = 1; i < num_wires; i++) {
                 const size_t sz = eigs.size();
-                for (size_t j = 0; j < sz; j++)
+                for (size_t j = 0; j < sz; j++) {
                     eigs.push_back(-eigs[j]);
+                }
             }
 
             const Precision p2 = param / 2;
