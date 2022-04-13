@@ -72,19 +72,8 @@ except (ModuleNotFoundError, ImportError, ValueError) as e:
     warn(str(e), UserWarning)
     CPP_BINARY_AVAILABLE = False
 
-
-UNSUPPORTED_PARAM_GATES_ADJOINT = (
-    "MultiRZ",
-    "IsingXX",
-    "IsingYY",
-    "IsingZZ",
-    "SingleExcitation",
-    "SingleExcitationPlus",
-    "SingleExcitationMinus",
-    "DoubleExcitation",
-    "DoubleExcitationPlus",
-    "DoubleExcitationMinus",
-)
+# MultiRZ is not properly added yet!
+UNSUPPORTED_PARAM_GATES_ADJOINT = "MultiRZ"
 
 
 def _gpu_dtype(dtype):

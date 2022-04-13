@@ -302,8 +302,18 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         {"CRY", 1},
         {"CRZ", 1},
         {"CRot", 1},
+        {"IsingXX", 2},
+        {"IsingYY", 2},
+        {"IsingZZ", 2},
+        {"SingleExcitation", 2},
+        {"SingleExcitationMinus", 2},
+        {"SingleExcitationPlus", 2},
         {"CSWAP", 1},
-        {"Toffoli", 2}};
+        {"Toffoli", 2},
+        {"DoubleExcitation", 4},
+        {"DoubleExcitationMinus", 4},
+        {"DoubleExcitationPlus", 4},
+        {"OrbitalRotation", 4}};
 };
 
 } // namespace Pennylane
