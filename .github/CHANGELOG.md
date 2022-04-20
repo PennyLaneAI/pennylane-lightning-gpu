@@ -1,4 +1,4 @@
-# Release 0.23.0-dev
+# Release 0.24.0-dev
 
 ### New features since last release
 
@@ -11,6 +11,24 @@
 ### Bug fixes
 
 ### Contributors
+
+---
+
+# Release 0.23.0
+
+### Improvements
+* Update builder and cuQuantum SDK support [(#10)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/10).
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+Ali Asadi, and Lee James O'Riordan
+
+---
+
+# Release 0.22.1
+### Improvements
+* Add `Identity` support [(#8)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/8).
 
 ---
 
