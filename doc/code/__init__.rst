@@ -1,5 +1,5 @@
 pennylane_lightning_gpu
-===================
+=======================
 
 This section contains the API documentation for the PennyLane-Lightning-GPU plugin.
 
