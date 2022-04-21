@@ -40,20 +40,7 @@ import pennylane as qml
 from ._version import __version__
 
 try:
-    from .lightning_gpu_qubit_ops import (
-        LightningGPU_C128,
-        LightningGPU_C64,
-        AdjointJacobianGPU_C128,
-        AdjointJacobianGPU_C64,
-        device_reset,
-        is_gpu_supported,
-        get_gpu_arch,
-        DevPool,
-        ObsStructGPU_C128,
-        ObsStructGPU_C64,
-        OpsStructGPU_C128,
-        OpsStructGPU_C64,
-    )
+    from .module_bindings import *
 
     from ._serialize import _serialize_obs, _serialize_ops
     from ctypes.util import find_library

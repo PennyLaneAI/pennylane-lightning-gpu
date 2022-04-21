@@ -3,6 +3,7 @@
 
 #include "AdjointDiffGPU.hpp"
 #include "StateVectorCudaManaged.hpp"
+#include "StateVectorCudaRaw.hpp"
 #include "StateVectorManaged.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
@@ -98,4 +99,32 @@ template <typename fp_t> struct SVDataGPU {
                                                         cdata_input.size()} {}
 
     ~SVDataGPU() {}
+};
+
+/**
+ * @brief Utility data-structure to assist with testing StateVectorCudaManaged
+ * class
+ *
+ * @tparam fp_t Floating-point type. Supported options: float, double
+ */
+template <typename fp_t> struct SVDataGPURaw {
+    std::size_t num_qubits_;
+    StateVectorManaged<fp_t> sv;
+    StateVectorCudaManaged<fp_t> cuda_sv;
+    StateVectorCudaRaw<fp_t> cuda_sv_raw;
+
+    SVDataGPURaw() = delete;
+
+    SVDataGPURaw(std::size_t num_qubits)
+        : num_qubits_{num_qubits}, sv{num_qubits}, cuda_sv{num_qubits},
+          cuda_sv_raw{cuda_sv.getData(), cuda_sv.getLength()} {
+        cuda_sv.initSV();
+    }
+    SVDataGPURaw(std::size_t num_qubits,
+                 const std::vector<std::complex<fp_t>> &cdata_input)
+        : num_qubits_{num_qubits}, sv{cdata_input}, cuda_sv{cdata_input.data(),
+                                                            cdata_input.size()},
+          cuda_sv_raw{cuda_sv.getData(), cuda_sv.getLength()} {}
+
+    ~SVDataGPURaw() {}
 };

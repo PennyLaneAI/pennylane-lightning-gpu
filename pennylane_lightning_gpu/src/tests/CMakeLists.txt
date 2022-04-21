@@ -16,7 +16,7 @@ Include(FetchContent)
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v2.13.7
+  GIT_TAG        v2.13.9
 )
 
 FetchContent_MakeAvailable(Catch2)
@@ -35,10 +35,12 @@ if(ENABLE_OPENMP)
 endif()
 target_link_libraries(runner_gpu PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
 
-target_sources(runner_gpu PRIVATE Test_StateVectorCudaManaged_NonParam.cpp 
-                              Test_StateVectorCudaManaged_Param.cpp 
-                              Test_AdjointDiffGPU.cpp 
-                              Test_GateCache.cpp 
+target_sources(runner_gpu PRIVATE   Test_StateVectorCudaManaged_NonParam.cpp 
+                                    Test_StateVectorCudaManaged_Param.cpp
+                                    Test_StateVectorCudaRaw_NonParam.cpp 
+                                    Test_StateVectorCudaRaw_Param.cpp 
+                                    Test_AdjointDiffGPU.cpp 
+                                    Test_GateCache.cpp 
 )
 
 target_compile_options(runner_gpu PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")

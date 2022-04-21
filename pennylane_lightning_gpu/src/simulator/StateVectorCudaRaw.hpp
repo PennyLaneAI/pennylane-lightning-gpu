@@ -4,9 +4,9 @@
 #include <unordered_set>
 #include <vector>
 
-#include <cuComplex.h> // cuDoubleComplex
+#include <cuComplex.h>
 #include <cuda.h>
-#include <custatevec.h> // custatevecApplyMatrix
+#include <custatevec.h>
 
 #include "Error.hpp"
 #include "StateVectorCudaBase.hpp"
@@ -25,27 +25,28 @@ using namespace Pennylane::Util;
 namespace Pennylane {
 
 /**
- * @brief Managed memory CUDA state-vector class using custateVec backed
+ * @brief Raw memory CUDA state-vector class using custateVec backed
  * gate-calls.
  *
  * @tparam Precision Floating-point precision type.
  */
 template <class Precision>
-class StateVectorCudaManaged
-    : public StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>> {
+class StateVectorCudaRaw
+    : public StateVectorCudaBase<Precision, StateVectorCudaRaw<Precision>> {
   private:
-    using BaseType = StateVectorCudaBase<Precision, StateVectorCudaManaged>;
+    friend class StateVectorCudaBase<Precision, StateVectorCudaRaw<Precision>>;
+    using BaseType = StateVectorCudaBase<Precision, StateVectorCudaRaw>;
 
   public:
     using CFP_t =
         typename StateVectorCudaBase<Precision,
-                                     StateVectorCudaManaged<Precision>>::CFP_t;
+                                     StateVectorCudaRaw<Precision>>::CFP_t;
     using GateType = CFP_t *;
 
-    StateVectorCudaManaged() = delete;
-    StateVectorCudaManaged(size_t num_qubits)
-        : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
-              num_qubits),
+    StateVectorCudaRaw() = delete;
+    StateVectorCudaRaw(size_t num_qubits, cudaStream_t stream = 0)
+        : StateVectorCudaBase<Precision, StateVectorCudaRaw<Precision>>(
+              num_qubits, stream, false), // do not allocate memory
           gate_cache_(true),
           gate_wires_{// Add mapping from function name to required wires.
                       {"Identity", 1},
@@ -128,36 +129,34 @@ class StateVectorCudaManaged
                             std::forward<decltype(adjoint)>(adjoint),
                             std::forward<decltype(params)>(params));
                }},
-              {"CRot",
-               [&](auto &&wires, auto &&adjoint, auto &&params) {
+              {"CRot", [&](auto &&wires, auto &&adjoint, auto &&params) {
                    applyCRot(std::forward<decltype(wires)>(wires),
                              std::forward<decltype(adjoint)>(adjoint),
                              std::forward<decltype(params)>(params));
-               }}}
-
-    {
-        BaseType::initSV();
+               }}} {
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
     };
 
-    StateVectorCudaManaged(const CFP_t *gpu_data, size_t length)
-        : StateVectorCudaManaged(Util::log2(length)) {
-        BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
+    StateVectorCudaRaw(CFP_t *gpu_data, size_t length, cudaStream_t stream = 0)
+        : StateVectorCudaRaw(Util::log2(length), stream) {
+        CFP_t *ptr = BaseType::getData();
+        ptr = gpu_data;
+        static_cast<void>(ptr);
     }
-    StateVectorCudaManaged(const std::complex<Precision> *host_data,
-                           size_t length)
-        : StateVectorCudaManaged(Util::log2(length)) {
-        BaseType::CopyHostDataToGpu(host_data, length, false);
+    StateVectorCudaRaw(std::complex<Precision> *gpu_data, size_t length,
+                       cudaStream_t stream = 0)
+        : StateVectorCudaRaw(Util::log2(length), stream) {
+        CFP_t *ptr = BaseType::getData();
+        ptr = reinterpret_cast<CFP_t *>(gpu_data);
+        static_cast<void>(ptr);
     }
 
-    StateVectorCudaManaged(const StateVectorCudaManaged &other)
-        : StateVectorCudaManaged(other.getNumQubits()) {
-        BaseType::CopyGpuDataToGpuIn(other);
-    }
-    // StateVectorCudaManaged(StateVectorCudaManaged &&other) = delete;
+    /*StateVectorCudaRaw(const StateVectorCudaRaw &other, cudaStream_t stream =
+       0) : StateVectorCudaRaw(other.getNumQubits(), stream) {}
+    */
 
-    ~StateVectorCudaManaged() {
+    ~StateVectorCudaRaw() {
         PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(
             /* custatevecHandle_t */ handle));
     }
@@ -575,7 +574,7 @@ class StateVectorCudaManaged
     }
 
   private:
-    inline static const std::string class_name_ = "StateVectorCudaManaged";
+    inline static const std::string class_name_ = "StateVectorCudaRaw";
     GateCache<Precision> gate_cache_;
     const std::unordered_map<std::string, size_t> gate_wires_;
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
