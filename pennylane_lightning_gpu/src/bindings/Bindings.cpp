@@ -63,7 +63,7 @@ void StateVectorCuda_class_bindings(py::module &m) {
 
     /// Enable module name to be based on size of complex datatype
     /// Module naming convention:
-    /// LightningGPU_<name of C++ class>_C<num bits in complex value> 
+    /// LightningGPU_<name of C++ class>_C<num bits in complex value>
     const std::string bitsize =
         std::to_string(sizeof(std::complex<PrecisionT>) * 8);
     std::string cls_name =
