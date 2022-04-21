@@ -50,6 +50,7 @@ namespace py = pybind11;
 /**
  * @brief Templated class to build all required precisions for Python module.
  *
+ * @tparam SVtype Templated state-vector class type.
  * @tparam PrecisionT Precision of the statevector data.
  * @tparam ParamT Precision of the parameter data.
  * @param m Pybind11 module.
@@ -385,12 +386,87 @@ void StateVectorCuda_class_bindings(py::module &m) {
         .def("resetGPU", &SVType<PrecisionT>::initSV);
 
     //***********************************************************************//
+    //                              Adj Jac
+    //***********************************************************************//
+
+    cls_name = "AdjointJacobianGPU_" + SVType<PrecisionT>::getClassName() +
+               "_C" + bitsize;
+    py::class_<AdjointJacobianGPU<PrecisionT>>(m, cls_name.c_str(),
+                                               py::module_local())
+        .def(py::init<>())
+        .def("create_ops_list",
+             [](AdjointJacobianGPU<PrecisionT> &adj,
+                const std::vector<std::string> &ops_name,
+                const std::vector<np_arr_r> &ops_params,
+                const std::vector<std::vector<size_t>> &ops_wires,
+                const std::vector<bool> &ops_inverses,
+                const std::vector<np_arr_c> &ops_matrices) {
+                 std::vector<std::vector<PrecisionT>> conv_params(
+                     ops_params.size());
+                 std::vector<std::vector<std::complex<PrecisionT>>>
+                     conv_matrices(ops_matrices.size());
+                 static_cast<void>(adj);
+                 for (size_t op = 0; op < ops_name.size(); op++) {
+                     const auto p_buffer = ops_params[op].request();
+                     const auto m_buffer = ops_matrices[op].request();
+                     if (p_buffer.size) {
+                         const auto *const p_ptr =
+                             static_cast<const ParamT *>(p_buffer.ptr);
+                         conv_params[op] =
+                             std::vector<ParamT>{p_ptr, p_ptr + p_buffer.size};
+                     }
+
+                     if (m_buffer.size) {
+                         const auto m_ptr =
+                             static_cast<const std::complex<ParamT> *>(
+                                 m_buffer.ptr);
+                         conv_matrices[op] = std::vector<std::complex<ParamT>>{
+                             m_ptr, m_ptr + m_buffer.size};
+                     }
+                 }
+
+                 return OpsData<PrecisionT>{ops_name, conv_params, ops_wires,
+                                            ops_inverses, conv_matrices};
+             })
+        .def("adjoint_jacobian",
+             &AdjointJacobianGPU<PrecisionT>::adjointJacobian)
+        .def("adjoint_jacobian",
+             [](AdjointJacobianGPU<PrecisionT> &adj,
+                const SVType<PrecisionT> &sv,
+                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
+                    &observables,
+                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+                const std::vector<size_t> &trainableParams, size_t num_params) {
+                 std::vector<std::vector<PrecisionT>> jac(
+                     observables.size(),
+                     std::vector<PrecisionT>(num_params, 0));
+
+                 adj.adjointJacobian(sv.getData(), sv.getLength(), jac,
+                                     observables, operations, trainableParams);
+                 return py::array_t<ParamT>(py::cast(jac));
+             });
+}
+
+/**
+ * @brief Templated class to build object and observable bound types.
+ *
+ * @tparam PrecisionT Precision of the statevector data.
+ * @tparam ParamT Precision of the parameter data.
+ * @param m Pybind11 module.
+ */
+template <class PrecisionT, class ParamT>
+void OpsObs_class_bindings(py::module &m) {
+    using np_arr_r =
+        py::array_t<ParamT, py::array::c_style | py::array::forcecast>;
+    using np_arr_c = py::array_t<std::complex<ParamT>,
+                                 py::array::c_style | py::array::forcecast>;
+    const std::string bitsize =
+        std::to_string(sizeof(std::complex<PrecisionT>) * 8);
+    //***********************************************************************//
     //                              Observable
     //***********************************************************************//
 
-    cls_name =
-        "ObsStructGPU_" + SVType<PrecisionT>::getClassName() + "_C" + bitsize;
-
+    std::string cls_name = "ObsStructGPU_C" + bitsize;
     using obs_data_var = std::variant<std::monostate, np_arr_r, np_arr_c>;
     py::class_<ObsDatum<PrecisionT>>(m, cls_name.c_str(), py::module_local())
         .def(py::init([](const std::vector<std::string> &names,
@@ -476,8 +552,7 @@ void StateVectorCuda_class_bindings(py::module &m) {
     //***********************************************************************//
     //                              Operations
     //***********************************************************************//
-    cls_name =
-        "OpsStructGPU_" + SVType<PrecisionT>::getClassName() + "_C" + bitsize;
+    cls_name = "OpsStructGPU_C" + bitsize;
     py::class_<OpsData<PrecisionT>>(m, cls_name.c_str(), py::module_local())
         .def(py::init<
              const std::vector<std::string> &,
@@ -499,67 +574,6 @@ void StateVectorCuda_class_bindings(py::module &m) {
             }
             return "Operations: [" + ops_stream.str() + "]";
         });
-
-    //***********************************************************************//
-    //                              Adj Jac
-    //***********************************************************************//
-
-    cls_name = "AdjointJacobianGPU_" + SVType<PrecisionT>::getClassName() +
-               "_C" + bitsize;
-    py::class_<AdjointJacobianGPU<PrecisionT>>(m, cls_name.c_str(),
-                                               py::module_local())
-        .def(py::init<>())
-        .def("create_ops_list",
-             [](AdjointJacobianGPU<PrecisionT> &adj,
-                const std::vector<std::string> &ops_name,
-                const std::vector<np_arr_r> &ops_params,
-                const std::vector<std::vector<size_t>> &ops_wires,
-                const std::vector<bool> &ops_inverses,
-                const std::vector<np_arr_c> &ops_matrices) {
-                 std::vector<std::vector<PrecisionT>> conv_params(
-                     ops_params.size());
-                 std::vector<std::vector<std::complex<PrecisionT>>>
-                     conv_matrices(ops_matrices.size());
-                 static_cast<void>(adj);
-                 for (size_t op = 0; op < ops_name.size(); op++) {
-                     const auto p_buffer = ops_params[op].request();
-                     const auto m_buffer = ops_matrices[op].request();
-                     if (p_buffer.size) {
-                         const auto *const p_ptr =
-                             static_cast<const ParamT *>(p_buffer.ptr);
-                         conv_params[op] =
-                             std::vector<ParamT>{p_ptr, p_ptr + p_buffer.size};
-                     }
-
-                     if (m_buffer.size) {
-                         const auto m_ptr =
-                             static_cast<const std::complex<ParamT> *>(
-                                 m_buffer.ptr);
-                         conv_matrices[op] = std::vector<std::complex<ParamT>>{
-                             m_ptr, m_ptr + m_buffer.size};
-                     }
-                 }
-
-                 return OpsData<PrecisionT>{ops_name, conv_params, ops_wires,
-                                            ops_inverses, conv_matrices};
-             })
-        .def("adjoint_jacobian",
-             &AdjointJacobianGPU<PrecisionT>::adjointJacobian)
-        .def("adjoint_jacobian",
-             [](AdjointJacobianGPU<PrecisionT> &adj,
-                const SVType<PrecisionT> &sv,
-                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
-                    &observables,
-                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
-                const std::vector<size_t> &trainableParams, size_t num_params) {
-                 std::vector<std::vector<PrecisionT>> jac(
-                     observables.size(),
-                     std::vector<PrecisionT>(num_params, 0));
-
-                 adj.adjointJacobian(sv.getData(), sv.getLength(), jac,
-                                     observables, operations, trainableParams);
-                 return py::array_t<ParamT>(py::cast(jac));
-             });
 }
 
 /**
@@ -600,6 +614,8 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
     StateVectorCuda_class_bindings<StateVectorCudaManaged, double, double>(m);
     StateVectorCuda_class_bindings<StateVectorCudaRaw, float, float>(m);
     StateVectorCuda_class_bindings<StateVectorCudaRaw, double, double>(m);
+    OpsObs_class_bindings<float, float>(m);
+    OpsObs_class_bindings<double, double>(m);
 }
 
 } // namespace

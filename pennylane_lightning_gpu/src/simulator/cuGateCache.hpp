@@ -197,6 +197,13 @@ template <class fp_t> class GateCache {
         return host_gates_[gate_key];
     }
 
+    /**
+     * @brief Return the number of bytes currently allocated in the cache
+     *
+     * @return auto Bytes allocated.
+     */
+    auto get_allocated_bytes() { return total_alloc_bytes_; }
+
   private:
     std::size_t total_alloc_bytes_;
 
