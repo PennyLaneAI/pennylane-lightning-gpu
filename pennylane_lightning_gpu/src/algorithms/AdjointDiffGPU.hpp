@@ -37,19 +37,22 @@ void applyGeneratorRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
 template <class T = double, class SVType>
 void applyGeneratorIsingXX_GPU(SVType &sv, const std::vector<size_t> &wires,
                                const bool adj = false) {
-    sv.applyIsingXX(wires, adj, 0.0);
+    sv.applyPauliX(std::vector<size_t>{wires.front()}, adj);
+    sv.applyPauliX(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorIsingYY_GPU(SVType &sv, const std::vector<size_t> &wires,
                                const bool adj = false) {
-    sv.applyIsingYY(wires, adj, 0.0);
+    sv.applyPauliY(std::vector<size_t>{wires.front()}, adj);
+    sv.applyPauliY(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorIsingZZ_GPU(SVType &sv, const std::vector<size_t> &wires,
                                const bool adj = false) {
-    sv.applyIsingZZ(wires, adj, 0.0);
+    sv.applyPauliZ(std::vector<size_t>{wires.front()}, adj);
+    sv.applyPauliZ(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
@@ -88,7 +91,9 @@ void applyGeneratorControlledPhaseShift_GPU(SVType &sv,
 template <class T = double, class SVType>
 void applyGeneratorMultiRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
                                const bool adj = false) {
-    sv.applyMultiRZ(wires, adj, 0.0);
+    for (const auto &w : wires) {
+        sv.applyPauliZ(std::vector<size_t>{w}, adj);
+    }
 }
 
 } // namespace
