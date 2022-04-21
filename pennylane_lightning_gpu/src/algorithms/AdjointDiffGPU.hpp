@@ -35,6 +35,24 @@ void applyGeneratorRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
 }
 
 template <class T = double, class SVType>
+void applyGeneratorIsingXX_GPU(SVType &sv, const std::vector<size_t> &wires,
+                               const bool adj = false) {
+    sv.applyIsingXX(wires, adj);
+}
+
+template <class T = double, class SVType>
+void applyGeneratorIsingYY_GPU(SVType &sv, const std::vector<size_t> &wires,
+                               const bool adj = false) {
+    sv.applyIsingYY(wires, adj);
+}
+
+template <class T = double, class SVType>
+void applyGeneratorIsingZZ_GPU(SVType &sv, const std::vector<size_t> &wires,
+                               const bool adj = false) {
+    sv.applyIsingZZ(wires, adj);
+}
+
+template <class T = double, class SVType>
 void applyGeneratorPhaseShift_GPU(SVType &sv, const std::vector<size_t> &wires,
                                   const bool adj = false) {
     sv.applyOperation("P_11", wires, adj, {0.0},
@@ -67,6 +85,12 @@ void applyGeneratorControlledPhaseShift_GPU(SVType &sv,
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
 }
 
+template <class T = double, class SVType>
+void applyGeneratorMultiRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
+                               const bool adj = false) {
+    sv.applyMultiRZ(wires, adj);
+}
+
 } // namespace
 /// @endcond
 
@@ -91,25 +115,33 @@ template <class T = double> class AdjointJacobianGPU {
         {"RX", &::applyGeneratorRX_GPU<T, StateVectorCudaManaged<T>>},
         {"RY", &::applyGeneratorRY_GPU<T, StateVectorCudaManaged<T>>},
         {"RZ", &::applyGeneratorRZ_GPU<T, StateVectorCudaManaged<T>>},
+        {"IsingXX", &::applyGeneratorIsingXX_GPU<T, StateVectorCudaManaged<T>>},
+        {"IsingYY", &::applyGeneratorIsingYY_GPU<T, StateVectorCudaManaged<T>>},
+        {"IsingZZ", &::applyGeneratorIsingZZ_GPU<T, StateVectorCudaManaged<T>>},
         {"CRX", &::applyGeneratorCRX_GPU<T, StateVectorCudaManaged<T>>},
         {"CRY", &::applyGeneratorCRY_GPU<T, StateVectorCudaManaged<T>>},
         {"CRZ", &::applyGeneratorCRZ_GPU<T, StateVectorCudaManaged<T>>},
         {"PhaseShift",
          ::applyGeneratorPhaseShift_GPU<T, StateVectorCudaManaged<T>>},
         {"ControlledPhaseShift",
-         &applyGeneratorControlledPhaseShift_GPU<T,
-                                                 StateVectorCudaManaged<T>>}};
+         &applyGeneratorControlledPhaseShift_GPU<T, StateVectorCudaManaged<T>>},
+        {"MultiRZ",
+         &::applyGeneratorMultiRZ_GPU<T, StateVectorCudaManaged<T>>}};
 
     // Holds the mappings from gate labels to associated generator coefficients.
     const std::unordered_map<std::string, T> scaling_factors{
         {"RX", -static_cast<T>(0.5)},
         {"RY", -static_cast<T>(0.5)},
         {"RZ", -static_cast<T>(0.5)},
+        {"IsingXX", -static_cast<T>(0.5)},
+        {"IsingYY", -static_cast<T>(0.5)},
+        {"IsingZZ", -static_cast<T>(0.5)},
         {"PhaseShift", static_cast<T>(1)},
         {"CRX", -static_cast<T>(0.5)},
         {"CRY", -static_cast<T>(0.5)},
         {"CRZ", -static_cast<T>(0.5)},
-        {"ControlledPhaseShift", static_cast<T>(1)}};
+        {"ControlledPhaseShift", static_cast<T>(1)},
+        {"MultiRZ", static_cast<T>(0.5)}};
 
     /**
      * @brief Utility method to update the Jacobian at a given index by
