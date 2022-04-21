@@ -12,6 +12,7 @@
 #include "StateVectorCudaBase.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
+#include "cuGates_param.hpp"
 #include "cuda_helpers.hpp"
 
 /// @cond DEV
@@ -159,6 +160,12 @@ class StateVectorCudaManaged
               {"IsingZZ",
                [&](auto &&wires, auto &&adjoint, auto &&params) {
                    applyIsingZZ(std::forward<decltype(wires)>(wires),
+                                std::forward<decltype(adjoint)>(adjoint),
+                                std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"MultiRZ",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyMultiRZ(std::forward<decltype(wires)>(wires),
                                 std::forward<decltype(adjoint)>(adjoint),
                                 std::forward<decltype(params[0])>(params[0]));
                }},
@@ -545,22 +552,8 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyCRY(wires, adjoint, param);
         // applyCNOT(wires, adjoint);
-        std::array<CFP_t, 4 * 4> matrix_cu({0, 0});
-        { /* generate matrix */
-            const Precision p2 = param / 2;
-            const CFP_t c =
-                cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
-            const CFP_t s =
-                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
-            const CFP_t o = cuUtil::ONE<CFP_t>();
-            matrix_cu[0] = o;
-            matrix_cu[5] = c;
-            matrix_cu[6] = -s;
-            matrix_cu[9] = s;
-            matrix_cu[10] = c;
-            matrix_cu[15] = o;
-        }
-        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+        auto &&mat = cuGates::getSingleExcitation({param});
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void
     applySingleExcitationMinus(const std::vector<std::size_t> &wires,
@@ -575,23 +568,8 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyCRY({wires[1], wires[0]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        std::array<CFP_t, 4 * 4> matrix_cu({0, 0});
-        { /* generate matrix */
-            const Precision p2 = param / 2;
-            const CFP_t c =
-                cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
-            const CFP_t s =
-                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
-            const CFP_t e = cuUtil::complexToCu<std::complex<Precision>>(
-                std::exp(-std::complex<Precision>(0, p2)));
-            matrix_cu[0] = e;
-            matrix_cu[5] = c;
-            matrix_cu[6] = -s;
-            matrix_cu[9] = s;
-            matrix_cu[10] = c;
-            matrix_cu[15] = e;
-        }
-        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+        auto &&mat = cuGates::getSingleExcitationMinus({param});
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applySingleExcitationPlus(const std::vector<std::size_t> &wires,
                                           bool adjoint, Precision param) {
@@ -605,23 +583,8 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyCRY({wires[1], wires[0]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        std::array<CFP_t, 4 * 4> matrix_cu({0, 0});
-        { /* generate matrix */
-            const Precision p2 = param / 2;
-            const CFP_t c =
-                cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
-            const CFP_t s =
-                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
-            const CFP_t e = cuUtil::complexToCu<std::complex<Precision>>(
-                std::exp(std::complex<Precision>(0, p2)));
-            matrix_cu[0] = e;
-            matrix_cu[5] = c;
-            matrix_cu[6] = -s;
-            matrix_cu[9] = s;
-            matrix_cu[10] = c;
-            matrix_cu[15] = e;
-        }
-        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+        auto &&mat = cuGates::getSingleExcitationPlus({param});
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applyDoubleExcitation(const std::vector<std::size_t> &wires,
                                       bool adjoint, Precision param) {
@@ -656,99 +619,19 @@ class StateVectorCudaManaged
         // applyHadamard({wires[3]}, adjoint);
         // applyCNOT({wires[0], wires[2]}, adjoint);
         // applyCNOT({wires[2], wires[3]}, adjoint);
-        std::array<CFP_t, 16 * 16> matrix_cu({0, 0});
-        { /* generate matrix */
-            const Precision p2 = param / 2;
-            const CFP_t c =
-                cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
-            const CFP_t s =
-                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
-            const CFP_t o = cuUtil::ONE<CFP_t>();
-            matrix_cu[0] = o;
-            matrix_cu[17] = o;
-            matrix_cu[34] = o;
-            matrix_cu[51] = c;
-            matrix_cu[60] = -s;
-            matrix_cu[68] = o;
-            matrix_cu[85] = o;
-            matrix_cu[102] = o;
-            matrix_cu[119] = o;
-            matrix_cu[136] = o;
-            matrix_cu[153] = o;
-            matrix_cu[170] = o;
-            matrix_cu[187] = o;
-            matrix_cu[195] = s;
-            matrix_cu[204] = c;
-            matrix_cu[221] = o;
-            matrix_cu[238] = o;
-            matrix_cu[255] = o;
-        }
-        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+        auto &&mat = cuGates::getDoubleExcitation({param});
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void
     applyDoubleExcitationMinus(const std::vector<std::size_t> &wires,
                                bool adjoint, Precision param) {
-        std::array<CFP_t, 16 * 16> matrix_cu({0, 0});
-        { /* generate matrix */
-            const Precision p2 = param / 2;
-            const CFP_t c =
-                cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
-            const CFP_t s =
-                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
-            const CFP_t e = cuUtil::complexToCu<std::complex<Precision>>(
-                std::exp(std::complex<Precision>(0, -p2)));
-            matrix_cu[0] = e;
-            matrix_cu[17] = e;
-            matrix_cu[34] = e;
-            matrix_cu[51] = c;
-            matrix_cu[60] = -s;
-            matrix_cu[68] = e;
-            matrix_cu[85] = e;
-            matrix_cu[102] = e;
-            matrix_cu[119] = e;
-            matrix_cu[136] = e;
-            matrix_cu[153] = e;
-            matrix_cu[170] = e;
-            matrix_cu[187] = e;
-            matrix_cu[195] = s;
-            matrix_cu[204] = c;
-            matrix_cu[221] = e;
-            matrix_cu[238] = e;
-            matrix_cu[255] = e;
-        }
-        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+        auto &&mat = cuGates::getDoubleExcitationMinus({param});
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applyDoubleExcitationPlus(const std::vector<std::size_t> &wires,
                                           bool adjoint, Precision param) {
-        std::array<CFP_t, 16 * 16> matrix_cu({0, 0});
-        { /* generate matrix */
-            const Precision p2 = param / 2;
-            const CFP_t c =
-                cuUtil::complexToCu<std::complex<Precision>>({std::cos(p2), 0});
-            const CFP_t s =
-                cuUtil::complexToCu<std::complex<Precision>>({std::sin(p2), 0});
-            const CFP_t e = cuUtil::complexToCu<std::complex<Precision>>(
-                std::exp(std::complex<Precision>(0, p2)));
-            matrix_cu[0] = e;
-            matrix_cu[17] = e;
-            matrix_cu[34] = e;
-            matrix_cu[51] = c;
-            matrix_cu[60] = -s;
-            matrix_cu[68] = e;
-            matrix_cu[85] = e;
-            matrix_cu[102] = e;
-            matrix_cu[119] = e;
-            matrix_cu[136] = e;
-            matrix_cu[153] = e;
-            matrix_cu[170] = e;
-            matrix_cu[187] = e;
-            matrix_cu[195] = s;
-            matrix_cu[204] = c;
-            matrix_cu[221] = e;
-            matrix_cu[238] = e;
-            matrix_cu[255] = e;
-        }
-        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+        auto &&mat = cuGates::getDoubleExcitationPlus({param});
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applyOrbitalRotation(const std::vector<std::size_t> &wires,
                                      bool adjoint, Precision param) {
