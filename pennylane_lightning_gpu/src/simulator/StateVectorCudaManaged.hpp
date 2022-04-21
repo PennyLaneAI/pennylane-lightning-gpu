@@ -551,7 +551,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyCRY(wires, adjoint, param);
         // applyCNOT(wires, adjoint);
-        auto &&mat = cuGates::getSingleExcitation({param});
+        auto &&mat = cuGates::getSingleExcitation<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void
@@ -567,7 +567,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyCRY({wires[1], wires[0]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        auto &&mat = cuGates::getSingleExcitationMinus({param});
+        auto &&mat = cuGates::getSingleExcitationMinus<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applySingleExcitationPlus(const std::vector<std::size_t> &wires,
@@ -582,7 +582,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyCRY({wires[1], wires[0]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        auto &&mat = cuGates::getSingleExcitationPlus({param});
+        auto &&mat = cuGates::getSingleExcitationPlus<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applyDoubleExcitation(const std::vector<std::size_t> &wires,
@@ -618,18 +618,18 @@ class StateVectorCudaManaged
         // applyHadamard({wires[3]}, adjoint);
         // applyCNOT({wires[0], wires[2]}, adjoint);
         // applyCNOT({wires[2], wires[3]}, adjoint);
-        auto &&mat = cuGates::getDoubleExcitation({param});
+        auto &&mat = cuGates::getDoubleExcitation<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void
     applyDoubleExcitationMinus(const std::vector<std::size_t> &wires,
                                bool adjoint, Precision param) {
-        auto &&mat = cuGates::getDoubleExcitationMinus({param});
+        auto &&mat = cuGates::getDoubleExcitationMinus<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applyDoubleExcitationPlus(const std::vector<std::size_t> &wires,
                                           bool adjoint, Precision param) {
-        auto &&mat = cuGates::getDoubleExcitationPlus({param});
+        auto &&mat = cuGates::getDoubleExcitationPlus<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applyOrbitalRotation(const std::vector<std::size_t> &wires,
@@ -653,7 +653,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyRX({wires[0]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        auto &&mat = cuGates::getIsingXX({param});
+        auto &&mat = cuGates::getIsingXX<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applyIsingYY(const std::vector<std::size_t> &wires,
@@ -661,7 +661,7 @@ class StateVectorCudaManaged
         // applyCY(wires, adjoint);
         // applyRY({wires[0]}, adjoint, param);
         // applyCY(wires, adjoint);
-        auto &&mat = cuGates::getIsingYY({param});
+        auto &&mat = cuGates::getIsingYY<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applyIsingZZ(const std::vector<std::size_t> &wires,
@@ -669,7 +669,7 @@ class StateVectorCudaManaged
         // applyCNOT(wires, adjoint);
         // applyRZ({wires[1]}, adjoint, param);
         // applyCNOT(wires, adjoint);
-        auto &&mat = cuGates::getIsingZZ({param});
+        auto &&mat = cuGates::getIsingZZ<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void applyMultiRZ(const std::vector<std::size_t> &wires,
