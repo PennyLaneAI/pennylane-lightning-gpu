@@ -691,7 +691,7 @@ static auto getSingleExcitation(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getSingleExcitationMinus(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
-    const CFP_t e = std::exp(CFP_t(0, -p2));
+    const CFP_t e = std::exp(std::complex<U>(0, -p2));
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
     return {e,
@@ -743,7 +743,7 @@ static auto getSingleExcitationMinus(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getSingleExcitationPlus(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
-    const CFP_t e = std::exp(CFP_t(0, p2));
+    const CFP_t e = std::exp(std::complex<U>(0, p2));
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
     return {e,
@@ -849,7 +849,7 @@ static auto getDoubleExcitation(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getDoubleExcitationMinus(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
-    const CFP_t e = std::exp(CFP_t(0, -p2));
+    const CFP_t e = std::exp(std::complex<U>(0, -p2));
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
@@ -905,7 +905,7 @@ static auto getDoubleExcitationMinus(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getDoubleExcitationPlus(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
-    const CFP_t e = std::exp(CFP_t(0, p2));
+    const CFP_t e = std::exp(std::complex<U>(0, p2));
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
@@ -1057,8 +1057,8 @@ static auto getIsingYY(const std::vector<U> &params) -> std::vector<CFP_t> {
 template <class CFP_t, class U = double>
 static auto getIsingZZ(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
-    const CFP_t neg_e = std::exp(CFP_t(0, p2));
-    const CFP_t pos_e = std::exp(CFP_t(0, -p2));
+    const CFP_t neg_e = std::exp(std::complex<U>(0, p2));
+    const CFP_t pos_e = std::exp(std::complex<U>(0, -p2));
     return {neg_e,
             cuUtil::ZERO<CFP_t>(),
             cuUtil::ZERO<CFP_t>(),
