@@ -458,7 +458,7 @@ static auto getSingleExcitation(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getSingleExcitationMinus(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
-    const CFP_t e = std::exp(std::complex<U>(0, -p2));
+    const CFP_t e = std::exp(CFP_t(0, -p2));
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
     return {e,
@@ -510,7 +510,7 @@ static auto getSingleExcitationMinus(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getSingleExcitationPlus(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
-    const CFP_t e = std::exp(std::complex<U>(0, p2));
+    const CFP_t e = std::exp(CFP_t(0, p2));
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
     return {e,
@@ -564,7 +564,7 @@ static auto getDoubleExcitation(U angle) -> std::vector<CFP_t> {
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
     constexpr CFP_t o = cuUtil::ONE<CFP_t>();
-    std::vector<CFP_t> mat(256, {0, 0});
+    std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[0] = o;
     mat[17] = o;
     mat[34] = o;
@@ -616,10 +616,10 @@ static auto getDoubleExcitation(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getDoubleExcitationMinus(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
-    const CFP_t e = std::exp(std::complex<U>(0, -p2));
+    const CFP_t e = std::exp(CFP_t(0, -p2));
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
-    std::vector<CFP_t> mat(256, {0, 0});
+    std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[0] = e;
     mat[17] = e;
     mat[34] = e;
@@ -672,10 +672,10 @@ static auto getDoubleExcitationMinus(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getDoubleExcitationPlus(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
-    const CFP_t e = std::exp(std::complex<U>(0, p2));
+    const CFP_t e = std::exp(CFP_t(0, p2));
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
-    std::vector<CFP_t> mat(256, {0, 0});
+    std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[0] = e;
     mat[17] = e;
     mat[34] = e;
@@ -712,6 +712,151 @@ template <class CFP_t, class U = double>
 static auto getDoubleExcitationPlus(const std::vector<U> &params)
     -> std::vector<CFP_t> {
     return getDoubleExcitationPlus<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the Ising XX coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const Ising XX coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingXX(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t neg_is{0, -std::sin(p2)};
+    return {c,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            neg_is,
+            cuUtil::ZERO<CFP_t>(),
+            c,
+            neg_is,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            neg_is,
+            c,
+            cuUtil::ZERO<CFP_t>(),
+            neg_is,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            c};
+}
+
+/**
+ * @brief Create a matrix representation of the Ising XX coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const Ising XX coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingXX(const std::vector<U> &params) -> std::vector<CFP_t> {
+    return getIsingXX<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the Ising YY coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const Ising YY coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingYY(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t neg_is{0, -std::sin(p2)};
+    const CFP_t pos_is{0, -std::sin(p2)};
+    return {c,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            pos_is,
+            cuUtil::ZERO<CFP_t>(),
+            c,
+            neg_is,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            neg_is,
+            c,
+            cuUtil::ZERO<CFP_t>(),
+            pos_is,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            c};
+}
+
+/**
+ * @brief Create a matrix representation of the Ising YY coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const Ising YY coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingYY(const std::vector<U> &params) -> std::vector<CFP_t> {
+    return getIsingYY<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the Ising ZZ coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const Ising ZZ coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingZZ(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t neg_e = std::exp(CFP_t(0, p2));
+    const CFP_t pos_e = std::exp(CFP_t(0, -p2));
+    return {neg_e,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            pos_e,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            pos_e,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            neg_e};
+}
+
+/**
+ * @brief Create a matrix representation of the Ising ZZ coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const Ising ZZ coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingZZ(const std::vector<U> &params) -> std::vector<CFP_t> {
+    return getIsingZZ<CFP_t>(params.front());
 }
 
 } // namespace cuGates
