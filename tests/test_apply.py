@@ -435,13 +435,13 @@ class TestApply:
             [0.5 - 0.5j, 0, 0, 0.5 - 0.5j],
             [math.pi / 2],
         ),
-        # (qml.MultiRZ, [1, 0, 0, 0], [1 / math.sqrt(2) - 1j / math.sqrt(2), 0, 0, 0], [math.pi / 2]),
-        # (
-        #     qml.MultiRZ,
-        #     [1 / math.sqrt(2), 0, 0, 1 / math.sqrt(2)],
-        #     [0.5 - 0.5j, 0, 0, 0.5 - 0.5j],
-        #     [math.pi / 2],
-        # ),
+        (qml.MultiRZ, [1, 0, 0, 0], [1 / math.sqrt(2) - 1j / math.sqrt(2), 0, 0, 0], [math.pi / 2]),
+        (
+            qml.MultiRZ,
+            [1 / math.sqrt(2), 0, 0, 1 / math.sqrt(2)],
+            [0.5 - 0.5j, 0, 0, 0.5 - 0.5j],
+            [math.pi / 2],
+        ),
     ]
 
     @pytest.mark.parametrize(
