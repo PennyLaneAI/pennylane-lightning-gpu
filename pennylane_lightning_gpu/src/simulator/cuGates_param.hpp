@@ -517,7 +517,7 @@ template <class CFP_t, class U = double>
 static auto getSingleExcitationPlus(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
     const CFP_t e =
-        cuUtil::complexToCu<std::complex<U>> std::exp(std::complex<U>(0, p2));
+        cuUtil::complexToCu<std::complex<U>>(std::exp(std::complex<U>(0, p2)));
     const CFP_t c{std::cos(p2), 0};
     const CFP_t s{std::sin(p2), 0};
     return {e,
