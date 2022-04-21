@@ -574,6 +574,8 @@ class StateVectorCudaManaged
         return probabilities;
     }
 
+    static auto getClassName() -> const std::string & { return class_name_; }
+
   private:
     inline static const std::string class_name_ = "StateVectorCudaManaged";
     GateCache<Precision> gate_cache_;
