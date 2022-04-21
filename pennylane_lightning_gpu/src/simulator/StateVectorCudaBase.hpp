@@ -239,7 +239,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      *
      * @return const std::unordered_map<std::string, std::size_t>&
      */
-    static auto getClassName() -> const std::string & { return class_name_; }
+    static auto getClassName();
 
   protected:
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
@@ -281,7 +281,6 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
     }
 
   private:
-    inline static const std::string class_name_ = "StateVectorCudaBase";
     cudaStream_t stream_;
     int device_id_;
     CFP_t *data_;
