@@ -21,7 +21,7 @@ namespace cuGates {
  * @brief Create a matrix representation of the PauliX gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of PauliX data.
  */
@@ -35,7 +35,7 @@ static constexpr auto getIdentity() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the PauliX gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of PauliX data.
  */
@@ -48,7 +48,7 @@ template <class CFP_t> static constexpr auto getPauliX() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the PauliY gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of PauliY data.
  */
@@ -61,7 +61,7 @@ template <class CFP_t> static constexpr auto getPauliY() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the PauliZ gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of PauliZ data.
  */
@@ -74,7 +74,7 @@ template <class CFP_t> static constexpr auto getPauliZ() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the Hadamard gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of Hadamard data.
  */
@@ -87,7 +87,7 @@ static constexpr auto getHadamard() -> std::vector<CFP_t> {
 /**
  * @brief Create a matrix representation of the S gate data in row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of S gate data.
  */
@@ -99,7 +99,7 @@ template <class CFP_t> static constexpr auto getS() -> std::vector<CFP_t> {
 /**
  * @brief Create a matrix representation of the T gate data in row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of T gate data.
  */
@@ -115,7 +115,7 @@ template <class CFP_t> static constexpr auto getT() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the CNOT gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of CNOT gate data.
  */
@@ -132,7 +132,7 @@ template <class CFP_t> static constexpr auto getCNOT() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the SWAP gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of SWAP gate data.
  */
@@ -149,7 +149,7 @@ template <class CFP_t> static constexpr auto getSWAP() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the CZ gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of SWAP gate data.
  */
@@ -167,7 +167,7 @@ template <class CFP_t> static constexpr auto getCY() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the CZ gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of SWAP gate data.
  */
@@ -184,7 +184,7 @@ template <class CFP_t> static constexpr auto getCZ() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the CSWAP gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of CSWAP gate data.
  */
@@ -217,7 +217,7 @@ template <class CFP_t> static constexpr auto getCSWAP() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the Toffoli gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @return constexpr std::vector<CFP_t> Return constant expression
  * of Toffoli gate data.
  */
@@ -251,7 +251,7 @@ static constexpr auto getToffoli() -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the Phase-shift gate data in
  * row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
  * @return const std::vector<CFP_t> Return const Phase-shift gate
@@ -269,7 +269,7 @@ static auto getPhaseShift(U angle) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the Phase-shift gate data in
  * row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
  * @return const std::vector<CFP_t> Return const Phase-shift gate
@@ -284,7 +284,7 @@ static auto getPhaseShift(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the RX gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
  * @return const std::vector<CFP_t> Return const RX gate data.
@@ -300,7 +300,7 @@ static auto getRX(U angle) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the RX gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
  * @return const std::vector<CFP_t> Return const RX gate data.
@@ -314,7 +314,7 @@ static auto getRX(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the RY gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
  * @return const std::vector<CFP_t> Return const RY gate data.
@@ -330,7 +330,7 @@ static auto getRY(U angle) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the RY gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
  * @return const std::vector<CFP_t> Return const RY gate data.
@@ -344,7 +344,7 @@ static auto getRY(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the RZ gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
  * @return const std::vector<CFP_t> Return const RZ gate data.
@@ -361,7 +361,7 @@ static auto getRZ(U angle) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the RZ gate data in row-major
  * format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
  * @return const std::vector<CFP_t> Return const RZ gate data.
@@ -382,7 +382,7 @@ e^{-i(\phi+\omega)/2}\cos(\theta/2) & -e^{i(\phi-\omega)/2}\sin(\theta/2) \\
 e^{-i(\phi-\omega)/2}\sin(\theta/2) & e^{i(\phi+\omega)/2}\cos(\theta/2)
 \end{bmatrix}.\end{split}\f$
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param phi \f$\phi\f$ shift angle.
  * @param theta \f$\theta\f$ shift angle.
@@ -417,7 +417,7 @@ e^{-i(\phi+\omega)/2}\cos(\theta/2) & -e^{i(\phi-\omega)/2}\sin(\theta/2) \\
 e^{-i(\phi-\omega)/2}\sin(\theta/2) & e^{i(\phi+\omega)/2}\cos(\theta/2)
 \end{bmatrix}.\end{split}\f$
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of gate data. Values are expected in order of
 \f$[\phi, \theta, \omega]\f$.
@@ -432,7 +432,7 @@ static auto getRot(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the controlled RX gate data in
  * row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
  * @return const std::vector<CFP_t> Return const RX gate data.
@@ -462,7 +462,7 @@ static auto getCRX(U angle) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the controlled RX gate data in
  * row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
  * @return const std::vector<CFP_t> Return const RX gate data.
@@ -476,7 +476,7 @@ static auto getCRX(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the controlled RY gate data in
  * row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
  * @return const std::vector<CFP_t> Return const RY gate data.
@@ -506,7 +506,7 @@ static auto getCRY(U angle) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the controlled RY gate data in
  * row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
  * @return const std::vector<CFP_t> Return const RY gate data.
@@ -520,7 +520,7 @@ static auto getCRY(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the controlled RZ gate data in
  * row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
  * @return const std::vector<CFP_t> Return const RZ gate data.
@@ -550,7 +550,7 @@ static auto getCRZ(U angle) -> std::vector<CFP_t> {
  * @brief Create a matrix representation of the controlled RZ gate data in
  * row-major format.
  *
- * @tparam T Required precision of gate (`float` or `double`).
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
  * @return const std::vector<CFP_t> Return const RZ gate data.
@@ -626,6 +626,470 @@ template <class CFP_t, class U = double>
 static auto getControlledPhaseShift(const std::vector<U> &params)
     -> std::vector<CFP_t> {
     return getControlledPhaseShift<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the single excitation rotation
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const single excitation rotation
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getSingleExcitation(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t s{std::sin(p2), 0};
+    return {cuUtil::ONE<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            c,
+            -s,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            s,
+            c,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ONE<CFP_t>()};
+}
+
+/**
+ * @brief Create a matrix representation of the single excitation rotation
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const single excitation rotation
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getSingleExcitation(const std::vector<U> &params)
+    -> std::vector<CFP_t> {
+    return getSingleExcitation<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the single excitation rotation
+ * with negative phase-shift outside the rotation subspace gate data in
+ * row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const single excitation rotation
+ * with negative phase-shift outside the rotation subspace gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getSingleExcitationMinus(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t e = std::exp(CFP_t(0, -p2));
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t s{std::sin(p2), 0};
+    return {e,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            c,
+            -s,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            s,
+            c,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            e};
+}
+
+/**
+ * @brief Create a matrix representation of the single excitation rotation
+ * with negative phase-shift outside the rotation subspace gate data in
+ * row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const single excitation rotation
+ * with negative phase-shift outside the rotation subspace gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getSingleExcitationMinus(const std::vector<U> &params)
+    -> std::vector<CFP_t> {
+    return getSingleExcitationMinus<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the single excitation rotation
+ * with positive phase-shift outside the rotation subspace gate data in
+ * row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const single excitation rotation
+ * with positive phase-shift outside the rotation subspace gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getSingleExcitationPlus(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t e = std::exp(CFP_t(0, p2));
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t s{std::sin(p2), 0};
+    return {e,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            c,
+            -s,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            s,
+            c,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            e};
+}
+
+/**
+ * @brief Create a matrix representation of the single excitation rotation
+ * with positive phase-shift outside the rotation subspace gate data in
+ * row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const single excitation rotation
+ * with positive phase-shift outside the rotation subspace gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getSingleExcitationPlus(const std::vector<U> &params)
+    -> std::vector<CFP_t> {
+    return getSingleExcitationPlus<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the double excitation rotation
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const double excitation rotation
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getDoubleExcitation(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t s{std::sin(p2), 0};
+    constexpr CFP_t o = cuUtil::ONE<CFP_t>();
+    std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
+    mat[0] = o;
+    mat[17] = o;
+    mat[34] = o;
+    mat[51] = c;
+    mat[60] = -s;
+    mat[68] = o;
+    mat[85] = o;
+    mat[102] = o;
+    mat[119] = o;
+    mat[136] = o;
+    mat[153] = o;
+    mat[170] = o;
+    mat[187] = o;
+    mat[195] = s;
+    mat[204] = c;
+    mat[221] = o;
+    mat[238] = o;
+    mat[255] = o;
+    return mat;
+}
+
+/**
+ * @brief Create a matrix representation of the double excitation rotation
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const double excitation rotation
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getDoubleExcitation(const std::vector<U> &params)
+    -> std::vector<CFP_t> {
+    return getDoubleExcitation<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the double excitation rotation
+ * with negative phase-shift outside the rotation subspace gate data in
+ * row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const double excitation rotation
+ * with negative phase-shift outside the rotation subspace gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getDoubleExcitationMinus(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t e = std::exp(CFP_t(0, -p2));
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t s{std::sin(p2), 0};
+    std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
+    mat[0] = e;
+    mat[17] = e;
+    mat[34] = e;
+    mat[51] = c;
+    mat[60] = -s;
+    mat[68] = e;
+    mat[85] = e;
+    mat[102] = e;
+    mat[119] = e;
+    mat[136] = e;
+    mat[153] = e;
+    mat[170] = e;
+    mat[187] = e;
+    mat[195] = s;
+    mat[204] = c;
+    mat[221] = e;
+    mat[238] = e;
+    mat[255] = e;
+    return mat;
+}
+
+/**
+ * @brief Create a matrix representation of the double excitation rotation
+ * with negative phase-shift outside the rotation subspace gate data in
+ * row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const double excitation rotation
+ * with negative phase-shift outside the rotation subspace gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getDoubleExcitationMinus(const std::vector<U> &params)
+    -> std::vector<CFP_t> {
+    return getDoubleExcitationMinus<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the double excitation rotation
+ * with positive phase-shift outside the rotation subspace gate data in
+ * row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const double excitation rotation
+ * with positive phase-shift outside the rotation subspace gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getDoubleExcitationPlus(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t e = std::exp(CFP_t(0, p2));
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t s{std::sin(p2), 0};
+    std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
+    mat[0] = e;
+    mat[17] = e;
+    mat[34] = e;
+    mat[51] = c;
+    mat[60] = -s;
+    mat[68] = e;
+    mat[85] = e;
+    mat[102] = e;
+    mat[119] = e;
+    mat[136] = e;
+    mat[153] = e;
+    mat[170] = e;
+    mat[187] = e;
+    mat[195] = s;
+    mat[204] = c;
+    mat[221] = e;
+    mat[238] = e;
+    mat[255] = e;
+    return mat;
+}
+
+/**
+ * @brief Create a matrix representation of the double excitation rotation
+ * with positive phase-shift outside the rotation subspace gate data in
+ * row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const double excitation rotation
+ * with positive phase-shift outside the rotation subspace gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getDoubleExcitationPlus(const std::vector<U> &params)
+    -> std::vector<CFP_t> {
+    return getDoubleExcitationPlus<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the Ising XX coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const Ising XX coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingXX(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t neg_is{0, -std::sin(p2)};
+    return {c,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            neg_is,
+            cuUtil::ZERO<CFP_t>(),
+            c,
+            neg_is,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            neg_is,
+            c,
+            cuUtil::ZERO<CFP_t>(),
+            neg_is,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            c};
+}
+
+/**
+ * @brief Create a matrix representation of the Ising XX coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const Ising XX coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingXX(const std::vector<U> &params) -> std::vector<CFP_t> {
+    return getIsingXX<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the Ising YY coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const Ising YY coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingYY(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t c{std::cos(p2), 0};
+    const CFP_t neg_is{0, -std::sin(p2)};
+    const CFP_t pos_is{0, -std::sin(p2)};
+    return {c,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            pos_is,
+            cuUtil::ZERO<CFP_t>(),
+            c,
+            neg_is,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            neg_is,
+            c,
+            cuUtil::ZERO<CFP_t>(),
+            pos_is,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            c};
+}
+
+/**
+ * @brief Create a matrix representation of the Ising YY coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const Ising YY coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingYY(const std::vector<U> &params) -> std::vector<CFP_t> {
+    return getIsingYY<CFP_t>(params.front());
+}
+
+/**
+ * @brief Create a matrix representation of the Ising ZZ coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param angle Phase shift angle.
+ * @return const std::vector<CFP_t> Return const Ising ZZ coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingZZ(U angle) -> std::vector<CFP_t> {
+    const U p2 = angle / 2;
+    const CFP_t neg_e = std::exp(CFP_t(0, p2));
+    const CFP_t pos_e = std::exp(CFP_t(0, -p2));
+    return {neg_e,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            pos_e,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            pos_e,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            neg_e};
+}
+
+/**
+ * @brief Create a matrix representation of the Ising ZZ coupling
+ * gate data in row-major format.
+ *
+ * @tparam CFP_t Required precision of gate (`float` or `double`).
+ * @tparam U Required precision of parameter (`float` or `double`).
+ * @param params Vector of phase shift angles. Only front element is read.
+ * @return const std::vector<CFP_t> Return const Ising ZZ coupling
+ * gate data.
+ */
+template <class CFP_t, class U = double>
+static auto getIsingZZ(const std::vector<U> &params) -> std::vector<CFP_t> {
+    return getIsingZZ<CFP_t>(params.front());
 }
 
 } // namespace cuGates

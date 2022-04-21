@@ -12,7 +12,6 @@
 #include "StateVectorCudaBase.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
-#include "cuGates_param.hpp"
 #include "cuda_helpers.hpp"
 
 /// @cond DEV
