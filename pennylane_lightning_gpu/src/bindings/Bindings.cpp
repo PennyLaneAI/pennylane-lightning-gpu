@@ -369,14 +369,6 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             },
             "Apply the DoubleExcitationPlus gate.")
         .def(
-            "OrbitalRotation",
-            [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
-                return sv.applyOrbitalRotation(wires, adjoint, params.front());
-            },
-            "Apply the OrbitalRotation gate.")
-        .def(
             "MultiRZ",
             [](StateVectorCudaManaged<PrecisionT> &sv,
                const std::vector<std::size_t> &wires, bool adjoint,

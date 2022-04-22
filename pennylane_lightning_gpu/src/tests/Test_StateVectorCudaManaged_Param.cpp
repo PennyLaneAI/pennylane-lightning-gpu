@@ -554,6 +554,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyIsingYY", "[LightningGPU_Param]", float,
                 SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
                 svdat_direct.cuda_sv.applyIsingYY({0, 1}, false, angles[index]);
                 svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+
                 CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
                                     expected_results[index]));
             }
@@ -995,34 +996,6 @@ TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitationPlus",
         }
     }
 }
-
-// TEMPLATE_TEST_CASE("LightningGPU::applyOrbitalRotation",
-// "[LightningGPU_Param]",
-//                    float, double) {
-//     using cp_t = std::complex<TestType>;
-//     const size_t num_qubits = 4;
-//     SVDataGPU<TestType> svdat{num_qubits};
-
-//     const std::vector<TestType> angles{0.3, 0.8};
-
-//     std::vector<cp_t> expected_results(1 << num_qubits);
-//     expected_results[0] = {1.0, 0.0};
-
-//     const auto init_state = svdat.sv.getDataVector();
-//     SECTION("Apply directly") {
-//         SECTION("OrbitalRotation 0,1,2,3") {
-//             for (size_t index = 0; index < angles.size(); index++) {
-//                 SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
-//                 svdat_direct.cuda_sv.applyOrbitalRotation({0, 1, 2, 3},
-//                 false,
-//                                                           angles[index]);
-//                 svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-//                 CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-//                                     expected_results, 1e-6));
-//             }
-//         }
-//     }
-// }
 
 // NOLINTNEXTLINE: Avoid complexity errors
 TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",

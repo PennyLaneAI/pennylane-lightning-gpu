@@ -1013,8 +1013,8 @@ template <class CFP_t, class U = double>
 static auto getIsingYY(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
     const CFP_t c{std::cos(p2), 0};
+    const CFP_t pos_is{0, std::sin(p2)};
     const CFP_t neg_is{0, -std::sin(p2)};
-    const CFP_t pos_is{0, -std::sin(p2)};
     return {c,
             cuUtil::ZERO<CFP_t>(),
             cuUtil::ZERO<CFP_t>(),
@@ -1062,9 +1062,9 @@ template <class CFP_t, class U = double>
 static auto getIsingZZ(U angle) -> std::vector<CFP_t> {
     const U p2 = angle / 2;
     const CFP_t neg_e =
-        cuUtil::complexToCu<std::complex<U>>(std::exp(std::complex<U>(0, p2)));
-    const CFP_t pos_e =
         cuUtil::complexToCu<std::complex<U>>(std::exp(std::complex<U>(0, -p2)));
+    const CFP_t pos_e =
+        cuUtil::complexToCu<std::complex<U>>(std::exp(std::complex<U>(0, p2)));
     return {neg_e,
             cuUtil::ZERO<CFP_t>(),
             cuUtil::ZERO<CFP_t>(),

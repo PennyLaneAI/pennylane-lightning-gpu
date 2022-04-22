@@ -312,8 +312,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         {"Toffoli", 2},
         {"DoubleExcitation", 4},
         {"DoubleExcitationMinus", 4},
-        {"DoubleExcitationPlus", 4},
-        {"OrbitalRotation", 4}};
+        {"DoubleExcitationPlus", 4}};
 };
 
 } // namespace Pennylane
