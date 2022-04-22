@@ -507,6 +507,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applyIsingXX", "[LightningGPU_Param]", float,
             }
         }
     }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("IsingXX", {0, 1}, true,
+                                                  {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
 }
 
 TEMPLATE_TEST_CASE("LightningGPU::applyIsingYY", "[LightningGPU_Param]", float,
@@ -590,6 +600,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applyIsingYY", "[LightningGPU_Param]", float,
             }
         }
     }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("IsingYY", {0, 1}, true,
+                                                  {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
 }
 
 TEMPLATE_TEST_CASE("LightningGPU::applyIsingZZ", "[LightningGPU_Param]", float,
@@ -650,6 +670,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applyIsingZZ", "[LightningGPU_Param]", float,
                 CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
                                     expected_results_adj[index]));
             }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("IsingZZ", {0, 1}, true,
+                                                  {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
         }
     }
 }
@@ -713,6 +743,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applyMultiRZ", "[LightningGPU_Param]", float,
             }
         }
     }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("MultiRZ", {0, 1}, true,
+                                                  {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
 }
 
 TEMPLATE_TEST_CASE("LightningGPU::applySingleExcitation",
@@ -747,6 +787,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applySingleExcitation",
                 CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
                                     expected_results));
             }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("SingleExcitation", {0, 1},
+                                                  false, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results));
         }
     }
 }
@@ -814,6 +864,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applySingleExcitationMinus",
             }
         }
     }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "SingleExcitationMinus", {0, 1}, true, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
 }
 
 TEMPLATE_TEST_CASE("LightningGPU::applySingleExcitationPlus",
@@ -879,6 +939,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applySingleExcitationPlus",
             }
         }
     }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "SingleExcitationPlus", {0, 1}, true, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
 }
 
 TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitation",
@@ -903,6 +973,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitation",
                 CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
                                     expected_results));
             }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "DoubleExcitation", {0, 1, 2, 3}, false, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results));
         }
     }
 }
@@ -950,6 +1030,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitationMinus",
             }
         }
     }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "DoubleExcitationMinus", {0, 1, 2, 3}, true, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
 }
 
 TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitationPlus",
@@ -993,6 +1083,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitationPlus",
                 CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
                                     expected_results_adj[index]));
             }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "DoubleExcitationPlus", {0, 1, 2, 3}, true, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
         }
     }
 }

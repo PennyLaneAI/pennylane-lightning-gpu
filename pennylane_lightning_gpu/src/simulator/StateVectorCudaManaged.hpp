@@ -47,39 +47,6 @@ class StateVectorCudaManaged
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits),
           gate_cache_(true),
-          gate_wires_{// Add mapping from function name to required wires.
-                      {"Identity", 1},
-                      {"PauliX", 1},
-                      {"PauliY", 1},
-                      {"PauliZ", 1},
-                      {"Hadamard", 1},
-                      {"T", 1},
-                      {"S", 1},
-                      {"RX", 1},
-                      {"RY", 1},
-                      {"RZ", 1},
-                      {"Rot", 1},
-                      {"PhaseShift", 1},
-                      {"ControlledPhaseShift", 2},
-                      {"CNOT", 2},
-                      {"SWAP", 2},
-                      {"CY", 2},
-                      {"CZ", 2},
-                      {"CRX", 2},
-                      {"CRY", 2},
-                      {"CRZ", 2},
-                      {"CRot", 2},
-                      {"IsingXX", 2},
-                      {"IsingYY", 2},
-                      {"IsingZZ", 2},
-                      {"SingleExcitation", 2},
-                      {"SingleExcitationMinus", 2},
-                      {"SingleExcitationPlus", 2},
-                      {"CSWAP", 3},
-                      {"Toffoli", 3},
-                      {"DoubleExcitation", 4},
-                      {"DoubleExcitationMinus", 4},
-                      {"DoubleExcitationPlus", 4}},
           par_gates_{
               {"RX",
                [&](auto &&wires, auto &&adjoint, auto &&params) {
@@ -723,7 +690,6 @@ class StateVectorCudaManaged
 
   private:
     GateCache<Precision> gate_cache_;
-    const std::unordered_map<std::string, size_t> gate_wires_;
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
                                        const std::vector<Precision> &)>;
     using FMap = std::unordered_map<std::string, ParFunc>;
