@@ -14,6 +14,7 @@
 
 #include <set>
 #include <tuple>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -77,6 +78,18 @@ void StateVectorCuda_class_bindings(py::module &m) {
                 static_cast<std::complex<PrecisionT> *>(numpyArrayInfo.ptr);
             return new SVType<PrecisionT>(data_ptr,
                                           static_cast<std::size_t>(arr.size()));
+        }))
+        .def(py::init([](void *arr,
+                         std::size_t size) { // Raw pointer to either Managed or
+                                             // Raw object type
+            if constexpr (std::is_trivially_constructible_v<
+                              SVType<PrecisionT>, void *, std::size_t>) {
+                return new SVType<PrecisionT>(arr, size);
+            } else {
+                return new SVType<PrecisionT>(
+                    reinterpret_cast<typename SVType<PrecisionT>::CFP_t *>(arr),
+                    size);
+            }
         }))
         .def(
             "Identity",

@@ -33,9 +33,9 @@ from pennylane.tape import QuantumTape
 import pennylane as qml
 
 try:
-    from pennylane_lightning_gpu.lightning_gpu_qubit_ops import (
-        LightningGPU_C128,
-        LightningGPU_C64,
+    from pennylane_lightning_gpu.module_bindings import (
+        LightningGPU_StateVectorCudaManaged_C128,
+        LightningGPU_StateVectorCudaManaged_C64,
         ObsStructGPU_C64,
         ObsStructGPU_C128,
     )
@@ -141,7 +141,11 @@ def _serialize_ops(
 
     uses_stateprep = False
 
-    sv_py = LightningGPU_C64 if use_csingle else LightningGPU_C128
+    sv_py = (
+        LightningGPU_StateVectorCudaManaged_C64
+        if use_csingle
+        else LightningGPU_StateVectorCudaManaged_C128
+    )
 
     for o in tape.operations:
         if isinstance(o, (BasisState, QubitStateVector)):

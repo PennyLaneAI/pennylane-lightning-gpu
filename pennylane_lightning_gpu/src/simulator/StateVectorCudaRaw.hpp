@@ -138,6 +138,13 @@ class StateVectorCudaRaw
             /* custatevecHandle_t* */ &handle));
     };
 
+    StateVectorCudaRaw(void *gpu_data, size_t length, cudaStream_t stream = 0)
+        : StateVectorCudaRaw(Util::log2(length), stream) {
+        CFP_t *ptr = BaseType::getData();
+        ptr = reinterpret_cast<CFP_t *>(gpu_data);
+        static_cast<void>(ptr);
+    }
+
     StateVectorCudaRaw(CFP_t *gpu_data, size_t length, cudaStream_t stream = 0)
         : StateVectorCudaRaw(Util::log2(length), stream) {
         CFP_t *ptr = BaseType::getData();
