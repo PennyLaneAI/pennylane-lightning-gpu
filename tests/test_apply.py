@@ -1160,7 +1160,7 @@ class TestApplyCQMethod:
     def test_apply_identity_skipped(self, C, tol):
         """Test identity operation does not perform additional computations."""
         dev = qml.device("lightning.gpu", wires=1)
-        
+
         starting_state = np.array([1, 0], dtype=C)
         op = [qml.Identity(0)]
         dev.apply(op)
