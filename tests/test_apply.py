@@ -569,6 +569,12 @@ class TestLightningGPUIntegration:
         assert dev.shots is None
         assert dev.short_name == "lightning.gpu"
 
+    def test_with_shots_zero(self):
+        """Test that lightning.gpu supports zero shots"""
+
+        dev = qml.device("lightning.gpu", wires=2, shots=0)
+        assert dev.shots == 0
+
     def test_with_shots(self):
         """Test that lightning.gpu does not support finite shots"""
 
