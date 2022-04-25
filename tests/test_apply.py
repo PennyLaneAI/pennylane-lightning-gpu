@@ -569,6 +569,14 @@ class TestLightningGPUIntegration:
         assert dev.shots is None
         assert dev.short_name == "lightning.gpu"
 
+    def test_with_shots(self):
+        """Test that lightning.gpu does not support finite shots"""
+
+        with pytest.raises(
+            ValueError, match="lightning.gpu does not support finite shots, please use shots=None"
+        ):
+            qml.device("lightning.gpu", wires=2, shots=1)
+
     def test_no_backprop(self):
         """Test that lightning.gpu does not support the backprop
         differentiation method."""
