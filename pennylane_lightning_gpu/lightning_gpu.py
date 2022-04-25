@@ -118,7 +118,7 @@ class LightningGPU(LightningQubit):
 
     def __init__(self, wires, *, shots=None, sync=True):
         if shots is not None:
-            raise ValueError(f"lightning.gpu does not support finite shots, please use shots=None")
+            raise ValueError("lightning.gpu does not support finite shots, please use shots=None")
 
         super().__init__(wires, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
