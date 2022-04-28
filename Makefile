@@ -89,9 +89,9 @@ format: format-cpp format-python
 
 format-cpp:
 ifdef check
-	./bin/format --check pennylane_lightning_gpu/src ./tests
+	./bin/format --check --cfversion $(if $(version:-=),$(version),0) pennylane_lightning_gpu/src ./tests
 else
-	./bin/format pennylane_lightning_gpu/src ./tests
+	./bin/format --cfversion $(if $(version:-=),$(version),0) pennylane_lightning_gpu/src ./tests
 endif
 
 format-python:
