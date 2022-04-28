@@ -19,6 +19,8 @@ IGNORE_PATTERN = ["external"]
 
 DEFAULT_CLANG_FORMAT_VERSION=12
 
+BASE_ARGS = f"-style={json.dumps(CLANG_FMT_STYLE_CFG)}"
+
 def parse_version(version_string):
     version_rgx = "version (\d+)"
 
@@ -84,7 +86,7 @@ def get_files(args):
 
 
 def fmt(args, files, command) -> int:
-    cmd = (command, f"-style={json.dumps(CLANG_FMT_STYLE_CFG)}", "-i", *files)
+    cmd = (command, BASE_ARGS, "-i", *files)
 
     paths = ", ".join(args.paths)
     sys.stderr.write(f"Formatting {len(files)} files in {paths}.\n")
@@ -98,7 +100,7 @@ def fmt(args, files, command) -> int:
 
 
 def check(args, files, command) -> int:
-    cmd = (command, f"-style={json.dumps(CLANG_FMT_STYLE_CFG)}", "--dry-run", "-Werror")
+    cmd = (command, BASE_ARGS, "--dry-run", "-Werror")
 
     needs_reformatted_ct = 0
 
