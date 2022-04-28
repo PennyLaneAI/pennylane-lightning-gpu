@@ -649,6 +649,30 @@ class TestLightningGPUIntegration:
 
         assert np.isclose(circuit(p), 1, atol=tol, rtol=0)
 
+    def test_nonzero_shots(self, tol):
+        """Test that the default qubit plugin provides correct result for high shot number"""
+
+        shots = 10**4
+
+        with pytest.raises(
+            ValueError, match="lightning.gpu does not support finite shots, please use shots=None"
+        ):
+            dev = qml.device("lightning.gpu", wires=1, shots=shots)
+
+        # p = 0.543
+
+        # @qml.qnode(dev)
+        # def circuit(x):
+        #     """Test quantum function"""
+        #     qml.RX(x, wires=0)
+        #     return qml.expval(qml.PauliY(0))
+
+        # runs = []
+        # for _ in range(100):
+        #     runs.append(circuit(p))
+
+        # assert np.isclose(np.mean(runs), -np.sin(p), atol=1e-2, rtol=0)
+
     # This test is ran against the state |0> with one Z expval
     @pytest.mark.parametrize(
         "name,expected_output",
