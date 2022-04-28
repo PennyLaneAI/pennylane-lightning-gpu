@@ -574,6 +574,69 @@ class StateVectorCudaManaged
         return probabilities;
     }
 
+  auto generate_samples(size_t num_shots) -> std::vector<std::vector<int>>{
+
+    // create sampler and check the size of external workspace
+    custatevecSamplerCreate(
+			    handle, sv, svDataType, nIndexBits, &sampler, nMaxShots,
+			    &extraWorkspaceSizeInBytes);
+
+    // allocate external workspace if necessary
+    void extraWorkspace = nullptr;
+    if (extraWorkspaceSizeInBytes > 0)
+      cudaMalloc(extraWorkspace, extraWorkspaceSizeInBytes);
+
+    // calculate cumulative abs2sum
+    custatevecSamplerPreprocess(
+				handle, sampler, extraWorkspace, extraWorkspaceSizeInBytes);
+
+    // [User] generate randnums, array of random numbers [0, 1) for sampling
+    ...
+
+      // sample bit strings
+      custatevecSamplerSample(
+			      handle, sampler, bitStrings, bitOrdering, bitStringLen, randnums, nShots,
+			      output);
+
+    // deallocate the sampler
+    custatevecSamplerDestroy(sampler);
+
+
+    // https://docs.nvidia.com/cuda/cuquantum/custatevec/api/functions.html
+    // custatevecStatus_t custatevecSamplerSample(custatevecHandle_t handle, custatevecSamplerDescriptor_t sampler, custatevecIndex_t *bitStrings, const int32_t *bitOrdering, const uint32_t bitStringLen, const double *randnums, const uint32_t nShots, enum custatevecSamplerOutput_t output)¶
+    // Sample bit strings from the state vector.
+
+    // This function does sampling. The bitOrdering and bitStringLen arguments specify bits to be sampled. Sampled bit strings are represented as an array of custatevecIndex_t and are stored to the host memory buffer that the bitStrings argument points to.
+
+    // The randnums argument is an array of user-generated random numbers whose length is nShots. The range of random numbers should be in [0, 1). A random number given by the randnums argument is clipped to [0, 1) if its range is not in [0, 1).
+
+    // The output argument specifies the order of sampled bit strings:
+
+    // If CUSTATEVEC_SAMPLER_OUTPUT_RANDNUM_ORDER is specified, the order of sampled bit strings is the same as that in the randnums argument.
+
+    // If CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER is specified, bit strings are returned in the ascending order.
+
+    // This API should be called after custatevecSamplerPreprocess(). Otherwise, the behavior of this function is undefined. By calling custatevecSamplerApplySubSVOffset() prior to this function, it is possible to sample bits corresponding to the ordinal of sub state vector.
+
+    // Parameters
+    // handle – [in] the handle to the cuStateVec library
+
+    // sampler – [in] the sampler descriptor
+
+    // bitStrings – [out] pointer to a host array to store sampled bit strings
+
+    // bitOrdering – [in] pointer to a host array of bit ordering for sampling
+
+    // bitStringLen – [in] the number of bits in bitOrdering
+
+    // randnums – [in] pointer to an array of random numbers
+
+    // nShots – [in] the number of shots
+
+    // output – [in] the order of sampled bit strings  
+  }
+  
+
   private:
     GateCache<Precision> gate_cache_;
     const std::unordered_map<std::string, size_t> gate_wires_;
