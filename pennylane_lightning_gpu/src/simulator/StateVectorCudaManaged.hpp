@@ -574,68 +574,80 @@ class StateVectorCudaManaged
         return probabilities;
     }
 
-  auto generate_samples(size_t num_shots) -> std::vector<std::vector<int>>{
+  auto generate_samples(size_t num_samples) -> std::vector<size_t> {
 
+    std::vector<double> rand_nums(num_samples);
+    custatevecSamplerDescriptor_t sampler;
+
+    size_t num_qubits = BaseType::getNumQubits();
+    const int bitStringLen  = 2;
+    const int bitOrdering[] = {0, 1};
+
+    cudaDataType_t data_type;
+    
+    if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+		  std::is_same_v<CFP_t, double2>) {
+      data_type = CUDA_C_64F;
+    }
+    else {
+      data_type = CUDA_C_32F;
+    }
+
+    std::random_device rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> dis(0.0, 1.0);
+    for (size_t n = 0; n < num_samples; ++n) {
+      rand_nums[n] = dis(gen);
+    }
+    std::vector<size_t> samples(num_samples * num_qubits, 0);
+    std::unordered_map<size_t, size_t> cache;
+    std::vector<custatevecIndex_t> bitStrings(num_samples);
+
+    void* extraWorkspace = nullptr;
+    size_t extraWorkspaceSizeInBytes = 0;
     // create sampler and check the size of external workspace
     custatevecSamplerCreate(
-			    handle, sv, svDataType, nIndexBits, &sampler, nMaxShots,
-			    &extraWorkspaceSizeInBytes);
-
+			    handle, BaseType::getData(), data_type, num_qubits, &sampler, num_samples, 
+			    &extraWorkspaceSizeInBytes) ;
+    
     // allocate external workspace if necessary
-    void extraWorkspace = nullptr;
     if (extraWorkspaceSizeInBytes > 0)
-      cudaMalloc(extraWorkspace, extraWorkspaceSizeInBytes);
-
-    // calculate cumulative abs2sum
+      cudaMalloc(&extraWorkspace, extraWorkspaceSizeInBytes);
+    
+    // sample preprocess
     custatevecSamplerPreprocess(
 				handle, sampler, extraWorkspace, extraWorkspaceSizeInBytes);
 
-    // [User] generate randnums, array of random numbers [0, 1) for sampling
-    ...
+    // sample bit strings
+    custatevecSamplerSample(
+			    handle, sampler, bitStrings.data(), bitOrdering, bitStringLen, rand_nums.data(), num_samples, 
+			    CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER);
 
-      // sample bit strings
-      custatevecSamplerSample(
-			      handle, sampler, bitStrings, bitOrdering, bitStringLen, randnums, nShots,
-			      output);
-
-    // deallocate the sampler
+    // destroy descriptor and handle
     custatevecSamplerDestroy(sampler);
-
-
-    // https://docs.nvidia.com/cuda/cuquantum/custatevec/api/functions.html
-    // custatevecStatus_t custatevecSamplerSample(custatevecHandle_t handle, custatevecSamplerDescriptor_t sampler, custatevecIndex_t *bitStrings, const int32_t *bitOrdering, const uint32_t bitStringLen, const double *randnums, const uint32_t nShots, enum custatevecSamplerOutput_t output)¶
-    // Sample bit strings from the state vector.
-
-    // This function does sampling. The bitOrdering and bitStringLen arguments specify bits to be sampled. Sampled bit strings are represented as an array of custatevecIndex_t and are stored to the host memory buffer that the bitStrings argument points to.
-
-    // The randnums argument is an array of user-generated random numbers whose length is nShots. The range of random numbers should be in [0, 1). A random number given by the randnums argument is clipped to [0, 1) if its range is not in [0, 1).
-
-    // The output argument specifies the order of sampled bit strings:
-
-    // If CUSTATEVEC_SAMPLER_OUTPUT_RANDNUM_ORDER is specified, the order of sampled bit strings is the same as that in the randnums argument.
-
-    // If CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER is specified, bit strings are returned in the ascending order.
-
-    // This API should be called after custatevecSamplerPreprocess(). Otherwise, the behavior of this function is undefined. By calling custatevecSamplerApplySubSVOffset() prior to this function, it is possible to sample bits corresponding to the ordinal of sub state vector.
-
-    // Parameters
-    // handle – [in] the handle to the cuStateVec library
-
-    // sampler – [in] the sampler descriptor
-
-    // bitStrings – [out] pointer to a host array to store sampled bit strings
-
-    // bitOrdering – [in] pointer to a host array of bit ordering for sampling
-
-    // bitStringLen – [in] the number of bits in bitOrdering
-
-    // randnums – [in] pointer to an array of random numbers
-
-    // nShots – [in] the number of shots
-
-    // output – [in] the order of sampled bit strings  
+ 
+    // Pick samples
+    for (size_t i = 0; i < num_samples; i++) {
+      auto idx = bitStrings[i];
+      // If cached, retrieve sample from cache
+      if (cache.count(idx) != 0) {
+	size_t cache_id = cache[idx];
+	auto it_temp = samples.begin() + cache_id * num_qubits;
+	std::copy(it_temp, it_temp + num_qubits,
+		  samples.begin() + i * num_qubits);
+      }
+      // If not cached, compute
+      else {
+	for (size_t j = 0; j < num_qubits; j++) {
+	  samples[i * num_qubits + (num_qubits - 1 - j)] =
+	    (idx >> j) & 1U;
+	}
+	cache[idx] = i;
+      }
+    }
+    return samples;
   }
-  
+
 
   private:
     GateCache<Precision> gate_cache_;
