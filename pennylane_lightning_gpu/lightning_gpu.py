@@ -361,26 +361,7 @@ class LightningGPU(LightningQubit):
         Returns:
             array[int]: array of samples in binary representation with shape ``(dev.shots, dev.num_wires)``
         """
-
-        # To support np.complex64 based on the type of self._state
-        dtype = self._state.dtype
-        if dtype == np.complex64:
-            use_csingle = True
-        elif dtype == np.complex128:
-            use_csingle = False
-        else:
-            raise TypeError(f"Unsupported complex Type: {dtype}")
-
-        # Initialization of state
-        ket = np.ravel(self._state)
-
-        if use_csingle:
-            ket = ket.astype(np.complex64)
-
-        state_vector = StateVectorC64(ket) if use_csingle else StateVectorC128(ket)
-        M = MeasuresC64(state_vector) if use_csingle else MeasuresC128(state_vector)
-
-        return M.generate_samples(len(self.wires), self.shots).astype(int)
+        return self._gpu_state.GenerateSamples(len(self.wires),self.shots).astype(int)
 
     def var(self, observable, shot_range=None, bin_size=None):
         if self.shots is not None:
