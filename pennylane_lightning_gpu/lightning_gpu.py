@@ -361,7 +361,7 @@ class LightningGPU(LightningQubit):
         Returns:
             array[int]: array of samples in binary representation with shape ``(dev.shots, dev.num_wires)``
         """
-        return self._gpu_state.GenerateSamples(len(self.wires),self.shots).astype(int)
+        return self._gpu_state.GenerateSamples(len(self.wires), self.shots).astype(int)
 
     def var(self, observable, shot_range=None, bin_size=None):
         if self.shots is not None:

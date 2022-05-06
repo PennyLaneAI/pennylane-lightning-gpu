@@ -829,8 +829,6 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCSWAP",
     }
 }
 
-
-
 TEMPLATE_TEST_CASE("Sample", "[Measures]", float, double) {
     constexpr uint32_t twos[] = {
         1U << 0U,  1U << 1U,  1U << 2U,  1U << 3U,  1U << 4U,  1U << 5U,
@@ -847,14 +845,14 @@ TEMPLATE_TEST_CASE("Sample", "[Measures]", float, double) {
     std::vector<std::complex<T>> init_state(data_size, 0);
     init_state[0] = 1;
     SVDataGPU<TestType> svdat{num_qubits, init_state};
-    
+
     T alpha = 0.7;
     T beta = 0.5;
     T gamma = 0.2;
     svdat.cuda_sv.applyOperations(
-				  {"RX", "RY", "RX", "RY", "RX", "RY"}, {{0}, {0}, {1}, {1}, {2}, {2}},
-				  {false, false, false, false, false, false},
-				  {{alpha}, {alpha}, {beta}, {beta}, {gamma}, {gamma}});
+        {"RX", "RY", "RX", "RY", "RX", "RY"}, {{0}, {0}, {1}, {1}, {2}, {2}},
+        {false, false, false, false, false, false},
+        {{alpha}, {alpha}, {beta}, {beta}, {gamma}, {gamma}});
 
     vector<TestType> expected_probabilities = {0.687573, 0.013842, 0.089279,
                                                0.001797, 0.180036, 0.003624,

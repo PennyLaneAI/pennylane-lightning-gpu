@@ -34,6 +34,7 @@ except (ImportError, ModuleNotFoundError):
 
 np.random.seed(42)
 
+
 class TestSample:
     """Tests that samples are properly calculated."""
 

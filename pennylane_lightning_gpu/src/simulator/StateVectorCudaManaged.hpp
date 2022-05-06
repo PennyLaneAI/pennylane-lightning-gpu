@@ -574,80 +574,80 @@ class StateVectorCudaManaged
         return probabilities;
     }
 
-  auto generate_samples(size_t num_samples) -> std::vector<size_t> {
+    auto generate_samples(size_t num_samples) -> std::vector<size_t> {
 
-    std::vector<double> rand_nums(num_samples);
-    custatevecSamplerDescriptor_t sampler;
+        std::vector<double> rand_nums(num_samples);
+        custatevecSamplerDescriptor_t sampler;
 
-    size_t num_qubits = BaseType::getNumQubits();
-    const int bitStringLen  = 2;
-    const int bitOrdering[] = {0, 1};
+        size_t num_qubits = BaseType::getNumQubits();
+        const int bitStringLen = 2;
+        const int bitOrdering[] = {0, 1};
 
-    cudaDataType_t data_type;
-    
-    if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
-		  std::is_same_v<CFP_t, double2>) {
-      data_type = CUDA_C_64F;
+        cudaDataType_t data_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+        } else {
+            data_type = CUDA_C_32F;
+        }
+
+        std::random_device
+            rd; // Will be used to obtain a seed for the random number engine
+        std::mt19937 gen(
+            rd()); // Standard mersenne_twister_engine seeded with rd()
+        std::uniform_real_distribution<> dis(0.0, 1.0);
+        for (size_t n = 0; n < num_samples; ++n) {
+            rand_nums[n] = dis(gen);
+        }
+        std::vector<size_t> samples(num_samples * num_qubits, 0);
+        std::unordered_map<size_t, size_t> cache;
+        std::vector<custatevecIndex_t> bitStrings(num_samples);
+
+        void *extraWorkspace = nullptr;
+        size_t extraWorkspaceSizeInBytes = 0;
+        // create sampler and check the size of external workspace
+        custatevecSamplerCreate(handle, BaseType::getData(), data_type,
+                                num_qubits, &sampler, num_samples,
+                                &extraWorkspaceSizeInBytes);
+
+        // allocate external workspace if necessary
+        if (extraWorkspaceSizeInBytes > 0)
+            cudaMalloc(&extraWorkspace, extraWorkspaceSizeInBytes);
+
+        // sample preprocess
+        custatevecSamplerPreprocess(handle, sampler, extraWorkspace,
+                                    extraWorkspaceSizeInBytes);
+
+        // sample bit strings
+        custatevecSamplerSample(handle, sampler, bitStrings.data(), bitOrdering,
+                                bitStringLen, rand_nums.data(), num_samples,
+                                CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER);
+
+        // destroy descriptor and handle
+        custatevecSamplerDestroy(sampler);
+
+        // Pick samples
+        for (size_t i = 0; i < num_samples; i++) {
+            auto idx = bitStrings[i];
+            // If cached, retrieve sample from cache
+            if (cache.count(idx) != 0) {
+                size_t cache_id = cache[idx];
+                auto it_temp = samples.begin() + cache_id * num_qubits;
+                std::copy(it_temp, it_temp + num_qubits,
+                          samples.begin() + i * num_qubits);
+            }
+            // If not cached, compute
+            else {
+                for (size_t j = 0; j < num_qubits; j++) {
+                    samples[i * num_qubits + (num_qubits - 1 - j)] =
+                        (idx >> j) & 1U;
+                }
+                cache[idx] = i;
+            }
+        }
+        return samples;
     }
-    else {
-      data_type = CUDA_C_32F;
-    }
-
-    std::random_device rd;  // Will be used to obtain a seed for the random number engine
-    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-    std::uniform_real_distribution<> dis(0.0, 1.0);
-    for (size_t n = 0; n < num_samples; ++n) {
-      rand_nums[n] = dis(gen);
-    }
-    std::vector<size_t> samples(num_samples * num_qubits, 0);
-    std::unordered_map<size_t, size_t> cache;
-    std::vector<custatevecIndex_t> bitStrings(num_samples);
-
-    void* extraWorkspace = nullptr;
-    size_t extraWorkspaceSizeInBytes = 0;
-    // create sampler and check the size of external workspace
-    custatevecSamplerCreate(
-			    handle, BaseType::getData(), data_type, num_qubits, &sampler, num_samples, 
-			    &extraWorkspaceSizeInBytes) ;
-    
-    // allocate external workspace if necessary
-    if (extraWorkspaceSizeInBytes > 0)
-      cudaMalloc(&extraWorkspace, extraWorkspaceSizeInBytes);
-    
-    // sample preprocess
-    custatevecSamplerPreprocess(
-				handle, sampler, extraWorkspace, extraWorkspaceSizeInBytes);
-
-    // sample bit strings
-    custatevecSamplerSample(
-			    handle, sampler, bitStrings.data(), bitOrdering, bitStringLen, rand_nums.data(), num_samples, 
-			    CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER);
-
-    // destroy descriptor and handle
-    custatevecSamplerDestroy(sampler);
- 
-    // Pick samples
-    for (size_t i = 0; i < num_samples; i++) {
-      auto idx = bitStrings[i];
-      // If cached, retrieve sample from cache
-      if (cache.count(idx) != 0) {
-	size_t cache_id = cache[idx];
-	auto it_temp = samples.begin() + cache_id * num_qubits;
-	std::copy(it_temp, it_temp + num_qubits,
-		  samples.begin() + i * num_qubits);
-      }
-      // If not cached, compute
-      else {
-	for (size_t j = 0; j < num_qubits; j++) {
-	  samples[i * num_qubits + (num_qubits - 1 - j)] =
-	    (idx >> j) & 1U;
-	}
-	cache[idx] = i;
-      }
-    }
-    return samples;
-  }
-
 
   private:
     GateCache<Precision> gate_cache_;
