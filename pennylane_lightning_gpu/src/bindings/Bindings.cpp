@@ -79,15 +79,18 @@ void StateVectorCuda_class_bindings(py::module &m) {
             return new SVType<PrecisionT>(data_ptr,
                                           static_cast<std::size_t>(arr.size()));
         }))
-        .def(py::init([](void *arr,
-                         std::size_t size) { // Raw pointer to either Managed or
+        .def(py::init([](py::handle arr,
+                         std::size_t size) { // Pointer to either Managed or
                                              // Raw object type
             if constexpr (std::is_trivially_constructible_v<
                               SVType<PrecisionT>, void *, std::size_t>) {
-                return new SVType<PrecisionT>(arr, size);
+                py::object data_ptr = arr.attr("data_ptr")();
+                return new SVType<PrecisionT>(
+                    reinterpret_cast<void *>(data_ptr), size);
             } else {
                 return new SVType<PrecisionT>(
-                    reinterpret_cast<typename SVType<PrecisionT>::CFP_t *>(arr),
+                    reinterpret_cast<typename SVType<PrecisionT>::CFP_t *>(
+                        arr.ptr()),
                     size);
             }
         }))

@@ -17,3 +17,8 @@ set_target_properties(lightning_gpu_simulator PROPERTIES LINKER_LANGUAGE CXX)
 if(ENABLE_NATIVE)
     target_compile_options(lightning_gpu_simulator PRIVATE -march=native)
 endif()
+
+if(ENABLE_INTERFACES)
+    add_subdirectory(interfaces)
+endif()
+

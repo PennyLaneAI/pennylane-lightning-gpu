@@ -74,14 +74,22 @@ UNSUPPORTED_PARAM_GATES_ADJOINT = (
 )
 
 
-def _gpu_dtype(dtype):
+def _gpu_dtype(dtype, use_managed=True):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    return (
-        LightningGPU_StateVectorCudaManaged_C128
-        if dtype == np.complex128
-        else LightningGPU_StateVectorCudaManaged_C64
-    )
+    if use_managed:
+        ctor = (
+            LightningGPU_StateVectorCudaManaged_C128
+            if dtype == np.complex128
+            else LightningGPU_StateVectorCudaManaged_C64
+        )
+    else:
+        ctor = (
+            LightningGPU_StateVectorCudaRaw_C128
+            if dtype == np.complex128
+            else LightningGPU_StateVectorCudaRaw_C64
+        )
+    return ctor
 
 
 class LightningGPU(LightningQubit):

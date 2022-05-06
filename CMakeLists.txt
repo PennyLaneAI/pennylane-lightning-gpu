@@ -52,6 +52,8 @@ option(ENABLE_CLANG_TIDY "Enable clang-tidy build checks" OFF)
 option(DISABLE_CUDA_SAFETY "Build without CUDA call safety checks" OFF)
 option(ENABLE_PYTHON "Build Python bindings" ON)
 option(ENABLE_SANITIZER "Enable address sanitizer" OFF)
+option(ENABLE_INTERFACES "Enable ML framework interfaces" ON)
+option(ENABLE_INTERFACE_TORCH "Enable PyTorch framework interface" ON)
 
 # Build options
 if(NOT CMAKE_BUILD_TYPE)
