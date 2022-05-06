@@ -829,7 +829,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCSWAP",
     }
 }
 
-TEMPLATE_TEST_CASE("Sample", "[Measures]", float, double) {
+TEMPLATE_TEST_CASE("Sample", "[StateVectorCudaManaged_Nonparam]", float, double) {
     constexpr uint32_t twos[] = {
         1U << 0U,  1U << 1U,  1U << 2U,  1U << 3U,  1U << 4U,  1U << 5U,
         1U << 6U,  1U << 7U,  1U << 8U,  1U << 9U,  1U << 10U, 1U << 11U,
