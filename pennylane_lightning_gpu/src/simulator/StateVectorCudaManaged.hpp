@@ -574,12 +574,22 @@ class StateVectorCudaManaged
         return probabilities;
     }
 
+    /**
+     * @brief Utility method for samples.
+     *
+     * @param num_samples Number of Samples
+     *
+     * @return std::vector<size_t> A 1-d array storing the samples.
+     * Each sample has a length equal to the number of qubits. Each sample can
+     * be accessed using the stride sample_id*num_qubits, where sample_id is a
+     * number between 0 and num_samples-1.
+     */
     auto generate_samples(size_t num_samples) -> std::vector<size_t> {
 
         std::vector<double> rand_nums(num_samples);
         custatevecSamplerDescriptor_t sampler;
 
-        size_t num_qubits = BaseType::getNumQubits();
+        const size_t num_qubits = BaseType::getNumQubits();
         const int bitStringLen = 2;
         const int bitOrdering[] = {0, 1};
 
@@ -597,7 +607,7 @@ class StateVectorCudaManaged
         std::mt19937 gen(
             rd()); // Standard mersenne_twister_engine seeded with rd()
         std::uniform_real_distribution<> dis(0.0, 1.0);
-        for (size_t n = 0; n < num_samples; ++n) {
+        for (size_t n = 0; n < num_samples; n++) {
             rand_nums[n] = dis(gen);
         }
         std::vector<size_t> samples(num_samples * num_qubits, 0);
@@ -607,25 +617,27 @@ class StateVectorCudaManaged
         void *extraWorkspace = nullptr;
         size_t extraWorkspaceSizeInBytes = 0;
         // create sampler and check the size of external workspace
-        custatevecSamplerCreate(handle, BaseType::getData(), data_type,
-                                num_qubits, &sampler, num_samples,
-                                &extraWorkspaceSizeInBytes);
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerCreate(
+            handle, BaseType::getData(), data_type, num_qubits, &sampler,
+            num_samples, &extraWorkspaceSizeInBytes));
 
         // allocate external workspace if necessary
         if (extraWorkspaceSizeInBytes > 0)
-            cudaMalloc(&extraWorkspace, extraWorkspaceSizeInBytes);
+            PL_CUDA_IS_SUCCESS(
+                cudaMalloc(&extraWorkspace, extraWorkspaceSizeInBytes));
 
         // sample preprocess
-        custatevecSamplerPreprocess(handle, sampler, extraWorkspace,
-                                    extraWorkspaceSizeInBytes);
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerPreprocess(
+            handle, sampler, extraWorkspace, extraWorkspaceSizeInBytes));
 
         // sample bit strings
-        custatevecSamplerSample(handle, sampler, bitStrings.data(), bitOrdering,
-                                bitStringLen, rand_nums.data(), num_samples,
-                                CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER);
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerSample(
+            handle, sampler, bitStrings.data(), bitOrdering, bitStringLen,
+            rand_nums.data(), num_samples,
+            CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER));
 
         // destroy descriptor and handle
-        custatevecSamplerDestroy(sampler);
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerDestroy(sampler));
 
         // Pick samples
         for (size_t i = 0; i < num_samples; i++) {
@@ -646,6 +658,10 @@ class StateVectorCudaManaged
                 cache[idx] = i;
             }
         }
+
+        if (extraWorkspaceSizeInBytes > 0)
+            PL_CUDA_IS_SUCCESS(cudaFree(&extraWorkspace));
+
         return samples;
     }
 

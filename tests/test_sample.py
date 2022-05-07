@@ -19,8 +19,6 @@ import pytest
 import numpy as np
 import pennylane as qml
 
-from conftest import U, U2, A
-
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
 
@@ -40,7 +38,7 @@ class TestSample:
 
     @pytest.fixture
     def dev(self):
-        return qml.device("lightning.qubit", wires=2, shots=1000)
+        return qml.device("lightning.gpu", wires=2, shots=1000)
 
     @pytest.mark.parametrize("C", [np.complex64, np.complex128])
     def test_sample_dimensions(self, dev, C):
