@@ -604,10 +604,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation multiple wires",
     }
 }
 
-
-
-TEMPLATE_TEST_CASE("Sample", "[LightningGPU_Param]", float,
-                   double) {
+TEMPLATE_TEST_CASE("Sample", "[LightningGPU_Param]", float, double) {
     constexpr uint32_t twos[] = {
         1U << 0U,  1U << 1U,  1U << 2U,  1U << 3U,  1U << 4U,  1U << 5U,
         1U << 6U,  1U << 7U,  1U << 8U,  1U << 9U,  1U << 10U, 1U << 11U,
@@ -615,7 +612,6 @@ TEMPLATE_TEST_CASE("Sample", "[LightningGPU_Param]", float,
         1U << 18U, 1U << 19U, 1U << 20U, 1U << 21U, 1U << 22U, 1U << 23U,
         1U << 24U, 1U << 25U, 1U << 26U, 1U << 27U, 1U << 28U, 1U << 29U,
         1U << 30U, 1U << 31U};
-
 
     // Defining the State Vector that will be measured.
     size_t num_qubits = 3;
@@ -660,10 +656,11 @@ TEMPLATE_TEST_CASE("Sample", "[LightningGPU_Param]", float,
     }
 
     // compare estimated probabilities to real probabilities
-    for (size_t i = 0; i < probabilities.size(); i++){
-      std::cout << probabilities[i] << " " << expected_probabilities[i] << std::endl;
+    for (size_t i = 0; i < probabilities.size(); i++) {
+        std::cout << probabilities[i] << " " << expected_probabilities[i]
+                  << std::endl;
     }
-    
+
     SECTION("No wires provided:") {
         REQUIRE_THAT(probabilities,
                      Catch::Approx(expected_probabilities).margin(.05));

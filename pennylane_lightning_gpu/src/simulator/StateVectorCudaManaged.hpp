@@ -592,9 +592,10 @@ class StateVectorCudaManaged
         const size_t num_qubits = BaseType::getNumQubits();
         const int bitStringLen = BaseType::getNumQubits();
 
-	std::vector<int> bitOrdering(num_qubits); 
-	std::iota (std::begin(bitOrdering), std::end(bitOrdering), 0); // Fill with 0, 1, ...,
-	
+        std::vector<int> bitOrdering(num_qubits);
+        std::iota(std::begin(bitOrdering), std::end(bitOrdering),
+                  0); // Fill with 0, 1, ...,
+
         cudaDataType_t data_type;
 
         if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
@@ -622,25 +623,25 @@ class StateVectorCudaManaged
         PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerCreate(
             handle, BaseType::getData(), data_type, num_qubits, &sampler,
             num_samples, &extraWorkspaceSizeInBytes));
-	
+
         // allocate external workspace if necessary
         if (extraWorkspaceSizeInBytes > 0)
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(&extraWorkspace, extraWorkspaceSizeInBytes));
-	
+
         // sample preprocess
         PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerPreprocess(
             handle, sampler, extraWorkspace, extraWorkspaceSizeInBytes));
-	
+
         // sample bit strings
         PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerSample(
-							 handle, sampler, bitStrings.data(), bitOrdering.data(), bitStringLen,
-            rand_nums.data(), num_samples,
+            handle, sampler, bitStrings.data(), bitOrdering.data(),
+            bitStringLen, rand_nums.data(), num_samples,
             CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER));
-	
+
         // destroy descriptor and handle
         PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerDestroy(sampler));
-	
+
         // Pick samples
         for (size_t i = 0; i < num_samples; i++) {
             auto idx = bitStrings[i];
@@ -663,7 +664,7 @@ class StateVectorCudaManaged
 
         if (extraWorkspaceSizeInBytes > 0)
             PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
-	
+
         return samples;
     }
 
