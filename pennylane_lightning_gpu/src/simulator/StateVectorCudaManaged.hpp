@@ -573,7 +573,7 @@ class StateVectorCudaManaged
 
         return probabilities;
     }
-      
+
     static auto getClassName() -> const std::string & { return class_name_; }
 
     /**
