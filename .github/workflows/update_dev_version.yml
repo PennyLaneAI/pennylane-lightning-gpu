@@ -1,0 +1,38 @@
+name: Update dev version automatically
+on:
+  pull_request:
+
+jobs:
+  update-dev-version:
+    name: Update version for development branches
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout PennyLane-Lightning-GPU master
+        uses: actions/checkout@v2
+        with:
+          ref: main
+          path: main
+
+      - uses: actions/setup-python@v2
+        name: Install Python
+        with:
+          python-version: '3.7'
+
+      - name: Update package version tag
+        uses: actions/checkout@v3
+        with:
+          #token: ${{ secrets.DEV_TOKEN }}
+          ref: ${{ github.head_ref }}
+          path: pr
+        run: >
+          python3 pr/.github/workflows/dev_version_script.py
+          --pr-path "./pr" --master-path "./main"
+          cd ./pr
+          if [[ -n $(git status -s) ]]; then
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add .
+            git commit -m 'Auto update version'
+            git push
+          fi
