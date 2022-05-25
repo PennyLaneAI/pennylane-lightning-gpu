@@ -4,16 +4,13 @@ set(CMAKE_CXX_STANDARD 17)
 include(ExternalProject)
 include(FetchContent)
 
-ExternalProject_Add( torch_release
-    URL https://download.pytorch.org/libtorch/cu113/libtorch-cxx11-abi-shared-with-deps-1.11.0%2Bcu113.zip
-    SOURCE_DIR ${FETCHCONTENT_BASE_DIR}/torch_release
-    BUILD_IN_SOURCE 0
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
+FetchContent_Declare(
+    torch_release
+    URL      https://download.pytorch.org/libtorch/cu113/libtorch-cxx11-abi-shared-with-deps-1.11.0%2Bcu113.zip
 )
-add_library(lightning_gpu_interface_torch SHARED SVCudaTorch.hpp)
-add_dependencies(lightning_gpu_interface_torch torch_release)
+FetchContent_MakeAvailable(torch_release)
+
+add_library(lightning_gpu_interface_torch SHARED SVCudaTorch.hpp SVCudaTorch.cpp)
 
 find_file(  TORCH_EXT
     NAMES   extension.h
@@ -26,10 +23,16 @@ find_file(  TORCH_EXT
             ENV CPATH
 )
 
+message("${FETCHCONTENT_BASE_DIR}/torch_release-src/include")
+message("${FETCHCONTENT_BASE_DIR}/torch_release/include/torch")
+
 find_package(PythonLibs REQUIRED)
 include_directories(${PYTHON_INCLUDE_DIRS})
 
-target_include_directories(lightning_gpu_interface_torch PRIVATE ${FETCHCONTENT_BASE_DIR}/torch_release/include/ ${FETCHCONTENT_BASE_DIR}/torch_release/include/torch/csrc/api/include/)
+find_package(CUDA REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 
-target_link_libraries(lightning_gpu_interface_torch INTERFACE CUDA::cudart ${PYTHON_LIBRARIES})
+target_include_directories(lightning_gpu_interface_torch PRIVATE ${FETCHCONTENT_BASE_DIR}/torch_release-src/include ${FETCHCONTENT_BASE_DIR}/torch_release-src/include/torch/csrc/api/include/ ${CUDAToolkit_INCLUDE_DIRS})
+
+target_link_libraries(lightning_gpu_interface_torch INTERFACE CUDA::cudart ${PYTHON_LIBRARIES} lightning_gpu_simulator)
 set_target_properties(lightning_gpu_interface_torch PROPERTIES LINKER_LANGUAGE CXX)

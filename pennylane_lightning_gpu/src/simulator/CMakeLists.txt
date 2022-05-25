@@ -14,6 +14,8 @@ set_target_properties(lightning_gpu_simulator PROPERTIES POSITION_INDEPENDENT_CO
 
 set_target_properties(lightning_gpu_simulator PROPERTIES LINKER_LANGUAGE CXX)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 if(ENABLE_NATIVE)
     target_compile_options(lightning_gpu_simulator PRIVATE -march=native)
 endif()

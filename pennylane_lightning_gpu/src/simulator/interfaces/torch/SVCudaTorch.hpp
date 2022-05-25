@@ -5,12 +5,9 @@
 #include <vector>
 
 #include <cuComplex.h>
-#include <cuda.h>
-#include <custatevec.h>
 #include <torch/extension.h>
 
 #include "StateVectorCudaRaw.hpp"
-
 
 /// @cond DEV
 namespace {
@@ -29,24 +26,22 @@ namespace Pennylane {
  * @tparam Precision Floating-point precision type.
  */
 template <class Precision>
-class SVCudaTorch final
-    : public StateVectorCudaRaw<Precision> {
+class SVCudaTorch final : public StateVectorCudaRaw<Precision> {
   private:
     using BaseType = StateVectorCudaRaw<Precision>;
 
   public:
-    using CFP_t =
-        typename StateVectorCudaRaw<Precision>::CFP_t;
+    using CFP_t = typename StateVectorCudaRaw<Precision>::CFP_t;
     using GateType = CFP_t *;
 
     SVCudaTorch() = delete;
-    SVCudaTorch(torch::Tensor& tensor, cudaStream_t stream = 0)
+    SVCudaTorch(torch::Tensor &tensor, cudaStream_t stream = 0)
         : StateVectorCudaRaw(Util::log2(tensor.numel()), stream) {
         data_ = reinterpret_cast<CFP_t *>(tensor.data_ptr());
     }
-  private:
-    CFP_t* data_;
 
+  private:
+    CFP_t *data_;
 };
 
 }; // namespace Pennylane

@@ -110,7 +110,7 @@ if(ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
 endif()
 
-find_package (Python COMPONENTS Interpreter Development)
+find_package (Python3 COMPONENTS Interpreter Development)
 
 find_library(CUSTATEVEC_LIB
     NAMES   libcustatevec.so.1 custatevec.so.1
@@ -126,7 +126,7 @@ find_library(CUSTATEVEC_LIB
             ${CUDAToolkit_LIBRARY_DIR}
             ${CUDA_TOOLKIT_ROOT_DIR}/lib
             ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-            ${Python_SITELIB}/cuquantum/lib
+            ${Python3_SITELIB}/cuquantum/lib
             ENV LD_LIBRARY_PATH
 )
 
@@ -141,10 +141,9 @@ find_file( CUSTATEVEC_INC
             ${CUQUANTUM_SDK}/include
             ${CUDAToolkit_INCLUDE_DIRS}
             ${CUDA_TOOLKIT_ROOT_DIR}/include
-            ${Python_SITELIB}/cuquantum/include
+            ${Python3_SITELIB}/cuquantum/include
             ENV CPATH
 )
-
 if(NOT CUSTATEVEC_LIB OR NOT CUSTATEVEC_INC)
     message(FATAL_ERROR "\nUnable to find cuQuantum SDK installation. Please ensure it is correctly installed and available on path.")
 endif()

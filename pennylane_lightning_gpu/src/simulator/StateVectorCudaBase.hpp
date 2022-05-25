@@ -317,7 +317,6 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         {"CSWAP", 1},
         {"Toffoli", 2}};
     bool device_alloc;
-
 };
 
 } // namespace Pennylane
