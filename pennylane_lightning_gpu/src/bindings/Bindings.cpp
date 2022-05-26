@@ -353,8 +353,7 @@ void StateVectorCuda_class_bindings(py::module &m) {
             "Calculate the probabilities for given wires. Results returned in "
             "Col-major order.")
         .def("GenerateSamples",
-             [](SVType<PrecisionT> &sv, size_t num_wires,
-                size_t num_shots) {
+             [](SVType<PrecisionT> &sv, size_t num_wires, size_t num_shots) {
                  auto &&result = sv.generate_samples(num_shots);
                  const size_t ndim = 2;
                  const std::vector<size_t> shape{num_shots, num_wires};
