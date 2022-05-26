@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Patch to not ship CUDA system libraries
 # Follows https://github.com/DIPlib/diplib/tree/master/tools/travis
 import sys

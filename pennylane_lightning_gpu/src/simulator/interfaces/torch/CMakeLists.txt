@@ -10,7 +10,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(torch_release)
 
-add_library(lightning_gpu_interface_torch SHARED SVCudaTorch.hpp SVCudaTorch.cpp)
+add_library(lightning_gpu_interface_torch STATIC SVCudaTorch.hpp SVCudaTorch.cpp)
 
 find_file(  TORCH_EXT
     NAMES   extension.h
@@ -23,16 +23,29 @@ find_file(  TORCH_EXT
             ENV CPATH
 )
 
-message("${FETCHCONTENT_BASE_DIR}/torch_release-src/include")
-message("${FETCHCONTENT_BASE_DIR}/torch_release/include/torch")
+find_package(Python ${PY_VERSION} 
+                    EXACT 
+                    REQUIRED
+)
 
-find_package(PythonLibs REQUIRED)
-include_directories(${PYTHON_INCLUDE_DIRS})
+# Due to the sheer difficulty of getting CMake to find the Python include header path on a manylinux image, defining a custom command here makes the most sense
+execute_process(COMMAND ${Python_EXECUTABLE} -c "import sysconfig; print(sysconfig.get_path('include'), end='')" OUTPUT_VARIABLE PY_INCLUDE_DIR)
 
 find_package(CUDA REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
-target_include_directories(lightning_gpu_interface_torch PRIVATE ${FETCHCONTENT_BASE_DIR}/torch_release-src/include ${FETCHCONTENT_BASE_DIR}/torch_release-src/include/torch/csrc/api/include/ ${CUDAToolkit_INCLUDE_DIRS})
+get_filename_component(CUSTATEVEC_INC_DIR ${CUSTATEVEC_INC} DIRECTORY)
 
-target_link_libraries(lightning_gpu_interface_torch INTERFACE CUDA::cudart ${PYTHON_LIBRARIES} lightning_gpu_simulator)
+target_include_directories(lightning_gpu_interface_torch PUBLIC 
+                                ${FETCHCONTENT_BASE_DIR}/torch_release-src/include 
+                                ${FETCHCONTENT_BASE_DIR}/torch_release-src/include/torch/csrc/api/include/
+                                ${CMAKE_CURRENT_SOURCE_DIR}
+                                ${CUDAToolkit_INCLUDE_DIRS} 
+                                ${CUSTATEVEC_INC_DIR}
+                                ${PY_INCLUDE_DIR} )
+
+target_link_libraries(lightning_gpu_interface_torch PUBLIC CUDA::cudart lightning_gpu_simulator lightning_gpu_utils lightning_simulator)
 set_target_properties(lightning_gpu_interface_torch PROPERTIES LINKER_LANGUAGE CXX)
+
+pybind11_add_module(lightning_gpu_bindings_torch     "Bindings.cpp")
+target_link_libraries(lightning_gpu_bindings_torch PRIVATE lightning_gpu_interface_torch)

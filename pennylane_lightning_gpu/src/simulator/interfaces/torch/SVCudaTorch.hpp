@@ -36,12 +36,14 @@ class SVCudaTorch final : public StateVectorCudaRaw<Precision> {
 
     SVCudaTorch() = delete;
     SVCudaTorch(torch::Tensor &tensor, cudaStream_t stream = 0)
-        : StateVectorCudaRaw(Util::log2(tensor.numel()), stream) {
+        : StateVectorCudaRaw<Precision>(Util::log2(tensor.numel()), stream) {
+        t_ref = &tensor;
         data_ = reinterpret_cast<CFP_t *>(tensor.data_ptr());
     }
 
   private:
     CFP_t *data_;
+    torch::Tensor *t_ref;
 };
 
 }; // namespace Pennylane

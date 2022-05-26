@@ -20,16 +20,16 @@
 
 #include "AdjointDiff.hpp"
 #include "AdjointDiffGPU.hpp"
-#include "JacobianTape.hpp"
+#include "cuGateCache.hpp"
+#include "cuda_helpers.hpp"
 
-#include "DevicePool.hpp" // LightningException
-#include "Error.hpp"      // LightningException
+#include "DevicePool.hpp"
+#include "Error.hpp"
+#include "JacobianTape.hpp"
 #include "StateVectorCudaManaged.hpp"
 #include "StateVectorCudaRaw.hpp"
 #include "StateVectorManaged.hpp"
 #include "StateVectorRaw.hpp"
-#include "cuGateCache.hpp"
-#include "cuda_helpers.hpp"
 
 #include "pybind11/complex.h"
 #include "pybind11/numpy.h"
@@ -353,7 +353,7 @@ void StateVectorCuda_class_bindings(py::module &m) {
             "Calculate the probabilities for given wires. Results returned in "
             "Col-major order.")
         .def("GenerateSamples",
-             [](StateVectorCudaManaged<PrecisionT> &sv, size_t num_wires,
+             [](SVType<PrecisionT> &sv, size_t num_wires,
                 size_t num_shots) {
                  auto &&result = sv.generate_samples(num_shots);
                  const size_t ndim = 2;
@@ -661,6 +661,7 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
     StateVectorCuda_class_bindings<StateVectorCudaManaged, double, double>(m);
     StateVectorCuda_class_bindings<StateVectorCudaRaw, float, float>(m);
     StateVectorCuda_class_bindings<StateVectorCudaRaw, double, double>(m);
+
     OpsObs_class_bindings<float, float>(m);
     OpsObs_class_bindings<double, double>(m);
 }

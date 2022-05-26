@@ -53,7 +53,6 @@ option(DISABLE_CUDA_SAFETY "Build without CUDA call safety checks" OFF)
 option(ENABLE_PYTHON "Build Python bindings" ON)
 option(ENABLE_SANITIZER "Enable address sanitizer" OFF)
 option(ENABLE_INTERFACES "Enable ML framework interfaces" ON)
-option(ENABLE_INTERFACE_TORCH "Enable PyTorch framework interface" ON)
 
 # Build options
 if(NOT CMAKE_BUILD_TYPE)
@@ -110,7 +109,7 @@ if(ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
 endif()
 
-find_package (Python3 COMPONENTS Interpreter Development)
+find_package(Python ${PY_VERSION} EXACT REQUIRED)
 
 find_library(CUSTATEVEC_LIB
     NAMES   libcustatevec.so.1 custatevec.so.1
@@ -126,7 +125,7 @@ find_library(CUSTATEVEC_LIB
             ${CUDAToolkit_LIBRARY_DIR}
             ${CUDA_TOOLKIT_ROOT_DIR}/lib
             ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-            ${Python3_SITELIB}/cuquantum/lib
+            ${Python_SITEARCH}/cuquantum/lib
             ENV LD_LIBRARY_PATH
 )
 
@@ -141,9 +140,10 @@ find_file( CUSTATEVEC_INC
             ${CUQUANTUM_SDK}/include
             ${CUDAToolkit_INCLUDE_DIRS}
             ${CUDA_TOOLKIT_ROOT_DIR}/include
-            ${Python3_SITELIB}/cuquantum/include
+            ${Python_SITEARCH}/cuquantum/include
             ENV CPATH
 )
+
 if(NOT CUSTATEVEC_LIB OR NOT CUSTATEVEC_INC)
     message(FATAL_ERROR "\nUnable to find cuQuantum SDK installation. Please ensure it is correctly installed and available on path.")
 endif()
