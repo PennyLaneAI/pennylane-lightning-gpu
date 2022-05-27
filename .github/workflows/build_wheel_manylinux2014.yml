@@ -41,7 +41,29 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - uses: actions/checkout@v2
+      - name: Disk space before
+        run: |
+          echo "Free space:"
+          df -h
+
+
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+
+      - name: Disk space after
+        run: |
+          echo "Free space:"
+          df -h
+
+      - name: Fail
+        run: |
+          easfhasfhg
+
+      - uses: actions/checkout@v3
 
       - uses: actions/setup-python@v2
         name: Install Python
