@@ -44,6 +44,7 @@ jobs:
       - name: Remove Runner SDKs for extra storage during build
         uses: easimon/maximize-build-space@master
         with:
+          root-reserve-mb: 20000
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
