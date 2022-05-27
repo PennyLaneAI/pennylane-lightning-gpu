@@ -41,13 +41,6 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - name: Remove Runner SDKs for extra storage during build
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 512
-          swap-size-mb: 1024
-          remove-dotnet: 'true'
-
       - uses: actions/checkout@v3
 
       - uses: actions/setup-python@v2
