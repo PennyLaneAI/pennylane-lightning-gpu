@@ -41,13 +41,10 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - name: Remove Runner SDKs for extra storage during build
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 20000
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
+      - name: Remove unused SDKs for extra storage during build
+        run: |
+          sudo rm -rf /usr/share/dotnet       # DotNet
+          sudo rm -rf /usr/local/lib/android  # Android SDK
 
       - uses: actions/checkout@v3
 
