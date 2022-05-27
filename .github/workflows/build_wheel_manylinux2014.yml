@@ -41,27 +41,12 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - name: Disk space before
-        run: |
-          echo "Free space:"
-          df -h
-
-
-      - name: Maximize build space
+      - name: Remove Runner SDKs for extra storage during build
         uses: easimon/maximize-build-space@master
         with:
           root-reserve-mb: 512
           swap-size-mb: 1024
           remove-dotnet: 'true'
-
-      - name: Disk space after
-        run: |
-          echo "Free space:"
-          df -h
-
-      - name: Fail
-        run: |
-          easfhasfhg
 
       - uses: actions/checkout@v3
 
