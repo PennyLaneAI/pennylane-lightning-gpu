@@ -404,8 +404,16 @@ if not CPP_BINARY_AVAILABLE:
         _CPP_BINARY_AVAILABLE = False
 
         def __init__(self, *args, **kwargs):
+            w_msg = """
+            !!!#####################################################################################
+            !!!
+            !!! WARNING: INSUFFICIENT SUPPORT DETECTED FOR GPU DEVICE WITH `lightning.gpu`
+            !!!          DEFAULTING TO CPU DEVICE `lightning.qubit`
+            !!!
+            !!!#####################################################################################
+            """
             warn(
-                "Insufficient support detected for lightning.gpu, defaulting to lightning.qubit",
-                UserWarning,
+                w_msg,
+                RuntimeWarning,
             )
             super().__init__(*args, **kwargs)
