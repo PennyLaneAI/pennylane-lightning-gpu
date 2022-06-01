@@ -18,6 +18,8 @@ interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enable
 from warnings import warn
 
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
+
 from pennylane import (
     math,
     BasisState,
@@ -120,6 +122,7 @@ class LightningGPU(LightningQubit):
         super().__init__(wires, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._sync = sync
+        self._dp = DevPool()
 
     def reset(self):
         super().reset()
@@ -305,6 +308,9 @@ class LightningGPU(LightningQubit):
         tp_shift = (
             trainable_params if not use_sp else [i - 1 for i in trainable_params[first_elem:]]
         )  # exclude first index if explicitly setting sv
+
+        with ThreadPoolExecutor(max_workers=self._dp.getTotalDevices()) as tp:
+            pass 
 
         jac = adj.adjoint_jacobian(
             self._gpu_state,
