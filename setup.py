@@ -16,10 +16,11 @@ import os
 import platform
 import sys
 import subprocess
+import shutil
 from pathlib import Path
 from setuptools import setup, find_packages
 
-if not os.getenv('READTHEDOCS'):
+if not os.getenv("READTHEDOCS"):
 
     from setuptools import Extension
     from setuptools.command.build_ext import build_ext
@@ -29,7 +30,6 @@ if not os.getenv('READTHEDOCS'):
             Extension.__init__(self, name, sources=[])
             self.sourcedir = Path(sourcedir).absolute()
 
-
     class CMakeBuild(build_ext):
         """
         This class is based upon the build infrastructure of Pennylane-Lightning.
@@ -38,14 +38,14 @@ if not os.getenv('READTHEDOCS'):
         user_options = build_ext.user_options + [
             ("define=", "D", "Define variables for CMake"),
             ("cuquantum=", None, "Path to cuQuantum SDK"),
-            ("verbose", "V", "Increase CMake build verbosity"),
+            ("verbosity", "V", "Increase CMake build verbosity"),
         ]
 
         def initialize_options(self):
             super().initialize_options()
             self.define = None
-            self.cuquantum = os.getenv('CUQUANTUM_SDK', None)
-            self.verbose = ""
+            self.cuquantum = os.getenv("CUQUANTUM_SDK", None)
+            self.verbosity = ""
 
         def finalize_options(self):
             # Parse the custom CMake options and store them in a new attribute
@@ -53,42 +53,39 @@ if not os.getenv('READTHEDOCS'):
             self.cmake_defines = [f"-D{define}" for define in defines]
             if self.cuquantum is not None:
                 self.cmake_defines.append(f"-DCUQUANTUM_SDK={self.cuquantum}")
-            if self.verbose != "":
-                self.verbose = "--verbose"
+            if self.verbosity != "":
+                self.verbosity = "--verbose"
 
             super().finalize_options()
 
         def build_extension(self, ext: CMakeExtension):
-            extdir = Path(self.get_ext_fullpath(ext.name)).parent.absolute()
+            extdir = str(Path(self.get_ext_fullpath(ext.name)).parent.absolute())
             debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
             cfg = "Debug" if debug else "RelWithDebInfo"
+            ninja_path = str(shutil.which("ninja"))
 
             # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON
-            cmake_args = [
+            configure_args = [
                 f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}",
                 f"-DPYTHON_EXECUTABLE={sys.executable}",
                 f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
+                "-GNinja",
+                f"-DCMAKE_MAKE_PROGRAM={ninja_path}",
                 *(self.cmake_defines),
             ]
 
             build_args = []
 
-            if platform.system() == "Darwin":
-                cmake_args += []
-            elif platform.system() == "Linux":
-                cmake_args += []
-            elif platform.system() == "Windows":
-                cmake_args += []
-            else:
+            if not platform.system() == "Linux":
                 raise RuntimeError(f"Unsupported '{platform.system()}' platform")
 
             if not Path(self.build_temp).exists():
                 os.makedirs(self.build_temp)
 
-            subprocess.check_call(["cmake", "-BBuild", ext.sourcedir] + cmake_args, cwd=self.build_temp)
             subprocess.check_call(
-                ["cmake", "--build", "Build", f"{self.verbose}"] + build_args, cwd=self.build_temp
+                ["cmake", str(ext.sourcedir)] + configure_args, cwd=self.build_temp
             )
+            subprocess.check_call(["cmake", "--build", "."] + build_args, cwd=self.build_temp)
 
 
 with open("pennylane_lightning_gpu/_version.py") as f:
@@ -125,7 +122,7 @@ info = {
     "ext_package": "pennylane_lightning_gpu",
 }
 
-if not os.getenv('READTHEDOCS'):
+if not os.getenv("READTHEDOCS"):
     info["ext_modules"] = [CMakeExtension("lightning_gpu_qubit_ops")]
     info["cmdclass"] = {"build_ext": CMakeBuild}
 
