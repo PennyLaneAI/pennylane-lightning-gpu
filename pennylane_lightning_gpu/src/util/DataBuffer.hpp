@@ -1,3 +1,4 @@
+#include "DevID.hpp"
 #include "cuda.h"
 #include "cuda_helpers.hpp"
 
@@ -24,13 +25,24 @@ template <class GPUDataT> class DataBuffer {
      */
     DataBuffer(std::size_t length, int device_id = 0,
                cudaStream_t stream_id = 0, bool alloc_memory = true)
-        : length_{length}, device_id_{device_id}, stream_id_{stream_id} {
+        : length_{length}, dev_id_{device_id, stream_id} {
         if (alloc_memory && length > 0) {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
         }
     }
+
+    DataBuffer(std::size_t length, DevID dev = {0, 0}, bool alloc_memory = true)
+        : length_{length}, dev_id_{} {
+        if (alloc_memory && length > 0) {
+            PL_CUDA_IS_SUCCESS(
+                cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
+                           sizeof(GPUDataT) * length));
+        }
+    }
+
+    DataBuffer() = delete;
 
     // Move CTOR should be forbidden for CUDA memory; explicit copies only
     DataBuffer(DataBuffer &&other) = delete;
@@ -47,8 +59,7 @@ template <class GPUDataT> class DataBuffer {
      *
      * @return const cudaStream_t&
      */
-    inline auto getStream() const -> const cudaStream_t & { return stream_id_; }
-    void setStream(const cudaStream_t &s) { stream_id_ = s; }
+    inline auto getStream() const -> const cudaStream_t & { return dev_id_.getStream(); }
 
     /**
      * @brief Copy data from another GPU memory block to here.
@@ -124,9 +135,8 @@ template <class GPUDataT> class DataBuffer {
     }
 
   private:
-    std::size_t length_;
-    int device_id_;
-    cudaStream_t stream_id_;
+    const std::size_t length_;
+    const DevID dev_id_;
     GPUDataT *gpu_buffer_;
 };
 
