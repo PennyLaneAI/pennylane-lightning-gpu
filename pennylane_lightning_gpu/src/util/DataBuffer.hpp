@@ -1,4 +1,6 @@
-#include "DevID.hpp"
+#pragma once
+
+#include "DevTag.hpp"
 #include "cuda.h"
 #include "cuda_helpers.hpp"
 
@@ -10,7 +12,7 @@ namespace Pennylane::CUDA {
  *
  * @tparam DataT Data type to store.
  */
-template <class GPUDataT> class DataBuffer {
+template <class GPUDataT, class DevTagT = int> class DataBuffer {
   public:
     /**
      * @brief Construct a new DataBuffer object
@@ -25,7 +27,7 @@ template <class GPUDataT> class DataBuffer {
      */
     DataBuffer(std::size_t length, int device_id = 0,
                cudaStream_t stream_id = 0, bool alloc_memory = true)
-        : length_{length}, dev_id_{device_id, stream_id} {
+        : length_{length}, dev_tag_{device_id, stream_id} {
         if (alloc_memory && length > 0) {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
@@ -33,8 +35,9 @@ template <class GPUDataT> class DataBuffer {
         }
     }
 
-    DataBuffer(std::size_t length, DevID dev = {0, 0}, bool alloc_memory = true)
-        : length_{length}, dev_id_{} {
+    DataBuffer(std::size_t length, const DevTag<DevTagT> &dev,
+               bool alloc_memory = true)
+        : length_{length}, dev_tag_{dev} {
         if (alloc_memory && length > 0) {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
@@ -42,10 +45,32 @@ template <class GPUDataT> class DataBuffer {
         }
     }
 
-    DataBuffer() = delete;
+    DataBuffer(std::size_t length, DevTag<DevTagT> &&dev,
+               bool alloc_memory = true)
+        : length_{length}, dev_tag_{std::move(dev)} {
+        if (alloc_memory && length > 0) {
+            PL_CUDA_IS_SUCCESS(
+                cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
+                           sizeof(GPUDataT) * length));
+        }
+    }
 
-    // Move CTOR should be forbidden for CUDA memory; explicit copies only
-    DataBuffer(DataBuffer &&other) = delete;
+    // Move assignment between objects is fine assuming data still lives on same
+    // device
+    DataBuffer &operator=(DataBuffer &&other) {
+        if (this != &other) {
+            length_ = other.length_;
+            dev_tag_ = std::move(other.dev_tag_);
+            gpu_buffer_ = other.gpu_buffer_;
+
+            other.length_ = 0;
+            gpu_buffer_ = nullptr;
+        }
+        return *this;
+    };
+
+    // Copy CTOR should be forbidden for CUDA memory; explicit data copies after
+    // construction only
     DataBuffer(const DataBuffer &other) = delete;
 
     virtual ~DataBuffer() { PL_CUDA_IS_SUCCESS(cudaFree(gpu_buffer_)); };
@@ -59,7 +84,9 @@ template <class GPUDataT> class DataBuffer {
      *
      * @return const cudaStream_t&
      */
-    inline auto getStream() const -> const cudaStream_t & { return dev_id_.getStream(); }
+    inline auto getStream() const -> cudaStream_t {
+        return dev_tag_.getStreamID();
+    }
 
     /**
      * @brief Copy data from another GPU memory block to here.
@@ -135,8 +162,8 @@ template <class GPUDataT> class DataBuffer {
     }
 
   private:
-    const std::size_t length_;
-    const DevID dev_id_;
+    std::size_t length_;
+    DevTag<DevTagT> dev_tag_;
     GPUDataT *gpu_buffer_;
 };
 

@@ -59,15 +59,13 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      *
      * @return cudaStream_t&
      */
-    inline auto getStream() -> cudaStream_t & {
-        return data_buffer_.getStream();
-    }
+    inline auto getStream() -> cudaStream_t { return data_buffer_.getStream(); }
     /**
      * @brief Get the CUDA stream for the given object.
      *
      * @return const cudaStream_t&
      */
-    inline auto getStream() const -> const cudaStream_t & {
+    inline auto getStream() const -> cudaStream_t {
         return data_buffer_.getStream();
     }
     void setStream(const cudaStream_t &s) { data_buffer_.setStream(s); }
