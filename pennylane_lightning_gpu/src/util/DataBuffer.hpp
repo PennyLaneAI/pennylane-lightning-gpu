@@ -1,5 +1,5 @@
-#include "cuda_helpers.hpp"
 #include "cuda.h"
+#include "cuda_helpers.hpp"
 
 namespace Pennylane::CUDA {
 
@@ -14,12 +14,13 @@ template <class GPUDataT> class DataBuffer {
     /**
      * @brief Construct a new DataBuffer object
      *
-     * @param num_elements Number of elements in data buffer.
+     * @param length Number of elements in data buffer.
      * @param device_id Associated device ID. Must be `cudaSetDevice`
      * compatible.
      * @param stream_id Associated stread ID. Must be `cudaSetDevice`
      * compatible.
-     * @param alloc_memory
+     * @param alloc_memory Indicate whether to allocate the memory for the
+     * buffer. Defaults to `true`
      */
     DataBuffer(std::size_t length, int device_id = 0,
                cudaStream_t stream_id = 0, bool alloc_memory = true)
@@ -31,7 +32,7 @@ template <class GPUDataT> class DataBuffer {
         }
     }
 
-    // Move CTOR should be forbidden for CUDA memory; copies only
+    // Move CTOR should be forbidden for CUDA memory; explicit copies only
     DataBuffer(DataBuffer &&other) = delete;
     DataBuffer(const DataBuffer &other) = delete;
 
@@ -39,7 +40,7 @@ template <class GPUDataT> class DataBuffer {
 
     auto getData() -> GPUDataT * { return gpu_buffer_; }
     auto getData() const -> const GPUDataT * { return gpu_buffer_; }
-    auto getLength() { return length_; }
+    auto getLength() const { return length_; }
 
     /**
      * @brief Get the CUDA stream for the given object.
@@ -56,7 +57,7 @@ template <class GPUDataT> class DataBuffer {
     void CopyGpuDataToGpu(const GPUDataT *gpu_in, std::size_t length,
                           bool async = false) {
         PL_ABORT_IF_NOT(
-            num_elements_ < length,
+            getLength() < length,
             "Sizes do not match for GPU data. Please ensure the source "
             "buffer is not larger than the destination buffer");
         if (async) {
@@ -75,7 +76,7 @@ template <class GPUDataT> class DataBuffer {
      *
      */
     void CopyGpuDataToGpu(const DataBuffer &buffer, bool async = false) {
-        CopyGpuDataToGpuIn(buffer.getData(), buffer.getLength(), async);
+        CopyGpuDataToGpu(buffer.getData(), buffer.getLength(), async);
     }
 
     /**
@@ -123,9 +124,9 @@ template <class GPUDataT> class DataBuffer {
     }
 
   private:
+    std::size_t length_;
     int device_id_;
     cudaStream_t stream_id_;
-    std::size_t length_;
     GPUDataT *gpu_buffer_;
 };
 
