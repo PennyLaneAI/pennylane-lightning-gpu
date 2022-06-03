@@ -310,7 +310,7 @@ class LightningGPU(LightningQubit):
         )  # exclude first index if explicitly setting sv
 
         with ThreadPoolExecutor(max_workers=self._dp.getTotalDevices()) as tp:
-            pass 
+            pass
 
         jac = adj.adjoint_jacobian(
             self._gpu_state,
