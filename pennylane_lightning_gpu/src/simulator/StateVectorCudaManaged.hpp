@@ -46,9 +46,7 @@ class StateVectorCudaManaged
     StateVectorCudaManaged(size_t num_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits),
-          gate_cache_(true)
-
-    {
+          gate_cache_(true) {
         BaseType::initSV();
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
@@ -69,7 +67,12 @@ class StateVectorCudaManaged
         BaseType::CopyGpuDataToGpuIn(other);
     }
 
-    StateVectorCudaManaged &operator=(StateVectorCudaManaged &other) {}
+    StateVectorCudaManaged &operator=(StateVectorCudaManaged &other) {
+        auto db_ref = this->getDataBuffer();
+        if (this != &other) {
+            db_ref = other.getDataBuffer();
+        }
+    }
 
     ~StateVectorCudaManaged() {
         PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(

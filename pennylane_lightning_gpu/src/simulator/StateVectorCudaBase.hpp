@@ -2,6 +2,7 @@
 
 #include "cuda.h"
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
+#include <memory>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -45,30 +46,32 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      * @return const CFP_t* Complex device pointer.
      */
     [[nodiscard]] auto getData() const -> const CFP_t * {
-        return data_buffer_.getData();
+        return data_buffer_->getData();
     }
     /**
      * @brief Return a pointer to the GPU data.
      *
      * @return CFP_t* Complex device pointer.
      */
-    [[nodiscard]] auto getData() -> CFP_t * { return data_buffer_.getData(); }
+    [[nodiscard]] auto getData() -> CFP_t * { return data_buffer_->getData(); }
 
     /**
      * @brief Get the CUDA stream for the given object.
      *
      * @return cudaStream_t&
      */
-    inline auto getStream() -> cudaStream_t { return data_buffer_.getStream(); }
+    inline auto getStream() -> cudaStream_t {
+        return data_buffer_->getStream();
+    }
     /**
      * @brief Get the CUDA stream for the given object.
      *
      * @return const cudaStream_t&
      */
     inline auto getStream() const -> cudaStream_t {
-        return data_buffer_.getStream();
+        return data_buffer_->getStream();
     }
-    void setStream(const cudaStream_t &s) { data_buffer_.setStream(s); }
+    void setStream(const cudaStream_t &s) { data_buffer_->setStream(s); }
 
     /**
      * @brief Explicitly copy data from host memory to GPU device.
@@ -79,7 +82,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
                                   bool async = false) {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for Host and GPU data");
-        data_buffer_.CopyHostDataToGpu(sv.getData(), sv.getLength(), async);
+        data_buffer_->CopyHostDataToGpu(sv.getData(), sv.getLength(), async);
     }
 
     /**
@@ -92,7 +95,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
                       bool async = false) {
         PL_ABORT_IF_NOT(BaseType::getLength() == sv.size(),
                         "Sizes do not match for Host and GPU data");
-        data_buffer_.CopyHostDataToGpu(sv.data(), sv.size(), async);
+        data_buffer_->CopyHostDataToGpu(sv.data(), sv.size(), async);
     }
 
     /**
@@ -105,7 +108,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
                                    bool async = false) {
         PL_ABORT_IF_NOT(BaseType::getLength() == length,
                         "Sizes do not match for Host and GPU data");
-        data_buffer_.CopyGpuDataToGpu(gpu_sv, length, async);
+        data_buffer_->CopyGpuDataToGpu(gpu_sv, length, async);
     }
     /**
      * @brief Explicitly copy data from antoher GPU device memory block to this
@@ -116,9 +119,9 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
     inline void CopyGpuDataToGpuIn(const Derived &sv, bool async = false) {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for Host and GPU data");
-        PL_ABORT_IF_NOT(typeid(data_buffer_.getData()) == typeid(sv.getData()),
+        PL_ABORT_IF_NOT(typeid(data_buffer_->getData()) == typeid(sv.getData()),
                         "Data types are incompatible for GPU-GPU transfer");
-        data_buffer_.CopyGpuDataToGpu(sv.getData(), sv.getLength(), async);
+        data_buffer_->CopyGpuDataToGpu(sv.getData(), sv.getLength(), async);
     }
 
     /**
@@ -131,8 +134,8 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
                                   std::size_t length, bool async = false) {
         PL_ABORT_IF_NOT(BaseType::getLength() == length,
                         "Sizes do not match for Host and GPU data");
-        data_buffer_.CopyHostDataToGpu(reinterpret_cast<const CFP_t *>(host_sv),
-                                       length, async);
+        data_buffer_->CopyHostDataToGpu(
+            reinterpret_cast<const CFP_t *>(host_sv), length, async);
     }
 
     /**
@@ -144,7 +147,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
                                   bool async = false) const {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for Host and GPU data");
-        data_buffer_.CopyGpuDataToHost(sv.getData(), sv.getLength(), async);
+        data_buffer_->CopyGpuDataToHost(sv.getData(), sv.getLength(), async);
     }
     /**
      * @brief Explicitly copy data from GPU device to host memory.
@@ -155,7 +158,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
                                   size_t length, bool async = false) const {
         PL_ABORT_IF_NOT(BaseType::getLength() == length,
                         "Sizes do not match for Host and GPU data");
-        data_buffer_.CopyGpuDataToHost(host_sv, length, async);
+        data_buffer_->CopyGpuDataToHost(host_sv, length, async);
     }
 
     /**
@@ -167,15 +170,15 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
     inline void CopyGpuDataToGpuOut(Derived &sv, bool async = false) {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for GPU data objects");
-        sv.getDataBuffer().CopyGpuDataToGpu(getData(),
-                                            data_buffer_.getLength());
+        sv.getDataBuffer()->CopyGpuDataToGpu(getData(),
+                                             data_buffer_->getLength());
     }
 
     const CUDA::DataBuffer<CFP_t> &getDataBuffer() const {
-        return data_buffer_;
+        return *data_buffer_;
     }
 
-    CUDA::DataBuffer<CFP_t> &getDataBuffer() { return data_buffer_; }
+    CUDA::DataBuffer<CFP_t> &getDataBuffer() { return *data_buffer_; }
 
     /**
      * @brief Update GPU device data from given derived object.
@@ -207,8 +210,8 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
                         int device_id = 0, cudaStream_t stream_id = 0,
                         bool device_alloc = true)
         : StateVectorBase<Precision, Derived>(num_qubits), stream_{stream},
-          data_buffer_{Util::exp2(num_qubits), device_id, stream_id,
-                       device_alloc} {}
+          data_buffer_{std::make_unique<CUDA::DataBuffer<CFP_t>>(
+              Util::exp2(num_qubits), device_id, stream_id, device_alloc)} {}
     StateVectorCudaBase(size_t num_qubits)
         : StateVectorCudaBase(num_qubits, 0, true) {}
     StateVectorCudaBase() = delete;
@@ -237,7 +240,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
   private:
     cudaStream_t stream_;
     int device_id_;
-    CUDA::DataBuffer<CFP_t> data_buffer_;
+    std::unique_ptr<CUDA::DataBuffer<CFP_t>> data_buffer_;
     const std::unordered_set<std::string> const_gates_{
         "Identity", "PauliX", "PauliY", "PauliZ", "Hadamard", "T",
         "S",        "CNOT",   "SWAP",   "CZ",     "CSWAP",    "Toffoli"};
