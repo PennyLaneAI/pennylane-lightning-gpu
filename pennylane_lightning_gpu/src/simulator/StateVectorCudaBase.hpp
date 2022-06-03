@@ -206,14 +206,11 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
                                        const std::vector<Precision> &)>;
     using FMap = std::unordered_map<std::string, ParFunc>;
 
-    StateVectorCudaBase(size_t num_qubits, cudaStream_t stream,
-                        int device_id = 0, cudaStream_t stream_id = 0,
-                        bool device_alloc = true)
-        : StateVectorBase<Precision, Derived>(num_qubits), stream_{stream},
+    StateVectorCudaBase(size_t num_qubits, int device_id = 0,
+                        cudaStream_t stream_id = 0, bool device_alloc = true)
+        : StateVectorBase<Precision, Derived>(num_qubits),
           data_buffer_{std::make_unique<CUDA::DataBuffer<CFP_t>>(
               Util::exp2(num_qubits), device_id, stream_id, device_alloc)} {}
-    StateVectorCudaBase(size_t num_qubits)
-        : StateVectorCudaBase(num_qubits, 0, true) {}
     StateVectorCudaBase() = delete;
 
     virtual ~StateVectorCudaBase(){};
@@ -238,8 +235,6 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
     }
 
   private:
-    cudaStream_t stream_;
-    int device_id_;
     std::unique_ptr<CUDA::DataBuffer<CFP_t>> data_buffer_;
     const std::unordered_set<std::string> const_gates_{
         "Identity", "PauliX", "PauliY", "PauliZ", "Hadamard", "T",

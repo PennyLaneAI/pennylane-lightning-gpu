@@ -68,10 +68,13 @@ class StateVectorCudaManaged
     }
 
     StateVectorCudaManaged &operator=(StateVectorCudaManaged &other) {
-        auto db_ref = this->getDataBuffer();
         if (this != &other) {
-            db_ref = other.getDataBuffer();
+            this->data_buffer_ = std::make_unique<CUDA::DataBuffer<CFP_t>>(
+                other.getLength(), other.getDataBuffer()->getDeviceID(),
+                other.getDataBuffer()->getStreamID());
+            CopyGpuDataToGpuIn(other);
         }
+        return *this;
     }
 
     ~StateVectorCudaManaged() {
