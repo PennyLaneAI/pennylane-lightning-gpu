@@ -142,9 +142,9 @@ template <class fp_t> class GateCache {
         const auto gate_key = std::make_pair(gate_name, gate_param);
         host_gates_[gate_key] = std::move(host_data);
         auto &gate = host_gates_[gate_key];
-
-        device_gates_[gate_key] = {gate.size(), device_tag_};
-        device_gates_[gate_key].CopyHostDataToGpu(gate.data(), gate.size());
+        CUDA::DataBuffer<CFP_t> gpu_date{gate.size(), device_tag_};
+        gpu_date.CopyHostDataToGpu(gate.data(), gate.size());
+        device_gates_[gate_key] = std::move(gpu_date);
         total_alloc_bytes_ += (sizeof(CFP_t) * gate.size());
     }
     /**
@@ -157,9 +157,9 @@ template <class fp_t> class GateCache {
     void add_gate(const gate_id &gate_key, std::vector<CFP_t> host_data) {
         host_gates_[gate_key] = std::move(host_data);
         auto &gate = host_gates_[gate_key];
-        device_gates_[gate_key] =
-            std::move(CUDA::DataBuffer<CFP_t>{gate.size(), device_tag_});
-        device_gates_[gate_key].CopyHostDataToGpu(gate.data(), gate.size());
+        CUDA::DataBuffer<CFP_t> gpu_date{gate.size(), device_tag_};
+        gpu_date.CopyHostDataToGpu(gate.data(), gate.size());
+        device_gates_[gate_key] = std::move(gpu_date);
         total_alloc_bytes_ += (sizeof(CFP_t) * gate.size());
     }
 
@@ -171,10 +171,11 @@ template <class fp_t> class GateCache {
      * @param gate_param Gate parameter value. `0.0` if non-parametric gate.
      * @return CFP_t* Pointer to gate values on device.
      */
-    CFP_t *get_gate_device_ptr(const std::string &gate_name, fp_t gate_param) {
+    const CFP_t *get_gate_device_ptr(const std::string &gate_name,
+                                     fp_t gate_param) {
         return device_gates_[std::make_pair(gate_name, gate_param)].getData();
     }
-    CFP_t *get_gate_device_ptr(const gate_id &gate_key) {
+    const CFP_t *get_gate_device_ptr(const gate_id &gate_key) {
         return device_gates_[gate_key].getData();
     }
     auto get_gate_host(const std::string &gate_name, fp_t gate_param) {
@@ -185,8 +186,8 @@ template <class fp_t> class GateCache {
     }
 
   private:
-    std::size_t total_alloc_bytes_;
     DevTag<int> device_tag_;
+    std::size_t total_alloc_bytes_;
 
     struct gate_id_hash {
         template <class T1, class T2>

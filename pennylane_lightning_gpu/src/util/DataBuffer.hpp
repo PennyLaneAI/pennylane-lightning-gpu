@@ -55,6 +55,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
         }
     }
 
+    DataBuffer() = default;
+
     // Move assignment between objects is fine assuming data still lives on same
     // device
     DataBuffer &operator=(DataBuffer &&other) {

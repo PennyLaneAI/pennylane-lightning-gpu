@@ -40,6 +40,8 @@ class DevTag {
             auto ref_st = &other.stream_id_;
             ref_id = nullptr;
             ref_st = nullptr;
+            static_cast<void>(ref_id);
+            static_cast<void>(ref_st);
         }
         return *this;
     }
