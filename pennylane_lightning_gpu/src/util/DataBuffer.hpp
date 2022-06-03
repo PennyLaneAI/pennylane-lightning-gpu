@@ -59,6 +59,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
 
     DataBuffer &operator=(const DataBuffer &other) {
         if (this != &other) {
+            int local_dev_id = -1;
+            PL_CUDA_IS_SUCCESS(cudaGetDevice(&local_dev_id));
             length_ = other.length_;
             dev_tag_ =
                 DevTag<DevTagT>{local_dev_id, other.dev_tag_.getStreamID()};
