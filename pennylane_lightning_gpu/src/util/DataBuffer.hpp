@@ -57,14 +57,30 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
 
     DataBuffer() = default;
 
-    // Move assignment between objects is fine assuming data still lives on same
-    // device
-    DataBuffer &operator=(DataBuffer &&other) {
+    DataBuffer &operator=(const DataBuffer &other) {
         if (this != &other) {
             length_ = other.length_;
-            dev_tag_ = std::move(other.dev_tag_);
-            gpu_buffer_ = other.gpu_buffer_;
+            dev_tag_ =
+                DevTag<DevTagT>{local_dev_id, other.dev_tag_.getStreamID()};
+            CopyGpuDataToGpu(other.gpu_buffer_, other.length_);
+        }
+        return *this;
+    }
 
+    DataBuffer &operator=(DataBuffer &&other) {
+        if (this != &other) {
+            int local_dev_id = -1;
+            PL_CUDA_IS_SUCCESS(cudaGetDevice(&local_dev_id));
+            length_ = other.length_;
+            if (local_dev_id == other.dev_tag_.getDeviceID()) {
+                dev_tag_ = std::move(other.dev_tag_);
+                gpu_buffer_ = other.gpu_buffer_;
+            } else {
+                dev_tag_ =
+                    DevTag<DevTagT>{local_dev_id, other.dev_tag_.getStreamID()};
+                CopyGpuDataToGpu(other.gpu_buffer_, other.length_);
+                other.dev_tag_ = {};
+            }
             other.length_ = 0;
             gpu_buffer_ = nullptr;
         }
