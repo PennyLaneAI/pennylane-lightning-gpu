@@ -171,7 +171,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for GPU data objects");
         sv.getDataBuffer()->CopyGpuDataToGpu(getData(),
-                                             data_buffer_->getLength());
+                                             data_buffer_->getLength(), async);
     }
 
     const CUDA::DataBuffer<CFP_t> &getDataBuffer() const {

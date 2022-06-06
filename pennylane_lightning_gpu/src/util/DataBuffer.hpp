@@ -55,7 +55,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
         }
     }
 
-    DataBuffer() = default;
+    // Buffer should never be default initialized
+    DataBuffer() = delete;
 
     DataBuffer &operator=(const DataBuffer &other) {
         if (this != &other) {

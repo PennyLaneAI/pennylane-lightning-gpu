@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "DataBuffer.hpp"
+#include "DevTag.hpp"
 #include "Gates.hpp"
 #include "cuda.h"
 #include "cuda_helpers.hpp"
@@ -20,8 +21,7 @@ using namespace cuUtil;
 } // namespace
 /// @endcond
 
-namespace Pennylane {
-namespace CUDA {
+namespace Pennylane::CUDA {
 
 /**
  * @brief Represents a cache for gate data to be accessible on the device.
@@ -35,7 +35,7 @@ template <class fp_t> class GateCache {
 
     GateCache() = delete;
     GateCache(bool populate, int device_id = 0, cudaStream_t stream_id = 0)
-        : device_tag_{device_id, stream_id}, total_alloc_bytes_{0} {
+        : device_tag_(device_id, stream_id), total_alloc_bytes_{0} {
         if (populate) {
             defaultPopulateCache();
         }
@@ -50,31 +50,32 @@ template <class fp_t> class GateCache {
      *
      */
     void defaultPopulateCache() {
-        host_gates_[std::make_pair(std::string{"Identity"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"Identity"}, 0.0)) =
             std::vector<CFP_t>{cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
                                cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"PauliX"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"PauliX"}, 0.0)) =
             std::vector<CFP_t>{cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
                                cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"PauliY"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"PauliY"}, 0.0)) =
             std::vector<CFP_t>{cuUtil::ZERO<CFP_t>(), -cuUtil::IMAG<CFP_t>(),
                                cuUtil::IMAG<CFP_t>(), cuUtil::ZERO<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"PauliZ"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"PauliZ"}, 0.0)) =
             std::vector<CFP_t>{cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
                                cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"Hadamard"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"Hadamard"}, 0.0)) =
             std::vector<CFP_t>{
                 cuUtil::INVSQRT2<CFP_t>(), cuUtil::INVSQRT2<CFP_t>(),
                 cuUtil::INVSQRT2<CFP_t>(), -cuUtil::INVSQRT2<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"S"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"S"}, 0.0)) =
             std::vector<CFP_t>{cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
                                cuUtil::ZERO<CFP_t>(), cuUtil::IMAG<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"T"}, 0.0)] = std::vector<CFP_t>{
+        host_gates_.at(
+            std::make_pair(std::string{"T"}, 0.0)) = std::vector<CFP_t>{
             cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
             cuUtil::ConstMultSC(
                 cuUtil::SQRT2<fp_t>() / 2.0,
                 cuUtil::ConstSum(cuUtil::ONE<CFP_t>(), cuUtil::IMAG<CFP_t>()))};
-        host_gates_[std::make_pair(std::string{"SWAP"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"SWAP"}, 0.0)) =
             std::vector<CFP_t>{cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
                                cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
                                cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
@@ -83,22 +84,23 @@ template <class fp_t> class GateCache {
                                cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
                                cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
                                cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"CNOT"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"CNOT"}, 0.0)) =
             std::vector<CFP_t>{cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
                                cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"Toffoli"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"Toffoli"}, 0.0)) =
             std::vector<CFP_t>{cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
                                cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"CZ"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"CZ"}, 0.0)) =
             std::vector<CFP_t>{cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
                                cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"CSWAP"}, 0.0)] =
+        host_gates_.at(std::make_pair(std::string{"CSWAP"}, 0.0)) =
             host_gates_.at(std::make_pair(std::string{"SWAP"}, 0.0));
         for (const auto &[h_gate_k, h_gate_v] : host_gates_) {
-            device_gates_[h_gate_k] = std::move(
-                CUDA::DataBuffer<CFP_t>{h_gate_v.size(), device_tag_});
-            device_gates_[h_gate_k].CopyHostDataToGpu(h_gate_v.data(),
-                                                      h_gate_v.size());
+            device_gates_.emplace(
+                std::piecewise_construct, std::forward_as_tuple(h_gate_k),
+                std::forward_as_tuple(h_gate_v.size(), device_tag_));
+            device_gates_.at(h_gate_k).CopyHostDataToGpu(h_gate_v.data(),
+                                                         h_gate_v.size());
             total_alloc_bytes_ += (sizeof(CFP_t) * h_gate_v.size());
         }
     }
@@ -142,11 +144,15 @@ template <class fp_t> class GateCache {
         const auto gate_key = std::make_pair(gate_name, gate_param);
         host_gates_[gate_key] = std::move(host_data);
         auto &gate = host_gates_[gate_key];
-        CUDA::DataBuffer<CFP_t> gpu_date{gate.size(), device_tag_};
-        gpu_date.CopyHostDataToGpu(gate.data(), gate.size());
-        device_gates_[gate_key] = std::move(gpu_date);
-        total_alloc_bytes_ += (sizeof(CFP_t) * gate.size());
+
+        device_gates_.emplace(std::piecewise_construct,
+                              std::forward_as_tuple(gate_key),
+                              std::forward_as_tuple(gate.size(), device_tag_));
+        device_gates_.at(gate_key).CopyHostDataToGpu(gate.data(), gate.size());
+
+        this->total_alloc_bytes_ += (sizeof(CFP_t) * gate.size());
     }
+
     /**
      * @brief see `void add_gate(const std::string &gate_name, fp_t gate_param,
                   const std::vector<CFP_t> &host_data)`
@@ -157,9 +163,12 @@ template <class fp_t> class GateCache {
     void add_gate(const gate_id &gate_key, std::vector<CFP_t> host_data) {
         host_gates_[gate_key] = std::move(host_data);
         auto &gate = host_gates_[gate_key];
-        CUDA::DataBuffer<CFP_t> gpu_date{gate.size(), device_tag_};
-        gpu_date.CopyHostDataToGpu(gate.data(), gate.size());
-        device_gates_[gate_key] = std::move(gpu_date);
+
+        device_gates_.emplace(std::piecewise_construct,
+                              std::forward_as_tuple(gate_key),
+                              std::forward_as_tuple(gate.size(), device_tag_));
+        device_gates_.at(gate_key).CopyHostDataToGpu(gate.data(), gate.size());
+
         total_alloc_bytes_ += (sizeof(CFP_t) * gate.size());
     }
 
@@ -173,20 +182,21 @@ template <class fp_t> class GateCache {
      */
     const CFP_t *get_gate_device_ptr(const std::string &gate_name,
                                      fp_t gate_param) {
-        return device_gates_[std::make_pair(gate_name, gate_param)].getData();
+        return device_gates_.at(std::make_pair(gate_name, gate_param))
+            .getData();
     }
     const CFP_t *get_gate_device_ptr(const gate_id &gate_key) {
-        return device_gates_[gate_key].getData();
+        return device_gates_.at(gate_key).getData();
     }
     auto get_gate_host(const std::string &gate_name, fp_t gate_param) {
-        return host_gates_[std::make_pair(gate_name, gate_param)];
+        return host_gates_.at(std::make_pair(gate_name, gate_param));
     }
     auto get_gate_host(const gate_id &gate_key) {
-        return host_gates_[gate_key];
+        return host_gates_.at(gate_key);
     }
 
   private:
-    DevTag<int> device_tag_;
+    const DevTag<int> device_tag_;
     std::size_t total_alloc_bytes_;
 
     struct gate_id_hash {
@@ -201,5 +211,4 @@ template <class fp_t> class GateCache {
     std::unordered_map<gate_id, std::vector<CFP_t>, gate_id_hash> host_gates_;
 };
 
-} // namespace CUDA
-} // namespace Pennylane
+} // namespace Pennylane::CUDA
