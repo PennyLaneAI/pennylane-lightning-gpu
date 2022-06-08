@@ -108,7 +108,7 @@ info = {
     "url": "https://github.com/PennyLaneAI/pennylane-lightning-gpu",
     "license": "Apache License 2.0",
     "packages": find_packages(where="."),
-    "package_data": {"pennylane_lightning_gpu": ["src/*"]},
+    "package_data": {"pennylane_lightning_gpu": ["src/*", "src/**/*"]},
     "entry_points": {
         "pennylane.plugins": [
             "lightning.gpu = pennylane_lightning_gpu:LightningGPU",

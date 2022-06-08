@@ -40,20 +40,7 @@ import pennylane as qml
 from ._version import __version__
 
 try:
-    from .lightning_gpu_qubit_ops import (
-        LightningGPU_C128,
-        LightningGPU_C64,
-        AdjointJacobianGPU_C128,
-        AdjointJacobianGPU_C64,
-        device_reset,
-        is_gpu_supported,
-        get_gpu_arch,
-        DevPool,
-        ObsStructGPU_C128,
-        ObsStructGPU_C64,
-        OpsStructGPU_C128,
-        OpsStructGPU_C64,
-    )
+    from .module_bindings import *
 
     from ._serialize import _serialize_obs, _serialize_ops
     from ctypes.util import find_library
@@ -87,10 +74,22 @@ UNSUPPORTED_PARAM_GATES_ADJOINT = (
 )
 
 
-def _gpu_dtype(dtype):
+def _gpu_dtype(dtype, use_managed=True):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
+    if use_managed:
+        ctor = (
+            LightningGPU_StateVectorCudaManaged_C128
+            if dtype == np.complex128
+            else LightningGPU_StateVectorCudaManaged_C64
+        )
+    else:
+        ctor = (
+            LightningGPU_StateVectorCudaRaw_C128
+            if dtype == np.complex128
+            else LightningGPU_StateVectorCudaRaw_C64
+        )
+    return ctor
 
 
 class LightningGPU(LightningQubit):
@@ -103,7 +102,7 @@ class LightningGPU(LightningQubit):
 
     name = "PennyLane plugin for GPU-backed Lightning device using NVIDIA cuQuantum SDK"
     short_name = "lightning.gpu"
-    pennylane_requires = ">=0.22"
+    pennylane_requires = ">=0.23"
     version = __version__
     author = "Xanadu Inc."
     _CPP_BINARY_AVAILABLE = True

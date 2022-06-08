@@ -2,7 +2,7 @@ project(lightning_gpu_simulator)
 set(CMAKE_CXX_STANDARD 17)
 enable_language(CXX CUDA)
 
-set(SIMULATOR_FILES StateVectorCudaBase.hpp StateVectorCudaManaged.hpp cuGateCache.hpp cuGates_host.hpp CACHE INTERNAL "" FORCE)
+set(SIMULATOR_FILES StateVectorCudaBase.hpp StateVectorCudaManaged.hpp StateVectorCudaRaw.hpp cuGateCache.hpp cuGates_host.hpp CACHE INTERNAL "" FORCE)
 add_library(lightning_gpu_simulator STATIC ${SIMULATOR_FILES})
 
 get_filename_component(CUSTATEVEC_INC_DIR ${CUSTATEVEC_INC} DIRECTORY)
@@ -14,6 +14,13 @@ set_target_properties(lightning_gpu_simulator PROPERTIES POSITION_INDEPENDENT_CO
 
 set_target_properties(lightning_gpu_simulator PROPERTIES LINKER_LANGUAGE CXX)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 if(ENABLE_NATIVE)
     target_compile_options(lightning_gpu_simulator PRIVATE -march=native)
 endif()
+
+if(ENABLE_INTERFACES)
+    add_subdirectory(interfaces)
+endif()
+

@@ -234,6 +234,13 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         CopyHostDataToGpu(data.data(), data.size(), async);
     }
 
+    /**
+     * @brief Utility method to get the mappings from gate to supported wires.
+     *
+     * @return const std::unordered_map<std::string, std::size_t>&
+     */
+    static auto getClassName();
+
   protected:
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
                                        const std::vector<Precision> &)>;
@@ -241,7 +248,8 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
 
     StateVectorCudaBase(size_t num_qubits, cudaStream_t stream,
                         bool device_alloc = true)
-        : StateVectorBase<Precision, Derived>(num_qubits), stream_{stream} {
+        : StateVectorBase<Precision, Derived>(num_qubits), stream_{stream},
+          device_alloc{device_alloc} {
         if (device_alloc && num_qubits > 0) {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&data_),
@@ -252,7 +260,11 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         : StateVectorCudaBase(num_qubits, 0, true) {}
     StateVectorCudaBase() = delete;
 
-    virtual ~StateVectorCudaBase() { PL_CUDA_IS_SUCCESS(cudaFree(data_)); };
+    virtual ~StateVectorCudaBase() {
+        if (device_alloc) {
+            PL_CUDA_IS_SUCCESS(cudaFree(data_));
+        }
+    };
 
     /**
      * @brief Return the mapping of named gates to amount of control wires they
@@ -304,6 +316,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         {"CRot", 1},
         {"CSWAP", 1},
         {"Toffoli", 2}};
+    bool device_alloc;
 };
 
 } // namespace Pennylane
