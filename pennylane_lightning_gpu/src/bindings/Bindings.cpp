@@ -635,4 +635,3 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
 
 } // namespace
   /// @endcond
-

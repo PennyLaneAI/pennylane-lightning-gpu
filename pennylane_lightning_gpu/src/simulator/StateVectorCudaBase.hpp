@@ -119,10 +119,13 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
     inline void CopyGpuDataToGpuIn(const Derived &sv, bool async = false) {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for Host and GPU data");
-        auto same = std::is_same_v< typename std::decay_t<typename std::remove_pointer_t<decltype(data_buffer_->getData())>>,
-                                    typename std::decay_t<typename std::remove_pointer_t<decltype(sv.getData())>>
-                                >;
-        PL_ABORT_IF_NOT(same, "Data types are incompatible for GPU-GPU transfer");
+        auto same =
+            std::is_same_v<typename std::decay_t<typename std::remove_pointer_t<
+                               decltype(data_buffer_->getData())>>,
+                           typename std::decay_t<typename std::remove_pointer_t<
+                               decltype(sv.getData())>>>;
+        PL_ABORT_IF_NOT(same,
+                        "Data types are incompatible for GPU-GPU transfer");
         data_buffer_->CopyGpuDataToGpu(sv.getData(), sv.getLength(), async);
     }
 
