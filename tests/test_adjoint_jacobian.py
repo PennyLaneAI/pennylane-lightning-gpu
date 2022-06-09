@@ -128,16 +128,6 @@ class TestAdjointJacobian:
         ):
             dev_gpu.adjoint_jacobian(tape)
 
-        with qml.tape.QuantumTape() as tape:
-            qml.SingleExcitation(0.1, wires=[0, 1])
-            qml.expval(qml.PauliZ(0))
-
-        with pytest.raises(
-            qml.QuantumFunctionError,
-            match="The SingleExcitation operation is not supported using the",
-        ):
-            dev_gpu.adjoint_jacobian(tape)
-
     @pytest.mark.skipif(not lq._CPP_BINARY_AVAILABLE, reason="Lightning binary required")
     @pytest.mark.skipif(not lg._CPP_BINARY_AVAILABLE, reason="LightningGPU unsupported")
     def test_proj_unsupported(self, dev_gpu):
