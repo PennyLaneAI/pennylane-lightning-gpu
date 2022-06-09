@@ -187,8 +187,8 @@ template <class T = double> class AdjointJacobianGPU {
         {"ControlledPhaseShift", static_cast<T>(1)},
         {"SingleExcitation", -static_cast<T>(0.5)},
         {"SingleExcitationMinus", -static_cast<T>(0.5)},
-        {"SingleExcitationPlus", -static_cast<T>(0.5)} {"DoubleExcitation",
-                                                        -static_cast<T>(0.5)},
+        {"SingleExcitationPlus", -static_cast<T>(0.5)},
+        {"DoubleExcitation", -static_cast<T>(0.5)},
         {"DoubleExcitationMinus", -static_cast<T>(0.5)},
         {"DoubleExcitationPlus", -static_cast<T>(0.5)}};
 

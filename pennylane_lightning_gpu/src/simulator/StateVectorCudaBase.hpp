@@ -1,19 +1,3 @@
-// Copyright 2022 Xanadu Quantum Technologies Inc.
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-/**
- * @file StateVectorCudaBase.hpp
- */
 #pragma once
 
 #include "cuda.h"
@@ -30,7 +14,6 @@
 /// @cond DEV
 namespace {
 namespace cuUtil = Pennylane::CUDA::Util;
-namespace cuGConst = Pennylane::CUDA::cuGates::Constant;
 } // namespace
 /// @endcond
 
@@ -278,7 +261,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      * @return const std::unordered_map<std::string, std::size_t>&
      */
     auto getCtrlMap() -> const std::unordered_map<std::string, std::size_t> & {
-        return cuGConst::const_gate_names;
+        return ctrl_map_;
     }
     /**
      * @brief Utility method to get the mappings from gate to supported wires.
@@ -287,13 +270,40 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      */
     auto getParametricGatesMap()
         -> const std::unordered_map<std::string, std::size_t> & {
-        return cuGConst::const_gate_names;
+        return ctrl_map_;
     }
 
   private:
     cudaStream_t stream_;
     int device_id_;
     CFP_t *data_;
+    const std::unordered_set<std::string> const_gates_{
+        "Identity", "PauliX", "PauliY", "PauliZ", "Hadamard", "T",
+        "S",        "CNOT",   "SWAP",   "CZ",     "CSWAP",    "Toffoli"};
+    const std::unordered_map<std::string, std::size_t> ctrl_map_{
+        // Add mapping from function name to required wires.
+        {"Identity", 0},
+        {"PauliX", 0},
+        {"PauliY", 0},
+        {"PauliZ", 0},
+        {"Hadamard", 0},
+        {"T", 0},
+        {"S", 0},
+        {"RX", 0},
+        {"RY", 0},
+        {"RZ", 0},
+        {"Rot", 0},
+        {"PhaseShift", 0},
+        {"ControlledPhaseShift", 1},
+        {"CNOT", 1},
+        {"SWAP", 0},
+        {"CZ", 1},
+        {"CRX", 1},
+        {"CRY", 1},
+        {"CRZ", 1},
+        {"CRot", 1},
+        {"CSWAP", 1},
+        {"Toffoli", 2}};
 };
 
 } // namespace Pennylane

@@ -419,7 +419,7 @@ class StateVectorCudaManaged
         auto &&mat = cuGates::getIsingXX<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyGeneratorIsingXX(const std::vectoR<std::size_t> &wires,
+    inline void applyGeneratorIsingXX(const std::vector<std::size_t> &wires,
                                       bool adjoint) {
         auto &&mat = cuGates::getGeneratorIsingXX<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
@@ -439,7 +439,7 @@ class StateVectorCudaManaged
         auto &&mat = cuGates::getIsingZZ<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyGeneratorIsingZZ(const std::vector<std::size_t> $wires,
+    inline void applyGeneratorIsingZZ(const std::vector<std::size_t> &wires,
                                       bool adjoint) {
         auto &&mat = cuGates::getGeneratorIsingZZ<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
