@@ -655,14 +655,6 @@ TEMPLATE_TEST_CASE("Sample", "[LightningGPU_Param]", float, double) {
         probabilities[i] = counts[i] / (TestType)num_samples;
     }
 
-    // compare estimated probabilities to real probabilities
-    for (size_t i = 0; i < probabilities.size(); i++) {
-        std::cout << probabilities[i] << " " << expected_probabilities[i]
-                  << std::endl;
-    }
-
-    SECTION("No wires provided:") {
-        REQUIRE_THAT(probabilities,
+    REQUIRE_THAT(probabilities,
                      Catch::Approx(expected_probabilities).margin(.05));
-    }
 }
