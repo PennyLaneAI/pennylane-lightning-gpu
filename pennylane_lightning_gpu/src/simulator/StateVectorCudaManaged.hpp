@@ -615,7 +615,7 @@ class StateVectorCudaManaged
     }
     inline void applyGeneratorMultiRZ(const std::vector<std::size_t> &wires,
                                       bool adjoint) {
-        static const std::vector<std::string> name{{"PauliZ"}};
+        static const std::string name{"PauliZ"};
         static const Precision param = 0.0;
         applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(name, param), {},
                               wires, adjoint);
