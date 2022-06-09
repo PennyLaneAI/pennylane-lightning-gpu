@@ -72,9 +72,8 @@ except (ModuleNotFoundError, ImportError, ValueError) as e:
     warn(str(e), UserWarning)
     CPP_BINARY_AVAILABLE = False
 
-UNSUPPORTED_PARAM_GATES_ADJOINT = (
-    "MultiRZ",
-)
+UNSUPPORTED_PARAM_GATES_ADJOINT = ("MultiRZ",)
+
 
 def _gpu_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:

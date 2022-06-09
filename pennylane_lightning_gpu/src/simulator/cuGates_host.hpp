@@ -677,8 +677,8 @@ static auto getSingleExcitation(const std::vector<U> &params)
 
 /**
  * @brief Create a matrix representation of the SingleExcitation
- * generator data in row-major format. 
- * 
+ * generator data in row-major format.
+ *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @return const std::vector<CFP_t>
@@ -686,25 +686,17 @@ static auto getSingleExcitation(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getGeneratorSingleExcitation() -> std::vector<CFP_t> {
     return {
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::IMAG<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::IMAG<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-            cuUtil::ZERO<CFP_t>(),
-            - cuUtil::IMAG<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), -cuUtil::IMAG<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
     };
 }
 
@@ -763,8 +755,8 @@ static auto getSingleExcitationMinus(const std::vector<U> &params)
 
 /**
  * @brief Create a matrix representation of the SingleExcitation Minus
- * generator data in row-major format. 
- * 
+ * generator data in row-major format.
+ *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @return const std::vector<CFP_t>
@@ -772,25 +764,17 @@ static auto getSingleExcitationMinus(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getGeneratorSingleExcitationMinus() -> std::vector<CFP_t> {
     return {
-            cuUtil::ONE<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::IMAG<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::IMAG<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-            cuUtil::ZERO<CFP_t>(),
-            - cuUtil::IMAG<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), -cuUtil::IMAG<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ONE<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
     };
 }
 
@@ -849,8 +833,8 @@ static auto getSingleExcitationPlus(const std::vector<U> &params)
 
 /**
  * @brief Create a matrix representation of the SingleExcitation Plus
- * generator data in row-major format. 
- * 
+ * generator data in row-major format.
+ *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @return const std::vector<CFP_t>
@@ -858,25 +842,17 @@ static auto getSingleExcitationPlus(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getGeneratorSingleExcitationPlus() -> std::vector<CFP_t> {
     return {
-            - cuUtil::ONE<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        -cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::IMAG<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::IMAG<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-            cuUtil::ZERO<CFP_t>(),
-            - cuUtil::IMAG<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), -cuUtil::IMAG<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
-            - cuUtil::ONE<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>(),
     };
 }
 
@@ -935,8 +911,8 @@ static auto getDoubleExcitation(const std::vector<U> &params)
 
 /**
  * @brief Create a matrix representation of the DoubleExcitation
- * generator data in row-major format. 
- * 
+ * generator data in row-major format.
+ *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @return const std::vector<CFP_t>
@@ -945,7 +921,7 @@ template <class CFP_t, class U = double>
 static auto getGeneratorDoubleExcitation() -> std::vector<CFP_t> {
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[60] = cuUtil::IMAG<CFP_t>();
-    mat[195] = - cuUtil::IMAG<CFP_t>();
+    mat[195] = -cuUtil::IMAG<CFP_t>();
     return mat;
 }
 
@@ -1008,8 +984,8 @@ static auto getDoubleExcitationMinus(const std::vector<U> &params)
 
 /**
  * @brief Create a matrix representation of the DoubleExcitation Minus
- * generator data in row-major format. 
- * 
+ * generator data in row-major format.
+ *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @return const std::vector<CFP_t>
@@ -1029,7 +1005,7 @@ static auto getGeneratorDoubleExcitationMinus() -> std::vector<CFP_t> {
     mat[153] = cuUtil::ONE<CFP_t>();
     mat[170] = cuUtil::ONE<CFP_t>();
     mat[187] = cuUtil::ONE<CFP_t>();
-    mat[195] = - cuUtil::IMAG<CFP_t>();
+    mat[195] = -cuUtil::IMAG<CFP_t>();
     mat[221] = cuUtil::ONE<CFP_t>();
     mat[238] = cuUtil::ONE<CFP_t>();
     mat[255] = cuUtil::ONE<CFP_t>();
@@ -1095,8 +1071,8 @@ static auto getDoubleExcitationPlus(const std::vector<U> &params)
 
 /**
  * @brief Create a matrix representation of the DoubleExcitation Plus
- * generator data in row-major format. 
- * 
+ * generator data in row-major format.
+ *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @return const std::vector<CFP_t>
@@ -1104,22 +1080,22 @@ static auto getDoubleExcitationPlus(const std::vector<U> &params)
 template <class CFP_t, class U = double>
 static auto getGeneratorDoubleExcitationPlus() -> std::vector<CFP_t> {
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
-    mat[0] = - cuUtil::ONE<CFP_t>();
-    mat[17] = - cuUtil::ONE<CFP_t>();
-    mat[34] = - cuUtil::ONE<CFP_t>();
+    mat[0] = -cuUtil::ONE<CFP_t>();
+    mat[17] = -cuUtil::ONE<CFP_t>();
+    mat[34] = -cuUtil::ONE<CFP_t>();
     mat[60] = cuUtil::IMAG<CFP_t>();
-    mat[68] = - cuUtil::ONE<CFP_t>();
-    mat[85] = - cuUtil::ONE<CFP_t>();
-    mat[102] = - cuUtil::ONE<CFP_t>();
-    mat[119] = - cuUtil::ONE<CFP_t>();
-    mat[136] = - cuUtil::ONE<CFP_t>();
-    mat[153] = - cuUtil::ONE<CFP_t>();
-    mat[170] = - cuUtil::ONE<CFP_t>();
-    mat[187] = - cuUtil::ONE<CFP_t>();
-    mat[195] = - cuUtil::IMAG<CFP_t>();
-    mat[221] = - cuUtil::ONE<CFP_t>();
-    mat[238] = - cuUtil::ONE<CFP_t>();
-    mat[255] = - cuUtil::ONE<CFP_t>();
+    mat[68] = -cuUtil::ONE<CFP_t>();
+    mat[85] = -cuUtil::ONE<CFP_t>();
+    mat[102] = -cuUtil::ONE<CFP_t>();
+    mat[119] = -cuUtil::ONE<CFP_t>();
+    mat[136] = -cuUtil::ONE<CFP_t>();
+    mat[153] = -cuUtil::ONE<CFP_t>();
+    mat[170] = -cuUtil::ONE<CFP_t>();
+    mat[187] = -cuUtil::ONE<CFP_t>();
+    mat[195] = -cuUtil::IMAG<CFP_t>();
+    mat[221] = -cuUtil::ONE<CFP_t>();
+    mat[238] = -cuUtil::ONE<CFP_t>();
+    mat[255] = -cuUtil::ONE<CFP_t>();
     return mat;
 }
 
@@ -1172,9 +1148,9 @@ static auto getIsingXX(const std::vector<U> &params) -> std::vector<CFP_t> {
 }
 
 /**
- * @brief Create a matrix representation of the Ising XX generator 
- * data in row-major format. 
- * 
+ * @brief Create a matrix representation of the Ising XX generator
+ * data in row-major format.
+ *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @return const std::array<CFP_t>
@@ -1182,25 +1158,17 @@ static auto getIsingXX(const std::vector<U> &params) -> std::vector<CFP_t> {
 template <class CFP_t, class U = double>
 static auto getGeneratorIsingXX() -> std::vector<CFP_t> {
     return {
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ONE<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
 
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
 
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-        cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
+        cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
     };
 }
 
@@ -1254,9 +1222,9 @@ static auto getIsingYY(const std::vector<U> &params) -> std::vector<CFP_t> {
 }
 
 /**
- * @brief Create a matrix representation of the Ising YY generator 
- * data in row-major format. 
- * 
+ * @brief Create a matrix representation of the Ising YY generator
+ * data in row-major format.
+ *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @return constexpr std::array<CFP_t>
@@ -1264,25 +1232,17 @@ static auto getIsingYY(const std::vector<U> &params) -> std::vector<CFP_t> {
 template <class CFP_t, class U = double>
 static auto getGeneratorIsingYY() -> std::vector<CFP_t> {
     return {
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        - cuUtil::ONE<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>(),
 
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
 
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-        - cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
+        -cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
     };
 }
 
@@ -1337,9 +1297,9 @@ static auto getIsingZZ(const std::vector<U> &params) -> std::vector<CFP_t> {
 }
 
 /**
- * @brief Create a matrix representation of the Ising ZZ generator 
- * data in row-major format. 
- * 
+ * @brief Create a matrix representation of the Ising ZZ generator
+ * data in row-major format.
+ *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @return const std::vector<CFP_t>
@@ -1347,25 +1307,17 @@ static auto getIsingZZ(const std::vector<U> &params) -> std::vector<CFP_t> {
 template <class CFP_t, class U = double>
 static auto getGeneratorIsingZZ() -> std::vector<CFP_t> {
     return {
-        - cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
+        -cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
 
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(),
-        - cuUtil::ONE<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>(),
     };
 }
 

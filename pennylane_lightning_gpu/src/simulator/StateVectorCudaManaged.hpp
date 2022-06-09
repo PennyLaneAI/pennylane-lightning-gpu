@@ -8,8 +8,8 @@
 #include <cuda.h>
 #include <custatevec.h> // custatevecApplyMatrix
 
-#include "Error.hpp"
 #include "Constant.hpp"
+#include "Error.hpp"
 #include "StateVectorCudaBase.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
@@ -419,7 +419,8 @@ class StateVectorCudaManaged
         auto &&mat = cuGates::getIsingXX<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyGeneratorIsingXX(const std::vectoR<std::size_t> &wires, bool adjoint) {
+    inline void applyGeneratorIsingXX(const std::vectoR<std::size_t> &wires,
+                                      bool adjoint) {
         auto &&mat = cuGates::getGeneratorIsingXX<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
@@ -428,7 +429,8 @@ class StateVectorCudaManaged
         auto &&mat = cuGates::getIsingYY<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyGeneratorIsingYY(const std::vector<std::size_t> &wires, bool adjoint) {
+    inline void applyGeneratorIsingYY(const std::vector<std::size_t> &wires,
+                                      bool adjoint) {
         auto &&mat = cuGates::getGeneratorIsingYY<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
@@ -437,7 +439,8 @@ class StateVectorCudaManaged
         auto &&mat = cuGates::getIsingZZ<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyGeneratorIsingZZ(const std::vector<std::size_t> $wires, bool adjoint) {
+    inline void applyGeneratorIsingZZ(const std::vector<std::size_t> $wires,
+                                      bool adjoint) {
         auto &&mat = cuGates::getGeneratorIsingZZ<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
@@ -549,27 +552,6 @@ class StateVectorCudaManaged
         auto &&mat = cuGates::getDoubleExcitation<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyGeneratorSingleExcitation(const std::vector<std::size_t> &wires,
-                                      bool adjoint) {
-        auto &&mat = cuGates::getGeneratorSingleExcitation<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
-    }
-    inline void
-    applyGeneratorSingleExcitationMinus(const std::vector<std::size_t> &wires,
-                               bool adjoint) {
-        auto &&mat = cuGates::getGeneratorSingleExcitationMinus<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
-    }
-    inline void applyGeneratorSingleExcitationPlus(const std::vector<std::size_t> &wires,
-                                          bool adjoint) {
-        auto &&mat = cuGates::getGeneratorSingleExcitationPlus<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
-    }
-    inline void applyDoubleExcitation(const std::vector<std::size_t> &wires,
-                                      bool adjoint) {
-        auto &&mat = cuGates::getDoubleExcitation<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
-    }
     inline void
     applyDoubleExcitationMinus(const std::vector<std::size_t> &wires,
                                bool adjoint, Precision param) {
@@ -581,19 +563,40 @@ class StateVectorCudaManaged
         auto &&mat = cuGates::getDoubleExcitationPlus<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyGeneratorDoubleExcitation(const std::vector<std::size_t> &wires,
-                                      bool adjoint) {
+
+    inline void
+    applyGeneratorSingleExcitation(const std::vector<std::size_t> &wires,
+                                   bool adjoint) {
+        auto &&mat = cuGates::getGeneratorSingleExcitation<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void
+    applyGeneratorSingleExcitationMinus(const std::vector<std::size_t> &wires,
+                                        bool adjoint) {
+        auto &&mat = cuGates::getGeneratorSingleExcitationMinus<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void
+    applyGeneratorSingleExcitationPlus(const std::vector<std::size_t> &wires,
+                                       bool adjoint) {
+        auto &&mat = cuGates::getGeneratorSingleExcitationPlus<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void
+    applyGeneratorDoubleExcitation(const std::vector<std::size_t> &wires,
+                                   bool adjoint) {
         auto &&mat = cuGates::getGeneratorDoubleExcitation<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
     inline void
     applyGeneratorDoubleExcitationMinus(const std::vector<std::size_t> &wires,
-                               bool adjoint) {
+                                        bool adjoint) {
         auto &&mat = cuGates::getGeneratorDoubleExcitationMinus<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyGeneratorDoubleExcitationPlus(const std::vector<std::size_t> &wires,
-                                          bool adjoint) {
+    inline void
+    applyGeneratorDoubleExcitationPlus(const std::vector<std::size_t> &wires,
+                                       bool adjoint) {
         auto &&mat = cuGates::getGeneratorDoubleExcitationPlus<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
@@ -934,7 +937,7 @@ class StateVectorCudaManaged
             data_type = CUDA_C_32F;
             compute_type = CUSTATEVEC_COMPUTE_32F;
         }
-        
+
         // check the size of external workspace
         PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrixGetWorkspaceSize(
             /* custatevecHandle_t */ handle,

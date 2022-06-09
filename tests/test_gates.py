@@ -61,7 +61,7 @@ def op(op_name):
         "PhaseShift": qml.PhaseShift(2.133, wires=0),
         "ControlledPhaseShift": qml.ControlledPhaseShift(1.777, wires=[0, 2]),
         "CPhase": qml.CPhase(1.777, wires=[0, 2]),
-        # "MultiRZ": qml.MultiRZ(0.112, wires=[1, 2, 3]),
+        "MultiRZ": qml.MultiRZ(0.112, wires=[1, 2, 3]),
         "CRX": qml.CRX(0.836, wires=[2, 3]),
         "CRY": qml.CRY(0.721, wires=[2, 3]),
         "CRZ": qml.CRZ(0.554, wires=[2, 3]),
