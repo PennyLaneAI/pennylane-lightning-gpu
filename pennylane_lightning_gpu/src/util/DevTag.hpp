@@ -56,6 +56,10 @@ class DevTag {
                (getStreamID() == other.getStreamID());
     }
 
+    inline void refresh(){
+        PL_CUDA_IS_SUCCESS(cudaSetDevice(device_id_));
+    }
+
   private:
     IDType device_id_;
     cudaStream_t stream_id_;

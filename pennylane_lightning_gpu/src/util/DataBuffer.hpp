@@ -31,7 +31,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
                cudaStream_t stream_id = 0, bool alloc_memory = true)
         : length_{length}, dev_tag_{device_id, stream_id} {
         if (alloc_memory && length > 0) {
-            PL_CUDA_IS_SUCCESS(cudaSetDevice(device_id));
+            dev_tag_.refresh();
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
@@ -42,7 +42,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
                bool alloc_memory = true)
         : length_{length}, dev_tag_{dev} {
         if (alloc_memory && length > 0) {
-            PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_tag_.getDeviceID()));
+            dev_tag_.refresh();
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
@@ -53,7 +53,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
                bool alloc_memory = true)
         : length_{length}, dev_tag_{std::move(dev)} {
         if (alloc_memory && length > 0) {
-            PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_tag_.getDeviceID()));
+            dev_tag_.refresh();
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
@@ -72,6 +72,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             length_ = other.length_;
             dev_tag_ =
                 DevTag<DevTagT>{local_dev_id, other.dev_tag_.getStreamID()};
+            dev_tag_.refresh();
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length_));
@@ -87,10 +88,14 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             length_ = other.length_;
             if (local_dev_id == other.dev_tag_.getDeviceID()) {
                 dev_tag_ = std::move(other.dev_tag_);
+                dev_tag_.refresh();
+
                 gpu_buffer_ = other.gpu_buffer_;
             } else {
                 dev_tag_ =
                     DevTag<DevTagT>{local_dev_id, other.dev_tag_.getStreamID()};
+                dev_tag_.refresh();
+
                 PL_CUDA_IS_SUCCESS(
                     cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                             sizeof(GPUDataT) * length_));

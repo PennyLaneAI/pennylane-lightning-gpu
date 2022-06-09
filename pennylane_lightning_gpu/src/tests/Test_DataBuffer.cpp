@@ -11,6 +11,7 @@
 
 #include "DevTag.hpp"
 #include "DataBuffer.hpp"
+#include "DevicePool.hpp"
 
 #include <cuComplex.h> // cuDoubleComplex
 #include <cuda.h>
@@ -72,7 +73,7 @@ TEMPLATE_TEST_CASE("DataBuffer::&operator=",
         DataBuffer<TestType, int> data_buffer1{6, 0, 0, true};
         std::vector<TestType> host_data_in(6, {1});
         std::vector<TestType> host_data_out(6, {0});
-        data_buffer1.CopyHostDataToGpu(host_data.data(), host_data.size(), false);
+        data_buffer1.CopyHostDataToGpu(host_data_in.data(), host_data_in.size(), false);
         DataBuffer<TestType, int> data_buffer2 = data_buffer1;
         data_buffer2.CopyGpuDataToHost(host_data_out.data(), 6, false);
         CHECK(host_data_in == host_data_out);
@@ -83,7 +84,7 @@ TEMPLATE_TEST_CASE("DataBuffer::&operator=",
         DataBuffer<TestType, int> data_buffer1{6, 0, 0, true};
         std::vector<TestType> host_data_in(6, {1});
         std::vector<TestType> host_data_out(6, {0});
-        data_buffer1.CopyHostDataToGpu(host_data.data(), host_data.size(), false);
+        data_buffer1.CopyHostDataToGpu(host_data_in.data(), host_data_in.size(), false);
         DataBuffer<TestType, int> data_buffer2 = std::move(data_buffer1);
         data_buffer2.CopyGpuDataToHost(host_data_out.data(), 6, false);
         CHECK(host_data_in == host_data_out);
@@ -91,5 +92,24 @@ TEMPLATE_TEST_CASE("DataBuffer::&operator=",
         CHECK(data_buffer1.getData() == nullptr); // Ptrs should not refer to same block
         CHECK(data_buffer1.getLength() != data_buffer2.getLength());
         CHECK(data_buffer1.getData() != data_buffer2.getData()); // Ptrs should not refer to same block
+    }
+    if(DevicePool<int>::getTotalDevices() > 1){
+        SECTION("Multi-GPU copy assignment"){
+            DevicePool<int> dev_pool;
+            auto id0 = dev_pool.acquireDevice();
+            auto id1 = dev_pool.acquireDevice();
+            DevTag<int> dt0{id0, 0};
+            DevTag<int> dt1{id1, 0};
+
+            DataBuffer<TestType, int> data_buffer0{6, dt0, true};
+            std::vector<TestType> host_data_in(6, {1});
+            std::vector<TestType> host_data_out(6, {0});
+            data_buffer0.CopyHostDataToGpu(host_data_in.data(), host_data_in.size(), false);
+
+            DataBuffer<TestType, int> data_buffer1{6, dt1, true};
+            data_buffer1.CopyGpuDataToGpu(data_buffer0, false);
+            data_buffer1.CopyGpuDataToHost(host_data_out.data(), 6, false);
+            CHECK(host_data_in == host_data_out);
+        }
     }
 }
