@@ -14,9 +14,7 @@ using namespace cuUtil;
 } // namespace
 /// @endcond
 
-namespace Pennylane {
-namespace CUDA {
-namespace cuGates {
+namespace Pennylane::CUDA::cuGates {
 
 /**
  * @brief Create a matrix representation of the Phase-shift gate data in
@@ -870,6 +868,4 @@ static auto getIsingZZ(const std::vector<U> &params) -> std::vector<CFP_t> {
     return getIsingZZ<CFP_t>(params.front());
 }
 
-} // namespace cuGates
-} // namespace CUDA
-} // namespace Pennylane
+} // namespace Pennylane::CUDA::cuGates

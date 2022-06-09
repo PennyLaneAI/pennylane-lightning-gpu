@@ -19,8 +19,7 @@ using namespace cuUtil;
 } // namespace
 /// @endcond
 
-namespace Pennylane {
-namespace CUDA {
+namespace Pennylane::CUDA {
 
 /**
  * @brief Represents a cache for gate data to be accessible on the device.
@@ -234,5 +233,4 @@ template <class fp_t> class GateCache {
     }
 };
 
-} // namespace CUDA
-} // namespace Pennylane
+} // namespace Pennylane::CUDA

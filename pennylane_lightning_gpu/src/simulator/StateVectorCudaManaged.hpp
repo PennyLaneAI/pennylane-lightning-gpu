@@ -9,6 +9,7 @@
 #include <custatevec.h> // custatevecApplyMatrix
 
 #include "Error.hpp"
+#include "Constant.hpp"
 #include "StateVectorCudaBase.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
@@ -125,12 +126,6 @@ class StateVectorCudaManaged
               {"IsingZZ",
                [&](auto &&wires, auto &&adjoint, auto &&params) {
                    applyIsingZZ(std::forward<decltype(wires)>(wires),
-                                std::forward<decltype(adjoint)>(adjoint),
-                                std::forward<decltype(params[0])>(params[0]));
-               }},
-              {"MultiRZ",
-               [&](auto &&wires, auto &&adjoint, auto &&params) {
-                   applyMultiRZ(std::forward<decltype(wires)>(wires),
                                 std::forward<decltype(adjoint)>(adjoint),
                                 std::forward<decltype(params[0])>(params[0]));
                }},
@@ -419,6 +414,33 @@ class StateVectorCudaManaged
         applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(name, param), {},
                               wires, adjoint);
     }
+    inline void applyIsingXX(const std::vector<std::size_t> &wires,
+                             bool adjoint, Precision param) {
+        auto &&mat = cuGates::getIsingXX<CFP_t>(param);
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void applyGeneratorIsingXX(const std::vectoR<std::size_t> &wires, bool adjoint) {
+        auto &&mat = cuGates::getGeneratorIsingXX<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void applyIsingYY(const std::vector<std::size_t> &wires,
+                             bool adjoint, Precision param) {
+        auto &&mat = cuGates::getIsingYY<CFP_t>(param);
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void applyGeneratorIsingYY(const std::vector<std::size_t> &wires, bool adjoint) {
+        auto &&mat = cuGates::getGeneratorIsingYY<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void applyIsingZZ(const std::vector<std::size_t> &wires,
+                             bool adjoint, Precision param) {
+        auto &&mat = cuGates::getIsingZZ<CFP_t>(param);
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void applyGeneratorIsingZZ(const std::vector<std::size_t> $wires, bool adjoint) {
+        auto &&mat = cuGates::getGeneratorIsingZZ<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
     void applyCSWAP(const std::vector<std::size_t> &wires, bool adjoint) {
         static const std::string name{"SWAP"};
         static const Precision param = 0.0;
@@ -505,6 +527,7 @@ class StateVectorCudaManaged
                                           bool adjoint, Precision param) {
         applyPhaseShift(wires, adjoint, param);
     }
+
     inline void applySingleExcitation(const std::vector<std::size_t> &wires,
                                       bool adjoint, Precision param) {
         auto &&mat = cuGates::getSingleExcitation<CFP_t>(param);
@@ -526,6 +549,27 @@ class StateVectorCudaManaged
         auto &&mat = cuGates::getDoubleExcitation<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
+    inline void applyGeneratorSingleExcitation(const std::vector<std::size_t> &wires,
+                                      bool adjoint) {
+        auto &&mat = cuGates::getGeneratorSingleExcitation<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void
+    applyGeneratorSingleExcitationMinus(const std::vector<std::size_t> &wires,
+                               bool adjoint) {
+        auto &&mat = cuGates::getGeneratorSingleExcitationMinus<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void applyGeneratorSingleExcitationPlus(const std::vector<std::size_t> &wires,
+                                          bool adjoint) {
+        auto &&mat = cuGates::getGeneratorSingleExcitationPlus<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+    inline void applyDoubleExcitation(const std::vector<std::size_t> &wires,
+                                      bool adjoint) {
+        auto &&mat = cuGates::getDoubleExcitation<CFP_t>();
+        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
     inline void
     applyDoubleExcitationMinus(const std::vector<std::size_t> &wires,
                                bool adjoint, Precision param) {
@@ -537,47 +581,23 @@ class StateVectorCudaManaged
         auto &&mat = cuGates::getDoubleExcitationPlus<CFP_t>(param);
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyIsingXX(const std::vector<std::size_t> &wires,
-                             bool adjoint, Precision param) {
-        auto &&mat = cuGates::getIsingXX<CFP_t>(param);
+    inline void applyGeneratorDoubleExcitation(const std::vector<std::size_t> &wires,
+                                      bool adjoint) {
+        auto &&mat = cuGates::getGeneratorDoubleExcitation<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyIsingYY(const std::vector<std::size_t> &wires,
-                             bool adjoint, Precision param) {
-        auto &&mat = cuGates::getIsingYY<CFP_t>(param);
+    inline void
+    applyGeneratorDoubleExcitationMinus(const std::vector<std::size_t> &wires,
+                               bool adjoint) {
+        auto &&mat = cuGates::getGeneratorDoubleExcitationMinus<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyIsingZZ(const std::vector<std::size_t> &wires,
-                             bool adjoint, Precision param) {
-        auto &&mat = cuGates::getIsingZZ<CFP_t>(param);
+    inline void applyGeneratorDoubleExcitationPlus(const std::vector<std::size_t> &wires,
+                                          bool adjoint) {
+        auto &&mat = cuGates::getGeneratorDoubleExcitationPlus<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
-    inline void applyMultiRZ(const std::vector<std::size_t> &wires,
-                             bool adjoint, Precision param) {
-        const size_t num_wires = wires.size();
-        const size_t num_rows = 1 << num_wires;
-        std::vector<CFP_t> matrix_cu(num_rows * num_rows, {0, 0});
-        { /* generate matrix */
-            std::vector<Precision> eigs;
-            eigs.reserve(num_rows);
-            eigs.push_back(1.0);
-            eigs.push_back(-1.0);
-            for (size_t i = 1; i < num_wires; i++) {
-                const size_t sz = eigs.size();
-                for (size_t j = 0; j < sz; j++) {
-                    eigs.push_back(-eigs[j]);
-                }
-            }
 
-            const Precision p2 = param / 2;
-            for (size_t idx = 0; idx < num_rows; idx++) {
-                matrix_cu[idx * num_rows + idx] =
-                    cuUtil::complexToCu<std::complex<Precision>>(
-                        std::exp(-std::complex<Precision>(0, p2 * eigs[idx])));
-            }
-        }
-        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
-    }
     /**
      * @brief Utility method for expectation value calculations.
      *
@@ -686,6 +706,100 @@ class StateVectorCudaManaged
             /* const uint32_t */ maskLen));
 
         return probabilities;
+    }
+
+    /**
+     * @brief Utility method for samples.
+     *
+     * @param num_samples Number of Samples
+     *
+     * @return std::vector<size_t> A 1-d array storing the samples.
+     * Each sample has a length equal to the number of qubits. Each sample can
+     * be accessed using the stride sample_id*num_qubits, where sample_id is a
+     * number between 0 and num_samples-1.
+     */
+    auto generate_samples(size_t num_samples) -> std::vector<size_t> {
+
+        std::vector<double> rand_nums(num_samples);
+        custatevecSamplerDescriptor_t sampler;
+
+        const size_t num_qubits = BaseType::getNumQubits();
+        const int bitStringLen = BaseType::getNumQubits();
+
+        std::vector<int> bitOrdering(num_qubits);
+        std::iota(std::begin(bitOrdering), std::end(bitOrdering),
+                  0); // Fill with 0, 1, ...,
+
+        cudaDataType_t data_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+        } else {
+            data_type = CUDA_C_32F;
+        }
+
+        std::random_device
+            rd; // Will be used to obtain a seed for the random number engine
+        std::mt19937 gen(
+            rd()); // Standard mersenne_twister_engine seeded with rd()
+        std::uniform_real_distribution<> dis(0.0, 1.0);
+        for (size_t n = 0; n < num_samples; n++) {
+            rand_nums[n] = dis(gen);
+        }
+        std::vector<size_t> samples(num_samples * num_qubits, 0);
+        std::unordered_map<size_t, size_t> cache;
+        std::vector<custatevecIndex_t> bitStrings(num_samples);
+
+        void *extraWorkspace = nullptr;
+        size_t extraWorkspaceSizeInBytes = 0;
+        // create sampler and check the size of external workspace
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerCreate(
+            handle, BaseType::getData(), data_type, num_qubits, &sampler,
+            num_samples, &extraWorkspaceSizeInBytes));
+
+        // allocate external workspace if necessary
+        if (extraWorkspaceSizeInBytes > 0)
+            PL_CUDA_IS_SUCCESS(
+                cudaMalloc(&extraWorkspace, extraWorkspaceSizeInBytes));
+
+        // sample preprocess
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerPreprocess(
+            handle, sampler, extraWorkspace, extraWorkspaceSizeInBytes));
+
+        // sample bit strings
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerSample(
+            handle, sampler, bitStrings.data(), bitOrdering.data(),
+            bitStringLen, rand_nums.data(), num_samples,
+            CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER));
+
+        // destroy descriptor and handle
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerDestroy(sampler));
+
+        // Pick samples
+        for (size_t i = 0; i < num_samples; i++) {
+            auto idx = bitStrings[i];
+            // If cached, retrieve sample from cache
+            if (cache.count(idx) != 0) {
+                size_t cache_id = cache[idx];
+                auto it_temp = samples.begin() + cache_id * num_qubits;
+                std::copy(it_temp, it_temp + num_qubits,
+                          samples.begin() + i * num_qubits);
+            }
+            // If not cached, compute
+            else {
+                for (size_t j = 0; j < num_qubits; j++) {
+                    samples[i * num_qubits + (num_qubits - 1 - j)] =
+                        (idx >> j) & 1U;
+                }
+                cache[idx] = i;
+            }
+        }
+
+        if (extraWorkspaceSizeInBytes > 0)
+            PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
+
+        return samples;
     }
 
   private:
@@ -820,7 +934,7 @@ class StateVectorCudaManaged
             data_type = CUDA_C_32F;
             compute_type = CUSTATEVEC_COMPUTE_32F;
         }
-
+        
         // check the size of external workspace
         PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrixGetWorkspaceSize(
             /* custatevecHandle_t */ handle,

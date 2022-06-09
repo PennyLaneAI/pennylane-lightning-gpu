@@ -19,7 +19,7 @@ IGNORE_PATTERN = ["external"]
 
 DEFAULT_CLANG_FORMAT_VERSION=12
 
-BASE_CMD = (f"clang-format-{DEFAULT_CLANG_FORMAT_VERSION}", f"-style={json.dumps(CLANG_FMT_STYLE_CFG)}")
+BASE_ARGS = f"-style={json.dumps(CLANG_FMT_STYLE_CFG)}"
 
 def parse_version(version_string):
     version_rgx = "version (\d+)"
@@ -27,8 +27,7 @@ def parse_version(version_string):
     m = re.search(version_rgx, version_string)
     return int(m.group(1))
 
-def check_bin():
-    command = f"clang-format-{DEFAULT_CLANG_FORMAT_VERSION}"
+def check_bin(command):
     try:
         p = subprocess.run([command, "--version"], 
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
@@ -64,7 +63,14 @@ def parse_args():
         action="store_true",
         help="print detailed information about format violations",
     )
-
+    parser.add_argument(
+        "-f",
+        "--cfversion",
+        type=int,
+        default=0,
+        action="store",
+        help="set a version number for clang-format",
+    )
     return parser.parse_args()
 
 
@@ -79,8 +85,8 @@ def get_files(args):
     return [f for f in files if f not in IGNORE_PATTERN]
 
 
-def fmt(args, files) -> int:
-    cmd = (*BASE_CMD, "-i", *files)
+def fmt(args, files, command) -> int:
+    cmd = (command, BASE_ARGS, "-i", *files)
 
     paths = ", ".join(args.paths)
     sys.stderr.write(f"Formatting {len(files)} files in {paths}.\n")
@@ -93,18 +99,18 @@ def fmt(args, files) -> int:
     return 0
 
 
-def check(args, files) -> int:
-    cmd = (*BASE_CMD, "--dry-run", "-Werror")
+def check(args, files, command) -> int:
+    cmd = (command, BASE_ARGS, "--dry-run", "-Werror")
 
     needs_reformatted_ct = 0
 
-    for src_file in files:
+    for file in files:
         ret = subprocess.run(
-            (*cmd, src_file), capture_output=True, universal_newlines=True
+            (*cmd, file), capture_output=True, universal_newlines=True
         )
 
         if ret.returncode != 0:
-            sys.stderr.write(f"Error: {src_file} would be reformatted.\n")
+            sys.stderr.write(f"Error: {file} would be reformatted.\n")
             if args.verbose:
                 sys.stderr.write(ret.stderr)
 
@@ -117,7 +123,6 @@ def check(args, files) -> int:
 
 
 if __name__ == "__main__":
-    check_bin()
     args = parse_args()
 
     files = get_files(args)
@@ -126,9 +131,17 @@ if __name__ == "__main__":
         print("No source files found! Nothing to do.")
         sys.exit(0)
 
+    cf_version = args.cfversion
+    cf_cmd = "clang-format"
+
+    if cf_version:
+        cf_cmd += f"-{cf_version}"
+
+    check_bin(cf_cmd)
+
     if args.check:
-        ret = check(args, files)
+        ret = check(args, files, cf_cmd)
     else:
-        ret = fmt(args, files)
+        ret = fmt(args, files, cf_cmd)
 
     sys.exit(int(ret > 0))

@@ -72,6 +72,9 @@ except (ModuleNotFoundError, ImportError, ValueError) as e:
     warn(str(e), UserWarning)
     CPP_BINARY_AVAILABLE = False
 
+UNSUPPORTED_PARAM_GATES_ADJOINT = (
+    "MultiRZ",
+)
 
 def _gpu_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:
@@ -341,6 +344,14 @@ class LightningGPU(LightningQubit):
             .reshape(-1)
         )
 
+    def generate_samples(self):
+        """Generate samples
+
+        Returns:
+            array[int]: array of samples in binary representation with shape ``(dev.shots, dev.num_wires)``
+        """
+        return self._gpu_state.GenerateSamples(len(self.wires), self.shots).astype(int)
+
     def var(self, observable, shot_range=None, bin_size=None):
         if self.shots is not None:
             # estimate the var
@@ -382,8 +393,16 @@ if not CPP_BINARY_AVAILABLE:
         _CPP_BINARY_AVAILABLE = False
 
         def __init__(self, *args, **kwargs):
+            w_msg = """
+            !!!#####################################################################################
+            !!!
+            !!! WARNING: INSUFFICIENT SUPPORT DETECTED FOR GPU DEVICE WITH `lightning.gpu`
+            !!!          DEFAULTING TO CPU DEVICE `lightning.qubit`
+            !!!
+            !!!#####################################################################################
+            """
             warn(
-                "Insufficient support detected for lightning.gpu, defaulting to lightning.qubit",
-                UserWarning,
+                w_msg,
+                RuntimeWarning,
             )
             super().__init__(*args, **kwargs)

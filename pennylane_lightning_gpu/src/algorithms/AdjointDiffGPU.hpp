@@ -37,24 +37,20 @@ void applyGeneratorRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
 template <class T = double, class SVType>
 void applyGeneratorIsingXX_GPU(SVType &sv, const std::vector<size_t> &wires,
                                const bool adj = false) {
-    sv.applyPauliX(std::vector<size_t>{wires.front()}, adj);
-    sv.applyPauliX(std::vector<size_t>{wires.back()}, adj);
+    sv.applyGeneratorIsingXX(wires, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorIsingYY_GPU(SVType &sv, const std::vector<size_t> &wires,
                                const bool adj = false) {
-    sv.applyPauliY(std::vector<size_t>{wires.front()}, adj);
-    sv.applyPauliY(std::vector<size_t>{wires.back()}, adj);
+    sv.applyGeneratorIsingYY(wires, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorIsingZZ_GPU(SVType &sv, const std::vector<size_t> &wires,
                                const bool adj = false) {
-    sv.applyPauliZ(std::vector<size_t>{wires.front()}, adj);
-    sv.applyPauliZ(std::vector<size_t>{wires.back()}, adj);
+    sv.applyGeneratorIsingZZ(wires, adj);
 }
-
 template <class T = double, class SVType>
 void applyGeneratorPhaseShift_GPU(SVType &sv, const std::vector<size_t> &wires,
                                   const bool adj = false) {
@@ -87,13 +83,41 @@ void applyGeneratorControlledPhaseShift_GPU(SVType &sv,
     sv.applyOperation("P_11", {wires.back()}, adj, {0.0},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
 }
-
-template <class T = double, class SVType>
-void applyGeneratorMultiRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
-    for (const auto &w : wires) {
-        sv.applyPauliZ(std::vector<size_t>{w}, adj);
-    }
+template <class T = double, class SVType> 
+void applyGeneratorSingleExcitation_GPU(SVType &sv, 
+                                        const std::vector<size_t> &wires,
+                                        const bool adj = false) {
+    sv.applyGeneratorSingleExcitation(wires, adj);
+}
+template <class T = double, class SVType> 
+void applyGeneratorSingleExcitationMinus_GPU(SVType &sv, 
+                                        const std::vector<size_t> &wires,
+                                        const bool adj = false) {
+    sv.applyGeneratorSingleExcitationMinus(wires, adj);
+}
+template <class T = double, class SVType> 
+void applyGeneratorSingleExcitationPlus_GPU(SVType &sv, 
+                                        const std::vector<size_t> &wires,
+                                        const bool adj = false) {
+    sv.applyGeneratorSingleExcitationPlus(wires, adj);
+}
+template <class T = double, class SVType> 
+void applyGeneratorDoubleExcitation_GPU(SVType &sv, 
+                                        const std::vector<size_t> &wires,
+                                        const bool adj = false) {
+    sv.applyGeneratorDoubleExcitation(wires, adj);
+}
+template <class T = double, class SVType> 
+void applyGeneratorDoubleExcitationMinus_GPU(SVType &sv, 
+                                        const std::vector<size_t> &wires,
+                                        const bool adj = false) {
+    sv.applyGeneratorDoubleExcitationMinus(wires, adj);
+}
+template <class T = double, class SVType> 
+void applyGeneratorDoubleExcitationPlus_GPU(SVType &sv, 
+                                        const std::vector<size_t> &wires,
+                                        const bool adj = false) {
+    sv.applyGeneratorDoubleExcitationPlus(wires, adj);
 }
 
 } // namespace
@@ -130,8 +154,13 @@ template <class T = double> class AdjointJacobianGPU {
          ::applyGeneratorPhaseShift_GPU<T, StateVectorCudaManaged<T>>},
         {"ControlledPhaseShift",
          &applyGeneratorControlledPhaseShift_GPU<T, StateVectorCudaManaged<T>>},
-        {"MultiRZ",
-         &::applyGeneratorMultiRZ_GPU<T, StateVectorCudaManaged<T>>}};
+        {"SingleExcitaiton", &::applyGeneratorSingleExcitation_GPU<T, StateVectorCudaManaged<T>>},
+        {"SingleExcitaitonMinus", &::applyGeneratorSingleExcitationMinus_GPU<T, StateVectorCudaManaged<T>>},
+        {"SingleExcitaitonPlus", &::applyGeneratorSingleExcitationPlus_GPU<T, StateVectorCudaManaged<T>>},
+        {"DoubleExcitaiton", &::applyGeneratorDoubleExcitation_GPU<T, StateVectorCudaManaged<T>>},
+        {"DoubleExcitaitonMinus", &::applyGeneratorDoubleExcitationMinus_GPU<T, StateVectorCudaManaged<T>>},
+        {"DoubleExcitaitonPlus", &::applyGeneratorDoubleExcitationPlus_GPU<T, StateVectorCudaManaged<T>>},
+        };
 
     // Holds the mappings from gate labels to associated generator coefficients.
     const std::unordered_map<std::string, T> scaling_factors{
@@ -146,7 +175,13 @@ template <class T = double> class AdjointJacobianGPU {
         {"CRY", -static_cast<T>(0.5)},
         {"CRZ", -static_cast<T>(0.5)},
         {"ControlledPhaseShift", static_cast<T>(1)},
-        {"MultiRZ", static_cast<T>(0.5)}};
+        {"SingleExcitation", -static_cast<T>(0.5)},
+        {"SingleExcitationMinus", -static_cast<T>(0.5)},
+        {"SingleExcitationPlus", -static_cast<T>(0.5)}
+        {"DoubleExcitation", -static_cast<T>(0.5)},
+        {"DoubleExcitationMinus", -static_cast<T>(0.5)},
+        {"DoubleExcitationPlus", -static_cast<T>(0.5)}
+        };
 
     /**
      * @brief Utility method to update the Jacobian at a given index by

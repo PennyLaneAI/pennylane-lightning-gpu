@@ -435,13 +435,13 @@ class TestApply:
             [0.5 - 0.5j, 0, 0, 0.5 - 0.5j],
             [math.pi / 2],
         ),
-        (qml.MultiRZ, [1, 0, 0, 0], [1 / math.sqrt(2) - 1j / math.sqrt(2), 0, 0, 0], [math.pi / 2]),
-        (
-            qml.MultiRZ,
-            [1 / math.sqrt(2), 0, 0, 1 / math.sqrt(2)],
-            [0.5 - 0.5j, 0, 0, 0.5 - 0.5j],
-            [math.pi / 2],
-        ),
+        # (qml.MultiRZ, [1, 0, 0, 0], [1 / math.sqrt(2) - 1j / math.sqrt(2), 0, 0, 0], [math.pi / 2]),
+        # (
+        #     qml.MultiRZ,
+        #     [1 / math.sqrt(2), 0, 0, 1 / math.sqrt(2)],
+        #     [0.5 - 0.5j, 0, 0, 0.5 - 0.5j],
+        #     [math.pi / 2],
+        # ),
     ]
 
     @pytest.mark.parametrize(
@@ -1206,13 +1206,13 @@ class TestApplyCQMethod:
     def test_apply_identity_skipped(self, C, tol):
         """Test identity operation does not perform additional computations."""
         dev = qml.device("lightning.gpu", wires=1)
-        dev._state = dev._asarray(dev._gpu_state, C)
 
         starting_state = np.array([1, 0], dtype=C)
         op = [qml.Identity(0)]
         dev.apply(op)
+        dev.syncD2H()
 
-        assert np.allclose(dev._gpu_state, starting_state, atol=tol, rtol=0)
+        assert np.allclose(dev.state, starting_state, atol=tol, rtol=0)
 
     @pytest.mark.parametrize("C", [np.complex64, np.complex128])
     def test_iter_identity_skipped(self, mocker, C, tol):
@@ -1229,7 +1229,8 @@ class TestApplyCQMethod:
         spy_unitary = mocker.spy(dev, "_apply_unitary")
 
         dev.apply_cq(op, dtype=C)
-        assert np.allclose(dev._gpu_state, starting_state, atol=tol, rtol=0)
+        dev.syncD2H()
+        assert np.allclose(dev.state, starting_state, atol=tol, rtol=0)
 
         spy_diagonal.assert_not_called()
         spy_einsum.assert_not_called()

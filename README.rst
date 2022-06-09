@@ -43,24 +43,34 @@ PennyLane-Lightning-GPU requires Python version 3.7 and above. It can be install
 
     pip install pennylane-lightning[gpu]
 
-To build the C++ module from source:
+Use of PennyLane-Lightning-GPU also requires explicit installation of the NVIDIA cuQuantum SDK. The SDK library directory may be provided on the ``LD_LIBRARY_PATH`` environment variable, or the SDK Python package may be installed within the Python environment ``site-packages`` directory using ``pip`` or ``conda``. Please see the `cuQuantum SDK <https://developer.nvidia.com/cuquantum-sdk>`_ install guide for more information.
+
+To build a wheel from the package sources using the direct SDK path:
 
 .. code-block:: console
 
     cmake -BBuild -DENABLE_CLANG_TIDY=on -DCUQUANTUM_SDK=<path to sdk>
     cmake --build ./Build --verbose
-
-
-An Python wheel can be built using:
-
-.. code-block:: console
-
     python -m pip install wheel
     python setup.py build_ext --cuquantum=<path to sdk>
     python setup.py bdist_wheel
 
 
-To simplify the build process, we recommend using the following containerized build process.
+To build using the PyPI/Conda installed cuQuantum package:
+
+.. code-block:: console
+
+    python -m pip install wheel cuquantum
+    python setup.py build_ext
+    python setup.py bdist_wheel
+
+The built wheel can now be installed as:
+
+.. code-block:: console
+
+    python -m pip install ./dist/PennyLane_Lightning_GPU-*.whl
+
+To simplify the build, we recommend using the following containerized build process, which creates `manylinux2014 <https://github.com/pypa/manylinux>`_ compatible wheels.
 
 
 Build locally with Docker

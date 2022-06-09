@@ -26,3 +26,5 @@ dist/
 .vscode/
 *.ipynp
 *.ipynb_checkpoints
+*#
+*~
