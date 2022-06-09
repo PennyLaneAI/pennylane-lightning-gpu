@@ -116,7 +116,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     void CopyGpuDataToGpu(const GPUDataT *gpu_in, std::size_t length,
                           bool async = false) {
         PL_ABORT_IF_NOT(
-            getLength() < length,
+            getLength() == length,
             "Sizes do not match for GPU data. Please ensure the source "
             "buffer is not larger than the destination buffer");
         if (async) {
@@ -146,7 +146,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     void CopyHostDataToGpu(const HostDataT *host_in, std::size_t length,
                            bool async = false) {
         PL_ABORT_IF_NOT(
-            (getLength() * sizeof(GPUDataT)) < (length * sizeof(HostDataT)),
+            (getLength() * sizeof(GPUDataT)) == (length * sizeof(HostDataT)),
             "Sizes do not match for host & GPU data. Please ensure the source "
             "buffer is not larger than the destination buffer");
         if (async) {
@@ -168,7 +168,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     inline void CopyGpuDataToHost(HostDataT *host_out, std::size_t length,
                                   bool async = false) const {
         PL_ABORT_IF_NOT(
-            (getLength() * sizeof(GPUDataT)) > (length * sizeof(HostDataT)),
+            (getLength() * sizeof(GPUDataT)) == (length * sizeof(HostDataT)),
             "Sizes do not match for host & GPU data. Please ensure the source "
             "buffer is not larger than the destination buffer");
         if (!async) {
