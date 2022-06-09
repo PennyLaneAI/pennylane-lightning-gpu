@@ -119,7 +119,11 @@ void applyGeneratorDoubleExcitationPlus_GPU(SVType &sv,
                                             const bool adj = false) {
     sv.applyGeneratorDoubleExcitationPlus(wires, adj);
 }
-
+template <class T = double, class SVType>
+void applyGeneratorMultiRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
+                               const bool adj = false) {
+    sv.applyGeneratorMultiRZ(wires, adj);
+}
 } // namespace
 /// @endcond
 
@@ -170,7 +174,9 @@ template <class T = double> class AdjointJacobianGPU {
         {"DoubleExcitaitonPlus",
          &::applyGeneratorDoubleExcitationPlus_GPU<T,
                                                    StateVectorCudaManaged<T>>},
-    };
+        {"MultiRZ",
+         &::applyGeneratorMultiRZ_GPU<T, StateVectorCudaManaged<T>>}};
+
 
     // Holds the mappings from gate labels to associated generator coefficients.
     const std::unordered_map<std::string, T> scaling_factors{
@@ -190,7 +196,8 @@ template <class T = double> class AdjointJacobianGPU {
         {"SingleExcitationPlus", -static_cast<T>(0.5)},
         {"DoubleExcitation", -static_cast<T>(0.5)},
         {"DoubleExcitationMinus", -static_cast<T>(0.5)},
-        {"DoubleExcitationPlus", -static_cast<T>(0.5)}};
+        {"DoubleExcitationPlus", -static_cast<T>(0.5)}
+        {"MultiRZ", static_cast<T>(0.5)}};
 
     /**
      * @brief Utility method to update the Jacobian at a given index by

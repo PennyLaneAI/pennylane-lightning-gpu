@@ -607,31 +607,18 @@ class StateVectorCudaManaged
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
     }
 
+    /* Multi-qubit gates */
     inline void applyMultiRZ(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
-        const size_t num_wires = wires.size();
-        const size_t num_rows = 1 << num_wires;
-        std::vector<CFP_t> matrix_cu(num_rows * num_rows, {0, 0});
-        { /* generate matrix */
-            std::vector<Precision> eigs;
-            eigs.reserve(num_rows);
-            eigs.push_back(1.0);
-            eigs.push_back(-1.0);
-            for (size_t i = 1; i < num_wires; i++) {
-                const size_t sz = eigs.size();
-                for (size_t j = 0; j < sz; j++) {
-                    eigs.push_back(-eigs[j]);
-                }
-            }
-
-            const Precision p2 = param / 2;
-            for (size_t idx = 0; idx < num_rows; idx++) {
-                matrix_cu[idx * num_rows + idx] =
-                    cuUtil::complexToCu<std::complex<Precision>>(
-                        std::exp(-std::complex<Precision>(0, p2 * eigs[idx])));
-            }
-        }
-        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
+        static const std::vector<std:string> names(wires.size(), {"RZ"});
+        applyParametricPauliGate(names, {}, wires, param, adjoint);
+    }
+    inline void applyGeneratorMultiRZ(const std::vector<std::size_t> &wires,
+                                    bool adjoint) {
+        static const std::vector<std::string> name {{"PauliZ"}};
+        static const Precision param = 0.0;
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(name, param),
+                                {}, wires, adjoint);
     }
 
     /**
