@@ -25,6 +25,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
      * @param alloc_memory Indicate whether to allocate the memory for the
      * buffer. Defaults to `true`
      */
+    using type = GPUDataT;
+
     DataBuffer(std::size_t length, int device_id = 0,
                cudaStream_t stream_id = 0, bool alloc_memory = true)
         : length_{length}, dev_tag_{device_id, stream_id} {
@@ -107,6 +109,14 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
      */
     inline auto getStream() const -> cudaStream_t {
         return dev_tag_.getStreamID();
+    }
+
+    inline auto getDevice() const -> int {
+        return dev_tag_.getDeviceID();
+    }
+
+    inline auto getDevTag() const -> const DevTag<DevTagT>& {
+        return dev_tag_;
     }
 
     /**
