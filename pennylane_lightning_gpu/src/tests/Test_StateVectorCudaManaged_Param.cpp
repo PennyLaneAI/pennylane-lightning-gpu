@@ -1026,6 +1026,77 @@ TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitationPlus",
     }
 }
 
+TEMPLATE_TEST_CASE("LightningGPU::applyMultiRZ", "[LightningGPU_Param]", float,
+                   double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results[0][0] = {0.9887710779360422, -0.14943813247359922};
+    expected_results[1][0] = {0.9210609940028851, -0.3894183423086505};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results_adj[0][0] = {0.9887710779360422, 0.14943813247359922};
+    expected_results_adj[1][0] = {0.9210609940028851, 0.3894183423086505};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly adjoint=false") {
+        SECTION("MultiRZ 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyMultiRZ({0, 1}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+        SECTION("MultiRZ 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyMultiRZ({0, 2}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+    }
+    SECTION("Apply directly adjoint=true") {
+        SECTION("MultiRZ 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyMultiRZ({0, 1}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+        SECTION("MultiRZ 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyMultiRZ({0, 2}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("MultiRZ", {0, 1}, true,
+                                                  {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
+}
+
 // NOLINTNEXTLINE: Avoid complexity errors
 TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                    "[LightningGPU_Param]", float, double) {

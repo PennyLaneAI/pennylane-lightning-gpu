@@ -170,6 +170,12 @@ class StateVectorCudaManaged
                        std::forward<decltype(wires)>(wires),
                        std::forward<decltype(adjoint)>(adjoint),
                        std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"MultiRZ",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyMultiRZ(std::forward<decltype(wires)>(wires),
+                                std::forward<decltype(adjoint)>(adjoint),
+                                std::forward<decltype(params[0])>(params[0]));
                }}}
 
     {
@@ -599,6 +605,33 @@ class StateVectorCudaManaged
                                        bool adjoint) {
         auto &&mat = cuGates::getGeneratorDoubleExcitationPlus<CFP_t>();
         applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+    }
+
+    inline void applyMultiRZ(const std::vector<std::size_t> &wires,
+                             bool adjoint, Precision param) {
+        const size_t num_wires = wires.size();
+        const size_t num_rows = 1 << num_wires;
+        std::vector<CFP_t> matrix_cu(num_rows * num_rows, {0, 0});
+        { /* generate matrix */
+            std::vector<Precision> eigs;
+            eigs.reserve(num_rows);
+            eigs.push_back(1.0);
+            eigs.push_back(-1.0);
+            for (size_t i = 1; i < num_wires; i++) {
+                const size_t sz = eigs.size();
+                for (size_t j = 0; j < sz; j++) {
+                    eigs.push_back(-eigs[j]);
+                }
+            }
+
+            const Precision p2 = param / 2;
+            for (size_t idx = 0; idx < num_rows; idx++) {
+                matrix_cu[idx * num_rows + idx] =
+                    cuUtil::complexToCu<std::complex<Precision>>(
+                        std::exp(-std::complex<Precision>(0, p2 * eigs[idx])));
+            }
+        }
+        applyDeviceMatrixGate(matrix_cu.data(), {}, wires, adjoint);
     }
 
     /**
