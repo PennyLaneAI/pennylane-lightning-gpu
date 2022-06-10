@@ -170,6 +170,12 @@ class StateVectorCudaManaged
                        std::forward<decltype(wires)>(wires),
                        std::forward<decltype(adjoint)>(adjoint),
                        std::forward<decltype(params[0])>(params[0]));
+               }},
+              {"MultiRZ",
+               [&](auto &&wires, auto &&adjoint, auto &&params) {
+                   applyMultiRZ(std::forward<decltype(wires)>(wires),
+                                std::forward<decltype(adjoint)>(adjoint),
+                                std::forward<decltype(params[0])>(params[0]));
                }}}
 
     {
@@ -701,6 +707,22 @@ class StateVectorCudaManaged
         }
         applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
                               wires, adjoint);
+    }
+
+    /* Multi-qubit gates */
+    inline void applyMultiRZ(const std::vector<std::size_t> &wires,
+                             bool adjoint, Precision param) {
+        static const std::vector<std::string> names(wires.size(), {"RZ"});
+        applyParametricPauliGate(names, {}, wires, param, adjoint);
+    }
+    inline void applyGeneratorMultiRZ(const std::vector<std::size_t> &wires,
+                                      bool adjoint) {
+        static const std::string name{"PauliZ"};
+        static const Precision param = 0.0;
+        for (const auto &w : wires) {
+            applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(name, param),
+                                  {}, {w}, adjoint);
+        }
     }
 
     /**
