@@ -681,10 +681,10 @@ static auto getSingleExcitation(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorSingleExcitation() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorSingleExcitation() -> std::vector<CFP_t> {
     return {
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
@@ -759,10 +759,10 @@ static auto getSingleExcitationMinus(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorSingleExcitationMinus() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorSingleExcitationMinus() -> std::vector<CFP_t> {
     return {
         cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
@@ -837,10 +837,10 @@ static auto getSingleExcitationPlus(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorSingleExcitationPlus() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorSingleExcitationPlus() -> std::vector<CFP_t> {
     return {
         -cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
@@ -915,10 +915,10 @@ static auto getDoubleExcitation(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorDoubleExcitation() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorDoubleExcitation() -> std::vector<CFP_t> {
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[60] = cuUtil::IMAG<CFP_t>();
     mat[195] = -cuUtil::IMAG<CFP_t>();
@@ -988,10 +988,10 @@ static auto getDoubleExcitationMinus(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorDoubleExcitationMinus() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorDoubleExcitationMinus() -> std::vector<CFP_t> {
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[0] = cuUtil::ONE<CFP_t>();
     mat[17] = cuUtil::ONE<CFP_t>();
@@ -1075,10 +1075,10 @@ static auto getDoubleExcitationPlus(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorDoubleExcitationPlus() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorDoubleExcitationPlus() -> std::vector<CFP_t> {
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[0] = -cuUtil::ONE<CFP_t>();
     mat[17] = -cuUtil::ONE<CFP_t>();
@@ -1153,10 +1153,10 @@ static auto getIsingXX(const std::vector<U> &params) -> std::vector<CFP_t> {
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::array<CFP_t>
+ * @return constexpr std::array<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorIsingXX() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorIsingXX() -> std::vector<CFP_t> {
     return {
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
@@ -1230,7 +1230,7 @@ static auto getIsingYY(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @return constexpr std::array<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorIsingYY() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorIsingYY() -> std::vector<CFP_t> {
     return {
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>(),
@@ -1302,10 +1302,10 @@ static auto getIsingZZ(const std::vector<U> &params) -> std::vector<CFP_t> {
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorIsingZZ() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorIsingZZ() -> std::vector<CFP_t> {
     return {
         -cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
