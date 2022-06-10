@@ -617,8 +617,10 @@ class StateVectorCudaManaged
                                       bool adjoint) {
         static const std::string name{"PauliZ"};
         static const Precision param = 0.0;
-        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(name, param), {},
-                              wires, adjoint);
+        for (const auto &w : wires) {
+            applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(name, param),
+                                  {}, {w}, adjoint);
+        }
     }
 
     /**
