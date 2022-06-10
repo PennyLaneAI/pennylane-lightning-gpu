@@ -52,44 +52,48 @@ template <class fp_t> class GateCache {
      *
      */
     void defaultPopulateCache() {
-        using namespace Pennylane::CUDA::Util;
-
         host_gates_[std::make_pair(std::string{"Identity"}, 0.0)] =
-            std::vector<CFP_t>{ONE<CFP_t>(), ZERO<CFP_t>(), ZERO<CFP_t>(),
-                               ONE<CFP_t>()};
+            std::vector<CFP_t>{cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>()};
         host_gates_[std::make_pair(std::string{"PauliX"}, 0.0)] =
-            std::vector<CFP_t>{ZERO<CFP_t>(), ONE<CFP_t>(), ONE<CFP_t>(),
-                               ZERO<CFP_t>()};
+            std::vector<CFP_t>{cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
+                               cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>()};
         host_gates_[std::make_pair(std::string{"PauliY"}, 0.0)] =
-            std::vector<CFP_t>{ZERO<CFP_t>(), -IMAG<CFP_t>(), IMAG<CFP_t>(),
-                               ZERO<CFP_t>()};
+            std::vector<CFP_t>{cuUtil::ZERO<CFP_t>(), -cuUtil::IMAG<CFP_t>(),
+                               cuUtil::IMAG<CFP_t>(), cuUtil::ZERO<CFP_t>()};
         host_gates_[std::make_pair(std::string{"PauliZ"}, 0.0)] =
-            std::vector<CFP_t>{ONE<CFP_t>(), ZERO<CFP_t>(), ZERO<CFP_t>(),
-                               -ONE<CFP_t>()};
+            std::vector<CFP_t>{cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>()};
         host_gates_[std::make_pair(std::string{"Hadamard"}, 0.0)] =
-            std::vector<CFP_t>{INVSQRT2<CFP_t>(), INVSQRT2<CFP_t>(),
-                               INVSQRT2<CFP_t>(), -INVSQRT2<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"S"}, 0.0)] = std::vector<CFP_t>{
-            ONE<CFP_t>(), ZERO<CFP_t>(), ZERO<CFP_t>(), IMAG<CFP_t>()};
-        host_gates_[std::make_pair(std::string{"T"}, 0.0)] = std::vector<CFP_t>{
-            ONE<CFP_t>(), ZERO<CFP_t>(), ZERO<CFP_t>(),
-            ConstMultSC(SQRT2<fp_t>() / 2.0,
-                        ConstSum(ONE<CFP_t>(), IMAG<CFP_t>()))};
-        host_gates_[std::make_pair(std::string{"SWAP"}, 0.0)] =
             std::vector<CFP_t>{
-                ONE<CFP_t>(),  ZERO<CFP_t>(), ZERO<CFP_t>(), ZERO<CFP_t>(),
-                ZERO<CFP_t>(), ZERO<CFP_t>(), ONE<CFP_t>(),  ZERO<CFP_t>(),
-                ZERO<CFP_t>(), ONE<CFP_t>(),  ZERO<CFP_t>(), ZERO<CFP_t>(),
-                ZERO<CFP_t>(), ZERO<CFP_t>(), ZERO<CFP_t>(), ONE<CFP_t>()};
+                cuUtil::INVSQRT2<CFP_t>(), cuUtil::INVSQRT2<CFP_t>(),
+                cuUtil::INVSQRT2<CFP_t>(), -cuUtil::INVSQRT2<CFP_t>()};
+        host_gates_[std::make_pair(std::string{"S"}, 0.0)] =
+            std::vector<CFP_t>{cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), cuUtil::IMAG<CFP_t>()};
+        host_gates_[std::make_pair(std::string{"T"}, 0.0)] = std::vector<CFP_t>{
+            cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+            cuUtil::ConstMultSC(
+                cuUtil::SQRT2<fp_t>() / 2.0,
+                cuUtil::ConstSum(cuUtil::ONE<CFP_t>(), cuUtil::IMAG<CFP_t>()))};
+        host_gates_[std::make_pair(std::string{"SWAP"}, 0.0)] =
+            std::vector<CFP_t>{cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>()};
         host_gates_[std::make_pair(std::string{"CNOT"}, 0.0)] =
-            std::vector<CFP_t>{ZERO<CFP_t>(), ONE<CFP_t>(), ONE<CFP_t>(),
-                               ZERO<CFP_t>()};
+            std::vector<CFP_t>{cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
+                               cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>()};
         host_gates_[std::make_pair(std::string{"Toffoli"}, 0.0)] =
-            std::vector<CFP_t>{ZERO<CFP_t>(), ONE<CFP_t>(), ONE<CFP_t>(),
-                               ZERO<CFP_t>()};
+            std::vector<CFP_t>{cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
+                               cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>()};
         host_gates_[std::make_pair(std::string{"CZ"}, 0.0)] =
-            std::vector<CFP_t>{ONE<CFP_t>(), ZERO<CFP_t>(), ZERO<CFP_t>(),
-                               -ONE<CFP_t>()};
+            std::vector<CFP_t>{cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+                               cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>()};
         host_gates_[std::make_pair(std::string{"CSWAP"}, 0.0)] =
             host_gates_.at(std::make_pair(std::string{"SWAP"}, 0.0));
         for (const auto &[h_gate_k, h_gate_v] : host_gates_) {

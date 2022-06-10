@@ -252,7 +252,7 @@ static constexpr auto getToffoli() -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const Phase-shift gate
+ * @return std::vector<CFP_t> Return Phase-shift gate
  * data.
  */
 template <class CFP_t, class U = double>
@@ -270,7 +270,7 @@ static auto getPhaseShift(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const Phase-shift gate
+ * @return std::vector<CFP_t> Return Phase-shift gate
  * data.
  */
 template <class CFP_t, class U = double>
@@ -285,7 +285,7 @@ static auto getPhaseShift(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const RX gate data.
+ * @return std::vector<CFP_t> Return RX gate data.
  */
 template <class CFP_t, class U = double>
 static auto getRX(U angle) -> std::vector<CFP_t> {
@@ -301,7 +301,7 @@ static auto getRX(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const RX gate data.
+ * @return std::vector<CFP_t> Return RX gate data.
  */
 template <class CFP_t, class U = double>
 static auto getRX(const std::vector<U> &params) -> std::vector<CFP_t> {
@@ -315,7 +315,7 @@ static auto getRX(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const RY gate data.
+ * @return std::vector<CFP_t> Return RY gate data.
  */
 template <class CFP_t, class U = double>
 static auto getRY(U angle) -> std::vector<CFP_t> {
@@ -331,7 +331,7 @@ static auto getRY(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const RY gate data.
+ * @return std::vector<CFP_t> Return RY gate data.
  */
 template <class CFP_t, class U = double>
 static auto getRY(const std::vector<U> &params) -> std::vector<CFP_t> {
@@ -345,7 +345,7 @@ static auto getRY(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const RZ gate data.
+ * @return std::vector<CFP_t> Return RZ gate data.
  */
 template <class CFP_t, class U = double>
 static auto getRZ(U angle) -> std::vector<CFP_t> {
@@ -362,7 +362,7 @@ static auto getRZ(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const RZ gate data.
+ * @return std::vector<CFP_t> Return RZ gate data.
  */
 template <class CFP_t, class U = double>
 static auto getRZ(const std::vector<U> &params) -> std::vector<CFP_t> {
@@ -385,7 +385,7 @@ e^{-i(\phi-\omega)/2}\sin(\theta/2) & e^{i(\phi+\omega)/2}\cos(\theta/2)
  * @param phi \f$\phi\f$ shift angle.
  * @param theta \f$\theta\f$ shift angle.
  * @param omega \f$\omega\f$ shift angle.
- * @return const std::vector<CFP_t> Return const Rot gate data.
+ * @return std::vector<CFP_t> Return Rot gate data.
  */
 template <class CFP_t, class U = double>
 static auto getRot(U phi, U theta, U omega) -> std::vector<CFP_t> {
@@ -419,7 +419,7 @@ e^{-i(\phi-\omega)/2}\sin(\theta/2) & e^{i(\phi+\omega)/2}\cos(\theta/2)
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of gate data. Values are expected in order of
 \f$[\phi, \theta, \omega]\f$.
- * @return const std::vector<CFP_t> Return const Rot gate data.
+ * @return std::vector<CFP_t> Return Rot gate data.
  */
 template <class CFP_t, class U = double>
 static auto getRot(const std::vector<U> &params) -> std::vector<CFP_t> {
@@ -433,7 +433,7 @@ static auto getRot(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const RX gate data.
+ * @return std::vector<CFP_t> Return RX gate data.
  */
 template <class CFP_t, class U = double>
 static auto getCRX(U angle) -> std::vector<CFP_t> {
@@ -463,7 +463,7 @@ static auto getCRX(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const RX gate data.
+ * @return std::vector<CFP_t> Return RX gate data.
  */
 template <class CFP_t, class U = double>
 static auto getCRX(const std::vector<U> &params) -> std::vector<CFP_t> {
@@ -477,7 +477,7 @@ static auto getCRX(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const RY gate data.
+ * @return std::vector<CFP_t> Return RY gate data.
  */
 template <class CFP_t, class U = double>
 static auto getCRY(U angle) -> std::vector<CFP_t> {
@@ -507,7 +507,7 @@ static auto getCRY(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const RY gate data.
+ * @return std::vector<CFP_t> Return RY gate data.
  */
 template <class CFP_t, class U = double>
 static auto getCRY(const std::vector<U> &params) -> std::vector<CFP_t> {
@@ -521,7 +521,7 @@ static auto getCRY(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const RZ gate data.
+ * @return std::vector<CFP_t> Return RZ gate data.
  */
 template <class CFP_t, class U = double>
 static auto getCRZ(U angle) -> std::vector<CFP_t> {
@@ -551,7 +551,7 @@ static auto getCRZ(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const RZ gate data.
+ * @return std::vector<CFP_t> Return RZ gate data.
  */
 template <class CFP_t, class U = double>
 static auto getCRZ(const std::vector<U> &params) -> std::vector<CFP_t> {
@@ -633,7 +633,7 @@ static auto getControlledPhaseShift(const std::vector<U> &params)
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const single excitation rotation
+ * @return std::vector<CFP_t> Return single excitation rotation
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -647,10 +647,10 @@ static auto getSingleExcitation(U angle) -> std::vector<CFP_t> {
             cuUtil::ZERO<CFP_t>(),
             cuUtil::ZERO<CFP_t>(),
             c,
-            -s,
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
             s,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            -s,
             c,
             cuUtil::ZERO<CFP_t>(),
             cuUtil::ZERO<CFP_t>(),
@@ -666,7 +666,7 @@ static auto getSingleExcitation(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const single excitation rotation
+ * @return std::vector<CFP_t> Return single excitation rotation
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -681,10 +681,10 @@ static auto getSingleExcitation(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorSingleExcitation() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorSingleExcitation() -> std::vector<CFP_t> {
     return {
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
@@ -708,7 +708,7 @@ static auto getGeneratorSingleExcitation() -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const single excitation rotation
+ * @return std::vector<CFP_t> Return single excitation rotation
  * with negative phase-shift outside the rotation subspace gate data.
  */
 template <class CFP_t, class U = double>
@@ -724,10 +724,10 @@ static auto getSingleExcitationMinus(U angle) -> std::vector<CFP_t> {
             cuUtil::ZERO<CFP_t>(),
             cuUtil::ZERO<CFP_t>(),
             c,
-            -s,
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
             s,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            -s,
             c,
             cuUtil::ZERO<CFP_t>(),
             cuUtil::ZERO<CFP_t>(),
@@ -744,7 +744,7 @@ static auto getSingleExcitationMinus(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const single excitation rotation
+ * @return std::vector<CFP_t> Return single excitation rotation
  * with negative phase-shift outside the rotation subspace gate data.
  */
 template <class CFP_t, class U = double>
@@ -759,10 +759,11 @@ static auto getSingleExcitationMinus(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorSingleExcitationMinus() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorSingleExcitationMinus()
+    -> std::vector<CFP_t> {
     return {
         cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
@@ -786,7 +787,7 @@ static auto getGeneratorSingleExcitationMinus() -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const single excitation rotation
+ * @return std::vector<CFP_t> Return single excitation rotation
  * with positive phase-shift outside the rotation subspace gate data.
  */
 template <class CFP_t, class U = double>
@@ -802,10 +803,10 @@ static auto getSingleExcitationPlus(U angle) -> std::vector<CFP_t> {
             cuUtil::ZERO<CFP_t>(),
             cuUtil::ZERO<CFP_t>(),
             c,
-            -s,
-            cuUtil::ZERO<CFP_t>(),
-            cuUtil::ZERO<CFP_t>(),
             s,
+            cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(),
+            -s,
             c,
             cuUtil::ZERO<CFP_t>(),
             cuUtil::ZERO<CFP_t>(),
@@ -822,7 +823,7 @@ static auto getSingleExcitationPlus(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const single excitation rotation
+ * @return std::vector<CFP_t> Return single excitation rotation
  * with positive phase-shift outside the rotation subspace gate data.
  */
 template <class CFP_t, class U = double>
@@ -837,10 +838,10 @@ static auto getSingleExcitationPlus(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorSingleExcitationPlus() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorSingleExcitationPlus() -> std::vector<CFP_t> {
     return {
         -cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
@@ -863,7 +864,7 @@ static auto getGeneratorSingleExcitationPlus() -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const double excitation rotation
+ * @return std::vector<CFP_t> Return double excitation rotation
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -876,7 +877,7 @@ static auto getDoubleExcitation(U angle) -> std::vector<CFP_t> {
     mat[17] = cuUtil::ONE<CFP_t>();
     mat[34] = cuUtil::ONE<CFP_t>();
     mat[51] = c;
-    mat[60] = -s;
+    mat[60] = s;
     mat[68] = cuUtil::ONE<CFP_t>();
     mat[85] = cuUtil::ONE<CFP_t>();
     mat[102] = cuUtil::ONE<CFP_t>();
@@ -885,7 +886,7 @@ static auto getDoubleExcitation(U angle) -> std::vector<CFP_t> {
     mat[153] = cuUtil::ONE<CFP_t>();
     mat[170] = cuUtil::ONE<CFP_t>();
     mat[187] = cuUtil::ONE<CFP_t>();
-    mat[195] = s;
+    mat[195] = -s;
     mat[204] = c;
     mat[221] = cuUtil::ONE<CFP_t>();
     mat[238] = cuUtil::ONE<CFP_t>();
@@ -900,7 +901,7 @@ static auto getDoubleExcitation(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const double excitation rotation
+ * @return std::vector<CFP_t> Return double excitation rotation
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -915,10 +916,10 @@ static auto getDoubleExcitation(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorDoubleExcitation() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorDoubleExcitation() -> std::vector<CFP_t> {
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[60] = cuUtil::IMAG<CFP_t>();
     mat[195] = -cuUtil::IMAG<CFP_t>();
@@ -933,7 +934,7 @@ static auto getGeneratorDoubleExcitation() -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const double excitation rotation
+ * @return std::vector<CFP_t> Return double excitation rotation
  * with negative phase-shift outside the rotation subspace gate data.
  */
 template <class CFP_t, class U = double>
@@ -948,7 +949,7 @@ static auto getDoubleExcitationMinus(U angle) -> std::vector<CFP_t> {
     mat[17] = e;
     mat[34] = e;
     mat[51] = c;
-    mat[60] = -s;
+    mat[60] = s;
     mat[68] = e;
     mat[85] = e;
     mat[102] = e;
@@ -957,7 +958,7 @@ static auto getDoubleExcitationMinus(U angle) -> std::vector<CFP_t> {
     mat[153] = e;
     mat[170] = e;
     mat[187] = e;
-    mat[195] = s;
+    mat[195] = -s;
     mat[204] = c;
     mat[221] = e;
     mat[238] = e;
@@ -973,7 +974,7 @@ static auto getDoubleExcitationMinus(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const double excitation rotation
+ * @return std::vector<CFP_t> Return double excitation rotation
  * with negative phase-shift outside the rotation subspace gate data.
  */
 template <class CFP_t, class U = double>
@@ -988,10 +989,11 @@ static auto getDoubleExcitationMinus(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorDoubleExcitationMinus() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorDoubleExcitationMinus()
+    -> std::vector<CFP_t> {
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[0] = cuUtil::ONE<CFP_t>();
     mat[17] = cuUtil::ONE<CFP_t>();
@@ -1020,7 +1022,7 @@ static auto getGeneratorDoubleExcitationMinus() -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const double excitation rotation
+ * @return std::vector<CFP_t> Return double excitation rotation
  * with positive phase-shift outside the rotation subspace gate data.
  */
 template <class CFP_t, class U = double>
@@ -1035,7 +1037,7 @@ static auto getDoubleExcitationPlus(U angle) -> std::vector<CFP_t> {
     mat[17] = e;
     mat[34] = e;
     mat[51] = c;
-    mat[60] = -s;
+    mat[60] = s;
     mat[68] = e;
     mat[85] = e;
     mat[102] = e;
@@ -1044,7 +1046,7 @@ static auto getDoubleExcitationPlus(U angle) -> std::vector<CFP_t> {
     mat[153] = e;
     mat[170] = e;
     mat[187] = e;
-    mat[195] = s;
+    mat[195] = -s;
     mat[204] = c;
     mat[221] = e;
     mat[238] = e;
@@ -1060,7 +1062,7 @@ static auto getDoubleExcitationPlus(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const double excitation rotation
+ * @return std::vector<CFP_t> Return double excitation rotation
  * with positive phase-shift outside the rotation subspace gate data.
  */
 template <class CFP_t, class U = double>
@@ -1075,10 +1077,10 @@ static auto getDoubleExcitationPlus(const std::vector<U> &params)
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorDoubleExcitationPlus() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorDoubleExcitationPlus() -> std::vector<CFP_t> {
     std::vector<CFP_t> mat(256, cuUtil::ZERO<CFP_t>());
     mat[0] = -cuUtil::ONE<CFP_t>();
     mat[17] = -cuUtil::ONE<CFP_t>();
@@ -1106,7 +1108,7 @@ static auto getGeneratorDoubleExcitationPlus() -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const Ising XX coupling
+ * @return std::vector<CFP_t> Return Ising XX coupling
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -1139,7 +1141,7 @@ static auto getIsingXX(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const Ising XX coupling
+ * @return std::vector<CFP_t> Return Ising XX coupling
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -1153,10 +1155,10 @@ static auto getIsingXX(const std::vector<U> &params) -> std::vector<CFP_t> {
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::array<CFP_t>
+ * @return constexpr std::array<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorIsingXX() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorIsingXX() -> std::vector<CFP_t> {
     return {
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
@@ -1179,7 +1181,7 @@ static auto getGeneratorIsingXX() -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const Ising YY coupling
+ * @return std::vector<CFP_t> Return Ising YY coupling
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -1213,7 +1215,7 @@ static auto getIsingYY(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const Ising YY coupling
+ * @return std::vector<CFP_t> Return Ising YY coupling
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -1230,7 +1232,7 @@ static auto getIsingYY(const std::vector<U> &params) -> std::vector<CFP_t> {
  * @return constexpr std::array<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorIsingYY() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorIsingYY() -> std::vector<CFP_t> {
     return {
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>(),
@@ -1253,7 +1255,7 @@ static auto getGeneratorIsingYY() -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param angle Phase shift angle.
- * @return const std::vector<CFP_t> Return const Ising ZZ coupling
+ * @return std::vector<CFP_t> Return Ising ZZ coupling
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -1288,7 +1290,7 @@ static auto getIsingZZ(U angle) -> std::vector<CFP_t> {
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
  * @param params Vector of phase shift angles. Only front element is read.
- * @return const std::vector<CFP_t> Return const Ising ZZ coupling
+ * @return std::vector<CFP_t> Return Ising ZZ coupling
  * gate data.
  */
 template <class CFP_t, class U = double>
@@ -1302,10 +1304,10 @@ static auto getIsingZZ(const std::vector<U> &params) -> std::vector<CFP_t> {
  *
  * @tparam CFP_t Required precision of gate (`float` or `double`).
  * @tparam U Required precision of parameter (`float` or `double`).
- * @return const std::vector<CFP_t>
+ * @return constexpr std::vector<CFP_t>
  */
 template <class CFP_t, class U = double>
-static auto getGeneratorIsingZZ() -> std::vector<CFP_t> {
+static constexpr auto getGeneratorIsingZZ() -> std::vector<CFP_t> {
     return {
         -cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
