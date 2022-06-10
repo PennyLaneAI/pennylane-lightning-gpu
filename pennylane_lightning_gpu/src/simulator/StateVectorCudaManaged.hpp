@@ -416,33 +416,75 @@ class StateVectorCudaManaged
     }
     inline void applyIsingXX(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
-        auto &&mat = cuGates::getIsingXX<CFP_t>(param);
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"IsingXX"};
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(gate_key, cuGates::getIsingXX<CFP_t>(param));
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void applyGeneratorIsingXX(const std::vector<std::size_t> &wires,
                                       bool adjoint) {
-        auto &&mat = cuGates::getGeneratorIsingXX<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        // auto &&mat = cuGates::getGeneratorIsingXX<CFP_t>();
+        // applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"GeneratorIsingXX"};
+        static const Precision param = 0.0;
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(gate_key,
+                                 cuGates::getGeneratorIsingXX<CFP_t>());
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void applyIsingYY(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
-        auto &&mat = cuGates::getIsingYY<CFP_t>(param);
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"IsingYY"};
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(gate_key, cuGates::getIsingYY<CFP_t>(param));
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void applyGeneratorIsingYY(const std::vector<std::size_t> &wires,
                                       bool adjoint) {
-        auto &&mat = cuGates::getGeneratorIsingYY<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        // auto &&mat = cuGates::getGeneratorIsingYY<CFP_t>();
+        // applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"GeneratorIsingYY"};
+        static const Precision param = 0.0;
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(gate_key,
+                                 cuGates::getGeneratorIsingYY<CFP_t>());
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void applyIsingZZ(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
-        auto &&mat = cuGates::getIsingZZ<CFP_t>(param);
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"IsingZZ"};
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(gate_key, cuGates::getIsingZZ<CFP_t>(param));
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void applyGeneratorIsingZZ(const std::vector<std::size_t> &wires,
                                       bool adjoint) {
-        auto &&mat = cuGates::getGeneratorIsingZZ<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        // auto &&mat = cuGates::getGeneratorIsingZZ<CFP_t>();
+        // applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"GeneratorIsingZZ"};
+        static const Precision param = 0.0;
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(gate_key,
+                                 cuGates::getGeneratorIsingZZ<CFP_t>());
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     void applyCSWAP(const std::vector<std::size_t> &wires, bool adjoint) {
         static const std::string name{"SWAP"};
@@ -533,19 +575,37 @@ class StateVectorCudaManaged
 
     inline void applySingleExcitation(const std::vector<std::size_t> &wires,
                                       bool adjoint, Precision param) {
-        auto &&mat = cuGates::getSingleExcitation<CFP_t>(param);
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"SingleExcitation"};
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(gate_key,
+                                 cuGates::getSingleExcitation<CFP_t>(param));
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void
     applySingleExcitationMinus(const std::vector<std::size_t> &wires,
                                bool adjoint, Precision param) {
-        auto &&mat = cuGates::getSingleExcitationMinus<CFP_t>(param);
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"SingleExcitationMinus"};
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(
+                gate_key, cuGates::getSingleExcitationMinus<CFP_t>(param));
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void applySingleExcitationPlus(const std::vector<std::size_t> &wires,
                                           bool adjoint, Precision param) {
-        auto &&mat = cuGates::getSingleExcitationPlus<CFP_t>(param);
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"SingleExcitationPlus"};
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(
+                gate_key, cuGates::getSingleExcitationPlus<CFP_t>(param));
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void applyDoubleExcitation(const std::vector<std::size_t> &wires,
                                       bool adjoint, Precision param) {
@@ -567,38 +627,80 @@ class StateVectorCudaManaged
     inline void
     applyGeneratorSingleExcitation(const std::vector<std::size_t> &wires,
                                    bool adjoint) {
-        auto &&mat = cuGates::getGeneratorSingleExcitation<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"GeneratorSingleExcitation"};
+        static const Precision param = 0.0;
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(
+                gate_key, cuGates::getGeneratorSingleExcitation<CFP_t>());
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void
     applyGeneratorSingleExcitationMinus(const std::vector<std::size_t> &wires,
                                         bool adjoint) {
-        auto &&mat = cuGates::getGeneratorSingleExcitationMinus<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"GeneratorSingleExcitationMinus"};
+        static const Precision param = 0.0;
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(
+                gate_key, cuGates::getGeneratorSingleExcitationMinus<CFP_t>());
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void
     applyGeneratorSingleExcitationPlus(const std::vector<std::size_t> &wires,
                                        bool adjoint) {
-        auto &&mat = cuGates::getGeneratorSingleExcitationPlus<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"GeneratorSingleExcitationPlus"};
+        static const Precision param = 0.0;
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(
+                gate_key, cuGates::getGeneratorSingleExcitationPlus<CFP_t>());
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void
     applyGeneratorDoubleExcitation(const std::vector<std::size_t> &wires,
                                    bool adjoint) {
-        auto &&mat = cuGates::getGeneratorDoubleExcitation<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"GeneratorDoubleExcitation"};
+        static const Precision param = 0.0;
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(
+                gate_key, cuGates::getGeneratorDoubleExcitation<CFP_t>());
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void
     applyGeneratorDoubleExcitationMinus(const std::vector<std::size_t> &wires,
                                         bool adjoint) {
-        auto &&mat = cuGates::getGeneratorDoubleExcitationMinus<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"GeneratorDoubleExcitationMinus"};
+        static const Precision param = 0.0;
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(
+                gate_key, cuGates::getGeneratorDoubleExcitationMinus<CFP_t>());
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
     inline void
     applyGeneratorDoubleExcitationPlus(const std::vector<std::size_t> &wires,
                                        bool adjoint) {
-        auto &&mat = cuGates::getGeneratorDoubleExcitationPlus<CFP_t>();
-        applyDeviceMatrixGate(mat.data(), {}, wires, adjoint);
+        static const std::string name{"GeneratorDoubleExcitationPlus"};
+        static const Precision param = 0.0;
+        const auto gate_key = std::make_pair(name, param);
+        if (!gate_cache_.gateExists(gate_key)) {
+            gate_cache_.add_gate(
+                gate_key, cuGates::getGeneratorDoubleExcitationPlus<CFP_t>());
+        }
+        applyDeviceMatrixGate(gate_cache_.get_gate_device_ptr(gate_key), {},
+                              wires, adjoint);
     }
 
     /**
