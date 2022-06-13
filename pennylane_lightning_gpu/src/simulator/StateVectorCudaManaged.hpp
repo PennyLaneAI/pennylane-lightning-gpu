@@ -66,6 +66,13 @@ class StateVectorCudaManaged
         : StateVectorCudaManaged(Util::log2(length)) {
         BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
     }
+
+    StateVectorCudaManaged(const CFP_t *gpu_data, size_t length,
+                           DevTag<int> dev_tag)
+        : StateVectorCudaManaged(Util::log2(length), dev_tag) {
+        BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
+    }
+
     StateVectorCudaManaged(const std::complex<Precision> *host_data,
                            size_t length)
         : StateVectorCudaManaged(Util::log2(length)) {

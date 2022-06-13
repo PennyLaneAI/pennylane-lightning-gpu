@@ -69,7 +69,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     std::string class_name = "LightningGPU_C" + bitsize;
 
     py::class_<StateVectorCudaManaged<PrecisionT>>(m, class_name.c_str())
-        .def(py::init<std::size_t>()) // qubits, device
+        .def(py::init<std::size_t>())              // qubits, device
+        .def(py::init<std::size_t, DevTag<int>>()) // qubits, dev-tag
         .def(
             py::init<const StateVectorCudaManaged<PrecisionT> &>()) // copy ctor
         .def(py::init([](const np_arr_c &arr) {
@@ -369,7 +370,12 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                      strides /* strides for each axis     */
                      ));
              })
-
+        .def("data_ptr", &StateVectorCudaManaged<PrecisionT>::getData,
+             "Get the raw data pointer for the GPU device")
+        .def("DeviceToDevice",
+             py::overload_cast<const StateVectorManaged<PrecisionT> &, bool>(
+                 &StateVectorCudaManaged<PrecisionT>::CopyGpuDataToGpuIn),
+             "Synchronize data from another GPU device to current device.")
         .def("DeviceToHost",
              py::overload_cast<StateVectorManaged<PrecisionT> &, bool>(
                  &StateVectorCudaManaged<PrecisionT>::CopyGpuDataToHost,
