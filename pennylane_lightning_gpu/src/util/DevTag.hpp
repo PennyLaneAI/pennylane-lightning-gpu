@@ -25,15 +25,6 @@ class DevTag {
     DevTag(const DevTag<IDType> &other)
         : device_id_{other.getDeviceID()}, stream_id_{other.getStreamID()} {}
 
-    DevTag(DevTag<IDType> &&other) noexcept
-        : device_id_{std::move(other.device_id_)}, stream_id_{std::move(
-                                                       other.stream_id_)} {
-        auto ref_id = &other.device_id_;
-        auto ref_st = &other.stream_id_;
-        ref_id = nullptr;
-        ref_st = nullptr;
-    }
-
     DevTag &operator=(DevTag<IDType> &&other) {
         if (this != &other) {
             device_id_ = other.device_id_;

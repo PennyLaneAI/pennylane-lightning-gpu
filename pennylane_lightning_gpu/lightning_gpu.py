@@ -31,6 +31,8 @@ from pennylane import (
     QubitStateVector,
 )
 from pennylane_lightning import LightningQubit
+from pennylane_lightning.lightning_qubit import _chunk_iterable
+
 from pennylane.operation import Tensor
 from pennylane.measurements import Expectation
 from pennylane.wires import Wires
@@ -118,11 +120,12 @@ class LightningGPU(LightningQubit):
         "Identity",
     }
 
-    def __init__(self, wires, *, shots=None, sync=True):
+    def __init__(self, wires, *, shots=None, sync=True, batch_obs=False):
         super().__init__(wires, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._sync = sync
         self._dp = DevPool()
+        self._batch_obs = batch_obs
 
     def reset(self):
         super().reset()
@@ -259,7 +262,7 @@ class LightningGPU(LightningQubit):
                     'the "adjoint" differentiation method'
                 )
 
-    def adjoint_jacobian(self, tape, starting_state=None, use_device_state=False):
+    def adjoint_jacobian(self, tape, starting_state=None, use_device_state=False, **kwargs):
         if self.shots is not None:
             warn(
                 "Requested adjoint differentiation to be computed with finite shots."
@@ -309,16 +312,33 @@ class LightningGPU(LightningQubit):
             trainable_params if not use_sp else [i - 1 for i in trainable_params[first_elem:]]
         )  # exclude first index if explicitly setting sv
 
-        with ThreadPoolExecutor(max_workers=self._dp.getTotalDevices()) as tp:
-            pass
+        if self._dp.getTotalDevices() > 1 and self._batch_obs:
+            obs_partitions = _chunk_iterable(obs_serialized, self._dp.self._dp.getTotalDevices())
+            jac = []
+            for obs_chunk in obs_partitions:
 
-        jac = adj.adjoint_jacobian(
-            self._gpu_state,
-            obs_serialized,
-            ops_serialized,
-            tp_shift,
-            tape.num_params,
-        )
+                jac_local = adj.adjoint_jacobian(
+                    state_vector,
+                    obs_chunk,
+                    ops_serialized,
+                    tp_shift,
+                    tape.num_params,
+                )
+                jac.extend(jac_local)
+            jac = np.array(jac)
+
+            with ThreadPoolExecutor(max_workers=self._dp.getTotalDevices()) as tp:
+                for obs_chunk in obs_partitions:
+                    gpu_id = self._dp.acquireDevice()
+
+        else:
+            jac = adj.adjoint_jacobian(
+                self._gpu_state,
+                obs_serialized,
+                ops_serialized,
+                tp_shift,
+                tape.num_params,
+            )
         return jac  # .reshape(-1, tape.num_params)
 
     def expval(self, observable, shot_range=None, bin_size=None):

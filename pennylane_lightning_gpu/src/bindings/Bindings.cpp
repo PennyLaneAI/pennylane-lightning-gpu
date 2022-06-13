@@ -634,15 +634,19 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
 
     py::class_<DevTag<int>>(m, "DevTag")
         .def(py::init<>())
-        .def(py::init([](int a, int b) {
-            return new DevTag<int>(a, static_cast<cudaStream_t>(b));
+        .def(py::init([](int device_id, void *stream_id) {
+            // Note, streams must be handled externally for now.
+            // Binding support provided through void* conversion to cudaStream_t
+            return new DevTag<int>(device_id,
+                                   static_cast<cudaStream_t>(stream_id));
         }))
         .def(py::init<const DevTag<int> &>())
-        .def(py::init<DevTag<int> &&>())
         .def("getDeviceID", &DevTag<int>::getDeviceID)
         .def("getStreamID",
              [](DevTag<int> &dev_tag) {
-                 return static_cast<int>(dev_tag.getStreamID());
+                 // default stream points to nullptr, so just return void* as
+                 // type
+                 return static_cast<void *>(dev_tag.getStreamID());
              })
         .def("refresh", &DevTag<int>::refresh);
 
