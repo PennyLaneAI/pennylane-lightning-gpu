@@ -12,6 +12,7 @@
 #include "StateVectorManaged.hpp"
 
 #include "DataBuffer.hpp"
+#include "DevTag.hpp"
 #include "cuda_helpers.hpp"
 
 /// @cond DEV
@@ -216,6 +217,11 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         : StateVectorBase<Precision, Derived>(num_qubits),
           data_buffer_{std::make_unique<CUDA::DataBuffer<CFP_t>>(
               Util::exp2(num_qubits), device_id, stream_id, device_alloc)} {}
+    StateVectorCudaBase(size_t num_qubits, CUDA::DevTag<int> dev_tag,
+                        bool device_alloc = true)
+        : StateVectorBase<Precision, Derived>(num_qubits),
+          data_buffer_{std::make_unique<CUDA::DataBuffer<CFP_t>>(
+              Util::exp2(num_qubits), dev_tag, device_alloc)} {}
     StateVectorCudaBase() = delete;
 
     virtual ~StateVectorCudaBase(){};

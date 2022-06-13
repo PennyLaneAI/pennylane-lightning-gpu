@@ -29,7 +29,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
 
     DataBuffer(std::size_t length, int device_id = 0,
                cudaStream_t stream_id = 0, bool alloc_memory = true)
-        : length_{length}, dev_tag_{device_id, stream_id}, gpu_buffer_{nullptr} {
+        : length_{length}, dev_tag_{device_id, stream_id}, gpu_buffer_{
+                                                               nullptr} {
         if (alloc_memory && length > 0) {
             dev_tag_.refresh();
             PL_CUDA_IS_SUCCESS(
@@ -97,7 +98,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
 
                 PL_CUDA_IS_SUCCESS(
                     cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
-                            sizeof(GPUDataT) * length_));
+                               sizeof(GPUDataT) * length_));
                 CopyGpuDataToGpu(other.gpu_buffer_, other.length_);
                 PL_CUDA_IS_SUCCESS(cudaFree(other.gpu_buffer_));
                 other.dev_tag_ = {};
@@ -108,8 +109,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
         return *this;
     };
 
-    virtual ~DataBuffer() { 
-        if(gpu_buffer_ != nullptr){
+    virtual ~DataBuffer() {
+        if (gpu_buffer_ != nullptr) {
             PL_CUDA_IS_SUCCESS(cudaFree(gpu_buffer_));
         }
     };
@@ -127,11 +128,9 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
         return dev_tag_.getStreamID();
     }
 
-    inline auto getDevice() const -> int {
-        return dev_tag_.getDeviceID();
-    }
+    inline auto getDevice() const -> int { return dev_tag_.getDeviceID(); }
 
-    inline auto getDevTag() const -> const DevTag<DevTagT>& {
+    inline auto getDevTag() const -> const DevTag<DevTagT> & {
         return dev_tag_;
     }
 

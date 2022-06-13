@@ -52,6 +52,16 @@ class StateVectorCudaManaged
             /* custatevecHandle_t* */ &handle));
     };
 
+    StateVectorCudaManaged(size_t num_qubits, DevTag<int> dev_tag,
+                           bool async = false)
+        : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
+              num_qubits, dev_tag, async),
+          gate_cache_(true) {
+        BaseType::initSV();
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
+            /* custatevecHandle_t* */ &handle));
+    };
+
     StateVectorCudaManaged(const CFP_t *gpu_data, size_t length)
         : StateVectorCudaManaged(Util::log2(length)) {
         BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);

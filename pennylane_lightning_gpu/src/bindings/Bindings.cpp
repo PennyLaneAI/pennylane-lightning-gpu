@@ -17,12 +17,15 @@
 #include <variant>
 #include <vector>
 
+#include "cuda.h"
+
 #include "AdjointDiff.hpp"
 #include "AdjointDiffGPU.hpp"
 #include "JacobianTape.hpp"
 
-#include "DevicePool.hpp" // LightningException
-#include "Error.hpp"      // LightningException
+#include "DevTag.hpp"
+#include "DevicePool.hpp"
+#include "Error.hpp"
 #include "StateVectorCudaManaged.hpp"
 #include "StateVectorManaged.hpp"
 #include "StateVectorRaw.hpp"
@@ -628,6 +631,20 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
         .def_static("getTotalDevices", &DevicePool<int>::getTotalDevices)
         .def_static("getDeviceUIDs", &DevicePool<int>::getDeviceUIDs)
         .def_static("setDeviceID", &DevicePool<int>::setDeviceIdx);
+
+    py::class_<DevTag<int>>(m, "DevTag")
+        .def(py::init<>())
+        .def(py::init([](int a, int b) {
+            return new DevTag<int>(a, static_cast<cudaStream_t>(b));
+        }))
+        .def(py::init<const DevTag<int> &>())
+        .def(py::init<DevTag<int> &&>())
+        .def("getDeviceID", &DevTag<int>::getDeviceID)
+        .def("getStreamID",
+             [](DevTag<int> &dev_tag) {
+                 return static_cast<int>(dev_tag.getStreamID());
+             })
+        .def("refresh", &DevTag<int>::refresh);
 
     StateVectorCudaManaged_class_bindings<float, float>(m);
     StateVectorCudaManaged_class_bindings<double, double>(m);
