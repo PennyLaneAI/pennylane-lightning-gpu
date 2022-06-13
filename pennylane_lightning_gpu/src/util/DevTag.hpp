@@ -17,13 +17,15 @@ class DevTag {
   public:
     DevTag() : device_id_{0}, stream_id_{0} {}
 
+    DevTag(IDType device_id) : device_id_{device_id}, stream_id_{0} {}
+
     DevTag(IDType device_id, cudaStream_t stream_id)
         : device_id_{device_id}, stream_id_{stream_id} {}
 
-    DevTag(const DevTag &other)
+    DevTag(const DevTag<IDType> &other)
         : device_id_{other.getDeviceID()}, stream_id_{other.getStreamID()} {}
 
-    DevTag(DevTag &&other) noexcept
+    DevTag(DevTag<IDType> &&other) noexcept
         : device_id_{std::move(other.device_id_)}, stream_id_{std::move(
                                                        other.stream_id_)} {
         auto ref_id = &other.device_id_;
@@ -32,7 +34,7 @@ class DevTag {
         ref_st = nullptr;
     }
 
-    DevTag &operator=(DevTag &&other) {
+    DevTag &operator=(DevTag<IDType> &&other) {
         if (this != &other) {
             device_id_ = other.device_id_;
             stream_id_ = other.stream_id_;
@@ -56,9 +58,7 @@ class DevTag {
                (getStreamID() == other.getStreamID());
     }
 
-    inline void refresh(){
-        PL_CUDA_IS_SUCCESS(cudaSetDevice(device_id_));
-    }
+    inline void refresh() { PL_CUDA_IS_SUCCESS(cudaSetDevice(device_id_)); }
 
   private:
     IDType device_id_;
