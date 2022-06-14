@@ -2,6 +2,7 @@
 
 #include <omp.h>
 
+#include "DevTag.hpp"
 #include "DevicePool.hpp"
 #include "JacobianTape.hpp"
 #include "StateVectorCudaManaged.hpp"
@@ -406,7 +407,8 @@ template <class T = double> class AdjointJacobianGPU {
                     const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
                     const Pennylane::Algorithms::OpsData<T> &ops,
                     const std::vector<size_t> &trainableParams,
-                    bool apply_operations = false) {
+                    bool apply_operations = false,
+                    const CUDA::DevTag<int> &dev_tag = {0, 0}) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 
@@ -424,7 +426,7 @@ template <class T = double> class AdjointJacobianGPU {
         const auto tp_rend = trainableParams.rend();
 
         // Create $U_{1:p}\vert \lambda \rangle$
-        StateVectorCudaManaged<T> lambda(ref_data, length);
+        StateVectorCudaManaged<T> lambda(ref_data, length, dev_tag);
 
         // Apply given operations to statevector if requested
         if (apply_operations) {
@@ -434,11 +436,11 @@ template <class T = double> class AdjointJacobianGPU {
         // Create observable-applied state-vectors
         std::vector<StateVectorCudaManaged<T>> H_lambda;
         for (size_t n = 0; n < num_observables; n++) {
-            H_lambda.emplace_back(lambda.getNumQubits());
+            H_lambda.emplace_back(lambda.getNumQubits(), dev_tag);
         }
         applyObservables(H_lambda, lambda, obs);
 
-        StateVectorCudaManaged<T> mu(lambda.getNumQubits());
+        StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dev_tag);
 
         for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
              op_idx--) {
@@ -487,110 +489,6 @@ template <class T = double> class AdjointJacobianGPU {
             applyOperationsAdj(H_lambda, ops, static_cast<size_t>(op_idx));
         }
     }
-
-    /*template <class SVType = StateVectorCudaManaged<T>>
-    void adjointJacobian(
-        // const SVType &ref_state, std::vector<std::vector<T>> &jac,
-        const CFP_t *ref_data, std::size_t length,
-        std::vector<std::vector<T>> &jac,
-        const std::vector<Pennylane::Algorithms::ObsDatum<T>> &observables,
-        const Pennylane::Algorithms::OpsData<T> &operations,
-        const std::vector<size_t> &trainableParams,
-        bool apply_operations = false) {
-        PL_ABORT_IF(trainableParams.empty(),
-                    "No trainable parameters provided.");
-
-        // Track positions within par and non-par operations
-        const size_t num_observables = observables.size();
-        DevicePool<int> dev_pool;
-
-        std::vector<std::size_t> obs_indices(num_observables);
-        std::iota(obs_indices.begin(), obs_indices.end(), 0);
-        const auto obs_idx_per_device = chunkData(obs_indices, batch_size);
-
-        size_t trainableParamNumber = trainableParams.size() - 1;
-        size_t current_param_idx =
-            operations.getNumParOps() - 1; // total number of parametric ops
-        auto tp_it = trainableParams.end();
-
-        // Create $U_{1:p}\vert \lambda \rangle$
-        StateVectorCudaManaged<T> lambda{ref_data, length};
-
-        // Apply given operations to statevector if requested
-        if (apply_operations) {
-            applyOperations(lambda, operations);
-        }
-
-        // Create observable-applied state-vectors
-        std::vector<StateVectorCudaManaged<T>> H_lambda;
-
-        //#pragma omp parallel for
-        for (auto &obs_list : obs_idx_per_device) {
-            // auto idx = 0; // dev_pool.acquireDevice(); //memory allocation
-            // for
-            // multiple devices does not work. Temporarily assume all deata on
-            // GPU 0
-            for (size_t i = 0; i < obs_list.size(); i++) {
-                H_lambda.emplace_back(lambda.getNumQubits()); //, idx);
-            }
-        }
-
-        applyObservables(H_lambda, lambda, observables);
-
-        SVType mu(lambda.getNumQubits());
-
-        for (int op_idx = static_cast<int>(operations.getOpsName().size() - 1);
-             op_idx >= 0; op_idx--) {
-
-            PL_ABORT_IF(operations.getOpsParams()[op_idx].size() > 1,
-                        "The operation is not supported using the adjoint "
-                        "differentiation method");
-            if ((operations.getOpsName()[op_idx] != "QubitStateVector") &&
-                (operations.getOpsName()[op_idx] != "BasisState")) {
-                mu.updateData(lambda);
-                applyOperationAdj(lambda, operations, op_idx);
-
-                if (operations.hasParams(op_idx)) {
-                    if (std::find(trainableParams.begin(), tp_it,
-                                  current_param_idx) != tp_it) {
-                        const T scalingFactor =
-                            applyGenerator(
-                                mu, operations.getOpsName()[op_idx],
-                                operations.getOpsWires()[op_idx],
-                                !operations.getOpsInverses()[op_idx]) *
-                            (2 * (0b1 ^ operations.getOpsInverses()[op_idx]) -
-                             1);
-                        // clang-format off
-
-                        #if defined(_OPENMP)
-                            #pragma omp parallel for default(none)   \
-                            shared(H_lambda, jac, mu, scalingFactor, \
-                                trainableParamNumber, tp_it,         \
-                                num_observables)
-                        #endif
-
-                        // clang-format on
-                        for (size_t obs_idx = 0; obs_idx < num_observables;
-                             obs_idx++) {
-                            updateJacobian(H_lambda[obs_idx], mu, jac,
-                                           scalingFactor, obs_idx,
-                                           trainableParamNumber);
-                        }
-                        trainableParamNumber--;
-                        std::advance(tp_it, -1);
-                    }
-                    current_param_idx--;
-                }
-
-                applyOperationsAdj(H_lambda, operations,
-                                   static_cast<size_t>(op_idx));
-            }
-        }
-#pragma omp parallel for
-        for (size_t i = 0; i < num_observables; i++) {
-            dev_pool.releaseDevice(H_lambda[i].getDeviceID());
-        }
-    }*/
 };
 
 } // namespace Pennylane::Algorithms

@@ -98,12 +98,14 @@ def _gpu_dtype(dtype):
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
     return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
 
+
 def _discrete_chunks(data, num_chunks):
     "Adapted from https://stackoverflow.com/questions/24483182/python-split-list-into-n-chunks/54802737#54802737"
     quot, rem = divmod(len(data), num_chunks)
     for idx in range(num_chunks):
-        idx_step = (quot+1)*(idx if idx < rem else rem) + quot*(0 if idx < rem else idx - rem)
-        yield data[idx_step:idx_step+(quot+1 if idx < rem else quot)]
+        idx_step = (quot + 1) * (idx if idx < rem else rem) + quot * (0 if idx < rem else idx - rem)
+        yield data[idx_step : idx_step + (quot + 1 if idx < rem else quot)]
+
 
 class LightningGPU(LightningQubit):
     """PennyLane-Lightning-GPU device.
@@ -276,10 +278,18 @@ class LightningGPU(LightningQubit):
             gpu_id = self._dp.acquireDevice()
             print(f"Acquired device: {gpu_id}")
             dev_tag = DevTag(gpu_id)
-            local_state = _gpu_dtype(self._state.dtype)(self.num_wires, dev_tag)
-            local_state.DeviceToDevice(self._gpu_state, False)
+            if gpu_id == 0:
+                local_state = self._gpu_state
+            else:
+                local_state = _gpu_dtype(self._state.dtype)(self.num_wires, dev_tag)
+                local_state.DeviceToDevice(self._gpu_state, False)
             jac_local = adj.adjoint_jacobian(
-                local_state, obs_chunk, ops_serialized, tp_shift, num_params  # tape.num_params,
+                local_state,
+                obs_chunk,
+                ops_serialized,
+                tp_shift,
+                num_params,
+                dev_tag,  # tape.num_params,
             )
         except Exception as e:
             print(f"Exception occurred during remote execution: {e}")
@@ -339,7 +349,7 @@ class LightningGPU(LightningQubit):
             trainable_params if not use_sp else [i - 1 for i in trainable_params[first_elem:]]
         )  # exclude first index if explicitly setting sv
         if self._dp.getTotalDevices() > 1 and self._batch_obs:
-            obs_partitions = _discrete_chunks(obs_serialized, self._dp.getTotalDevices() )
+            obs_partitions = _discrete_chunks(obs_serialized, self._dp.getTotalDevices())
             jac = []
             with ThreadPoolExecutor(max_workers=self._dp.getTotalDevices()) as tp:
                 results = []
@@ -351,7 +361,7 @@ class LightningGPU(LightningQubit):
                             tp_shift,
                             ops_serialized,
                             obs_chunk,
-                            adj
+                            adj,
                         )
                     )
                 concurrent.futures.wait(
