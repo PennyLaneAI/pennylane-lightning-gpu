@@ -216,13 +216,21 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
                         cudaStream_t stream_id = 0, bool device_alloc = true)
         : StateVectorBase<Precision, Derived>(num_qubits),
           data_buffer_{std::make_unique<CUDA::DataBuffer<CFP_t>>(
-              Util::exp2(num_qubits), device_id, stream_id, device_alloc)} {}
+              Util::exp2(num_qubits), device_id, stream_id, device_alloc)} {
+
+}
+
     StateVectorCudaBase(size_t num_qubits, CUDA::DevTag<int> dev_tag,
                         bool device_alloc = true)
         : StateVectorBase<Precision, Derived>(num_qubits),
           data_buffer_{std::make_unique<CUDA::DataBuffer<CFP_t>>(
-              Util::exp2(num_qubits), dev_tag, device_alloc)} {}
+              Util::exp2(num_qubits), dev_tag, device_alloc)} {
+
+
+}
     StateVectorCudaBase() = delete;
+    StateVectorCudaBase(const StateVectorCudaBase& other) = delete;
+    StateVectorCudaBase(StateVectorCudaBase&& other) = delete;
 
     virtual ~StateVectorCudaBase(){};
 

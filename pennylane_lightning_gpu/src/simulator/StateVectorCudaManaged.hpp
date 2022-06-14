@@ -47,16 +47,15 @@ class StateVectorCudaManaged
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits),
           gate_cache_(true) {
-        BaseType::initSV();
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
     };
 
-    StateVectorCudaManaged(size_t num_qubits, DevTag<int> dev_tag,
-                           bool async = false)
+    StateVectorCudaManaged(size_t num_qubits, const DevTag<int> &dev_tag,
+                           bool alloc = true)
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
-              num_qubits, dev_tag, async),
-          gate_cache_(true) {
+              num_qubits, dev_tag, alloc),
+          gate_cache_(true, dev_tag) {
         BaseType::initSV();
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
@@ -82,16 +81,6 @@ class StateVectorCudaManaged
     StateVectorCudaManaged(const StateVectorCudaManaged &other)
         : StateVectorCudaManaged(other.getNumQubits()) {
         BaseType::CopyGpuDataToGpuIn(other);
-    }
-
-    StateVectorCudaManaged &operator=(StateVectorCudaManaged &other) {
-        if (this != &other) {
-            this->data_buffer_ = std::make_unique<CUDA::DataBuffer<CFP_t>>(
-                other.getLength(), other.getDataBuffer()->getDeviceID(),
-                other.getDataBuffer()->getStreamID());
-            CopyGpuDataToGpuIn(other);
-        }
-        return *this;
     }
 
     ~StateVectorCudaManaged() {

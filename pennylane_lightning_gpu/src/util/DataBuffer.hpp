@@ -31,7 +31,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
                cudaStream_t stream_id = 0, bool alloc_memory = true)
         : length_{length}, dev_tag_{device_id, stream_id}, gpu_buffer_{
                                                                nullptr} {
-        if (alloc_memory && length > 0) {
+        if (alloc_memory && (length > 0)) {
             dev_tag_.refresh();
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
@@ -42,7 +42,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     DataBuffer(std::size_t length, const DevTag<DevTagT> &dev,
                bool alloc_memory = true)
         : length_{length}, dev_tag_{dev}, gpu_buffer_{nullptr} {
-        if (alloc_memory && length > 0) {
+        if (alloc_memory && (length > 0)) {
             dev_tag_.refresh();
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
@@ -53,7 +53,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     DataBuffer(std::size_t length, DevTag<DevTagT> &&dev,
                bool alloc_memory = true)
         : length_{length}, dev_tag_{std::move(dev)}, gpu_buffer_{nullptr} {
-        if (alloc_memory && length > 0) {
+        if (alloc_memory && (length > 0)) {
             dev_tag_.refresh();
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),

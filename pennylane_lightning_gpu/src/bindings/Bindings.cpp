@@ -622,7 +622,6 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
           "support for the PennyLane-Lightning-GPU device.");
     m.def("get_gpu_arch", &getGPUArch, py::arg("device_number") = 0,
           "Returns the given GPU major and minor GPU support.");
-
     py::class_<DevicePool<int>>(m, "DevPool")
         .def(py::init<>())
         .def("getActiveDevices", &DevicePool<int>::getActiveDevices)

@@ -34,8 +34,16 @@ template <class fp_t> class GateCache {
     using gate_id = std::pair<std::string, fp_t>;
 
     GateCache() = delete;
+    GateCache(const GateCache& other) = delete;
+    GateCache(GateCache&& other) = delete;
     GateCache(bool populate, int device_id = 0, cudaStream_t stream_id = 0)
         : device_tag_(device_id, stream_id), total_alloc_bytes_{0} {
+        if (populate) {
+            defaultPopulateCache();
+        }
+    }
+    GateCache(bool populate, const DevTag<int> & device_tag)
+        : device_tag_{device_tag}, total_alloc_bytes_{0} {
         if (populate) {
             defaultPopulateCache();
         }
