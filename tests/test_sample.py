@@ -92,11 +92,3 @@ class TestSample:
         # s1 should only contain 1 and -1, which is guaranteed if
         # they square to 1
         assert np.allclose(s1**2, 1, atol=tol, rtol=0)
-
-    def test_sample_unsupported_type(self, dev):
-        """Test if generate_samples raise error with complex256"""
-
-        dev._state = np.array([1, 0]).astype(np.complex256)
-
-        with pytest.raises(TypeError, match="Unsupported complex Type:"):
-            dev._samples = dev.generate_samples()

@@ -118,15 +118,7 @@ class LightningGPU(LightningQubit):
     }
 
     def __init__(self, wires, *, sync=True, c_dtype=np.complex128, shots=None, batch_obs=False):
-        if c_dtype is np.complex64:
-            r_dtype = np.float32
-            self.use_csingle = True
-        elif c_dtype is np.complex128:
-            r_dtype = np.float64
-            self.use_csingle = False
-        else:
-            raise TypeError(f"Unsupported complex Type: {c_dtype}")
-        super().__init__(wires, r_dtype=r_dtype, c_dtype=c_dtype, shots=shots)
+        super().__init__(wires, c_dtype=c_dtype, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._sync = sync
 
@@ -389,9 +381,6 @@ class LightningGPU(LightningQubit):
 
         return squared_mean - (mean**2)
 
-    def sample(self, **kwargs):
-        raise NotImplementedError("This device does not currently support sampling of observables.")
-
 
 if not CPP_BINARY_AVAILABLE:
 
@@ -403,7 +392,7 @@ if not CPP_BINARY_AVAILABLE:
         author = "Xanadu Inc."
         _CPP_BINARY_AVAILABLE = False
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, wires, *, c_dtype=np.complex128, **kwargs):
             w_msg = """
             !!!#####################################################################################
             !!!
@@ -416,4 +405,4 @@ if not CPP_BINARY_AVAILABLE:
                 w_msg,
                 RuntimeWarning,
             )
-            super().__init__(*args, **kwargs)
+            super().__init__(wires, c_dtype=c_dtype, **kwargs)
