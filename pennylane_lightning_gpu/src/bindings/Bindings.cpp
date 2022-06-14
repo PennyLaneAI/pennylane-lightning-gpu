@@ -636,6 +636,7 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
 
     py::class_<DevTag<int>>(m, "DevTag")
         .def(py::init<>())
+        .def(py::init<int>())
         .def(py::init([](int device_id, void *stream_id) {
             // Note, streams must be handled externally for now.
             // Binding support provided through void* conversion to cudaStream_t

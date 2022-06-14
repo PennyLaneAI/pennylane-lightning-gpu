@@ -87,25 +87,29 @@ TEMPLATE_TEST_CASE("Data locality and movement", "[DataBuffer]", float,
     if (DevicePool<int>::getTotalDevices() > 1) {
         SECTION("Multi-GPU copy") {
             DevicePool<int> dev_pool;
-            auto id0 = dev_pool.acquireDevice();
-            auto id1 = dev_pool.acquireDevice();
+            std::vector<int> ids;
+            std::vector<DevTag<int>> tags;
+            std::vector<std::unique_ptr<DataBuffer<TestType, int>>> buffers;
+            for (std::size_t i = 0; i < dev_pool.getTotalDevices(); i++) {
+                ids.push_back(dev_pool.acquireDevice());
+                tags.push_back({ids.back(), 0U});
+                buffers.emplace_back(
+                    std::make_unique<DataBuffer<TestType, int>>(6, tags.back(),
+                                                                true));
+            }
 
-            DevTag<int> dt0{id0, 0};
-            DevTag<int> dt1{id1, 0};
-
-            DataBuffer<TestType, int> data_buffer0{6, dt0, true};
             std::vector<TestType> host_data_in(6, 1);
             std::vector<TestType> host_data_out(6, 0);
-            data_buffer0.CopyHostDataToGpu(host_data_in.data(),
-                                           host_data_in.size(), false);
-
-            DataBuffer<TestType, int> data_buffer1{6, dt1, true};
-
-            data_buffer1.CopyGpuDataToGpu(data_buffer0, false);
-            data_buffer1.CopyGpuDataToHost(host_data_out.data(), 6, false);
+            buffers[0]->CopyHostDataToGpu(host_data_in.data(),
+                                          host_data_in.size(), false);
+            for (std::size_t i = 1; i < dev_pool.getTotalDevices(); i++) {
+                buffers[i]->CopyGpuDataToGpu(*buffers[i - 1], false);
+            }
+            buffers.back()->CopyGpuDataToHost(host_data_out.data(), 6, false);
             CHECK(host_data_in == host_data_out);
-            dev_pool.releaseDevice(id0);
-            dev_pool.releaseDevice(id1);
+            for (auto &id : ids) {
+                dev_pool.releaseDevice(id);
+            }
         }
     }
 }

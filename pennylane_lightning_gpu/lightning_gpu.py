@@ -265,12 +265,13 @@ class LightningGPU(LightningQubit):
                 )
 
     def _batched_gpu_adjoint(self, num_params, tp_shift, ops_serialized, obs_chunk, adj):
-        gpu_id = self._dp.acquireDevice()
-        dev_tag = DevTag(gpu_id)
-        local_state = _gpu_dtype(self._state.dtype)(self.num_wires, dev_tag)
-        local_state.DeviceToDevice(self._gpu_state)
         jac_local = None
         try:
+            gpu_id = self._dp.acquireDevice()
+            print(f"Acquired device: {gpu_id}")
+            dev_tag = DevTag(gpu_id)
+            local_state = _gpu_dtype(self._state.dtype)(self.num_wires, dev_tag)
+            local_state.DeviceToDevice(self._gpu_state)
             jac_local = adj.adjoint_jacobian(
                 local_state, obs_chunk, ops_serialized, tp_shift, num_params  # tape.num_params,
             )
@@ -278,6 +279,7 @@ class LightningGPU(LightningQubit):
             print(f"Exception occurred during remote execution: {e}")
         finally:
             # Ensure device is freed in the event of an exception
+            print(f"Releasing device: {gpu_id}")
             self._dp.releaseDevice(gpu_id)
         return jac_local
 
@@ -330,9 +332,8 @@ class LightningGPU(LightningQubit):
         tp_shift = (
             trainable_params if not use_sp else [i - 1 for i in trainable_params[first_elem:]]
         )  # exclude first index if explicitly setting sv
-
         if self._dp.getTotalDevices() > 1 and self._batch_obs:
-            obs_partitions = _chunk_iterable(obs_serialized, self._dp.self._dp.getTotalDevices())
+            obs_partitions = _chunk_iterable(obs_serialized, self._dp.getTotalDevices())
             jac = []
 
             with ThreadPoolExecutor(max_workers=self._dp.getTotalDevices()) as tp:
@@ -345,6 +346,7 @@ class LightningGPU(LightningQubit):
                             tp_shift,
                             ops_serialized,
                             obs_chunk,
+                            adj
                         )
                     )
                 concurrent.futures.wait(
