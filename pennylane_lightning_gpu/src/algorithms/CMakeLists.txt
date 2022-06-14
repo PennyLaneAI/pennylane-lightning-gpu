@@ -1,5 +1,5 @@
 project(lightning_gpu_algorithms LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 set(GPU_ALGORITHM_FILES AdjointDiffGPU.hpp AdjointDiffGPU.cpp CACHE INTERNAL "" FORCE)
 add_library(lightning_gpu_algorithms STATIC ${GPU_ALGORITHM_FILES})

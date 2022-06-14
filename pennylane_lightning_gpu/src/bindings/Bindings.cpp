@@ -24,8 +24,8 @@
 #include "DevicePool.hpp" // LightningException
 #include "Error.hpp"      // LightningException
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorManaged.hpp"
-#include "StateVectorRaw.hpp"
+#include "StateVectorManagedCPU.hpp"
+#include "StateVectorRawCPU.hpp"
 #include "cuGateCache.hpp"
 #include "cuda_helpers.hpp"
 
@@ -368,7 +368,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
              })
 
         .def("DeviceToHost",
-             py::overload_cast<StateVectorManaged<PrecisionT> &, bool>(
+             py::overload_cast<StateVectorManagedCPU<PrecisionT> &, bool>(
                  &StateVectorCudaManaged<PrecisionT>::CopyGpuDataToHost,
                  py::const_),
              "Synchronize data from the GPU device to host.")

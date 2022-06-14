@@ -10,7 +10,7 @@
 #include <catch2/catch.hpp>
 
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorRaw.hpp"
+#include "StateVectorRawCPU.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"
@@ -46,8 +46,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRX", "[LightningGPU_Param]", double) {
 
                 svdat_direct.cuda_sv.applyRX({0}, false, angles[index]);
                 svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                    expected_results[index], 1e-7));
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      PennyLane::approx(expected_results[index]));
             }
         }
         SECTION("Apply using dispatcher") {
@@ -56,8 +56,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRX", "[LightningGPU_Param]", double) {
                 svdat_dispatch.cuda_sv.applyOperation("RX", {0}, false,
                                                       {angles[index]});
                 svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-                CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                    expected_results[index], 1e-7));
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      PennyLane::approx(expected_results[index]));
             }
         }
     }
@@ -67,8 +67,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRX", "[LightningGPU_Param]", double) {
                 SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
                 svdat_direct.cuda_sv.applyRX({0}, true, {angles[index]});
                 svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                    expected_results_adj[index], 1e-7));
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      PennyLane::approx(expected_results_adj[index]));
             }
         }
         SECTION("Apply using dispatcher") {
@@ -77,8 +77,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRX", "[LightningGPU_Param]", double) {
                 svdat_dispatch.cuda_sv.applyOperation("RX", {0}, true,
                                                       {angles[index]});
                 svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-                CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                    expected_results_adj[index], 1e-7));
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      PennyLane::approx(expected_results_adj[index]));
             }
         }
     }
@@ -115,8 +115,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRY", "[LightningGPU_Param]", float,
 
                 svdat_direct.cuda_sv.applyRY({0}, false, {angles[index]});
                 svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                    expected_results[index], 1e-6));
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      PennyLane::approx(expected_results[index]));
             }
         }
         SECTION("Apply using dispatcher") {
@@ -125,8 +125,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRY", "[LightningGPU_Param]", float,
                 svdat_dispatch.cuda_sv.applyOperation("RY", {0}, false,
                                                       {angles[index]});
                 svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-                CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                    expected_results[index], 1e-6));
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      PennyLane::approx(expected_results[index]));
             }
         }
     }
@@ -138,8 +138,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRY", "[LightningGPU_Param]", float,
                 svdat_direct.cuda_sv.applyRY({0}, true, {angles[index]});
                 svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
 
-                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                    expected_results_adj[index], 1e-6));
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      PennyLane::approx(expected_results_adj[index]));
             }
         }
         SECTION("Apply using dispatcher") {
@@ -149,8 +149,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRY", "[LightningGPU_Param]", float,
                                                       {angles[index]});
 
                 svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-                CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                    expected_results_adj[index], 1e-6));
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      PennyLane::approx(expected_results_adj[index]));
             }
         }
     }
@@ -202,8 +202,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRZ", "[LightningGPU_Param]", float,
 
             svdat_direct.cuda_sv.applyRZ({index}, false, {angles[index]});
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                expected_results[index], 1e-6));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  PennyLane::approx(expected_results[index]));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -213,8 +213,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRZ", "[LightningGPU_Param]", float,
                                                   {angles[index]});
 
             svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                expected_results[index], 1e-6));
+            CHECK(svdat_dispatch.sv.getDataVector() ==
+                  PennyLane::approx(expected_results[index]));
         }
     }
 }
@@ -267,8 +267,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyPhaseShift", "[LightningGPU_Param]",
             svdat_direct.cuda_sv.applyPhaseShift({index}, false,
                                                  {angles[index]});
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  PennyLane::approx(expected_results[index]));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -277,8 +277,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyPhaseShift", "[LightningGPU_Param]",
             svdat_dispatch.cuda_sv.applyOperation("PhaseShift", {index}, false,
                                                   {angles[index]});
             svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_dispatch.sv.getDataVector() ==
+                  PennyLane::approx(expected_results[index]));
         }
     }
 }
@@ -320,16 +320,16 @@ TEMPLATE_TEST_CASE("LightningGPU::applyControlledPhaseShift",
         svdat_direct.cuda_sv.applyControlledPhaseShift({0, 1}, false,
                                                        {angles[0]});
         svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-        CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                            expected_results[0]));
+        CHECK(svdat_direct.sv.getDataVector() ==
+              PennyLane::approx(expected_results[0]));
     }
     SECTION("Apply using dispatcher") {
         SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
         svdat_dispatch.cuda_sv.applyOperation("ControlledPhaseShift", {1, 2},
                                               false, {angles[1]});
         svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-        CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                            expected_results[1]));
+        CHECK(svdat_dispatch.sv.getDataVector() ==
+              PennyLane::approx(expected_results[1]));
     }
 }
 
@@ -363,8 +363,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRot", "[LightningGPU_Param]", float,
             svdat_direct.cuda_sv.applyRot({index}, false, angles[index][0],
                                           angles[index][1], angles[index][2]);
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                expected_results[index], 1e-6));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  PennyLane::approx(expected_results[index]));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -373,8 +373,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRot", "[LightningGPU_Param]", float,
             svdat_dispatch.cuda_sv.applyOperation("Rot", {index}, false,
                                                   angles[index]);
             svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                expected_results[index], 1e-6));
+            CHECK(svdat_dispatch.sv.getDataVector() ==
+                  PennyLane::approx(expected_results[index]));
         }
     }
 }
@@ -401,7 +401,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyCRot", "[LightningGPU_Param]", float,
             svdat_direct.cuda_sv.applyCRot({0, 1}, false, angles[0], angles[1],
                                            angles[2]);
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(), init_state));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  PennyLane::approx(init_state));
         }
         SECTION("CRot0,1 |100> -> |1>(a|0>+b|1>)|0>") {
             SVDataGPU<TestType> svdat_direct{num_qubits};
@@ -410,8 +411,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyCRot", "[LightningGPU_Param]", float,
             svdat_direct.cuda_sv.applyCRot({0, 1}, false, angles[0], angles[1],
                                            angles[2]);
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                expected_results, 1e-6));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  PennyLane::approx(expected_results));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -421,8 +422,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyCRot", "[LightningGPU_Param]", float,
 
             svdat_direct.cuda_sv.applyOperation("CRot", {0, 1}, false, angles);
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                expected_results, 1e-6));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  PennyLane::approx(expected_results));
         }
     }
 }
@@ -455,8 +456,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
             svdat_expected.cuda_sv.CopyGpuDataToHost(svdat_expected.sv);
             svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
 
-            CHECK(isApproxEqual(svdat.sv.getDataVector(),
-                                svdat_expected.sv.getDataVector()));
+            CHECK(svdat.sv.getDataVector() ==
+                  svdat_expected.sv.getDataVector());
         }
     }
     SECTION("Apply ZX gate") {
@@ -477,8 +478,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                  zx_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
-            CHECK(isApproxEqual(svdat.sv.getDataVector(),
-                                svdat_expected.sv.getDataVector()));
+            CHECK(svdat.sv.getDataVector() ==
+                  svdat_expected.sv.getDataVector());
         }
     }
     SECTION("Apply XY gate") {
@@ -499,8 +500,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                  xy_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
-            CHECK(isApproxEqual(svdat.sv.getDataVector(),
-                                svdat_expected.sv.getDataVector()));
+            CHECK(svdat.sv.getDataVector() ==
+                  svdat_expected.sv.getDataVector());
         }
     }
     SECTION("Apply YX gate") {
@@ -521,8 +522,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                  yx_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
-            CHECK(isApproxEqual(svdat.sv.getDataVector(),
-                                svdat_expected.sv.getDataVector()));
+            CHECK(svdat.sv.getDataVector() ==
+                  svdat_expected.sv.getDataVector());
         }
     }
     SECTION("Apply YZ gate") {
@@ -543,8 +544,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                  yz_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
-            CHECK(isApproxEqual(svdat.sv.getDataVector(),
-                                svdat_expected.sv.getDataVector()));
+            CHECK(svdat.sv.getDataVector() ==
+                  svdat_expected.sv.getDataVector());
         }
     }
     SECTION("Apply ZY gate") {
@@ -565,8 +566,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                  zy_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
-            CHECK(isApproxEqual(svdat.sv.getDataVector(),
-                                svdat_expected.sv.getDataVector()));
+            CHECK(svdat.sv.getDataVector() ==
+                  svdat_expected.sv.getDataVector());
         }
     }
 }
@@ -599,8 +600,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation multiple wires",
         svdat.cuda_sv.applyOperation_std("CZmat", {0, 1}, false, {0.0},
                                          cz_gate);
         svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
-        CHECK(isApproxEqual(svdat.sv.getDataVector(),
-                            svdat_expected.sv.getDataVector()));
+        CHECK(svdat.sv.getDataVector() ==
+              PennyLane::approx(svdat_expected.sv.getDataVector()));
     }
 }
 
@@ -655,11 +656,11 @@ TEMPLATE_TEST_CASE("Sample", "[LightningGPU_Param]", float, double) {
         probabilities[i] = counts[i] / (TestType)num_samples;
     }
 
-    // compare estimated probabilities to real probabilities
-    for (size_t i = 0; i < probabilities.size(); i++) {
-        std::cout << probabilities[i] << " " << expected_probabilities[i]
-                  << std::endl;
-    }
+    // compare estimated probabilities to real probabilities for test
+    // for (size_t i = 0; i < probabilities.size(); i++) {
+    //     std::cout << probabilities[i] << " " << expected_probabilities[i]
+    //               << std::endl;
+    // }
 
     SECTION("No wires provided:") {
         REQUIRE_THAT(probabilities,

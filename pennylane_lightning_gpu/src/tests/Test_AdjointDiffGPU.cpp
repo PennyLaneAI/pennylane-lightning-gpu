@@ -273,7 +273,9 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Decomposed Rot gate, non "
             std::vector<std::complex<double>> cdata{
                 {Pennylane::Util::INVSQRT2<double>()},
                 {-Pennylane::Util::INVSQRT2<double>()}};
-            SVDataGPU<double> psi(num_qubits, {cdata.begin(), cdata.end()});
+            std::vector<std::complex<double>> new_data{cdata.begin(),
+                                                       cdata.end()};
+            SVDataGPU<double> psi(num_qubits, new_data);
 
             auto obs = ObsDatum<double>({"PauliZ"}, {{}}, {{0}});
             auto ops = adj.createOpsData(
@@ -317,7 +319,8 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Mixed Ops, Obs and TParams",
             {Pennylane::Util::ZERO<double>()},
             {Pennylane::Util::ZERO<double>()},
             {Pennylane::Util::ZERO<double>()}};
-        SVDataGPU<double> psi(num_qubits, {cdata.begin(), cdata.end()});
+        std::vector<std::complex<double>> new_data{cdata.begin(), cdata.end()};
+        SVDataGPU<double> psi(num_qubits, new_data);
 
         auto obs = ObsDatum<double>({"PauliX", "PauliZ"}, {{}, {}}, {{0}, {1}});
         auto ops =

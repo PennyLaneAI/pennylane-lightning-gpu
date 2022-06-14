@@ -99,6 +99,7 @@ class LightningGPU(LightningQubit):
     Args:
         wires (int): the number of wires to initialize the device with
         sync (bool): immediately sync with host-sv after applying operations
+        c_dtype: Datatypes for statevector representation. Must be one of ``np.complex64`` or ``np.complex128``.
     """
 
     name = "PennyLane plugin for GPU-backed Lightning device using NVIDIA cuQuantum SDK"
@@ -116,8 +117,16 @@ class LightningGPU(LightningQubit):
         "Identity",
     }
 
-    def __init__(self, wires, *, shots=None, sync=True):
-        super().__init__(wires, shots=shots)
+    def __init__(self, wires, *, sync=True, c_dtype=np.complex128, shots=None, batch_obs=False):
+        if c_dtype is np.complex64:
+            r_dtype = np.float32
+            self.use_csingle = True
+        elif c_dtype is np.complex128:
+            r_dtype = np.float64
+            self.use_csingle = False
+        else:
+            raise TypeError(f"Unsupported complex Type: {c_dtype}")
+        super().__init__(wires, r_dtype=r_dtype, c_dtype=c_dtype, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._sync = sync
 
@@ -264,15 +273,6 @@ class LightningGPU(LightningQubit):
                 UserWarning,
             )
 
-        # To support np.complex64 based on the type of self._state
-        dtype = self._state.dtype
-        if dtype == np.complex64:
-            use_csingle = True
-        elif dtype == np.complex128:
-            use_csingle = False
-        else:
-            raise TypeError(f"Unsupported complex Type: {dtype}")
-
         if len(tape.trainable_params) == 0:
             return np.array(0)
 
@@ -288,14 +288,14 @@ class LightningGPU(LightningQubit):
                 self.execute(tape)
             ket = np.ravel(self._pre_rotated_state, order="C")
 
-        if use_csingle:
+        if self.use_csingle:
             adj = AdjointJacobianGPU_C64()
             ket = ket.astype(np.complex64)
         else:
             adj = AdjointJacobianGPU_C128()
 
-        obs_serialized = _serialize_obs(tape, self.wire_map, use_csingle=use_csingle)
-        ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=use_csingle)
+        obs_serialized = _serialize_obs(tape, self.wire_map, use_csingle=self.use_csingle)
+        ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=self.use_csingle)
 
         ops_serialized = adj.create_ops_list(*ops_serialized)
 
