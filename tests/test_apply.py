@@ -22,7 +22,6 @@ import pennylane as qml
 import pytest
 from pennylane import DeviceError
 
-
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
     import pennylane_lightning_gpu as plg
@@ -135,16 +134,15 @@ class TestApply:
     ]
 
     @pytest.mark.parametrize("operation,input,expected_output", test_data_no_parameters)
-    @pytest.mark.parametrize("C", [np.complex128])
     def test_apply_operation_single_wire_no_parameters(
-        self, tol, operation, input, expected_output, C
+        self, qubit_device_1_wire, tol, operation, input, expected_output
     ):
         """Tests that applying an operation yields the expected output state for single wire
         operations that have no parameters."""
 
-        dev = qml.device("lightning.gpu", wires=1)
-        gpu_ctor = plg.lightning_gpu._gpu_dtype(C)
-        dev._gpu_state = gpu_ctor(np.array(input).astype(C))
+        dev = qubit_device_1_wire
+        gpu_ctor = plg.lightning_gpu._gpu_dtype(dev.C_DTYPE)
+        dev._gpu_state = gpu_ctor(np.array(input).astype(dev.C_DTYPE))
         dev.apply([operation(wires=[0])])
 
         assert np.allclose(dev._state, np.array(expected_output), atol=tol, rtol=0)
@@ -174,16 +172,15 @@ class TestApply:
     ]
 
     @pytest.mark.parametrize("operation,input,expected_output", test_data_two_wires_no_parameters)
-    @pytest.mark.parametrize("C", [np.complex128])
     def test_apply_operation_two_wires_no_parameters(
-        self, tol, operation, input, expected_output, C
+        self, qubit_device_2_wire, tol, operation, input, expected_output
     ):
         """Tests that applying an operation yields the expected output state for two wire
         operations that have no parameters."""
 
-        dev = qml.device("lightning.gpu", wires=2)
-        gpu_ctor = plg.lightning_gpu._gpu_dtype(C)
-        dev._gpu_state = gpu_ctor(np.array(input).reshape(2 * [2]).astype(C))
+        dev = qubit_device_2_wire
+        gpu_ctor = plg.lightning_gpu._gpu_dtype(dev.C_DTYPE)
+        dev._gpu_state = gpu_ctor(np.array(input).reshape(2 * [2]).astype(dev.C_DTYPE))
         dev.apply([operation(wires=[0, 1])])
 
         assert np.allclose(dev.state, np.array(expected_output), atol=tol, rtol=0)
@@ -199,16 +196,15 @@ class TestApply:
     ]
 
     @pytest.mark.parametrize("operation,input,expected_output", test_data_three_wires_no_parameters)
-    @pytest.mark.parametrize("C", [np.complex128])
     def test_apply_operation_three_wires_no_parameters(
-        self, tol, operation, input, expected_output, C
+        self, qubit_device_3_wire, tol, operation, input, expected_output
     ):
         """Tests that applying an operation yields the expected output state for three wire
         operations that have no parameters."""
 
-        dev = qml.device("lightning.gpu", wires=3)
-        gpu_ctor = plg.lightning_gpu._gpu_dtype(C)
-        dev._gpu_state = gpu_ctor(np.array(input).reshape(3 * [2]).astype(C))
+        dev = qubit_device_3_wire
+        gpu_ctor = plg.lightning_gpu._gpu_dtype(dev.C_DTYPE)
+        dev._gpu_state = gpu_ctor(np.array(input).reshape(3 * [2]).astype(dev.C_DTYPE))
         dev.apply([operation(wires=[0, 1, 2])])
 
         assert np.allclose(dev.state, np.array(expected_output), atol=tol, rtol=0)
@@ -234,16 +230,17 @@ class TestApply:
             ),
         ],
     )
-    def test_apply_operation_state_preparation(self, tol, operation, expected_output, par):
+    def test_apply_operation_state_preparation(
+        self, qubit_device_2_wires, tol, operation, expected_output, par
+    ):
         """Tests that applying an operation yields the expected output state for single wire
         operations that have no parameters."""
 
-        dev = qml.device("lightning.gpu", wires=2)
         par = np.array(par)
-        dev.reset()
-        dev.apply([operation(par, wires=[0, 1])])
+        qubit_device_2_wires.reset()
+        qubit_device_2_wires.apply([operation(par, wires=[0, 1])])
 
-        assert np.allclose(dev.state, np.array(expected_output), atol=tol, rtol=0)
+        assert np.allclose(qubit_device_2_wires.state, np.array(expected_output), atol=tol, rtol=0)
 
     """ operation,input,expected_output,par """
     test_data_single_wire_with_parameters = [
@@ -304,16 +301,15 @@ class TestApply:
     @pytest.mark.parametrize(
         "operation,input,expected_output,par", test_data_single_wire_with_parameters
     )
-    @pytest.mark.parametrize("C", [np.complex128])
     def test_apply_operation_single_wire_with_parameters(
-        self, tol, operation, input, expected_output, par, C
+        self, qubit_device_1_wire, tol, operation, input, expected_output, par
     ):
         """Tests that applying an operation yields the expected output state for single wire
         operations that have parameters."""
 
-        dev = qml.device("lightning.gpu", wires=1)
-        gpu_ctor = plg.lightning_gpu._gpu_dtype(C)
-        dev._gpu_state = gpu_ctor(np.array(input).astype(C))
+        dev = qubit_device_1_wire
+        gpu_ctor = plg.lightning_gpu._gpu_dtype(dev.C_DTYPE)
+        dev._gpu_state = gpu_ctor(np.array(input).astype(dev.C_DTYPE))
         dev.apply([operation(*par, wires=[0])])
 
         assert np.allclose(dev.state, np.array(expected_output), atol=tol, rtol=0)
@@ -421,62 +417,58 @@ class TestApply:
     )
     @pytest.mark.parametrize("C", [np.complex128])
     def test_apply_operation_two_wires_with_parameters(
-        self, tol, operation, input, expected_output, par, C
+        self, qubit_device_2_wires, tol, operation, input, expected_output, par
     ):
         """Tests that applying an operation yields the expected output state for two wire
         operations that have parameters."""
-        dev = qml.device("lightning.gpu", wires=2)
-        gpu_ctor = plg.lightning_gpu._gpu_dtype(C)
-        dev._gpu_state = gpu_ctor(np.array(input).reshape(2 * [2]).astype(C))
+        dev = qubit_device_2_wires
+        gpu_ctor = plg.lightning_gpu._gpu_dtype(dev.C_DTYPE)
+        dev._gpu_state = gpu_ctor(np.array(input).reshape(2 * [2]).astype(dev.C_DTYPE))
         dev.apply([operation(*par, wires=[0, 1])])
 
         assert np.allclose(dev.state, np.array(expected_output), atol=tol, rtol=0)
 
-    def test_apply_errors_qubit_state_vector(self):
+    def test_apply_errors_qubit_state_vector(self, qubit_device_2_wires):
         """Test that apply fails for incorrect state preparation, and > 2 qubit gates"""
         with pytest.raises(ValueError, match="Sum of amplitudes-squared does not equal one."):
-            dev = qml.device("lightning.gpu", wires=2)
-            dev.apply([qml.QubitStateVector(np.array([1, -1]), wires=[0])])
+            qubit_device_2_wires.apply([qml.QubitStateVector(np.array([1, -1]), wires=[0])])
 
         with pytest.raises(ValueError, match=r"State vector must be of length 2\*\*wires."):
-            dev = qml.device("lightning.gpu", wires=2)
             p = np.array([1, 0, 1, 1, 0]) / np.sqrt(3)
-            dev.apply([qml.QubitStateVector(p, wires=[0, 1])])
+            qubit_device_2_wires.apply([qml.QubitStateVector(p, wires=[0, 1])])
 
         with pytest.raises(
             DeviceError,
             match="Operation QubitStateVector cannot be used after other Operations have already been applied ",
         ):
-            dev = qml.device("lightning.gpu", wires=2)
 
-            dev.reset()
-            dev.apply(
+            qubit_device_2_wires.reset()
+            qubit_device_2_wires.apply(
                 [
                     qml.RZ(0.5, wires=[0]),
                     qml.QubitStateVector(np.array([0, 1, 0, 0]), wires=[0, 1]),
                 ]
             )
 
-    def test_apply_errors_basis_state(self):
+    def test_apply_errors_basis_state(self, qubit_device_2_wires):
         with pytest.raises(
             ValueError, match="BasisState parameter must consist of 0 or 1 integers."
         ):
-            dev = qml.device("lightning.gpu", wires=2)
-            dev.apply([qml.BasisState(np.array([-0.2, 4.2]), wires=[0, 1])])
+            qubit_device_2_wires.apply([qml.BasisState(np.array([-0.2, 4.2]), wires=[0, 1])])
 
         with pytest.raises(
             ValueError, match="BasisState parameter and wires must be of equal length."
         ):
-            dev = qml.device("lightning.gpu", wires=2)
-            dev.apply([qml.BasisState(np.array([0, 1]), wires=[0])])
+            qubit_device_2_wires.apply([qml.BasisState(np.array([0, 1]), wires=[0])])
 
         with pytest.raises(
             DeviceError,
             match="Operation BasisState cannot be used after other Operations have already been applied ",
         ):
-            dev = qml.device("lightning.gpu", wires=2)
-            dev.reset()
-            dev.apply([qml.RZ(0.5, wires=[0]), qml.BasisState(np.array([1, 1]), wires=[0, 1])])
+            qubit_device_2_wires.reset()
+            qubit_device_2_wires.apply(
+                [qml.RZ(0.5, wires=[0]), qml.BasisState(np.array([1, 1]), wires=[0, 1])]
+            )
 
 
 class TestExpval:
@@ -502,18 +494,19 @@ class TestExpval:
             (qml.Identity, [1 / math.sqrt(2), -1 / math.sqrt(2)], 1),
         ],
     )
-    def test_expval_single_wire_no_parameters(self, tol, operation, input, expected_output):
+    def test_expval_single_wire_no_parameters(
+        self, qubit_device_1_wire, tol, operation, input, expected_output
+    ):
         """Tests that expectation values are properly calculated for single-wire observables without parameters."""
 
         obs = operation(wires=[0])
-        dev = qml.device("lightning.gpu", wires=1)
 
-        dev.reset()
-        dev.apply(
+        qubit_device_1_wire.reset()
+        qubit_device_1_wire.apply(
             [qml.QubitStateVector(np.array(input), wires=[0])],
             rotations=obs.diagonalizing_gates(),
         )
-        res = dev.expval(obs)
+        res = qubit_device_1_wire.expval(obs)
 
         assert np.isclose(res, expected_output, atol=tol, rtol=0)
 
@@ -541,18 +534,19 @@ class TestVar:
             (qml.Identity, [1 / math.sqrt(2), -1 / math.sqrt(2)], 0),
         ],
     )
-    def test_var_single_wire_no_parameters(self, tol, operation, input, expected_output):
+    def test_var_single_wire_no_parameters(
+        self, qubit_device_1_wire, tol, operation, input, expected_output
+    ):
         """Tests that variances are properly calculated for single-wire observables without parameters."""
 
         obs = operation(wires=[0])
-        dev = qml.device("lightning.gpu", wires=1)
 
-        dev.reset()
-        dev.apply(
+        qubit_device_1_wire.reset()
+        qubit_device_1_wire.apply(
             [qml.QubitStateVector(np.array(input), wires=[0])],
             rotations=obs.diagonalizing_gates(),
         )
-        res = dev.var(obs)
+        res = qubit_device_1_wire.var(obs)
 
         assert np.isclose(res, expected_output, atol=tol, rtol=0)
 
@@ -663,14 +657,15 @@ class TestLightningGPUIntegration:
             ("Hadamard", 0),
         ],
     )
-    def test_supported_gate_single_wire_no_parameters(self, tol, name, expected_output):
+    def test_supported_gate_single_wire_no_parameters(
+        self, qubit_device_1_wire, tol, name, expected_output
+    ):
         """Tests supported gates that act on a single wire that are not parameterized"""
 
         op = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=1)
-        assert dev.supports_operation(name)
+        assert qubit_device_1_wire.supports_operation(name)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_1_wire)
         def circuit():
             op(wires=0)
             return qml.expval(qml.PauliZ(0))
@@ -686,15 +681,15 @@ class TestLightningGPUIntegration:
             ("CZ", [-1 / 2, -1 / 2]),
         ],
     )
-    def test_supported_gate_two_wires_no_parameters(self, tol, name, expected_output):
+    def test_supported_gate_two_wires_no_parameters(
+        self, qubit_device_2_wires, tol, name, expected_output
+    ):
         """Tests supported gates that act on two wires that are not parameterized"""
 
         op = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=2)
+        assert qubit_device_2_wires.supports_operation(name)
 
-        assert dev.supports_operation(name)
-
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_2_wires)
         def circuit():
             qml.QubitStateVector(np.array([1 / 2, 0, 0, math.sqrt(3) / 2]), wires=[0, 1])
             op(wires=[0, 1])
@@ -708,15 +703,16 @@ class TestLightningGPUIntegration:
             ("CSWAP", [-1, -1, 1]),
         ],
     )
-    def test_supported_gate_three_wires_no_parameters(self, tol, name, expected_output):
+    def test_supported_gate_three_wires_no_parameters(
+        self, qubit_device_3_wires, tol, name, expected_output
+    ):
         """Tests supported gates that act on three wires that are not parameterized"""
 
         op = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=3)
 
-        assert dev.supports_operation(name)
+        assert qubit_device_3_wires.supports_operation(name)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_3_wires)
         def circuit():
             qml.BasisState(np.array([1, 0, 1]), wires=[0, 1, 2])
             op(wires=[0, 1, 2])
@@ -740,15 +736,16 @@ class TestLightningGPUIntegration:
             ("QubitStateVector", [0, 1, 0, 0], [1, -1]),
         ],
     )
-    def test_supported_state_preparation(self, tol, name, par, expected_output):
+    def test_supported_state_preparation(
+        self, qubit_device_2_wires, tol, name, par, expected_output
+    ):
         """Tests supported state preparations"""
 
         op = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=2)
 
-        assert dev.supports_operation(name)
+        assert qubit_device_2_wires.supports_operation(name)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_2_wires)
         def circuit():
             op(np.array(par), wires=[0, 1])
             return qml.expval(qml.PauliZ(0)), qml.expval(qml.PauliZ(1))
@@ -764,13 +761,14 @@ class TestLightningGPUIntegration:
             ("BasisState", [1], [1], [1, -1]),
         ],
     )
-    def test_basis_state_2_qubit_subset(self, tol, name, par, wires, expected_output):
+    def test_basis_state_2_qubit_subset(
+        self, qubit_device_2_wires, tol, name, par, wires, expected_output
+    ):
         """Tests qubit basis state preparation on subsets of qubits"""
 
         op = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=2)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_2_wires)
         def circuit():
             op(np.array(par), wires=wires)
             return qml.expval(qml.PauliZ(0)), qml.expval(qml.PauliZ(1))
@@ -788,15 +786,16 @@ class TestLightningGPUIntegration:
             ("QubitStateVector", [(2 - 1j) / 3.0, 2j / 3.0], [0], [1 / 9.0, 1]),
         ],
     )
-    def test_state_vector_2_qubit_subset(self, tol, name, par, wires, expected_output):
+    def test_state_vector_2_qubit_subset(
+        self, qubit_device_2_wires, tol, name, par, wires, expected_output
+    ):
         """Tests qubit state vector preparation on subsets of 2 qubits"""
 
         op = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=2)
 
         par = np.array(par)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_2_wires)
         def circuit():
             op(par, wires=wires)
             return qml.expval(qml.PauliZ(0)), qml.expval(qml.PauliZ(1))
@@ -855,15 +854,16 @@ class TestLightningGPUIntegration:
             ),
         ],
     )
-    def test_state_vector_3_qubit_subset(self, tol, name, par, wires, expected_output):
+    def test_state_vector_3_qubit_subset(
+        self, qubit_device_3_wires, tol, name, par, wires, expected_output
+    ):
         """Tests qubit state vector preparation on subsets of 3 qubits"""
 
         op = getattr(qml.ops, name)
 
         par = np.array(par)
-        dev = qml.device("lightning.gpu", wires=3)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_3_wires)
         def circuit():
             op(par, wires=wires)
             return (
@@ -900,11 +900,10 @@ class TestLightningGPUIntegration:
         """Tests supported gates that act on a single wire that are parameterized"""
 
         op = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=1)
 
-        assert dev.supports_operation(name)
+        assert qubit_device_1_wire.supports_operation(name)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_1_wire)
         def circuit():
             op(*par, wires=0)
             return qml.expval(qml.PauliZ(0))
@@ -936,15 +935,16 @@ class TestLightningGPUIntegration:
             ("ControlledPhaseShift", [math.pi], [-1 / 2, -1 / 2]),
         ],
     )
-    def test_supported_gate_two_wires_with_parameters(self, tol, name, par, expected_output):
+    def test_supported_gate_two_wires_with_parameters(
+        self, qubit_device_2_wires, tol, name, par, expected_output
+    ):
         """Tests supported gates that act on two wires that are parameterized"""
 
         op = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=2)
 
-        assert dev.supports_operation(name)
+        assert qubit_device_2_wires.supports_operation(name)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_2_wires)
         def circuit():
             qml.QubitStateVector(np.array([1 / 2, 0, 0, math.sqrt(3) / 2]), wires=[0, 1])
             op(*par, wires=[0, 1])
@@ -970,16 +970,15 @@ class TestLightningGPUIntegration:
         ],
     )
     def test_supported_observable_single_wire_no_parameters(
-        self, tol, name, state, expected_output
+        self, qubit_device_1_wire, tol, name, state, expected_output
     ):
         """Tests supported observables on single wires without parameters."""
 
         obs = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=1)
 
-        assert dev.supports_observable(name)
+        assert qubit_device_1_wire.supports_observable(name)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_1_wire)
         def circuit():
             qml.QubitStateVector(np.array(state), wires=[0])
             return qml.expval(obs(wires=[0]))
@@ -995,16 +994,15 @@ class TestLightningGPUIntegration:
         ],
     )
     def test_supported_observable_single_wire_with_parameters(
-        self, tol, name, state, expected_output, par
+        self, qubit_device_1_wire, tol, name, state, expected_output, par
     ):
         """Tests supported observables on single wires with parameters."""
 
         obs = getattr(qml.ops, name)
-        dev = qml.device("lightning.gpu", wires=1)
 
-        assert dev.supports_observable(name)
+        assert qubit_device_1_wire.supports_observable(name)
 
-        @qml.qnode(dev)
+        @qml.qnode(qubit_device_1_wire)
         def circuit():
             qml.QubitStateVector(np.array(state), wires=[0])
             return qml.expval(obs(*par, wires=[0]))
@@ -1016,10 +1014,9 @@ class TestLightningGPUIntegration:
 class TestTensorExpval:
     """Test tensor expectation values"""
 
-    def test_paulix_pauliy(self, theta, phi, varphi, tol):
+    def test_paulix_pauliy(self, theta, phi, varphi, qubit_device_3_wires, tol):
         """Test that a tensor product involving PauliX and PauliY works correctly"""
-        dev = qml.device("lightning.gpu", wires=3)
-
+        dev = qubit_device_3_wires
         dev.reset()
 
         obs = qml.PauliX(0) @ qml.PauliY(2)
@@ -1041,9 +1038,9 @@ class TestTensorExpval:
 
         assert np.allclose(res, expected, atol=tol, rtol=0)
 
-    def test_pauliz_identity(self, theta, phi, varphi, tol):
+    def test_pauliz_identity(self, theta, phi, varphi, qubit_device_3_wires, tol):
         """Test that a tensor product involving PauliZ and Identity works correctly"""
-        dev = qml.device("lightning.gpu", wires=3)
+        dev = qubit_device_3_wires
 
         dev.reset()
 
@@ -1066,9 +1063,9 @@ class TestTensorExpval:
 
         assert np.allclose(res, expected, atol=tol, rtol=0)
 
-    def test_pauliz_hadamard(self, theta, phi, varphi, tol):
+    def test_pauliz_hadamard(self, theta, phi, varphi, qubit_device_3_wires, tol):
         """Test that a tensor product involving PauliZ and PauliY and hadamard works correctly"""
-        dev = qml.device("lightning.gpu", wires=3)
+        dev = qubit_device_3_wires
         obs = qml.PauliZ(0) @ qml.Hadamard(1) @ qml.PauliY(2)
 
         dev.reset()
@@ -1094,9 +1091,9 @@ class TestTensorExpval:
 class TestTensorVar:
     """Tests for variance of tensor observables"""
 
-    def test_paulix_pauliy(self, theta, phi, varphi, tol):
+    def test_paulix_pauliy(self, theta, phi, varphi, qubit_device_3_wires, tol):
         """Test that a tensor product involving PauliX and PauliY works correctly"""
-        dev = qml.device("lightning.gpu", wires=3)
+        dev = qubit_device_3_wires
         obs = qml.PauliX(0) @ qml.PauliY(2)
 
         dev.apply(
@@ -1123,10 +1120,9 @@ class TestTensorVar:
 
         assert np.allclose(res, expected, atol=tol, rtol=0)
 
-    def test_pauliz_hadamard(self, theta, phi, varphi, tol):
+    def test_pauliz_hadamard(self, theta, phi, varphi, qubit_device_3_wires, tol):
         """Test that a tensor product involving PauliZ and PauliY and hadamard works correctly"""
-        dev = qml.device("lightning.gpu", wires=3)
-
+        dev = qubit_device_3_wires
         obs = qml.PauliZ(0) @ qml.Hadamard(1) @ qml.PauliY(2)
 
         dev.reset()
