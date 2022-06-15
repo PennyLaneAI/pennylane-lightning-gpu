@@ -159,11 +159,11 @@ inline static constexpr auto cuToComplex(CFP_t a)
 }
 
 /**
- * @brief Utility to convert cuComplex types to std::complex types
+ * @brief Utility to convert std::complex types to cuComplex types
  *
- * @tparam CFP_t cuFloatComplex or cuDoubleComplex types.
- * @param a CUDA compatible complex type.
- * @return std::complex converted a
+ * @tparam CFP_t std::complex types.
+ * @param a A std::complex type.
+ * @return cuComplex converted a
  */
 template <class CFP_t = std::complex<double>>
 inline static constexpr auto complexToCu(CFP_t a) {

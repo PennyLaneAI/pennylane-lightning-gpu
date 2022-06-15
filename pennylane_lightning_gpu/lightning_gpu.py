@@ -73,20 +73,6 @@ except (ModuleNotFoundError, ImportError, ValueError) as e:
     CPP_BINARY_AVAILABLE = False
 
 
-UNSUPPORTED_PARAM_GATES_ADJOINT = (
-    "MultiRZ",
-    "IsingXX",
-    "IsingYY",
-    "IsingZZ",
-    "SingleExcitation",
-    "SingleExcitationPlus",
-    "SingleExcitationMinus",
-    "DoubleExcitation",
-    "DoubleExcitationPlus",
-    "DoubleExcitationMinus",
-)
-
-
 def _gpu_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
@@ -249,9 +235,7 @@ class LightningGPU(LightningQubit):
                     )
 
         for op in tape.operations:
-            if (
-                op.num_params > 1 and not isinstance(op, Rot)
-            ) or op.name in UNSUPPORTED_PARAM_GATES_ADJOINT:
+            if op.num_params > 1 and not isinstance(op, Rot):
                 raise QuantumFunctionError(
                     f"The {op.name} operation is not supported using "
                     'the "adjoint" differentiation method'
