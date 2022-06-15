@@ -2,9 +2,17 @@
 
 ### New features since last release
 
+* Added a cuquantum-backed finite shot sampling method. [(#21)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/21).
+
+* Added more cuquantum-backed gates (IsingXX/YY/ZZ,MultiRz,SingleExcitation,...):  [(#28)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/28).
+
 ### Breaking changes
 
 ### Improvements
+
+* LightningGPU can be installed in-place to a Python environment via pip install -e [(#26)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/26).
+
+* CPU-only warnings are now more visible [(#23)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/23).
 
 ### Documentation
 
@@ -13,6 +21,8 @@
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
+
+Ali Asadi, Lee James O'Riordan, and Trevor Vincent.
 
 ---
 
