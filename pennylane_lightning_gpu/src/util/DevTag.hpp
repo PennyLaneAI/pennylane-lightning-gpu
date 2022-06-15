@@ -56,4 +56,10 @@ class DevTag {
     cudaStream_t stream_id_;
 };
 
+template <class T>
+inline std::ostream &operator<<(std::ostream &out, const DevTag<T> &dev_tag){
+    out << "dev_tag={device_id=" << dev_tag.getDeviceID() <<", stream_id=" << static_cast<void*>(dev_tag.getStreamID()) << "}";
+    return out;
+}
+
 } // namespace Pennylane::CUDA

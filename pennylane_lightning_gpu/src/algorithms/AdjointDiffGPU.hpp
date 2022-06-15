@@ -128,10 +128,21 @@ template <class T = double> class AdjointJacobianGPU {
                                std::vector<std::vector<T>> &jac,
                                T scaling_coeff, size_t obs_index,
                                size_t param_index) {
+        try{
+        PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() == sv2.getDataBuffer().getDevTag().getDeviceID(), "Data exists on different GPUs. Aborting." );
+        }
+        catch(...){
+std::cout << sv1.getDataBuffer().getDevTag().getDeviceID() << "    "  << sv2.getDataBuffer().getDevTag().getDeviceID() << std::endl;
+        PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() == sv2.getDataBuffer().getDevTag().getDeviceID(), "Data exists on different GPUs. Aborting." );
+        }
+        //std::string err_str("Data exists on different GPUs. Aborting.");
+        //err_str += sv1.getDataBuffer().getDevTag().getDeviceID();
+        //err_str += sv2.getDataBuffer().getDevTag().getDeviceID();
+        //PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() == sv2.getDataBuffer().getDevTag().getDeviceID(), err_str.c_str());
         jac[obs_index][param_index] =
             -2 * scaling_coeff *
             innerProdC_CUDA(sv1.getData(), sv2.getData(), sv1.getLength(),
-                            sv1.getStream())
+                            sv1.getDataBuffer().getDevTag().getDeviceID(), sv1.getDataBuffer().getDevTag().getStreamID())
                 .y;
     }
 
@@ -408,7 +419,7 @@ template <class T = double> class AdjointJacobianGPU {
                     const Pennylane::Algorithms::OpsData<T> &ops,
                     const std::vector<size_t> &trainableParams,
                     bool apply_operations = false,
-                    const CUDA::DevTag<int> &dev_tag = {0, 0}) {
+                    const CUDA::DevTag<int> dev_tag = {0,0}) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 
@@ -425,8 +436,10 @@ template <class T = double> class AdjointJacobianGPU {
         auto tp_it = trainableParams.rbegin();
         const auto tp_rend = trainableParams.rend();
 
+        DevTag<int> dt_local(std::move(dev_tag));
+        dt_local.refresh();
         // Create $U_{1:p}\vert \lambda \rangle$
-        StateVectorCudaManaged<T> lambda(ref_data, length, dev_tag);
+        StateVectorCudaManaged<T> lambda(ref_data, length, dt_local);
 
         // Apply given operations to statevector if requested
         if (apply_operations) {
@@ -436,11 +449,11 @@ template <class T = double> class AdjointJacobianGPU {
         // Create observable-applied state-vectors
         std::vector<StateVectorCudaManaged<T>> H_lambda;
         for (size_t n = 0; n < num_observables; n++) {
-            H_lambda.emplace_back(lambda.getNumQubits(), dev_tag);
+            H_lambda.emplace_back(lambda.getNumQubits(), dt_local);
         }
         applyObservables(H_lambda, lambda, obs);
 
-        StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dev_tag);
+        StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local);
 
         for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
              op_idx--) {

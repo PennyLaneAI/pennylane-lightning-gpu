@@ -275,21 +275,21 @@ class LightningGPU(LightningQubit):
     def _batched_gpu_adjoint(self, num_params, tp_shift, ops_serialized, obs_chunk, adj):
         jac_local = None
         try:
+            print(self._dp.getActiveDevices())
             gpu_id = self._dp.acquireDevice()
             print(f"Acquired device: {gpu_id}")
             dev_tag = DevTag(gpu_id)
-            if gpu_id == 0:
-                local_state = self._gpu_state
-            else:
-                local_state = _gpu_dtype(self._state.dtype)(self.num_wires, dev_tag)
-                local_state.DeviceToDevice(self._gpu_state, False)
+            #if gpu_id == 0:
+            #    local_state = self._gpu_state
+            #else:
+            local_state = _gpu_dtype(self._state.dtype)(self.num_wires, dev_tag)
+            local_state.DeviceToDevice(self._gpu_state, False)
             jac_local = adj.adjoint_jacobian(
                 local_state,
                 obs_chunk,
                 ops_serialized,
                 tp_shift,
                 num_params,
-                dev_tag,  # tape.num_params,
             )
         except Exception as e:
             print(f"Exception occurred during remote execution: {e}")
@@ -361,13 +361,15 @@ class LightningGPU(LightningQubit):
                             tp_shift,
                             ops_serialized,
                             obs_chunk,
-                            adj,
+                            adj
                         )
                     )
+                
                 concurrent.futures.wait(
                     results, timeout=None, return_when=concurrent.futures.ALL_COMPLETED
                 )
                 jac.extend([res.result() for res in results])
+                #jac.extend(results)
             jac = np.vstack((*jac,))
             jac = jac.reshape(-1, tape.num_params)
         else:

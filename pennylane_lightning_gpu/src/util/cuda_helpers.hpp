@@ -12,6 +12,7 @@
 #include <cuda.h>
 #include <custatevec.h>
 
+#include <DevTag.hpp>
 #include "Error.hpp"
 #include "Util.hpp"
 
@@ -27,6 +28,9 @@ namespace Pennylane::CUDA::Util {
 #define PL_CUDA_IS_SUCCESS(err)                                                \
     PL_ABORT_IF_NOT(err == cudaSuccess, cudaGetErrorString(err))
 
+#define PL_CUBLAS_IS_SUCCESS(err)                                                \
+    PL_ABORT_IF_NOT(err == CUBLAS_STATUS_SUCCESS, GetCuBlasErrorString(err))
+
 /**
  * @brief Macro that throws Exception from cuQuantum failure error codes.
  *
@@ -39,9 +43,48 @@ namespace Pennylane::CUDA::Util {
 #else
 #define PL_CUDA_IS_SUCCESS(err)                                                \
     { static_cast<void>(err); }
+#define PL_CUBLAS_IS_SUCCESS(err)                                          \
+    { static_cast<void>(err); }
 #define PL_CUSTATEVEC_IS_SUCCESS(err)                                          \
     { static_cast<void>(err); }
 #endif
+
+static const std::string
+GetCuBlasErrorString(const cublasStatus_t &err) {
+    std::string result;
+    switch (err) {
+    case CUBLAS_STATUS_SUCCESS:
+        result = "No errors";
+        break;
+    case CUBLAS_STATUS_NOT_INITIALIZED:
+        result = "cuBLAS library was not initialized";
+        break;
+    case CUBLAS_STATUS_ALLOC_FAILED:
+        result = "cuBLAS memory allocation failed";
+        break;
+    case CUBLAS_STATUS_INVALID_VALUE:
+        result = "Invalid value";
+        break;
+    case CUBLAS_STATUS_ARCH_MISMATCH:
+        result = "CUDA device architecture mismatch";
+        break;
+    case CUBLAS_STATUS_MAPPING_ERROR:
+        result = "cuBLAS mapping error";
+        break;
+    case CUBLAS_STATUS_INTERNAL_ERROR:
+        result = "Internal cuBLAS error";
+        break;
+    case CUBLAS_STATUS_NOT_SUPPORTED:
+        result = "Unsupported operation/device";
+        break;
+    case CUBLAS_STATUS_EXECUTION_FAILED:
+        result = "GPU program failed to execute";
+        break;
+    default:
+        result = "Status not found";
+    }
+    return result;
+}
 
 static const std::string
 GetCuStateVecErrorString(const custatevecStatus_t &err) {
@@ -292,13 +335,14 @@ template <class CFP_t> inline static constexpr auto INVSQRT2() -> CFP_t {
  * @param data_size Lengtyh of device data.
  * @return T Inner-product result
  */
-template <class T = cuFloatComplex>
+template <class T = cuFloatComplex, class DevTypeID = int>
 inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
-                            const cudaStream_t &streamId) -> T {
+                            int dev_id, cudaStream_t stream_id) -> T {
     T result{0.0, 0.0}; // Host result
     cublasHandle_t handle;
-    cublasCreate(&handle);
-    cublasSetStream(handle, streamId);
+    PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
+    PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));
+    PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream_id));
 
     if constexpr (std::is_same_v<T, cuFloatComplex>) {
         cublasCdotc(handle, data_size, v1, 1, v2, 1, &result);
