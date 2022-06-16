@@ -12,9 +12,9 @@
 #include <cuda.h>
 #include <custatevec.h>
 
-#include <DevTag.hpp>
 #include "Error.hpp"
 #include "Util.hpp"
+#include <DevTag.hpp>
 
 namespace Pennylane::CUDA::Util {
 
@@ -28,7 +28,7 @@ namespace Pennylane::CUDA::Util {
 #define PL_CUDA_IS_SUCCESS(err)                                                \
     PL_ABORT_IF_NOT(err == cudaSuccess, cudaGetErrorString(err))
 
-#define PL_CUBLAS_IS_SUCCESS(err)                                                \
+#define PL_CUBLAS_IS_SUCCESS(err)                                              \
     PL_ABORT_IF_NOT(err == CUBLAS_STATUS_SUCCESS, GetCuBlasErrorString(err))
 
 /**
@@ -43,14 +43,13 @@ namespace Pennylane::CUDA::Util {
 #else
 #define PL_CUDA_IS_SUCCESS(err)                                                \
     { static_cast<void>(err); }
-#define PL_CUBLAS_IS_SUCCESS(err)                                          \
+#define PL_CUBLAS_IS_SUCCESS(err)                                              \
     { static_cast<void>(err); }
 #define PL_CUSTATEVEC_IS_SUCCESS(err)                                          \
     { static_cast<void>(err); }
 #endif
 
-static const std::string
-GetCuBlasErrorString(const cublasStatus_t &err) {
+static const std::string GetCuBlasErrorString(const cublasStatus_t &err) {
     std::string result;
     switch (err) {
     case CUBLAS_STATUS_SUCCESS:

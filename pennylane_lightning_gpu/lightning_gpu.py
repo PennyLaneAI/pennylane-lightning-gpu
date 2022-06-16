@@ -279,9 +279,9 @@ class LightningGPU(LightningQubit):
             gpu_id = self._dp.acquireDevice()
             print(f"Acquired device: {gpu_id}")
             dev_tag = DevTag(gpu_id)
-            #if gpu_id == 0:
+            # if gpu_id == 0:
             #    local_state = self._gpu_state
-            #else:
+            # else:
             local_state = _gpu_dtype(self._state.dtype)(self.num_wires, dev_tag)
             local_state.DeviceToDevice(self._gpu_state, False)
             jac_local = adj.adjoint_jacobian(
@@ -361,15 +361,15 @@ class LightningGPU(LightningQubit):
                             tp_shift,
                             ops_serialized,
                             obs_chunk,
-                            adj
+                            adj,
                         )
                     )
-                
+
                 concurrent.futures.wait(
                     results, timeout=None, return_when=concurrent.futures.ALL_COMPLETED
                 )
                 jac.extend([res.result() for res in results])
-                #jac.extend(results)
+                # jac.extend(results)
             jac = np.vstack((*jac,))
             jac = jac.reshape(-1, tape.num_params)
         else:

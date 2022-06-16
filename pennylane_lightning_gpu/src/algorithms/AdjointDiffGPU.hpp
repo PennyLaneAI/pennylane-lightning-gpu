@@ -1,6 +1,8 @@
 #pragma once
 
+#include <future>
 #include <omp.h>
+#include <thread>
 
 #include "DevTag.hpp"
 #include "DevicePool.hpp"
@@ -128,21 +130,24 @@ template <class T = double> class AdjointJacobianGPU {
                                std::vector<std::vector<T>> &jac,
                                T scaling_coeff, size_t obs_index,
                                size_t param_index) {
-        try{
-        PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() == sv2.getDataBuffer().getDevTag().getDeviceID(), "Data exists on different GPUs. Aborting." );
+        try {
+            PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
+                                sv2.getDataBuffer().getDevTag().getDeviceID(),
+                            "Data exists on different GPUs. Aborting.");
+        } catch (...) {
+            std::cout << sv1.getDataBuffer().getDevTag().getDeviceID() << "    "
+                      << sv2.getDataBuffer().getDevTag().getDeviceID()
+                      << std::endl;
+            PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
+                                sv2.getDataBuffer().getDevTag().getDeviceID(),
+                            "Data exists on different GPUs. Aborting.");
         }
-        catch(...){
-std::cout << sv1.getDataBuffer().getDevTag().getDeviceID() << "    "  << sv2.getDataBuffer().getDevTag().getDeviceID() << std::endl;
-        PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() == sv2.getDataBuffer().getDevTag().getDeviceID(), "Data exists on different GPUs. Aborting." );
-        }
-        //std::string err_str("Data exists on different GPUs. Aborting.");
-        //err_str += sv1.getDataBuffer().getDevTag().getDeviceID();
-        //err_str += sv2.getDataBuffer().getDevTag().getDeviceID();
-        //PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() == sv2.getDataBuffer().getDevTag().getDeviceID(), err_str.c_str());
+
         jac[obs_index][param_index] =
             -2 * scaling_coeff *
             innerProdC_CUDA(sv1.getData(), sv2.getData(), sv1.getLength(),
-                            sv1.getDataBuffer().getDevTag().getDeviceID(), sv1.getDataBuffer().getDevTag().getStreamID())
+                            sv1.getDataBuffer().getDevTag().getDeviceID(),
+                            sv1.getDataBuffer().getDevTag().getStreamID())
                 .y;
     }
 
@@ -388,6 +393,78 @@ std::cout << sv1.getDataBuffer().getDevTag().getDeviceID() << "    "  << sv2.get
         return {ops_name, ops_params, ops_wires, ops_inverses, ops_matrices};
     }
 
+    void batchAdjointJacobian(
+        const CFP_t *ref_data, std::size_t length,
+        std::vector<std::vector<T>> &jac,
+        const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
+        const Pennylane::Algorithms::OpsData<T> &ops,
+        const std::vector<size_t> &trainableParams,
+        bool apply_operations = false) {
+
+        // Create a pool of available GPU devices
+        DevicePool<int> dp;
+        const auto num_gpus = dp.getTotalDevices();
+        const auto num_chunks = num_gpus;
+
+        // Create a vector of threads for separate GPU executions
+        std::vector<std::thread> threads;
+        threads.reserve(num_gpus);
+
+        // Hold results of threaded GPU executions
+        std::vector<std::future<std::vector<std::vector<T>>>> futures;
+
+        // Iterate over the chunked observables, and submit the Jacobian task
+        // for execution
+        for (std::size_t i = 0; i < num_chunks; i++) {
+            const auto first = static_cast<std::size_t>(
+                std::ceil(obs.size() * i / num_chunks));
+            const auto last = static_cast<std::size_t>(
+                std::ceil((obs.size() * (i + 1) / num_chunks) - 1));
+
+            std::promise<std::vector<std::vector<T>>> jac_subset_promise;
+            futures.emplace_back(jac_subset_promise.get_future());
+
+            auto adj_lambda =
+                [&](std::promise<std::vector<std::vector<T>>> &j_promise) {
+                    // Grab a GPU index, and set a device tag
+                    const auto id = dp.acquireDevice();
+                    DevTag<int> dt_local(id, 0);
+                    dt_local.refresh();
+
+                    // Create a sv copy on this thread and device; may not be
+                    // necessary, could do in adjoint calculation directly
+                    StateVectorCudaManaged<T> local_sv(ref_data, length,
+                                                       dt_local);
+
+                    // Create local store for Jacobian subset
+                    std::vector<std::vector<T>> jac_local(
+                        (last - first + 1),
+                        std::vector<T>(trainableParams.size(), 0));
+
+                    adjointJacobian(
+                        local_sv.getData(), length, jac_local,
+                        {obs.begin() + first, obs.begin() + last + 1}, ops,
+                        trainableParams, apply_operations, dt_local);
+
+                    j_promise.set_value(std::move(jac_local));
+                    dp.releaseDevice(id);
+                };
+
+            threads.emplace_back(adj_lambda, std::ref(jac_subset_promise));
+        }
+        /// Keep going here; ensure the new local jacs are inserted and
+        /// overwrite the 0 jacs values before returning
+        for (std::size_t i = 0; i < futures.size(); i++) {
+            const auto first = static_cast<std::size_t>(
+                std::ceil(obs.size() * i / num_chunks));
+
+            auto jac_rows = futures[i].get();
+            for (std::size_t j = 0; j < jac_rows.size(); j++) {
+                jac.at(first + j) = std::move(jac_rows[j]);
+            }
+        }
+    }
+
     /**
      * @brief Calculates the Jacobian for the statevector for the selected set
      * of parametric gates.
@@ -419,7 +496,7 @@ std::cout << sv1.getDataBuffer().getDevTag().getDeviceID() << "    "  << sv2.get
                     const Pennylane::Algorithms::OpsData<T> &ops,
                     const std::vector<size_t> &trainableParams,
                     bool apply_operations = false,
-                    const CUDA::DevTag<int> dev_tag = {0,0}) {
+                    CUDA::DevTag<int> dev_tag = {0, 0}) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 

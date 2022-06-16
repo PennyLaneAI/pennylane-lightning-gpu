@@ -48,10 +48,11 @@ class StateVectorCudaManaged
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits),
           gate_cache_(true) {
-    uid = reinterpret_cast<std::size_t>(this); 
+        uid = reinterpret_cast<std::size_t>(this);
 
-std::cout << "1 StateVectorCudaManaged[" << uid << "]" <<std::endl;
-//std::cout << "1 StateVectorCudaManaged(size_t num_qubits):=(" << num_qubits << ")[" << uid << "]" <<std::endl;
+        std::cout << "1 StateVectorCudaManaged[" << uid << "]" << std::endl;
+        // std::cout << "1 StateVectorCudaManaged(size_t num_qubits):=(" <<
+        // num_qubits << ")[" << uid << "]" <<std::endl;
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
     };
@@ -61,9 +62,11 @@ std::cout << "1 StateVectorCudaManaged[" << uid << "]" <<std::endl;
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits, dev_tag, alloc),
           gate_cache_(true, dev_tag) {
-    uid = reinterpret_cast<std::size_t>(this); 
-std::cout << "2 StateVectorCudaManaged[" << uid << "]" <<std::endl;
-//std::cout << "2 StateVectorCudaManaged(size_t num_qubits, const DevTag<int> &dev_tag,  bool alloc = true):=(" << num_qubits << "," << dev_tag << ", "<< alloc << ")[" << uid << "]" <<std::endl;
+        uid = reinterpret_cast<std::size_t>(this);
+        std::cout << "2 StateVectorCudaManaged[" << uid << "]" << std::endl;
+        // std::cout << "2 StateVectorCudaManaged(size_t num_qubits, const
+        // DevTag<int> &dev_tag,  bool alloc = true):=(" << num_qubits << "," <<
+        // dev_tag << ", "<< alloc << ")[" << uid << "]" <<std::endl;
         BaseType::initSV();
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
@@ -71,9 +74,11 @@ std::cout << "2 StateVectorCudaManaged[" << uid << "]" <<std::endl;
 
     StateVectorCudaManaged(const CFP_t *gpu_data, size_t length)
         : StateVectorCudaManaged(Util::log2(length)) {
-    uid = reinterpret_cast<std::size_t>(this); 
-std::cout << "3 StateVectorCudaManaged[" << uid << "]" << std::endl;
-//std::cout << "3 StateVectorCudaManaged(const CFP_t *gpu_data, size_t length):=(" << gpu_data << "," << length << ")[" << uid << "]" << std::endl;
+        uid = reinterpret_cast<std::size_t>(this);
+        std::cout << "3 StateVectorCudaManaged[" << uid << "]" << std::endl;
+        // std::cout << "3 StateVectorCudaManaged(const CFP_t *gpu_data, size_t
+        // length):=(" << gpu_data << "," << length << ")[" << uid << "]" <<
+        // std::endl;
         BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
@@ -82,9 +87,11 @@ std::cout << "3 StateVectorCudaManaged[" << uid << "]" << std::endl;
     StateVectorCudaManaged(const CFP_t *gpu_data, size_t length,
                            DevTag<int> dev_tag)
         : StateVectorCudaManaged(Util::log2(length), dev_tag) {
-    uid = reinterpret_cast<std::size_t>(this); 
-std::cout << "4 StateVectorCudaManaged[" << uid << "]"<<std::endl;
-//std::cout << "4 StateVectorCudaManaged(const CFP_t *gpu_data, size_t length, DevTag<int> dev_tag):=(" << gpu_data << "," << length << ", " << dev_tag << ")[" << uid << "]"<<std::endl;
+        uid = reinterpret_cast<std::size_t>(this);
+        std::cout << "4 StateVectorCudaManaged[" << uid << "]" << std::endl;
+        // std::cout << "4 StateVectorCudaManaged(const CFP_t *gpu_data, size_t
+        // length, DevTag<int> dev_tag):=(" << gpu_data << "," << length << ", "
+        // << dev_tag << ")[" << uid << "]"<<std::endl;
         BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
@@ -93,35 +100,39 @@ std::cout << "4 StateVectorCudaManaged[" << uid << "]"<<std::endl;
     StateVectorCudaManaged(const std::complex<Precision> *host_data,
                            size_t length)
         : StateVectorCudaManaged(Util::log2(length)) {
-    uid = reinterpret_cast<std::size_t>(this); 
-std::cout << "5 StateVectorCudaManaged[" << uid << "]" << std::endl;
-//std::cout << "5 StateVectorCudaManaged(const std::complex<Precision> *host_data, size_t length):=(" << host_data << "," << length << ")[" << uid << "]" << std::endl;
+        uid = reinterpret_cast<std::size_t>(this);
+        std::cout << "5 StateVectorCudaManaged[" << uid << "]" << std::endl;
+        // std::cout << "5 StateVectorCudaManaged(const std::complex<Precision>
+        // *host_data, size_t length):=(" << host_data << "," << length << ")["
+        // << uid << "]" << std::endl;
         BaseType::CopyHostDataToGpu(host_data, length, false);
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
     }
 
     StateVectorCudaManaged(const StateVectorCudaManaged &other)
-        : StateVectorCudaManaged(other.getNumQubits(), other.getDataBuffer().getDevTag()) {
-    uid = reinterpret_cast<std::size_t>(this); 
-std::cout << "6 StateVectorCudaManaged[" << uid << "]"<< std::endl;
-//std::cout << "6 StateVectorCudaManaged(const StateVectorCudaManaged &other):=(" << other.getData() << "," << other.getLength() << ")[" << uid << "]"<< std::endl;
+        : StateVectorCudaManaged(other.getNumQubits(),
+                                 other.getDataBuffer().getDevTag()) {
+        uid = reinterpret_cast<std::size_t>(this);
+        std::cout << "6 StateVectorCudaManaged[" << uid << "]" << std::endl;
+        // std::cout << "6 StateVectorCudaManaged(const StateVectorCudaManaged
+        // &other):=(" << other.getData() << "," << other.getLength() << ")[" <<
+        // uid << "]"<< std::endl;
         BaseType::CopyGpuDataToGpuIn(other);
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(
             /* custatevecHandle_t* */ &handle));
     }
 
     ~StateVectorCudaManaged() {
-std::cout << "~StateVectorCudaManaged[" << uid << "]";
-        try{
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(
-            /* custatevecHandle_t */ handle));
-        }
-        catch(...){
+        std::cout << "~StateVectorCudaManaged[" << uid << "]";
+        try {
+            PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(
+                /* custatevecHandle_t */ handle));
+        } catch (...) {
             std::cout << "->FAILED" << std::endl;
             PL_ABORT("FAILED");
         }
-std::cout << std::endl;
+        std::cout << std::endl;
     }
 
     /**
