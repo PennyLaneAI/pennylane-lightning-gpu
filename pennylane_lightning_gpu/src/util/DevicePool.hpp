@@ -67,14 +67,12 @@ template <typename DeviceIndexType = int> class DevicePool {
      * @return int
      */
     int acquireDevice() {
-        std::cout << "Acquiring device" << std::endl;
         int dev_id;
         available_devices_.wait_and_pop(dev_id);
         {
             std::lock_guard<std::mutex> lg(m_);
             active_devices_.insert(dev_id);
         }
-        std::cout << "Acquired device:=" << dev_id << std::endl;
         return dev_id;
     }
 

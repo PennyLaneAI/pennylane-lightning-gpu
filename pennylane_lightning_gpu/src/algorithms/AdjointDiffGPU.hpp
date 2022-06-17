@@ -131,18 +131,9 @@ template <class T = double> class AdjointJacobianGPU {
                                std::vector<std::vector<T>> &jac,
                                T scaling_coeff, size_t obs_index,
                                size_t param_index) {
-        try {
             PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
                                 sv2.getDataBuffer().getDevTag().getDeviceID(),
                             "Data exists on different GPUs. Aborting.");
-        } catch (...) {
-            std::cout << sv1.getDataBuffer().getDevTag().getDeviceID() << "    "
-                      << sv2.getDataBuffer().getDevTag().getDeviceID()
-                      << std::endl;
-            PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
-                                sv2.getDataBuffer().getDevTag().getDeviceID(),
-                            "Data exists on different GPUs. Aborting.");
-        }
 
         jac[obs_index][param_index] =
             -2 * scaling_coeff *
@@ -392,7 +383,6 @@ template <class T = double> class AdjointJacobianGPU {
         const std::vector<std::vector<std::complex<T>>> &ops_matrices = {{}})
         -> Pennylane::Algorithms::OpsData<T> {
         return {ops_name, ops_params, ops_wires, ops_inverses, ops_matrices};
-        std::cout << "Entering chunk iterator" << std::endl;
     }
 
     void batchAdjointJacobian(
@@ -429,6 +419,9 @@ template <class T = double> class AdjointJacobianGPU {
 
             auto adj_lambda =
                 [&](std::promise<std::vector<std::vector<T>>> j_promise) {
+                    // Ensure No OpenMP threads spawned;
+                    // to be resolved with streams in future releases
+                     omp_set_num_threads(1);
                     // Grab a GPU index, and set a device tag
                     const auto id = dp.acquireDevice();
                     DevTag<int> dt_local(id, 0);
