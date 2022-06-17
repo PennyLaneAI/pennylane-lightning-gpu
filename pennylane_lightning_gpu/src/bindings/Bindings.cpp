@@ -36,6 +36,7 @@
 
 /// @cond DEV
 namespace {
+using namespace Pennylane;
 using namespace Pennylane::CUDA;
 using namespace Pennylane::Algorithms;
 using namespace Pennylane::CUDA::Util;

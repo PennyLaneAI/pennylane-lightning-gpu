@@ -8,7 +8,7 @@
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"
 
-namespace PennyLane {
+namespace Pennylane {
 template <class T, class Alloc = std::allocator<T>> struct PLApprox {
     const std::vector<T, Alloc> &comp_;
 
@@ -88,7 +88,7 @@ bool operator!=(const std::vector<T, AllocA> &lhs,
                 const PLApprox<T, AllocB> &rhs) {
     return !rhs.compare(lhs);
 }
-}; // namespace PennyLane
+}; // namespace Pennylane
 
 namespace {
 using namespace Pennylane;
