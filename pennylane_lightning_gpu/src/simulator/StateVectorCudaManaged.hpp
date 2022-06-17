@@ -605,7 +605,7 @@ class StateVectorCudaManaged
     /* Multi-qubit gates */
     inline void applyMultiRZ(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
-        static const std::vector<std::string> names(wires.size(), {"RZ"});
+        const std::vector<std::string> names(wires.size(), {"RZ"});
         applyParametricPauliGate(names, {}, wires, param, adjoint);
     }
 

@@ -267,7 +267,7 @@ template <class T = double> class AdjointJacobianGPU {
         {"DoubleExcitation", -static_cast<T>(0.5)},
         {"DoubleExcitationMinus", -static_cast<T>(0.5)},
         {"DoubleExcitationPlus", -static_cast<T>(0.5)},
-        {"MultiRZ", static_cast<T>(0.5)}};
+        {"MultiRZ", -static_cast<T>(0.5)}};
 
     /**
      * @brief Utility method to update the Jacobian at a given index by
