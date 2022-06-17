@@ -47,16 +47,16 @@ def n_subsystems(request):
     return request.param
 
 
-@pytest.fixture(scope="function", params=[np.complex64, np.complex128])
+@pytest.fixture(scope="function", params=[np.complex128])
 def qubit_device_1_wire(request):
     return LightningGPU(wires=1, c_dtype=request.param)
 
 
-@pytest.fixture(scope="function", params=[np.complex64, np.complex128])
-def qubit_device_2_wire(request):
+@pytest.fixture(scope="function", params=[np.complex128])
+def qubit_device_2_wires(request):
     return LightningGPU(wires=2, c_dtype=request.param)
 
 
-@pytest.fixture(scope="function", params=[np.complex64, np.complex128])
-def qubit_device_3_wire(request):
+@pytest.fixture(scope="function", params=[np.complex128])
+def qubit_device_3_wires(request):
     return LightningGPU(wires=3, c_dtype=request.param)

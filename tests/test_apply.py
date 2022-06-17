@@ -173,12 +173,12 @@ class TestApply:
 
     @pytest.mark.parametrize("operation,input,expected_output", test_data_two_wires_no_parameters)
     def test_apply_operation_two_wires_no_parameters(
-        self, qubit_device_2_wire, tol, operation, input, expected_output
+        self, qubit_device_2_wires, tol, operation, input, expected_output
     ):
         """Tests that applying an operation yields the expected output state for two wire
         operations that have no parameters."""
 
-        dev = qubit_device_2_wire
+        dev = qubit_device_2_wires
         gpu_ctor = plg.lightning_gpu._gpu_dtype(dev.C_DTYPE)
         dev._gpu_state = gpu_ctor(np.array(input).reshape(2 * [2]).astype(dev.C_DTYPE))
         dev.apply([operation(wires=[0, 1])])
@@ -197,12 +197,12 @@ class TestApply:
 
     @pytest.mark.parametrize("operation,input,expected_output", test_data_three_wires_no_parameters)
     def test_apply_operation_three_wires_no_parameters(
-        self, qubit_device_3_wire, tol, operation, input, expected_output
+        self, qubit_device_3_wires, tol, operation, input, expected_output
     ):
         """Tests that applying an operation yields the expected output state for three wire
         operations that have no parameters."""
 
-        dev = qubit_device_3_wire
+        dev = qubit_device_3_wires
         gpu_ctor = plg.lightning_gpu._gpu_dtype(dev.C_DTYPE)
         dev._gpu_state = gpu_ctor(np.array(input).reshape(3 * [2]).astype(dev.C_DTYPE))
         dev.apply([operation(wires=[0, 1, 2])])
@@ -443,7 +443,6 @@ class TestApply:
     @pytest.mark.parametrize(
         "operation,input,expected_output,par", test_data_two_wires_with_parameters
     )
-    @pytest.mark.parametrize("C", [np.complex128])
     def test_apply_operation_two_wires_with_parameters(
         self, qubit_device_2_wires, tol, operation, input, expected_output, par
     ):
