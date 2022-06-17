@@ -272,33 +272,6 @@ class LightningGPU(LightningQubit):
                     'the "adjoint" differentiation method'
                 )
 
-    def _batched_gpu_adjoint(self, num_params, tp_shift, ops_serialized, obs_chunk, adj):
-        jac_local = None
-        try:
-            print(self._dp.getActiveDevices())
-            gpu_id = self._dp.acquireDevice()
-            print(f"Acquired device: {gpu_id}")
-            dev_tag = DevTag(gpu_id)
-            # if gpu_id == 0:
-            #    local_state = self._gpu_state
-            # else:
-            local_state = _gpu_dtype(self._state.dtype)(self.num_wires, dev_tag)
-            local_state.DeviceToDevice(self._gpu_state, False)
-            jac_local = adj.adjoint_jacobian(
-                local_state,
-                obs_chunk,
-                ops_serialized,
-                tp_shift,
-                num_params,
-            )
-        except Exception as e:
-            print(f"Exception occurred during remote execution: {e}")
-        finally:
-            # Ensure device is freed in the event of an exception
-            print(f"Releasing device: {gpu_id}")
-            self._dp.releaseDevice(gpu_id)
-        return jac_local
-
     def adjoint_jacobian(self, tape, starting_state=None, use_device_state=False, **kwargs):
         if self.shots is not None:
             warn(
@@ -349,29 +322,14 @@ class LightningGPU(LightningQubit):
             trainable_params if not use_sp else [i - 1 for i in trainable_params[first_elem:]]
         )  # exclude first index if explicitly setting sv
         if self._dp.getTotalDevices() > 1 and self._batch_obs:
-            obs_partitions = _discrete_chunks(obs_serialized, self._dp.getTotalDevices())
-            jac = []
-            with ThreadPoolExecutor(max_workers=self._dp.getTotalDevices()) as tp:
-                results = []
-                for obs_chunk in obs_partitions:
-                    results.append(
-                        tp.submit(
-                            self._batched_gpu_adjoint,
-                            tape.num_params,
-                            tp_shift,
-                            ops_serialized,
-                            obs_chunk,
-                            adj,
-                        )
-                    )
-
-                concurrent.futures.wait(
-                    results, timeout=None, return_when=concurrent.futures.ALL_COMPLETED
-                )
-                jac.extend([res.result() for res in results])
-                # jac.extend(results)
-            jac = np.vstack((*jac,))
-            jac = jac.reshape(-1, tape.num_params)
+            jac = adj.adjoint_jacobian_batched(
+                self._gpu_state,
+                obs_serialized,
+                ops_serialized,
+                tp_shift,
+                tape.num_params,
+            )
+            
         else:
             jac = adj.adjoint_jacobian(
                 self._gpu_state,

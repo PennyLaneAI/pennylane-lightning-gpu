@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <future>
 #include <omp.h>
 #include <thread>
@@ -391,6 +392,7 @@ template <class T = double> class AdjointJacobianGPU {
         const std::vector<std::vector<std::complex<T>>> &ops_matrices = {{}})
         -> Pennylane::Algorithms::OpsData<T> {
         return {ops_name, ops_params, ops_wires, ops_inverses, ops_matrices};
+        std::cout << "Entering chunk iterator" << std::endl;
     }
 
     void batchAdjointJacobian(
@@ -407,6 +409,7 @@ template <class T = double> class AdjointJacobianGPU {
         const auto num_chunks = num_gpus;
 
         // Create a vector of threads for separate GPU executions
+        using namespace std::chrono_literals;
         std::vector<std::thread> threads;
         threads.reserve(num_gpus);
 
@@ -425,7 +428,7 @@ template <class T = double> class AdjointJacobianGPU {
             futures.emplace_back(jac_subset_promise.get_future());
 
             auto adj_lambda =
-                [&](std::promise<std::vector<std::vector<T>>> &j_promise) {
+                [&](std::promise<std::vector<std::vector<T>>> j_promise) {
                     // Grab a GPU index, and set a device tag
                     const auto id = dp.acquireDevice();
                     DevTag<int> dt_local(id, 0);
@@ -440,17 +443,15 @@ template <class T = double> class AdjointJacobianGPU {
                     std::vector<std::vector<T>> jac_local(
                         (last - first + 1),
                         std::vector<T>(trainableParams.size(), 0));
-
                     adjointJacobian(
                         local_sv.getData(), length, jac_local,
                         {obs.begin() + first, obs.begin() + last + 1}, ops,
                         trainableParams, apply_operations, dt_local);
 
-                    j_promise.set_value(std::move(jac_local));
+                    j_promise.set_value(jac_local);
                     dp.releaseDevice(id);
                 };
-
-            threads.emplace_back(adj_lambda, std::ref(jac_subset_promise));
+            threads.emplace_back(adj_lambda, std::move(jac_subset_promise));
         }
         /// Keep going here; ensure the new local jacs are inserted and
         /// overwrite the 0 jacs values before returning
@@ -462,6 +463,9 @@ template <class T = double> class AdjointJacobianGPU {
             for (std::size_t j = 0; j < jac_rows.size(); j++) {
                 jac.at(first + j) = std::move(jac_rows[j]);
             }
+        }
+        for(std::size_t t = 0; t < threads.size(); t++){
+            threads[t].join();
         }
     }
 
