@@ -21,6 +21,7 @@ import numpy as np
 from pennylane import (
     math,
     BasisState,
+    QubitStateVector,
     DeviceError,
     Projector,
     Hermitian,
@@ -29,7 +30,7 @@ from pennylane import (
     QubitStateVector,
 )
 from pennylane_lightning import LightningQubit
-from pennylane.operation import Tensor
+from pennylane.operation import Tensor, Operation
 from pennylane.measurements import Expectation
 from pennylane.wires import Wires
 
@@ -276,20 +277,33 @@ class LightningGPU(LightningQubit):
         ops_serialized = adj.create_ops_list(*ops_serialized)
 
         trainable_params = sorted(tape.trainable_params)
-        first_elem = 1 if trainable_params[0] == 0 else 0
 
-        tp_shift = (
-            trainable_params if not use_sp else [i - 1 for i in trainable_params[first_elem:]]
-        )  # exclude first index if explicitly setting sv
+        tp_shift = []
+        record_tp_rows = []
+        all_params = 0
 
-        jac = adj.adjoint_jacobian(
-            self._gpu_state,
-            obs_serialized,
-            ops_serialized,
-            tp_shift,
-            tape.num_params,
-        )
-        return jac  # .reshape(-1, tape.num_params)
+        for op_idx, tp in enumerate(trainable_params):
+            op, _ = tape.get_operation(
+                op_idx
+            )  # get op_idx-th operator among differentiable operators
+
+            if isinstance(op, Operation) and not isinstance(op, (BasisState, QubitStateVector)):
+                # We now just ignore non-op or state preps
+                tp_shift.append(tp)
+                record_tp_rows.append(all_params)
+            all_params += 1
+
+        if use_sp:
+            # When the first element of the tape is state preparation. Still, I am not sure
+            # whether there must be only one state preparation...
+            tp_shift = [i - 1 for i in tp_shift]
+
+        jac = adj.adjoint_jacobian(self._gpu_state, obs_serialized, ops_serialized, tp_shift)
+        jac = np.array(jac)  # only for parameters differentiable with the adjoint method
+        jac = jac.reshape(-1, len(tp_shift))
+        jac_r = np.zeros((jac.shape[0], all_params))
+        jac_r[:, record_tp_rows] = jac
+        return jac_r
 
     def expval(self, observable, shot_range=None, bin_size=None):
         if observable.name in [
