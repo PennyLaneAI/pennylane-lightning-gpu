@@ -258,5 +258,4 @@ template <class fp_t> class GateCache {
         device_gates_;
     std::unordered_map<gate_id, std::vector<CFP_t>, gate_id_hash> host_gates_;
 };
-
 } // namespace Pennylane::CUDA

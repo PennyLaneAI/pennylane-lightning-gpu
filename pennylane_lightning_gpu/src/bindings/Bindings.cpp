@@ -296,7 +296,90 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 return sv.applyCRot(wires, adjoint, params);
             },
             "Apply the CRot gate.")
-
+        .def(
+            "IsingXX",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyIsingXX(wires, adjoint, params.front());
+            },
+            "Apply the IsingXX gate.")
+        .def(
+            "IsingYY",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyIsingYY(wires, adjoint, params.front());
+            },
+            "Apply the IsingYY gate.")
+        .def(
+            "IsingZZ",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyIsingZZ(wires, adjoint, params.front());
+            },
+            "Apply the IsingZZ gate.")
+        .def(
+            "SingleExcitation",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applySingleExcitation(wires, adjoint, params.front());
+            },
+            "Apply the SingleExcitation gate.")
+        .def(
+            "SingleExcitationMinus",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applySingleExcitationMinus(wires, adjoint,
+                                                     params.front());
+            },
+            "Apply the SingleExcitationMinus gate.")
+        .def(
+            "SingleExcitationPlus",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applySingleExcitationPlus(wires, adjoint,
+                                                    params.front());
+            },
+            "Apply the SingleExcitationPlus gate.")
+        .def(
+            "DoubleExcitation",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyDoubleExcitation(wires, adjoint, params.front());
+            },
+            "Apply the DoubleExcitation gate.")
+        .def(
+            "DoubleExcitationMinus",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyDoubleExcitationMinus(wires, adjoint,
+                                                     params.front());
+            },
+            "Apply the DoubleExcitationMinus gate.")
+        .def(
+            "DoubleExcitationPlus",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyDoubleExcitationPlus(wires, adjoint,
+                                                    params.front());
+            },
+            "Apply the DoubleExcitationPlus gate.")
+        .def(
+            "MultiRZ",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyMultiRZ(wires, adjoint, params.front());
+            },
+            "Apply the MultiRZ gate.")
         .def(
             "ExpectationValue",
             [](StateVectorCudaManaged<PrecisionT> &sv,

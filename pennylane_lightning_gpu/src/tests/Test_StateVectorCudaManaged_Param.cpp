@@ -427,6 +427,676 @@ TEMPLATE_TEST_CASE("LightningGPU::applyCRot", "[LightningGPU_Param]", float,
     }
 }
 
+TEMPLATE_TEST_CASE("LightningGPU::applyIsingXX", "[LightningGPU_Param]", float,
+                   double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits),
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results[0][0] = {0.9887710779360422, 0.0};
+    expected_results[0][6] = {0.0, -0.14943813247359922};
+
+    expected_results[1][0] = {0.9210609940028851, 0.0};
+    expected_results[1][6] = {0.0, -0.3894183423086505};
+
+    expected_results[2][0] = {0.9887710779360422, 0.0};
+    expected_results[2][5] = {0.0, -0.14943813247359922};
+
+    expected_results[3][0] = {0.9210609940028851, 0.0};
+    expected_results[3][5] = {0.0, -0.3894183423086505};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits),
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results_adj[0][0] = {0.9887710779360422, 0.0};
+    expected_results_adj[0][6] = {0.0, 0.14943813247359922};
+
+    expected_results_adj[1][0] = {0.9210609940028851, 0.0};
+    expected_results_adj[1][6] = {0.0, 0.3894183423086505};
+
+    expected_results_adj[2][0] = {0.9887710779360422, 0.0};
+    expected_results_adj[2][5] = {0.0, 0.14943813247359922};
+
+    expected_results_adj[3][0] = {0.9210609940028851, 0.0};
+    expected_results_adj[3][5] = {0.0, 0.3894183423086505};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly adjoint=false") {
+        SECTION("IsingXX 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingXX({0, 1}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+        SECTION("IsingXX 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingXX({0, 2}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index + angles.size()]));
+            }
+        }
+    }
+    SECTION("Apply directly adjoint=true") {
+        SECTION("IsingXX 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingXX({0, 1}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+        SECTION("IsingXX 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingXX({0, 2}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(
+                    isApproxEqual(svdat_direct.sv.getDataVector(),
+                                  expected_results_adj[index + angles.size()]));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("IsingXX", {0, 1}, true,
+                                                  {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyIsingYY", "[LightningGPU_Param]", float,
+                   double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits),
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results[0][0] = {0.9887710779360422, 0.0};
+    expected_results[0][6] = {0.0, 0.14943813247359922};
+
+    expected_results[1][0] = {0.9210609940028851, 0.0};
+    expected_results[1][6] = {0.0, 0.3894183423086505};
+
+    expected_results[2][0] = {0.9887710779360422, 0.0};
+    expected_results[2][5] = {0.0, 0.14943813247359922};
+
+    expected_results[3][0] = {0.9210609940028851, 0.0};
+    expected_results[3][5] = {0.0, 0.3894183423086505};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits),
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results_adj[0][0] = {0.9887710779360422, 0.0};
+    expected_results_adj[0][6] = {0.0, -0.14943813247359922};
+
+    expected_results_adj[1][0] = {0.9210609940028851, 0.0};
+    expected_results_adj[1][6] = {0.0, -0.3894183423086505};
+
+    expected_results_adj[2][0] = {0.9887710779360422, 0.0};
+    expected_results_adj[2][5] = {0.0, -0.14943813247359922};
+
+    expected_results_adj[3][0] = {0.9210609940028851, 0.0};
+    expected_results_adj[3][5] = {0.0, -0.3894183423086505};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly adjoint=false") {
+        SECTION("IsingYY 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingYY({0, 1}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+        SECTION("IsingYY 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingYY({0, 2}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index + angles.size()]));
+            }
+        }
+    }
+    SECTION("Apply directly adjoint=true") {
+        SECTION("IsingYY 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingYY({0, 1}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+        SECTION("IsingYY 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingYY({0, 2}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(
+                    isApproxEqual(svdat_direct.sv.getDataVector(),
+                                  expected_results_adj[index + angles.size()]));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("IsingYY", {0, 1}, true,
+                                                  {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyIsingZZ", "[LightningGPU_Param]", float,
+                   double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>(1 << num_qubits, {0, 0}),
+        std::vector<cp_t>(1 << num_qubits, {0, 0})};
+    expected_results[0][0] = {0.9887710779360422, -0.14943813247359922};
+    expected_results[1][0] = {0.9210609940028851, -0.3894183423086505};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results_adj[0][0] = {0.9887710779360422, 0.14943813247359922};
+    expected_results_adj[1][0] = {0.9210609940028851, 0.3894183423086505};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly adjoint=false") {
+        SECTION("IsingZZ 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingZZ({0, 1}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+        SECTION("IsingZZ 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingZZ({0, 2}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+    }
+    SECTION("Apply directly adjoint=true") {
+        SECTION("IsingZZ 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingZZ({0, 1}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+        SECTION("IsingZZ 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyIsingZZ({0, 2}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("IsingZZ", {0, 1}, true,
+                                                  {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applySingleExcitation",
+                   "[LightningGPU_Param]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<cp_t> expected_results(1 << num_qubits);
+    expected_results[0] = {1.0, 0.0};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly") {
+        SECTION("SingleExcitation 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitation({0, 1}, false,
+                                                           angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results));
+            }
+        }
+        SECTION("SingleExcitation 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitation({0, 2}, false,
+                                                           angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("SingleExcitation", {0, 1},
+                                                  false, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applySingleExcitationMinus",
+                   "[LightningGPU_Param]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results[0][0] = {0.9887710779360422, -0.14943813247359922};
+    expected_results[1][0] = {0.9210609940028851, -0.3894183423086505};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results_adj[0][0] = {0.9887710779360422, 0.14943813247359922};
+    expected_results_adj[1][0] = {0.9210609940028851, 0.3894183423086505};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly adjoint=false") {
+        SECTION("SingleExcitationMinus 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitationMinus({0, 1}, false,
+                                                                angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+        SECTION("SingleExcitationMinus 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitationMinus({0, 2}, false,
+                                                                angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+    }
+    SECTION("Apply directly adjoint=true") {
+        SECTION("SingleExcitationMinus 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitationMinus({0, 1}, true,
+                                                                angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+        SECTION("SingleExcitationMinus 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitationMinus({0, 2}, true,
+                                                                angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "SingleExcitationMinus", {0, 1}, true, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applySingleExcitationPlus",
+                   "[LightningGPU_Param]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results[0][0] = {0.9887710779360422, 0.14943813247359922};
+    expected_results[1][0] = {0.9210609940028851, 0.3894183423086505};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results_adj[0][0] = {0.9887710779360422, -0.14943813247359922};
+    expected_results_adj[1][0] = {0.9210609940028851, -0.3894183423086505};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly adjoint=false") {
+        SECTION("SingleExcitationPlus 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitationPlus({0, 1}, false,
+                                                               angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+        SECTION("SingleExcitationPlus 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitationPlus({0, 2}, false,
+                                                               angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+    }
+    SECTION("Apply directly adjoint=true") {
+        SECTION("SingleExcitationPlus 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitationPlus({0, 1}, true,
+                                                               angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+        SECTION("SingleExcitationPlus 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applySingleExcitationPlus({0, 2}, true,
+                                                               angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "SingleExcitationPlus", {0, 1}, true, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitation",
+                   "[LightningGPU_Param]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 4;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8, 2.4};
+
+    std::vector<cp_t> expected_results(1 << num_qubits);
+    expected_results[0] = {1.0, 0.0};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly") {
+        SECTION("DoubleExcitation 0,1,2,3") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyDoubleExcitation({0, 1, 2, 3}, false,
+                                                           angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "DoubleExcitation", {0, 1, 2, 3}, false, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitationMinus",
+                   "[LightningGPU_Param]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 4;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results[0][0] = {0.9887710779360422, -0.14943813247359922};
+    expected_results[1][0] = {0.9210609940028851, -0.3894183423086505};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results_adj[0][0] = {0.9887710779360422, 0.14943813247359922};
+    expected_results_adj[1][0] = {0.9210609940028851, 0.3894183423086505};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly adjoint=false") {
+        SECTION("DoubleExcitationMinus 0,1,2,3") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyDoubleExcitationMinus(
+                    {0, 1, 2, 3}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+    }
+    SECTION("Apply directly adjoint=true") {
+        SECTION("DoubleExcitationMinus 0,1,2,3") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyDoubleExcitationMinus(
+                    {0, 1, 2, 3}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "DoubleExcitationMinus", {0, 1, 2, 3}, true, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyDoubleExcitationPlus",
+                   "[LightningGPU_Param]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 4;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results[0][0] = {0.9887710779360422, 0.14943813247359922};
+    expected_results[1][0] = {0.9210609940028851, 0.3894183423086505};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results_adj[0][0] = {0.9887710779360422, -0.14943813247359922};
+    expected_results_adj[1][0] = {0.9210609940028851, -0.3894183423086505};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly adjoint=false") {
+        SECTION("DoubleExcitationPlus 0,1,2,3") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyDoubleExcitationPlus(
+                    {0, 1, 2, 3}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+    }
+    SECTION("Apply directly adjoint=true") {
+        SECTION("DoubleExcitationPlus 0,1,2,3") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyDoubleExcitationPlus(
+                    {0, 1, 2, 3}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation(
+                "DoubleExcitationPlus", {0, 1, 2, 3}, true, {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyMultiRZ", "[LightningGPU_Param]", float,
+                   double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.3, 0.8};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results[0][0] = {0.9887710779360422, -0.14943813247359922};
+    expected_results[1][0] = {0.9210609940028851, -0.3894183423086505};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>(1 << num_qubits), std::vector<cp_t>(1 << num_qubits)};
+    expected_results_adj[0][0] = {0.9887710779360422, 0.14943813247359922};
+    expected_results_adj[1][0] = {0.9210609940028851, 0.3894183423086505};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly adjoint=false") {
+        SECTION("MultiRZ 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyMultiRZ({0, 1}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+        SECTION("MultiRZ 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyMultiRZ({0, 2}, false, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results[index]));
+            }
+        }
+    }
+    SECTION("Apply directly adjoint=true") {
+        SECTION("MultiRZ 0,1") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyMultiRZ({0, 1}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+        SECTION("MultiRZ 0,2") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyMultiRZ({0, 2}, true, angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
+                                    expected_results_adj[index]));
+            }
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < angles.size(); index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits};
+            svdat_dispatch.cuda_sv.applyOperation("MultiRZ", {0, 1}, true,
+                                                  {angles[index]});
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
+                                expected_results_adj[index]));
+        }
+    }
+}
+
 // NOLINTNEXTLINE: Avoid complexity errors
 TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                    "[LightningGPU_Param]", float, double) {
@@ -657,4 +1327,5 @@ TEMPLATE_TEST_CASE("Sample", "[LightningGPU_Param]", float, double) {
 
     REQUIRE_THAT(probabilities,
                  Catch::Approx(expected_probabilities).margin(.05));
+
 }

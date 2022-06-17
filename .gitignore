@@ -23,6 +23,7 @@ dist/
 
 # misc
 .idea
+.vscode/
 *.ipynp
 *.ipynb_checkpoints
 *#
