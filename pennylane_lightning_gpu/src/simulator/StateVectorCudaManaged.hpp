@@ -68,7 +68,6 @@ class StateVectorCudaManaged
             /* custatevecHandle_t* */ &handle));
     };
 
-
     StateVectorCudaManaged(size_t num_qubits, const DevTag<int> &dev_tag,
                            bool alloc = true)
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
@@ -111,8 +110,8 @@ class StateVectorCudaManaged
     }
 
     ~StateVectorCudaManaged() {
-            PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(
-                /* custatevecHandle_t */ handle));
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(
+            /* custatevecHandle_t */ handle));
     }
 
     /**

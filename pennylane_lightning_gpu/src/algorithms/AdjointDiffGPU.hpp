@@ -218,9 +218,9 @@ template <class T = double> class AdjointJacobianGPU {
                                std::vector<std::vector<T>> &jac,
                                T scaling_coeff, size_t obs_index,
                                size_t param_index) {
-            PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
-                                sv2.getDataBuffer().getDevTag().getDeviceID(),
-                            "Data exists on different GPUs. Aborting.");
+        PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
+                            sv2.getDataBuffer().getDevTag().getDeviceID(),
+                        "Data exists on different GPUs. Aborting.");
 
         jac[obs_index][param_index] =
             -2 * scaling_coeff *
@@ -508,7 +508,7 @@ template <class T = double> class AdjointJacobianGPU {
                 [&](std::promise<std::vector<std::vector<T>>> j_promise) {
                     // Ensure No OpenMP threads spawned;
                     // to be resolved with streams in future releases
-                     omp_set_num_threads(1);
+                    omp_set_num_threads(1);
                     // Grab a GPU index, and set a device tag
                     const auto id = dp.acquireDevice();
                     DevTag<int> dt_local(id, 0);
@@ -544,7 +544,7 @@ template <class T = double> class AdjointJacobianGPU {
                 jac.at(first + j) = std::move(jac_rows[j]);
             }
         }
-        for(std::size_t t = 0; t < threads.size(); t++){
+        for (std::size_t t = 0; t < threads.size(); t++) {
             threads[t].join();
         }
     }

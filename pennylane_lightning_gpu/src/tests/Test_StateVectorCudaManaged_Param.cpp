@@ -1327,5 +1327,4 @@ TEMPLATE_TEST_CASE("Sample", "[LightningGPU_Param]", float, double) {
 
     REQUIRE_THAT(probabilities,
                  Catch::Approx(expected_probabilities).margin(.05));
-
 }

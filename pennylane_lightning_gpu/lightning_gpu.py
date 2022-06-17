@@ -313,7 +313,7 @@ class LightningGPU(LightningQubit):
                 tp_shift,
                 tape.num_params,
             )
-            
+
         else:
             jac = adj.adjoint_jacobian(
                 self._gpu_state,
