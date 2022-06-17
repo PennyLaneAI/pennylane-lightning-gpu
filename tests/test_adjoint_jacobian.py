@@ -594,6 +594,7 @@ class TestAdjointJacobianQNode:
 
         assert np.allclose(grad_adjoint, grad_ps, atol=1e-7)
 
+
 def test_qchem_expvalcost_correct():
     """EvpvalCost with qchem Hamiltonian work corectly"""
     from pennylane import qchem
@@ -627,6 +628,7 @@ def test_qchem_expvalcost_correct():
     grads_def = circuit_gradient_def(params)
 
     assert np.allclose(grads_lig, grads_def)
+
 
 def circuit_ansatz(params, wires):
     """Circuit ansatz containing all the parametrized gates"""

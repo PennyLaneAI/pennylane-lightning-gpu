@@ -283,7 +283,9 @@ class LightningGPU(LightningQubit):
         all_params = 0
 
         for op_idx, tp in enumerate(trainable_params):
-            op, _ = tape.get_operation(op_idx)  # get op_idx-th operator among differentiable operators
+            op, _ = tape.get_operation(
+                op_idx
+            )  # get op_idx-th operator among differentiable operators
 
             if isinstance(op, Operation) and not isinstance(op, (BasisState, QubitStateVector)):
                 # We now just ignore non-op or state preps
@@ -296,13 +298,8 @@ class LightningGPU(LightningQubit):
             # whether there must be only one state preparation...
             tp_shift = [i - 1 for i in tp_shift]
 
-        jac = adj.adjoint_jacobian(
-            self._gpu_state,
-            obs_serialized,
-            ops_serialized,
-            tp_shift
-        )
-        jac = np.array(jac) # only for parameters differentiable with the adjoint method
+        jac = adj.adjoint_jacobian(self._gpu_state, obs_serialized, ops_serialized, tp_shift)
+        jac = np.array(jac)  # only for parameters differentiable with the adjoint method
         jac = jac.reshape(-1, len(tp_shift))
         jac_r = np.zeros((jac.shape[0], all_params))
         jac_r[:, record_tp_rows] = jac
