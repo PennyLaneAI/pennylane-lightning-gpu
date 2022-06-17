@@ -1,5 +1,5 @@
 project(lightning_gpu_simulator)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 enable_language(CXX CUDA)
 
 set(SIMULATOR_FILES StateVectorCudaBase.hpp StateVectorCudaManaged.hpp cuGateCache.hpp cuGates_host.hpp CACHE INTERNAL "" FORCE)

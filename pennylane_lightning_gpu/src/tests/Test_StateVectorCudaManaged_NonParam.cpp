@@ -10,7 +10,7 @@
 #include <catch2/catch.hpp>
 
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorRaw.hpp"
+#include "StateVectorRawCPU.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"
@@ -65,7 +65,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::StateVectorCudaManaged",
             std::vector<cp_t> out_data(Pennylane::Util::exp2(num_qubits),
                                        {0.5, 0.5});
 
-            CHECK(svdat.sv.getDataVector() == init_state);
+            CHECK(svdat.sv.getDataVector() == Pennylane::approx(init_state));
             svdat.cuda_sv.CopyGpuDataToHost(out_data.data(), out_data.size());
             CHECK(out_data == init_state);
 
@@ -73,7 +73,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::StateVectorCudaManaged",
                                      {{0}, {1}, {2}}, {false, false, false});
             svdat.cuda_sv.CopyHostDataToGpu(svdat.sv);
             svdat.cuda_sv.CopyGpuDataToHost(out_data.data(), out_data.size());
-            CHECK(out_data == svdat.sv.getDataVector());
+            CHECK(out_data == Pennylane::approx(svdat.sv.getDataVector()));
         }
     }
 }
@@ -209,8 +209,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyPauliY",
             CHECK(svdat_direct.sv.getDataVector() == init_state);
             svdat_direct.cuda_sv.applyPauliY({index}, false);
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -219,8 +219,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyPauliY",
             CHECK(svdat_dispatch.sv.getDataVector() == init_state);
             svdat_dispatch.cuda_sv.applyOperation("PauliY", {index}, false);
             svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_dispatch.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
         }
     }
 }
@@ -251,8 +251,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyPauliZ",
             CHECK(svdat_direct.sv.getDataVector() == init_state);
             svdat_direct.cuda_sv.applyPauliZ({index}, false);
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -261,8 +261,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyPauliZ",
             CHECK(svdat_dispatch.sv.getDataVector() == init_state);
             svdat_dispatch.cuda_sv.applyOperation("PauliZ", {index}, false);
             svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_dispatch.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
         }
     }
 }
@@ -292,8 +292,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyS",
             CHECK(svdat_direct.sv.getDataVector() == init_state);
             svdat_direct.cuda_sv.applyS({index}, false);
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -302,8 +302,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyS",
             CHECK(svdat_dispatch.sv.getDataVector() == init_state);
             svdat_dispatch.cuda_sv.applyOperation("S", {index}, false);
             svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_dispatch.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
         }
     }
 }
@@ -335,8 +335,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyT",
             svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
             CAPTURE(svdat_direct.sv.getDataVector());
             CAPTURE(expected_results[index]);
-            CHECK(isApproxEqual(svdat_direct.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -345,8 +345,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyT",
             CHECK(svdat_dispatch.sv.getDataVector() == init_state);
             svdat_dispatch.cuda_sv.applyOperation("T", {index}, false);
             svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
-            CHECK(isApproxEqual(svdat_dispatch.sv.getDataVector(),
-                                expected_results[index]));
+            CHECK(svdat_dispatch.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
         }
     }
 }
@@ -404,14 +404,15 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applySWAP",
 
     SECTION("Apply directly") {
         CHECK(svdat.sv.getDataVector() ==
-              std::vector<cp_t>{cuUtil::ZERO<std::complex<TestType>>(),
-                                cuUtil::ZERO<std::complex<TestType>>(),
-                                cuUtil::INVSQRT2<std::complex<TestType>>(),
-                                cuUtil::ZERO<std::complex<TestType>>(),
-                                cuUtil::ZERO<std::complex<TestType>>(),
-                                cuUtil::ZERO<std::complex<TestType>>(),
-                                cuUtil::INVSQRT2<std::complex<TestType>>(),
-                                cuUtil::ZERO<std::complex<TestType>>()});
+              Pennylane::approx(
+                  std::vector<cp_t>{cuUtil::ZERO<std::complex<TestType>>(),
+                                    cuUtil::ZERO<std::complex<TestType>>(),
+                                    cuUtil::INVSQRT2<std::complex<TestType>>(),
+                                    cuUtil::ZERO<std::complex<TestType>>(),
+                                    cuUtil::ZERO<std::complex<TestType>>(),
+                                    cuUtil::ZERO<std::complex<TestType>>(),
+                                    cuUtil::INVSQRT2<std::complex<TestType>>(),
+                                    cuUtil::ZERO<std::complex<TestType>>()}));
 
         SECTION("SWAP0,1 |+10> -> |1+0>") {
             std::vector<cp_t> expected{cuUtil::ZERO<std::complex<TestType>>(),
@@ -431,8 +432,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applySWAP",
             svdat01.cuda_sv.CopyGpuDataToHost(svdat01.sv);
             svdat10.cuda_sv.CopyGpuDataToHost(svdat10.sv);
 
-            CHECK(svdat01.sv.getDataVector() == expected);
-            CHECK(svdat10.sv.getDataVector() == expected);
+            CHECK(svdat01.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat10.sv.getDataVector() == Pennylane::approx(expected));
         }
 
         SECTION("SWAP0,2 |+10> -> |01+>") {
@@ -454,8 +455,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applySWAP",
             svdat02.cuda_sv.CopyGpuDataToHost(svdat02.sv);
             svdat20.cuda_sv.CopyGpuDataToHost(svdat20.sv);
 
-            CHECK(svdat02.sv.getDataVector() == expected);
-            CHECK(svdat20.sv.getDataVector() == expected);
+            CHECK(svdat02.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat20.sv.getDataVector() == Pennylane::approx(expected));
         }
         SECTION("SWAP1,2 |+10> -> |+01>") {
             std::vector<cp_t> expected{cuUtil::ZERO<std::complex<TestType>>(),
@@ -477,8 +478,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applySWAP",
             svdat21.cuda_sv.CopyGpuDataToHost(svdat21.sv);
             ;
 
-            CHECK(svdat12.sv.getDataVector() == expected);
-            CHECK(svdat21.sv.getDataVector() == expected);
+            CHECK(svdat12.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat21.sv.getDataVector() == Pennylane::approx(expected));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -502,8 +503,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applySWAP",
             svdat10.cuda_sv.CopyGpuDataToHost(svdat10.sv);
             ;
 
-            CHECK(svdat01.sv.getDataVector() == expected);
-            CHECK(svdat10.sv.getDataVector() == expected);
+            CHECK(svdat01.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat10.sv.getDataVector() == Pennylane::approx(expected));
         }
 
         SECTION("SWAP0,2 |+10> -> |01+>") {
@@ -525,8 +526,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applySWAP",
             svdat02.cuda_sv.CopyGpuDataToHost(svdat02.sv);
             svdat20.cuda_sv.CopyGpuDataToHost(svdat20.sv);
 
-            CHECK(svdat02.sv.getDataVector() == expected);
-            CHECK(svdat20.sv.getDataVector() == expected);
+            CHECK(svdat02.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat20.sv.getDataVector() == Pennylane::approx(expected));
         }
         SECTION("SWAP1,2 |+10> -> |+01>") {
             std::vector<cp_t> expected{cuUtil::ZERO<std::complex<TestType>>(),
@@ -547,8 +548,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applySWAP",
             svdat12.cuda_sv.CopyGpuDataToHost(svdat12.sv);
             svdat21.cuda_sv.CopyGpuDataToHost(svdat21.sv);
 
-            CHECK(svdat12.sv.getDataVector() == expected);
-            CHECK(svdat21.sv.getDataVector() == expected);
+            CHECK(svdat12.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat21.sv.getDataVector() == Pennylane::approx(expected));
         }
     }
 }
@@ -568,14 +569,15 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCZ",
 
     SECTION("Apply directly") {
         CHECK(svdat.sv.getDataVector() ==
-              std::vector<cp_t>{cuUtil::ZERO<std::complex<TestType>>(),
-                                cuUtil::ZERO<std::complex<TestType>>(),
-                                std::complex<TestType>(1.0 / sqrt(2), 0),
-                                cuUtil::ZERO<std::complex<TestType>>(),
-                                cuUtil::ZERO<std::complex<TestType>>(),
-                                cuUtil::ZERO<std::complex<TestType>>(),
-                                std::complex<TestType>(1.0 / sqrt(2), 0),
-                                cuUtil::ZERO<std::complex<TestType>>()});
+              Pennylane::approx(
+                  std::vector<cp_t>{cuUtil::ZERO<std::complex<TestType>>(),
+                                    cuUtil::ZERO<std::complex<TestType>>(),
+                                    std::complex<TestType>(1.0 / sqrt(2), 0),
+                                    cuUtil::ZERO<std::complex<TestType>>(),
+                                    cuUtil::ZERO<std::complex<TestType>>(),
+                                    cuUtil::ZERO<std::complex<TestType>>(),
+                                    std::complex<TestType>(1.0 / sqrt(2), 0),
+                                    cuUtil::ZERO<std::complex<TestType>>()}));
 
         SECTION("CZ0,1 |+10> -> |-10>") {
             std::vector<cp_t> expected{cuUtil::ZERO<std::complex<TestType>>(),
@@ -596,12 +598,12 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCZ",
             svdat01.cuda_sv.CopyGpuDataToHost(svdat01.sv);
             svdat10.cuda_sv.CopyGpuDataToHost(svdat10.sv);
 
-            CHECK(svdat01.sv.getDataVector() == expected);
-            CHECK(svdat10.sv.getDataVector() == expected);
+            CHECK(svdat01.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat10.sv.getDataVector() == Pennylane::approx(expected));
         }
 
         SECTION("CZ0,2 |+10> -> |+10>") {
-            const std::vector<cp_t> &expected{init_state};
+            auto &&expected = init_state;
 
             SVDataGPU<TestType> svdat02{num_qubits, init_state};
             SVDataGPU<TestType> svdat20{num_qubits, init_state};
@@ -612,11 +614,11 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCZ",
             svdat02.cuda_sv.CopyGpuDataToHost(svdat02.sv);
             svdat20.cuda_sv.CopyGpuDataToHost(svdat20.sv);
 
-            CHECK(svdat02.sv.getDataVector() == expected);
-            CHECK(svdat20.sv.getDataVector() == expected);
+            CHECK(svdat02.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat20.sv.getDataVector() == Pennylane::approx(expected));
         }
         SECTION("CZ1,2 |+10> -> |+10>") {
-            const std::vector<cp_t> &expected{init_state};
+            auto &&expected = init_state;
 
             SVDataGPU<TestType> svdat12{num_qubits, init_state};
             SVDataGPU<TestType> svdat21{num_qubits, init_state};
@@ -627,8 +629,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCZ",
             svdat12.cuda_sv.CopyGpuDataToHost(svdat12.sv);
             svdat21.cuda_sv.CopyGpuDataToHost(svdat21.sv);
 
-            CHECK(svdat12.sv.getDataVector() == expected);
-            CHECK(svdat21.sv.getDataVector() == expected);
+            CHECK(svdat12.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat21.sv.getDataVector() == Pennylane::approx(expected));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -651,8 +653,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCZ",
             svdat01.cuda_sv.CopyGpuDataToHost(svdat01.sv);
             svdat10.cuda_sv.CopyGpuDataToHost(svdat10.sv);
 
-            CHECK(svdat01.sv.getDataVector() == expected);
-            CHECK(svdat10.sv.getDataVector() == expected);
+            CHECK(svdat01.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat10.sv.getDataVector() == Pennylane::approx(expected));
         }
     }
 }
@@ -687,7 +689,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyToffoli",
 
             svdat012.cuda_sv.CopyGpuDataToHost(svdat012.sv);
 
-            CHECK(svdat012.sv.getDataVector() == expected);
+            CHECK(svdat012.sv.getDataVector() == Pennylane::approx(expected));
         }
 
         SECTION("Toffoli 1,0,2 |+10> -> |010> + |111>") {
@@ -705,26 +707,26 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyToffoli",
 
             svdat102.cuda_sv.applyToffoli({1, 0, 2}, false);
             svdat102.cuda_sv.CopyGpuDataToHost(svdat102.sv);
-            CHECK(svdat102.sv.getDataVector() == expected);
+            CHECK(svdat102.sv.getDataVector() == Pennylane::approx(expected));
         }
         SECTION("Toffoli 0,2,1 |+10> -> |+10>") {
-            const std::vector<cp_t> &expected{init_state};
+            auto &&expected = init_state;
 
             SVDataGPU<TestType> svdat021{num_qubits, init_state};
 
             svdat021.cuda_sv.applyToffoli({0, 2, 1}, false);
 
             svdat021.cuda_sv.CopyGpuDataToHost(svdat021.sv);
-            CHECK(svdat021.sv.getDataVector() == expected);
+            CHECK(svdat021.sv.getDataVector() == Pennylane::approx(expected));
         }
         SECTION("Toffoli 1,2,0 |+10> -> |+10>") {
-            const std::vector<cp_t> &expected{init_state};
+            auto &&expected = init_state;
 
             SVDataGPU<TestType> svdat120{num_qubits, init_state};
 
             svdat120.cuda_sv.applyToffoli({1, 2, 0}, false);
             svdat120.cuda_sv.CopyGpuDataToHost(svdat120.sv);
-            CHECK(svdat120.sv.getDataVector() == expected);
+            CHECK(svdat120.sv.getDataVector() == Pennylane::approx(expected));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -748,8 +750,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyToffoli",
             svdat012.cuda_sv.CopyGpuDataToHost(svdat012.sv);
             svdat102.cuda_sv.CopyGpuDataToHost(svdat102.sv);
 
-            CHECK(svdat012.sv.getDataVector() == expected);
-            CHECK(svdat102.sv.getDataVector() == expected);
+            CHECK(svdat012.sv.getDataVector() == Pennylane::approx(expected));
+            CHECK(svdat102.sv.getDataVector() == Pennylane::approx(expected));
         }
     }
 }
@@ -781,7 +783,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCSWAP",
 
             svdat012.cuda_sv.applyCSWAP({0, 1, 2}, false);
             svdat012.cuda_sv.CopyGpuDataToHost(svdat012.sv);
-            CHECK(svdat012.sv.getDataVector() == expected);
+            CHECK(svdat012.sv.getDataVector() == Pennylane::approx(expected));
         }
 
         SECTION("CSWAP 1,0,2 |+10> -> |01+>") {
@@ -798,16 +800,16 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCSWAP",
 
             svdat102.cuda_sv.applyCSWAP({1, 0, 2}, false);
             svdat102.cuda_sv.CopyGpuDataToHost(svdat102.sv);
-            CHECK(svdat102.sv.getDataVector() == expected);
+            CHECK(svdat102.sv.getDataVector() == Pennylane::approx(expected));
         }
         SECTION("CSWAP 2,1,0 |+10> -> |+10>") {
-            const std::vector<cp_t> &expected{init_state};
+            auto &&expected = init_state;
 
             SVDataGPU<TestType> svdat021{num_qubits, init_state};
 
             svdat021.cuda_sv.applyCSWAP({2, 1, 0}, false);
             svdat021.cuda_sv.CopyGpuDataToHost(svdat021.sv);
-            CHECK(svdat021.sv.getDataVector() == expected);
+            CHECK(svdat021.sv.getDataVector() == Pennylane::approx(expected));
         }
     }
     SECTION("Apply using dispatcher") {
@@ -824,7 +826,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCSWAP",
 
             svdat012.cuda_sv.applyOperation("CSWAP", {0, 1, 2});
             svdat012.cuda_sv.CopyGpuDataToHost(svdat012.sv);
-            CHECK(svdat012.sv.getDataVector() == expected);
+            CHECK(svdat012.sv.getDataVector() == Pennylane::approx(expected));
         }
     }
 }

@@ -19,8 +19,6 @@ import pytest
 import numpy as np
 import pennylane as qml
 
-from conftest import U, U2, A
-
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
 
