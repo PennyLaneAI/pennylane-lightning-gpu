@@ -25,10 +25,9 @@
 
 #include "Error.hpp"
 #include "StateVectorBase.hpp"
-#include "StateVectorManaged.hpp"
-
 #include "DataBuffer.hpp"
 #include "DevTag.hpp"
+#include "StateVectorManagedCPU.hpp"
 #include "cuda_helpers.hpp"
 
 /// @cond DEV
@@ -95,7 +94,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      *
      * @param sv StateVector host data class.
      */
-    inline void CopyHostDataToGpu(const StateVectorManaged<Precision> &sv,
+    inline void CopyHostDataToGpu(const StateVectorManagedCPU<Precision> &sv,
                                   bool async = false) {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for Host and GPU data");
@@ -165,7 +164,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      *
      * @param sv StateVector to receive data from device.
      */
-    inline void CopyGpuDataToHost(StateVectorManaged<Precision> &sv,
+    inline void CopyGpuDataToHost(StateVectorManagedCPU<Precision> &sv,
                                   bool async = false) const {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for Host and GPU data");

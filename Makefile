@@ -7,8 +7,8 @@ TESTRUNNER := -m pytest tests --tb=short
 .PHONY: help
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
-	@echo "  install            to install PennyLane-Lightning"
-	@echo "  wheel              to build the PennyLane-Lightning wheel"
+	@echo "  install            to install PennyLane-Lightning-GPU"
+	@echo "  wheel              to build the PennyLane-Lightning-GPU wheel"
 	@echo "  dist               to package the source distribution"
 	@echo "  clean              to delete all temporary, cache, and build files"
 	@echo "  clean-docs         to delete all built documentation"

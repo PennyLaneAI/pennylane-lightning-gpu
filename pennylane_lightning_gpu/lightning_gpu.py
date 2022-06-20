@@ -24,6 +24,7 @@ import concurrent.futures
 from pennylane import (
     math,
     BasisState,
+    QubitStateVector,
     DeviceError,
     Projector,
     Hermitian,
@@ -32,9 +33,7 @@ from pennylane import (
     QubitStateVector,
 )
 from pennylane_lightning import LightningQubit
-from pennylane_lightning.lightning_qubit import _chunk_iterable
-
-from pennylane.operation import Tensor
+from pennylane.operation import Tensor, Operation
 from pennylane.measurements import Expectation
 from pennylane.wires import Wires
 
@@ -99,6 +98,7 @@ class LightningGPU(LightningQubit):
     Args:
         wires (int): the number of wires to initialize the device with
         sync (bool): immediately sync with host-sv after applying operations
+        c_dtype: Datatypes for statevector representation. Must be one of ``np.complex64`` or ``np.complex128``.
     """
 
     name = "PennyLane plugin for GPU-backed Lightning device using NVIDIA cuQuantum SDK"
@@ -116,8 +116,9 @@ class LightningGPU(LightningQubit):
         "Identity",
     }
 
-    def __init__(self, wires, *, shots=None, sync=True, batch_obs=False):
-        super().__init__(wires, shots=shots)
+
+    def __init__(self, wires, *, sync=True, c_dtype=np.complex128, shots=None, batch_obs=False):
+        super().__init__(wires, c_dtype=c_dtype, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._sync = sync
         self._dp = DevPool()
@@ -264,15 +265,6 @@ class LightningGPU(LightningQubit):
                 UserWarning,
             )
 
-        # To support np.complex64 based on the type of self._state
-        dtype = self._state.dtype
-        if dtype == np.complex64:
-            use_csingle = True
-        elif dtype == np.complex128:
-            use_csingle = False
-        else:
-            raise TypeError(f"Unsupported complex Type: {dtype}")
-
         if len(tape.trainable_params) == 0:
             return np.array(0)
 
@@ -288,41 +280,54 @@ class LightningGPU(LightningQubit):
                 self.execute(tape)
             ket = np.ravel(self._pre_rotated_state, order="C")
 
-        if use_csingle:
+        if self.use_csingle:
             adj = AdjointJacobianGPU_C64()
             ket = ket.astype(np.complex64)
         else:
             adj = AdjointJacobianGPU_C128()
 
-        obs_serialized = _serialize_obs(tape, self.wire_map, use_csingle=use_csingle)
-        ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=use_csingle)
+        obs_serialized = _serialize_obs(tape, self.wire_map, use_csingle=self.use_csingle)
+        ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=self.use_csingle)
 
         ops_serialized = adj.create_ops_list(*ops_serialized)
 
         trainable_params = sorted(tape.trainable_params)
-        first_elem = 1 if trainable_params[0] == 0 else 0
 
-        tp_shift = (
-            trainable_params if not use_sp else [i - 1 for i in trainable_params[first_elem:]]
-        )  # exclude first index if explicitly setting sv
+        tp_shift = []
+        record_tp_rows = []
+        all_params = 0
+
+        for op_idx, tp in enumerate(trainable_params):
+            op, _ = tape.get_operation(
+                op_idx
+            )  # get op_idx-th operator among differentiable operators
+
+            if isinstance(op, Operation) and not isinstance(op, (BasisState, QubitStateVector)):
+                # We now just ignore non-op or state preps
+                tp_shift.append(tp)
+                record_tp_rows.append(all_params)
+            all_params += 1
+
+        if use_sp:
+            # When the first element of the tape is state preparation. Still, I am not sure
+            # whether there must be only one state preparation...
+            tp_shift = [i - 1 for i in tp_shift]
+
         if self._dp.getTotalDevices() > 1 and self._batch_obs:
             jac = adj.adjoint_jacobian_batched(
                 self._gpu_state,
                 obs_serialized,
                 ops_serialized,
                 tp_shift,
-                tape.num_params,
             )
-
         else:
-            jac = adj.adjoint_jacobian(
-                self._gpu_state,
-                obs_serialized,
-                ops_serialized,
-                tp_shift,
-                tape.num_params,
-            )
-        return jac  # .reshape(-1, tape.num_params)
+            jac = adj.adjoint_jacobian(self._gpu_state, obs_serialized, ops_serialized, tp_shift)
+            
+        jac = np.array(jac)  # only for parameters differentiable with the adjoint method
+        jac = jac.reshape(-1, len(tp_shift))
+        jac_r = np.zeros((jac.shape[0], all_params))
+        jac_r[:, record_tp_rows] = jac
+        return jac_r
 
     def expval(self, observable, shot_range=None, bin_size=None):
         if observable.name in [
@@ -332,6 +337,11 @@ class LightningGPU(LightningQubit):
         ]:
             self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
+
+        if self.shots is not None:
+            # estimate the expectation value
+            samples = self.sample(observable, shot_range=shot_range, bin_size=bin_size)
+            return np.squeeze(np.mean(samples, axis=0))
 
         par = (
             observable.parameters
@@ -398,9 +408,6 @@ class LightningGPU(LightningQubit):
 
         return squared_mean - (mean**2)
 
-    def sample(self, **kwargs):
-        raise NotImplementedError("This device does not currently support sampling of observables.")
-
 
 if not CPP_BINARY_AVAILABLE:
 
@@ -412,7 +419,7 @@ if not CPP_BINARY_AVAILABLE:
         author = "Xanadu Inc."
         _CPP_BINARY_AVAILABLE = False
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, wires, *, c_dtype=np.complex128, **kwargs):
             w_msg = """
             !!!#####################################################################################
             !!!
@@ -425,4 +432,4 @@ if not CPP_BINARY_AVAILABLE:
                 w_msg,
                 RuntimeWarning,
             )
-            super().__init__(*args, **kwargs)
+            super().__init__(wires, c_dtype=c_dtype, **kwargs)
