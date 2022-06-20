@@ -1,3 +1,19 @@
+# Release 0.25.0-dev
+
+### New features since last release
+
+### Breaking changes
+
+### Improvements
+
+### Documentation
+
+### Bug fixes
+
+### Contributors
+
+---
+
 # Release 0.24.0
 
 ### New features since last release
@@ -7,6 +23,8 @@
 * Added more cuquantum-backed gates (IsingXX/YY/ZZ,MultiRz,SingleExcitation,...):  [(#28)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/28).
 
 ### Breaking changes
+
+* Update lightning.gpu to build and run with the recent changes in lightning.qubit. This updates the GCC version and moves to C++20 [(#30)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/30).
 
 ### Improvements
 
@@ -18,13 +36,13 @@
 
 ### Bug fixes
 
-* Fix for finite-shots with `expval`.
+* Fix jacobian tape with state preparation [(#32)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/32).
 
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
 
-Ali Asadi, Lee James O'Riordan, and Trevor Vincent.
+Ali Asadi,  Amintor Dusko, Chae-Yeun Park, Lee James O'Riordan, and Trevor Vincent
 
 ---
 
@@ -48,7 +66,7 @@ Ali Asadi, and Lee James O'Riordan
 
 # Release 0.22.0
 
-* Formal release with NVIDIA cuQuantum SDK 1.0 support. 
+* Formal release with NVIDIA cuQuantum SDK 1.0 support.
 
 ### Improvements
 
