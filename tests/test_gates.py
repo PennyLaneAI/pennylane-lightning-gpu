@@ -135,8 +135,6 @@ def test_gate_unitary_correct(op, op_name):
 
     unitary_expected = qml.matrix(op(*p, wires=range(wires)))
 
-    print(unitary)
-    print(unitary_expected)
     assert np.allclose(unitary, unitary_expected)
 
 

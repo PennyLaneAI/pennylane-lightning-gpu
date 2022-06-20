@@ -1,18 +1,32 @@
-# Release 0.24.0-dev
+# Release 0.24.0
 
 ### New features since last release
 
+* Add a cuquantum-backed finite shot sampling method. [(#21)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/21)
+
+* Add more cuquantum-backed gates (IsingXX/YY/ZZ, MultiRZ, SingleExcitation, ...). [(#28)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/28)
+
 ### Breaking changes
 
+* Update `lightning.gpu` to build and run with the recent changes in `lightning.qubit`. This updates the GCC version and moves to C++20. [(#30)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/30)
+
 ### Improvements
+
+* LightningGPU can be installed in-place to a Python environment via `pip install -e`. [(#26)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/26)
+
+* CPU-only warnings are now more visible. [(#23)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/23)
 
 ### Documentation
 
 ### Bug fixes
 
+* Fix jacobian tape with state preparation. [(#32)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/32)
+
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
+
+Ali Asadi, Amintor Dusko, Chae-Yeun Park, Lee James O'Riordan, and Trevor Vincent
 
 ---
 
@@ -36,7 +50,7 @@ Ali Asadi, and Lee James O'Riordan
 
 # Release 0.22.0
 
-* Formal release with NVIDIA cuQuantum SDK 1.0 support. 
+* Formal release with NVIDIA cuQuantum SDK 1.0 support.
 
 ### Improvements
 

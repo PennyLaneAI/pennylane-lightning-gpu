@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(pennylane_lightning_tests)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # Default build type for test code is Debug
 if(NOT CMAKE_BUILD_TYPE)
@@ -39,6 +39,7 @@ target_sources(runner_gpu PRIVATE Test_StateVectorCudaManaged_NonParam.cpp
                               Test_StateVectorCudaManaged_Param.cpp 
                               Test_AdjointDiffGPU.cpp 
                               Test_GateCache.cpp 
+                              TestHelpers.hpp 
 )
 
 target_compile_options(runner_gpu PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")

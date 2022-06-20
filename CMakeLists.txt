@@ -38,7 +38,7 @@ set(PROJECT_VERSION ${VERSION_STRING})
 ##########################
 ## Enfore C++ Standard
 ##########################
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ##########################
@@ -98,7 +98,7 @@ set(ENABLE_OPENMP ON)
 FetchContent_Declare(
     pennylane_lightning
     GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
-    GIT_TAG        latest
+    GIT_TAG       latest
 )
 FetchContent_MakeAvailable(pennylane_lightning)
 
