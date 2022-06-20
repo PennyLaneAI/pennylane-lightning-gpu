@@ -26,7 +26,7 @@
 
 This release contains contributions from (in alphabetical order):
 
-Ali Asadi,  Amintor Dusko, Chae-Yeun Park, Lee James O'Riordan, and Trevor Vincent
+Ali Asadi, Amintor Dusko, Chae-Yeun Park, Lee James O'Riordan, and Trevor Vincent
 
 ---
 
