@@ -314,6 +314,11 @@ class LightningGPU(LightningQubit):
             self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
 
+        if self.shots is not None:
+            # estimate the expectation value
+            samples = self.sample(observable, shot_range=shot_range, bin_size=bin_size)
+            return np.squeeze(np.mean(samples, axis=0))
+
         par = (
             observable.parameters
             if (
