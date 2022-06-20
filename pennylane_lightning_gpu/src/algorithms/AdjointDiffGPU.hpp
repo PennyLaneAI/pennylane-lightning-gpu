@@ -472,6 +472,21 @@ template <class T = double> class AdjointJacobianGPU {
         return {ops_name, ops_params, ops_wires, ops_inverses, ops_matrices};
     }
 
+    /**
+     * @brief Batches the adjoint_jacobian method over the available GPUs.
+     * Explicitly fobids OMP_NUM_THREADS>1 to avoid issues with std::thread
+     * contention and state access issues.
+     *
+     * @param ref_data Pointer to the statevector data.
+     * @param length Length of the statevector data.
+     * @param jac Preallocated vector for Jacobian data results.
+     * @param obs Observables for which to calculate Jacobian.
+     * @param ops Operations used to create given state.
+     * @param trainableParams List of parameters participating in Jacobian
+     * calculation.
+     * @param apply_operations Indicate whether to apply operations to psi prior
+     * to calculation.
+     */
     void batchAdjointJacobian(
         const CFP_t *ref_data, std::size_t length,
         std::vector<std::vector<T>> &jac,
@@ -528,7 +543,7 @@ template <class T = double> class AdjointJacobianGPU {
                         {obs.begin() + first, obs.begin() + last + 1}, ops,
                         trainableParams, apply_operations, dt_local);
 
-                    j_promise.set_value(jac_local);
+                    j_promise.set_value(std::move(jac_local));
                     dp.releaseDevice(id);
                 };
             threads.emplace_back(adj_lambda, std::move(jac_subset_promise));
@@ -563,11 +578,11 @@ template <class T = double> class AdjointJacobianGPU {
      * will be of size `trainableParams.size() * observables.size()`. OpenMP is
      * used to enable independent operations to be offloaded to threads.
      *
-     * @param psi Pointer to the statevector data.
-     * @param num_elements Length of the statevector data.
+     * @param ref_data Pointer to the statevector data.
+     * @param length Length of the statevector data.
      * @param jac Preallocated vector for Jacobian data results.
-     * @param observables Observables for which to calculate Jacobian.
-     * @param operations Operations used to create given state.
+     * @param obs Observables for which to calculate Jacobian.
+     * @param ops Operations used to create given state.
      * @param trainableParams List of parameters participating in Jacobian
      * calculation.
      * @param apply_operations Indicate whether to apply operations to psi prior
