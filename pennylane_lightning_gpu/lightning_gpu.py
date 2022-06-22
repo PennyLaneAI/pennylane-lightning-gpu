@@ -130,7 +130,7 @@ class LightningGPU(LightningQubit):
             supports_reversible_diff=False,
             supports_inverse_operations=True,
             supports_analytic_computation=True,
-            supports_finite_shots=False,
+            supports_finite_shots=True,
             returns_state=True,
         )
         capabilities.pop("passthru_devices", None)
