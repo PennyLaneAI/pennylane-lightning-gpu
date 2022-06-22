@@ -1122,7 +1122,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                       {false, false});
 
                 svdat.cuda_sv.applyOperation_std("XZ", {index}, false, {0.0},
-                                                 xz_gate);
+                                                 {}, xz_gate);
             }
             svdat_expected.cuda_sv.CopyGpuDataToHost(svdat_expected.sv);
             svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
@@ -1146,7 +1146,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                       {false, false});
                 svdat_expected.cuda_sv.CopyGpuDataToHost(svdat_expected.sv);
                 svdat.cuda_sv.applyOperation_std("ZX", {index}, false, {0.0},
-                                                 zx_gate);
+                                                 {}, zx_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
             CHECK(svdat.sv.getDataVector() ==
@@ -1168,7 +1168,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                       {false, false});
                 svdat_expected.cuda_sv.CopyGpuDataToHost(svdat_expected.sv);
                 svdat.cuda_sv.applyOperation_std("XY", {index}, false, {0.0},
-                                                 xy_gate);
+                                                 {}, xy_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
             CHECK(svdat.sv.getDataVector() ==
@@ -1190,7 +1190,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                       {false, false});
                 svdat_expected.cuda_sv.CopyGpuDataToHost(svdat_expected.sv);
                 svdat.cuda_sv.applyOperation_std("YX", {index}, false, {0.0},
-                                                 yx_gate);
+                                                 {}, yx_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
             CHECK(svdat.sv.getDataVector() ==
@@ -1212,7 +1212,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                       {false, false});
                 svdat_expected.cuda_sv.CopyGpuDataToHost(svdat_expected.sv);
                 svdat.cuda_sv.applyOperation_std("YZ", {index}, false, {0.0},
-                                                 yz_gate);
+                                                 {}, yz_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
             CHECK(svdat.sv.getDataVector() ==
@@ -1234,7 +1234,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation 1 wire",
                                                       {false, false});
                 svdat_expected.cuda_sv.CopyGpuDataToHost(svdat_expected.sv);
                 svdat.cuda_sv.applyOperation_std("ZY", {index}, false, {0.0},
-                                                 zy_gate);
+                                                 {}, zy_gate);
                 svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
             }
             CHECK(svdat.sv.getDataVector() ==
@@ -1268,7 +1268,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyOperation multiple wires",
             {false, false, false});
 
         svdat_expected.cuda_sv.CopyGpuDataToHost(svdat_expected.sv);
-        svdat.cuda_sv.applyOperation_std("CZmat", {0, 1}, false, {0.0},
+        svdat.cuda_sv.applyOperation_std("CZmat", {0, 1}, false, {0.0}, {},
                                          cz_gate);
         svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
         CHECK(svdat.sv.getDataVector() ==

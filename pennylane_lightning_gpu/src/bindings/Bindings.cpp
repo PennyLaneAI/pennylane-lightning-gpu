@@ -198,7 +198,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def("apply",
              py::overload_cast<
                  const vector<string> &, const vector<vector<std::size_t>> &,
-                 const vector<bool> &, const vector<vector<PrecisionT>> &>(
+                 const vector<bool> &, const vector<vector<PrecisionT>> &,
+                 const vector<vector<string>> &>(
                  &StateVectorCudaManaged<PrecisionT>::applyOperation))
 
         .def("apply", py::overload_cast<const vector<string> &,
@@ -207,9 +208,10 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                           &StateVectorCudaManaged<PrecisionT>::applyOperation))
 
         .def("apply",
-             py::overload_cast<const std::string &, const vector<size_t> &,
-                               bool, const vector<PrecisionT> &,
-                               const std::vector<std::complex<PrecisionT>> &>(
+             py::overload_cast<const string &, const vector<size_t> &, bool,
+                               const vector<PrecisionT> &,
+                               const vector<string> &,
+                               const vector<std::complex<PrecisionT>> &>(
                  &StateVectorCudaManaged<PrecisionT>::applyOperation_std))
 
         .def(
@@ -594,19 +596,22 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     //                              Operations
     //***********************************************************************//
     class_name = "OpsStructGPU_C" + bitsize;
-    py::class_<OpsData<PrecisionT>>(m, class_name.c_str(), py::module_local())
+    py::class_<cuOpsData<PrecisionT>>(m, class_name.c_str(), py::module_local())
         .def(py::init<
              const std::vector<std::string> &,
              const std::vector<std::vector<ParamT>> &,
+             const std::vector<std::vector<std::string>> &,
              const std::vector<std::vector<size_t>> &,
              const std::vector<bool> &,
              const std::vector<std::vector<std::complex<PrecisionT>>> &>())
-        .def("__repr__", [](const OpsData<PrecisionT> &ops) {
+        .def("__repr__", [](const cuOpsData<PrecisionT> &ops) {
             using namespace Pennylane::Util;
             std::ostringstream ops_stream;
             for (size_t op = 0; op < ops.getSize(); op++) {
                 ops_stream << "{'name': " << ops.getOpsName()[op];
                 ops_stream << ", 'params': " << ops.getOpsParams()[op];
+                ops_stream << ", 'hyperparams': "
+                           << ops.getOpsHyperParams()[op];
                 ops_stream << ", 'inv': " << ops.getOpsInverses()[op];
                 ops_stream << "}";
                 if (op < ops.getSize() - 1) {
@@ -628,6 +633,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
              [](AdjointJacobianGPU<PrecisionT> &adj,
                 const std::vector<std::string> &ops_name,
                 const std::vector<np_arr_r> &ops_params,
+                // const std::vector<std::vector<std::string>> &ops_hyperparams,
+                // // TODO
                 const std::vector<std::vector<size_t>> &ops_wires,
                 const std::vector<bool> &ops_inverses,
                 const std::vector<np_arr_c> &ops_matrices) {
@@ -654,18 +661,19 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                              m_ptr, m_ptr + m_buffer.size};
                      }
                  }
-
-                 return OpsData<PrecisionT>{ops_name, conv_params, ops_wires,
-                                            ops_inverses, conv_matrices};
+                 const std::vector<std::vector<std::string>> ops_hyperparams{
+                     {}};
+                 return cuOpsData<PrecisionT>{ops_name,        conv_params,
+                                              ops_hyperparams, ops_wires,
+                                              ops_inverses,    conv_matrices};
              })
         .def("adjoint_jacobian",
              &AdjointJacobianGPU<PrecisionT>::adjointJacobian)
         .def("adjoint_jacobian",
              [](AdjointJacobianGPU<PrecisionT> &adj,
                 const StateVectorCudaManaged<PrecisionT> &sv,
-                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
-                    &observables,
-                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+                const std::vector<ObsDatum<PrecisionT>> &observables,
+                const cuOpsData<PrecisionT> &operations,
                 const std::vector<size_t> &trainableParams) {
                  std::vector<std::vector<PrecisionT>> jac(
                      observables.size(),

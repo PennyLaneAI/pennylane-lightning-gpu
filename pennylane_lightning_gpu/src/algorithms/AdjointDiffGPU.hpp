@@ -1,11 +1,13 @@
 #pragma once
 
 #include <omp.h>
-#include <variant>
+// #include <variant>
 
 #include "DevicePool.hpp"
-#include "JacobianTape.hpp"
 #include "StateVectorCudaManaged.hpp"
+
+#include "ObsDatum.hpp"
+#include "cuOpsData.hpp"
 
 /// @cond DEV
 namespace {
@@ -18,111 +20,131 @@ template <class CFP_t> static constexpr auto getP11_CU() -> std::vector<CFP_t> {
 }
 
 template <class T = double, class SVType>
-void applyGeneratorRX_GPU(SVType &sv, const std::vector<size_t> &wires,
-                          const bool adj = false) {
+void applyGeneratorPauliRot_GPU(
+    [[maybe_unused]] SVType &sv,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    [[maybe_unused]] const std::vector<size_t> &wires,
+    [[maybe_unused]] const bool adj = false) {
+    // TODO: compute applyPauliX/Y/Z/I for wires
+}
+
+template <class T = double, class SVType>
+void applyGeneratorRX_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyPauliX(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorRY_GPU(SVType &sv, const std::vector<size_t> &wires,
-                          const bool adj = false) {
+void applyGeneratorRY_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyPauliY(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                          const bool adj = false) {
+void applyGeneratorRZ_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyPauliZ(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorIsingXX_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
+void applyGeneratorIsingXX_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorIsingXX(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorIsingYY_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
+void applyGeneratorIsingYY_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorIsingYY(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorIsingZZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
+void applyGeneratorIsingZZ_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorIsingZZ(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorPhaseShift_GPU(SVType &sv, const std::vector<size_t> &wires,
-                                  const bool adj = false) {
-    sv.applyOperation("P_11", wires, adj, {0.0},
+void applyGeneratorPhaseShift_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
+    sv.applyOperation("P_11", wires, adj, {0.0}, {},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
 }
 
 template <class T = double, class SVType>
-void applyGeneratorCRX_GPU(SVType &sv, const std::vector<size_t> &wires,
-                           const bool adj = false) {
+void applyGeneratorCRX_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyPauliX(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorCRY_GPU(SVType &sv, const std::vector<size_t> &wires,
-                           const bool adj = false) {
+void applyGeneratorCRY_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyPauliY(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorCRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                           const bool adj = false) {
+void applyGeneratorCRZ_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyPauliZ(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorControlledPhaseShift_GPU(SVType &sv,
-                                            const std::vector<size_t> &wires,
-                                            const bool adj = false) {
-    sv.applyOperation("P_11", {wires.back()}, adj, {0.0},
+void applyGeneratorControlledPhaseShift_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
+    sv.applyOperation("P_11", {wires.back()}, adj, {0.0}, {},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
 }
 template <class T = double, class SVType>
-void applyGeneratorSingleExcitation_GPU(SVType &sv,
-                                        const std::vector<size_t> &wires,
-                                        const bool adj = false) {
+void applyGeneratorSingleExcitation_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorSingleExcitation(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorSingleExcitationMinus_GPU(SVType &sv,
-                                             const std::vector<size_t> &wires,
-                                             const bool adj = false) {
+void applyGeneratorSingleExcitationMinus_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorSingleExcitationMinus(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorSingleExcitationPlus_GPU(SVType &sv,
-                                            const std::vector<size_t> &wires,
-                                            const bool adj = false) {
+void applyGeneratorSingleExcitationPlus_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorSingleExcitationPlus(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorDoubleExcitation_GPU(SVType &sv,
-                                        const std::vector<size_t> &wires,
-                                        const bool adj = false) {
+void applyGeneratorDoubleExcitation_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorDoubleExcitation(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorDoubleExcitationMinus_GPU(SVType &sv,
-                                             const std::vector<size_t> &wires,
-                                             const bool adj = false) {
+void applyGeneratorDoubleExcitationMinus_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorDoubleExcitationMinus(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorDoubleExcitationPlus_GPU(SVType &sv,
-                                            const std::vector<size_t> &wires,
-                                            const bool adj = false) {
+void applyGeneratorDoubleExcitationPlus_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorDoubleExcitationPlus(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorMultiRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
+void applyGeneratorMultiRZ_GPU(
+    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
+    const std::vector<size_t> &wires, const bool adj = false) {
     sv.applyGeneratorMultiRZ(wires, adj);
 }
 } // namespace
@@ -130,75 +152,252 @@ void applyGeneratorMultiRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
 
 namespace Pennylane::Algorithms {
 
-/**
- * @brief Utility struct for observable operations used by AdjointJacobianGPU
- * class.
- *
- */
-template <class T = double> class ObsDatum {
-  public:
-    /**
-     * @brief Variant type of stored parameter data.
-     */
-    using param_var_t = std::variant<std::monostate, std::vector<T>,
-                                     std::vector<std::complex<T>>>;
+// /**
+//  * @brief Utility class for observable operations used by AdjointJacobianGPU
+//  * class.
+//  *
+//  */
+// template <class T = double> class ObsDatum {
+//   public:
+//     /**
+//      * @brief Variant type of stored parameter data.
+//      */
+//     using param_var_t = std::variant<std::monostate, std::vector<T>,
+//                                      std::vector<std::complex<T>>>;
 
-    /**
-     * @brief Copy constructor for an ObsDatum object, representing a given
-     * observable.
-     *
-     * @param obs_name Name of each operation of the observable. Tensor product
-     * observables have more than one operation.
-     * @param obs_params Parameters for a given observable operation ({} if
-     * optional).
-     * @param obs_wires Wires upon which to apply operation. Each observable
-     * operation will be a separate nested list.
-     */
-    ObsDatum(std::vector<std::string> obs_name,
-             std::vector<param_var_t> obs_params,
-             std::vector<std::vector<size_t>> obs_wires)
-        : obs_name_{std::move(obs_name)},
-          obs_params_(std::move(obs_params)), obs_wires_{
-                                                  std::move(obs_wires)} {};
+//     /**
+//      * @brief Copy constructor for an ObsDatum object, representing a given
+//      * observable.
+//      *
+//      * @param obs_name Name of each operation of the observable. Tensor
+//      product
+//      * observables have more than one operation.
+//      * @param obs_params Parameters for a given observable operation ({} if
+//      * optional).
+//      * @param obs_wires Wires upon which to apply operation. Each observable
+//      * operation will be a separate nested list.
+//      */
+//     ObsDatum(std::vector<std::string> obs_name,
+//              std::vector<param_var_t> obs_params,
+//              std::vector<std::vector<size_t>> obs_wires)
+//         : obs_name_{std::move(obs_name)}, obs_params_(std::move(obs_params)),
+//         obs_wires_{std::move(obs_wires)} {};
 
-    /**
-     * @brief Get the number of operations in observable.
-     *
-     * @return size_t
-     */
-    [[nodiscard]] auto getSize() const -> size_t { return obs_name_.size(); }
-    /**
-     * @brief Get the name of the observable operations.
-     *
-     * @return const std::vector<std::string>&
-     */
-    [[nodiscard]] auto getObsName() const -> const std::vector<std::string> & {
-        return obs_name_;
-    }
-    /**
-     * @brief Get the parameters for the observable operations.
-     *
-     * @return const std::vector<std::vector<T>>&
-     */
-    [[nodiscard]] auto getObsParams() const
-        -> const std::vector<param_var_t> & {
-        return obs_params_;
-    }
-    /**
-     * @brief Get the wires for each observable operation.
-     *
-     * @return const std::vector<std::vector<size_t>>&
-     */
-    [[nodiscard]] auto getObsWires() const
-        -> const std::vector<std::vector<size_t>> & {
-        return obs_wires_;
-    }
+//     /**
+//      * @brief Get the number of operations in observable.
+//      *
+//      * @return size_t
+//      */
+//     [[nodiscard]] auto getSize() const -> size_t { return obs_name_.size(); }
+//     /**
+//      * @brief Get the name of the observable operations.
+//      *
+//      * @return const std::vector<std::string>&
+//      */
+//     [[nodiscard]] auto getObsName() const -> const std::vector<std::string> &
+//     {
+//         return obs_name_;
+//     }
+//     /**
+//      * @brief Get the parameters for the observable operations.
+//      *
+//      * @return const std::vector<std::vector<T>>&
+//      */
+//     [[nodiscard]] auto getObsParams() const
+//         -> const std::vector<param_var_t> & {
+//         return obs_params_;
+//     }
+//     /**
+//      * @brief Get the wires for each observable operation.
+//      *
+//      * @return const std::vector<std::vector<size_t>>&
+//      */
+//     [[nodiscard]] auto getObsWires() const
+//         -> const std::vector<std::vector<size_t>> & {
+//         return obs_wires_;
+//     }
 
-  private:
-    const std::vector<std::string> obs_name_;
-    const std::vector<param_var_t> obs_params_;
-    const std::vector<std::vector<size_t>> obs_wires_;
-};
+//   private:
+//     const std::vector<std::string> obs_name_;
+//     const std::vector<param_var_t> obs_params_;
+//     const std::vector<std::vector<size_t>> obs_wires_;
+// };
+
+// template <class T> class cuOpsData {
+//   private:
+//     size_t num_par_ops_;
+//     size_t num_nonpar_ops_;
+//     const std::vector<std::string> ops_name_;
+//     const std::vector<std::vector<T>> ops_params_;
+//     const std::vector<std::vector<std::string>> ops_hyperparams_;
+//     const std::vector<std::vector<size_t>> ops_wires_;
+//     const std::vector<bool> ops_inverses_;
+//     const std::vector<std::vector<std::complex<T>>> ops_matrices_;
+
+//   public:
+//     /**
+//      * @brief Construct an cuOpsData object, representing the serialized
+//      * operations to apply upon the `%StateVector`.
+//      *
+//      * @param ops_name Name of each operation to apply.
+//      * @param ops_params Parameters for a given operation ({} if optional).
+//      * @param ops_hyperparams Hyper-parameters for a given observable
+//      operation
+//      *  in string ({} if None).
+//      * @param ops_wires Wires upon which to apply operation
+//      * @param ops_inverses Value to represent whether given operation is
+//      * adjoint.
+//      * @param ops_matrices Numerical representation of given matrix if not
+//      * supported.
+//      */
+//     cuOpsData(std::vector<std::string> ops_name,
+//               const std::vector<std::vector<T>> ops_params,
+//               const std::vector<std::vector<std::string>> ops_hyperparams,
+//               std::vector<std::vector<size_t>> ops_wires,
+//               std::vector<bool> ops_inverses,
+//               std::vector<std::vector<std::complex<T>>> ops_matrices)
+//         : ops_name_{std::move(ops_name)}, ops_params_{std::move(ops_params)},
+//           ops_hyperparams_{std::move(ops_hyperparams)}, ops_wires_{std::move(
+//                                                             ops_wires)},
+//           ops_inverses_{std::move(ops_inverses)}, ops_matrices_{
+//                                                       std::move(ops_matrices)}
+//                                                       {
+//         num_par_ops_ = 0;
+//         for (const auto &p : ops_params) {
+//             if (!p.empty()) {
+//                 num_par_ops_++;
+//             }
+//         }
+//         num_nonpar_ops_ = ops_params.size() - num_par_ops_;
+//     };
+
+//     /**
+//      * @brief Construct an cuOpsData object, representing the serialized
+//      operations to apply upon the `%StateVector`.
+//      *
+//      * @see  cuOpsData(const std::vector<std::string> &ops_name,
+//             const std::vector<std::vector<T>> &ops_params,
+//             const std::vector<std::vector<size_t>> &ops_wires,
+//             const std::vector<bool> &ops_inverses,
+//             const std::vector<std::vector<std::complex<T>>> &ops_matrices)
+//      */
+//     cuOpsData(const std::vector<std::string> ops_name,
+//               const std::vector<std::vector<T>> ops_params,
+//               std::vector<std::vector<size_t>> ops_wires,
+//               std::vector<bool> ops_inverses)
+//         : ops_name_{std::move(ops_name)}, ops_params_{std::move(ops_params)},
+//           ops_wires_{std::move(ops_wires)}, ops_inverses_{std::move(
+//                                                 ops_inverses)},
+//           ops_matrices_(ops_name.size()) {
+//         num_par_ops_ = 0;
+//         for (const auto &p : ops_params) {
+//             if (p.size() > 0) {
+//                 num_par_ops_++;
+//             }
+//         }
+//         num_nonpar_ops_ = ops_params.size() - num_par_ops_;
+//     };
+
+//     /**
+//      * @brief Get the number of operations to be applied.
+//      *
+//      * @return size_t Number of operations.
+//      */
+//     [[nodiscard]] auto getSize() const -> size_t { return ops_name_.size(); }
+
+//     /**
+//      * @brief Get the names of the operations to be applied.
+//      *
+//      * @return const std::vector<std::string>&
+//      */
+//     [[nodiscard]] auto getOpsName() const -> const std::vector<std::string> &
+//     {
+//         return ops_name_;
+//     }
+//     /**
+//      * @brief Get the (optional) parameters for each operation. Given entries
+//      * are empty ({}) if not required.
+//      *
+//      * @return const std::vector<std::vector<T>>&
+//      */
+//     [[nodiscard]] auto getOpsParams() const
+//         -> const std::vector<std::vector<T>> & {
+//         return ops_params_;
+//     }
+//     /**
+//      * @brief Get the wires for each operation.
+//      *
+//      * @return const std::vector<std::vector<size_t>>&
+//      */
+//     [[nodiscard]] auto getOpsWires() const
+//         -> const std::vector<std::vector<size_t>> & {
+//         return ops_wires_;
+//     }
+//     /**
+//      * @brief Get the adjoint flag for each operation.
+//      *
+//      * @return const std::vector<bool>&
+//      */
+//     [[nodiscard]] auto getOpsInverses() const -> const std::vector<bool> & {
+//         return ops_inverses_;
+//     }
+//     /**
+//      * @brief Get the numerical matrix for a given unsupported operation.
+//      Given
+//      * entries are empty ({}) if not required.
+//      *
+//      * @return const std::vector<std::vector<std::complex<T>>>&
+//      */
+//     [[nodiscard]] auto getOpsMatrices() const
+//         -> const std::vector<std::vector<std::complex<T>>> & {
+//         return ops_matrices_;
+//     }
+
+//     /**
+//      * @brief Notify if the operation at a given index is parametric.
+//      *
+//      * @param index Operation index.
+//      * @return true Gate is parametric (has parameters).
+//      * @return false Gate in non-parametric.
+//      */
+//     [[nodiscard]] inline auto hasParams(size_t index) const -> bool {
+//         return !ops_params_[index].empty();
+//     }
+
+//     /**
+//      * @brief Get the number of parametric operations.
+//      *
+//      * @return size_t
+//      */
+//     [[nodiscard]] auto getNumParOps() const -> size_t { return num_par_ops_;
+//     }
+
+//     /**
+//      * @brief Get the number of non-parametric ops.
+//      *
+//      * @return size_t
+//      */
+//     [[nodiscard]] auto getNumNonParOps() const -> size_t {
+//         return num_nonpar_ops_;
+//     }
+
+//     /**
+//      * @brief Get total number of parameters.
+//      */
+//     [[nodiscard]] auto getTotalNumParams() const -> size_t {
+//         return std::accumulate(
+//             ops_params_.begin(), ops_params_.end(), size_t{0U},
+//             [](size_t acc, auto &params) { return acc + params.size(); });
+//     }
+
+//     /**
+//      * @brief Get hyper-parameters.
+//      */
+//     [[nodiscard]] auto getOpsHyperParams() const
+//         -> const std::vector<std::vector<std::string>> & {
+//         return ops_hyperparams_;
+//     }
+// };
 
 /**
  * @brief GPU-enabled adjoint Jacobian evaluator following the method of
@@ -211,11 +410,14 @@ template <class T = double> class AdjointJacobianGPU {
     using CFP_t = decltype(cuUtil::getCudaType(T{}));
     using scalar_type_t = T;
     using GeneratorFunc = void (*)(StateVectorCudaManaged<T> &,
+                                   const std::vector<std::string> &,
                                    const std::vector<size_t> &,
                                    const bool); // function pointer type
 
     // Holds the mapping from gate labels to associated generator functions.
     const std::unordered_map<std::string, GeneratorFunc> generator_map{
+        {"PauliRot",
+         &::applyGeneratorPauliRot_GPU<T, StateVectorCudaManaged<T>>},
         {"RX", &::applyGeneratorRX_GPU<T, StateVectorCudaManaged<T>>},
         {"RY", &::applyGeneratorRY_GPU<T, StateVectorCudaManaged<T>>},
         {"RZ", &::applyGeneratorRZ_GPU<T, StateVectorCudaManaged<T>>},
@@ -250,6 +452,7 @@ template <class T = double> class AdjointJacobianGPU {
 
     // Holds the mappings from gate labels to associated generator coefficients.
     const std::unordered_map<std::string, T> scaling_factors{
+        {"PauliRot", -static_cast<T>(0.5)},
         {"RX", -static_cast<T>(0.5)},
         {"RY", -static_cast<T>(0.5)},
         {"RZ", -static_cast<T>(0.5)},
@@ -294,43 +497,41 @@ template <class T = double> class AdjointJacobianGPU {
 
     /**
      * @brief Utility method to apply all operations from given
-     * `%Pennylane::Algorithms::OpsData<T>` object to
-     * `%StateVectorCudaManaged<T>`
+     * `%cuOpsData<T>` object to `%StateVectorCudaManaged<T>`
      *
      * @param state Statevector to be updated.
      * @param operations Operations to apply.
      * @param adj Take the adjoint of the given operations.
      */
-    inline void
-    applyOperations(StateVectorCudaManaged<T> &state,
-                    const Pennylane::Algorithms::OpsData<T> &operations,
-                    bool adj = false) {
+    inline void applyOperations(StateVectorCudaManaged<T> &state,
+                                const cuOpsData<T> &operations,
+                                bool adj = false) {
         for (size_t op_idx = 0; op_idx < operations.getOpsName().size();
              op_idx++) {
             state.applyOperation(operations.getOpsName()[op_idx],
                                  operations.getOpsWires()[op_idx],
                                  operations.getOpsInverses()[op_idx] ^ adj,
-                                 operations.getOpsParams()[op_idx]);
+                                 operations.getOpsParams()[op_idx],
+                                 operations.getOpsHyperParams()[op_idx]);
         }
     }
 
     /**
      * @brief Utility method to apply the adjoint indexed operation from
-     * `%Pennylane::Algorithms::OpsData<T>` object to
-     * `%StateVectorCudaManaged<T>`.
+     * `%cuOpsData<T>` object to `%StateVectorCudaManaged<T>`.
      *
      * @param state Statevector to be updated.
      * @param operations Operations to apply.
      * @param op_idx Adjointed operation index to apply.
      */
-    inline void
-    applyOperationAdj(StateVectorCudaManaged<T> &state,
-                      const Pennylane::Algorithms::OpsData<T> &operations,
-                      size_t op_idx) {
+    inline void applyOperationAdj(StateVectorCudaManaged<T> &state,
+                                  const cuOpsData<T> &operations,
+                                  size_t op_idx) {
         state.applyOperation(operations.getOpsName()[op_idx],
                              operations.getOpsWires()[op_idx],
                              !operations.getOpsInverses()[op_idx],
-                             operations.getOpsParams()[op_idx]);
+                             operations.getOpsParams()[op_idx],
+                             operations.getOpsHyperParams()[op_idx]);
     }
 
     /**
@@ -439,8 +640,7 @@ template <class T = double> class AdjointJacobianGPU {
      */
     inline void
     applyOperationsAdj(std::vector<StateVectorCudaManaged<T>> &states,
-                       const Pennylane::Algorithms::OpsData<T> &operations,
-                       size_t op_idx) {
+                       const cuOpsData<T> &operations, size_t op_idx) {
         // clang-format off
         // Globally scoped exception value to be captured within OpenMP block.
         // See the following for OpenMP design decisions:
@@ -503,9 +703,10 @@ template <class T = double> class AdjointJacobianGPU {
      */
     inline auto applyGenerator(StateVectorCudaManaged<T> &sv,
                                const std::string &op_name,
-                               const std::vector<size_t> &wires, const bool adj)
+                               const std::vector<size_t> &wires, const bool adj,
+                               const std::vector<std::string> &hyperparams = {})
         -> T {
-        generator_map.at(op_name)(sv, wires, adj);
+        generator_map.at(op_name)(sv, hyperparams, wires, adj);
         return scaling_factors.at(op_name);
     }
 
@@ -521,16 +722,18 @@ template <class T = double> class AdjointJacobianGPU {
      * @param ops_inverses Indicate whether to take adjoint of each operation in
      * ops_name.
      * @param ops_matrices Matrix definition of an operation if unsupported.
-     * @return const Pennylane::Algorithms::OpsData<T>
+     * @return const cuOpsData<T>
      */
     auto createOpsData(
         const std::vector<std::string> &ops_name,
         const std::vector<std::vector<T>> &ops_params,
+        const std::vector<std::vector<std::string>> &ops_hyperparams,
         const std::vector<std::vector<size_t>> &ops_wires,
         const std::vector<bool> &ops_inverses,
         const std::vector<std::vector<std::complex<T>>> &ops_matrices = {{}})
-        -> Pennylane::Algorithms::OpsData<T> {
-        return {ops_name, ops_params, ops_wires, ops_inverses, ops_matrices};
+        -> cuOpsData<T> {
+        return {ops_name,  ops_params,   ops_hyperparams,
+                ops_wires, ops_inverses, ops_matrices};
     }
 
     /**
@@ -557,13 +760,12 @@ template <class T = double> class AdjointJacobianGPU {
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void
-    adjointJacobian(const CFP_t *ref_data, std::size_t length,
-                    std::vector<std::vector<T>> &jac,
-                    const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
-                    const Pennylane::Algorithms::OpsData<T> &ops,
-                    const std::vector<size_t> &trainableParams,
-                    bool apply_operations = false) {
+    void adjointJacobian(const CFP_t *ref_data, std::size_t length,
+                         std::vector<std::vector<T>> &jac,
+                         const std::vector<ObsDatum<T>> &obs,
+                         const cuOpsData<T> &ops,
+                         const std::vector<size_t> &trainableParams,
+                         bool apply_operations = false) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 
@@ -650,8 +852,8 @@ template <class T = double> class AdjointJacobianGPU {
         // const SVType &ref_state, std::vector<std::vector<T>> &jac,
         const CFP_t *ref_data, std::size_t length,
         std::vector<std::vector<T>> &jac,
-        const std::vector<Pennylane::Algorithms::ObsDatum<T>> &observables,
-        const Pennylane::Algorithms::OpsData<T> &operations,
+        const std::vector<ObsDatum<T>> &observables,
+        const cuOpsData<T> &operations,
         const std::vector<size_t> &trainableParams,
         bool apply_operations = false) {
         PL_ABORT_IF(trainableParams.empty(),
