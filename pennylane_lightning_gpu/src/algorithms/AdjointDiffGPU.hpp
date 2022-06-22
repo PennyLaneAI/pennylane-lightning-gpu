@@ -1,7 +1,6 @@
 #pragma once
 
 #include <omp.h>
-// #include <variant>
 
 #include "DevicePool.hpp"
 #include "StateVectorCudaManaged.hpp"

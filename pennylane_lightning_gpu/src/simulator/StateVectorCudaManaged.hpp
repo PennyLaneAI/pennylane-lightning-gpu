@@ -529,19 +529,16 @@ class StateVectorCudaManaged
     inline void applyIsingXX(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
         static const std::vector<std::string> names(wires.size(), {"RX"});
-        // applyParametricPauliGate(names, {}, wires, param, adjoint);
         applyPauliRot(names, wires, adjoint, param);
     }
     inline void applyIsingYY(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
         static const std::vector<std::string> names(wires.size(), {"RY"});
-        // applyParametricPauliGate(names, {}, wires, param, adjoint);
         applyPauliRot(names, wires, adjoint, param);
     }
     inline void applyIsingZZ(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
         static const std::vector<std::string> names(wires.size(), {"RZ"});
-        // applyParametricPauliGate(names, {}, wires, param, adjoint);
         applyPauliRot(names, wires, adjoint, param);
     }
     inline void applyCRot(const std::vector<std::size_t> &wires, bool adjoint,
@@ -564,21 +561,18 @@ class StateVectorCudaManaged
 
     inline void applyCRX(const std::vector<std::size_t> &wires, bool adjoint,
                          Precision param) {
-        // applyRX(wires, adjoint, param);
         static const std::vector<std::string> name{{"RX"}};
         applyParametricPauliGate(name, {wires.begin(), wires.end() - 1},
                                  {wires.back()}, param, adjoint);
     }
     inline void applyCRY(const std::vector<std::size_t> &wires, bool adjoint,
                          Precision param) {
-        // applyRY(wires, adjoint, param);
         static const std::vector<std::string> name{{"RY"}};
         applyParametricPauliGate(name, {wires.begin(), wires.end() - 1},
                                  {wires.back()}, param, adjoint);
     }
     inline void applyCRZ(const std::vector<std::size_t> &wires, bool adjoint,
                          Precision param) {
-        // applyRZ(wires, adjoint, param);
         static const std::vector<std::string> name{{"RZ"}};
         applyParametricPauliGate(name, {wires.begin(), wires.end() - 1},
                                  {wires.back()}, param, adjoint);

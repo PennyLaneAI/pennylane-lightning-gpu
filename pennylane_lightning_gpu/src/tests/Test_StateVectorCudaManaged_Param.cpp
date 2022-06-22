@@ -20,6 +20,385 @@
 using namespace Pennylane;
 using namespace CUDA;
 
+TEMPLATE_TEST_CASE("LightningGPU::applyPauliRot RX", "[LightningGPU_Param]",
+                   double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 1;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{{0.1}, {0.6}};
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>{{0.9987502603949663, 0.0},
+                          {0.0, -0.04997916927067834}},
+        std::vector<cp_t>{{0.9553364891256061, 0.0}, {0, -0.2955202066613395}},
+        std::vector<cp_t>{{0.49757104789172696, 0.0}, {0, -0.867423225594017}}};
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>{{0.9987502603949663, 0.0},
+                          {0.0, 0.04997916927067834}},
+        std::vector<cp_t>{{0.9553364891256061, 0.0}, {0, 0.2955202066613395}},
+        std::vector<cp_t>{{0.49757104789172696, 0.0}, {0, 0.867423225594017}}};
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("adj = false") {
+        SECTION("Apply directly") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+
+                svdat_direct.cuda_sv.applyPauliRot({"RX"}, {0}, false,
+                                                   angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      Pennylane::approx(expected_results[index]));
+            }
+        }
+        SECTION("Apply using dispatcher") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
+                svdat_dispatch.cuda_sv.applyOperation("PauliRot", {0}, false,
+                                                      {angles[index]}, {"RX"});
+                svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      Pennylane::approx(expected_results[index]));
+            }
+        }
+    }
+    SECTION("adj = true") {
+        SECTION("Apply directly") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyPauliRot({"RX"}, {0}, true,
+                                                   {angles[index]});
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      Pennylane::approx(expected_results_adj[index]));
+            }
+        }
+        SECTION("Apply using dispatcher") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
+                svdat_dispatch.cuda_sv.applyOperation("PauliRot", {0}, true,
+                                                      {angles[index]}, {"RX"});
+                svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      Pennylane::approx(expected_results_adj[index]));
+            }
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyPauliRot RY", "[LightningGPU_Param]",
+                   float, double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 1;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{0.2, 0.7, 2.9};
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>{{0.8731983044562817, 0.04786268954660339},
+                          {0.0876120655431924, -0.47703040785184303}},
+        std::vector<cp_t>{{0.8243771119105122, 0.16439396602553008},
+                          {0.3009211363333468, -0.45035926880694604}},
+        std::vector<cp_t>{{0.10575112905629831, 0.47593196040758534},
+                          {0.8711876098966215, -0.0577721051072477}}};
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>{{0.8731983044562817, -0.04786268954660339},
+                          {-0.0876120655431924, -0.47703040785184303}},
+        std::vector<cp_t>{{0.8243771119105122, -0.16439396602553008},
+                          {-0.3009211363333468, -0.45035926880694604}},
+        std::vector<cp_t>{{0.10575112905629831, -0.47593196040758534},
+                          {-0.8711876098966215, -0.0577721051072477}}};
+
+    const std::vector<cp_t> init_state{{0.8775825618903728, 0.0},
+                                       {0.0, -0.47942553860420306}};
+    SECTION("adj = false") {
+        SECTION("Apply directly") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+
+                svdat_direct.cuda_sv.applyPauliRot({"RY"}, {0}, false,
+                                                   {angles[index]});
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      Pennylane::approx(expected_results[index]));
+            }
+        }
+        SECTION("Apply using dispatcher") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
+                svdat_dispatch.cuda_sv.applyOperation("PauliRot", {0}, false,
+                                                      {angles[index]}, {"RY"});
+                svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      Pennylane::approx(expected_results[index]));
+            }
+        }
+    }
+    SECTION("adj = true") {
+        SECTION("Apply directly") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+
+                svdat_direct.cuda_sv.applyPauliRot({"RY"}, {0}, true,
+                                                   {angles[index]});
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      Pennylane::approx(expected_results_adj[index]));
+            }
+        }
+        SECTION("Apply using dispatcher") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
+                svdat_dispatch.cuda_sv.applyOperation("PauliRot", {0}, true,
+                                                      {angles[index]}, {"RY"});
+
+                svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      Pennylane::approx(expected_results_adj[index]));
+            }
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyPauliRot Rz", "[LightningGPU_Param]",
+                   float, double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    // Test using |+++> state
+    svdat.cuda_sv.applyOperation({{"Hadamard"}, {"Hadamard"}, {"Hadamard"}},
+                                 {{0}, {1}, {2}}, {{false}, {false}, {false}});
+    svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
+    const std::vector<TestType> angles{0.2, 0.7, 2.9};
+    const cp_t coef(1.0 / (2 * std::sqrt(2)), 0);
+
+    std::vector<std::vector<cp_t>> rz_data;
+    rz_data.reserve(angles.size());
+    for (auto &a : angles) {
+        rz_data.push_back(Gates::getRZ<TestType>(a));
+    }
+
+    std::vector<std::vector<cp_t>> expected_results = {
+        {rz_data[0][0], rz_data[0][0], rz_data[0][0], rz_data[0][0],
+         rz_data[0][3], rz_data[0][3], rz_data[0][3], rz_data[0][3]},
+        {
+            rz_data[1][0],
+            rz_data[1][0],
+            rz_data[1][3],
+            rz_data[1][3],
+            rz_data[1][0],
+            rz_data[1][0],
+            rz_data[1][3],
+            rz_data[1][3],
+        },
+        {rz_data[2][0], rz_data[2][3], rz_data[2][0], rz_data[2][3],
+         rz_data[2][0], rz_data[2][3], rz_data[2][0], rz_data[2][3]}};
+
+    for (auto &vec : expected_results) {
+        scaleVector(vec, coef);
+    }
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("Apply directly") {
+        for (size_t index = 0; index < num_qubits; index++) {
+            SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+
+            svdat_direct.cuda_sv.applyPauliRot({"RZ"}, {index}, false,
+                                               {angles[index]});
+            svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+            CHECK(svdat_direct.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
+        }
+    }
+    SECTION("Apply using dispatcher") {
+        for (size_t index = 0; index < num_qubits; index++) {
+            SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
+            svdat_dispatch.cuda_sv.applyOperation("PauliRot", {index}, false,
+                                                  {angles[index]}, {"RZ"});
+
+            svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+            CHECK(svdat_dispatch.sv.getDataVector() ==
+                  Pennylane::approx(expected_results[index]));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyPauliRot RX-RY 2-qubits",
+                   "[LightningGPU_Param]", double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 2;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{{0.1}, {0.6}};
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>{{0.9987502603949661, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.04997916927067832, 0.0}},
+        std::vector<cp_t>{{0.9553364891256058, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.2955202066613395, 0.0}},
+    };
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>{{0.9987502603949661, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {-0.04997916927067832, 0.0}},
+        std::vector<cp_t>{{0.9553364891256058, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {-0.2955202066613395, 0.0}},
+    };
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("adj = false") {
+        SECTION("Apply directly") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+
+                svdat_direct.cuda_sv.applyPauliRot({"RX", "RY"}, {0, 1}, false,
+                                                   angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      Pennylane::approx(expected_results[index]));
+            }
+        }
+        SECTION("Apply using dispatcher") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
+                svdat_dispatch.cuda_sv.applyOperation(
+                    "PauliRot", {0, 1}, false, {angles[index]}, {"RX", "RY"});
+                svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      Pennylane::approx(expected_results[index]));
+            }
+        }
+    }
+    SECTION("adj = true") {
+        SECTION("Apply directly") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyPauliRot({"RX", "RY"}, {0, 1}, true,
+                                                   {angles[index]});
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      Pennylane::approx(expected_results_adj[index]));
+            }
+        }
+        SECTION("Apply using dispatcher") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
+                svdat_dispatch.cuda_sv.applyOperation(
+                    "PauliRot", {0, 1}, true, {angles[index]}, {"RX", "RY"});
+                svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      Pennylane::approx(expected_results_adj[index]));
+            }
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("LightningGPU::applyPauliRot RZ-I-RY 3-qubits",
+                   "[LightningGPU_Param]", double) {
+    using cp_t = std::complex<TestType>;
+    const size_t num_qubits = 3;
+    SVDataGPU<TestType> svdat{num_qubits};
+
+    const std::vector<TestType> angles{{0.1}, {0.6}};
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>{{0.9987502603949663, 0.0},
+                          {0.04997916927067833, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0}},
+        std::vector<cp_t>{
+            {0.955336489125606, 0.0},
+            {0.29552020666133955, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+        },
+    };
+
+    std::vector<std::vector<cp_t>> expected_results_adj{
+        std::vector<cp_t>{{0.9987502603949663, 0.0},
+                          {-0.04997916927067833, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0},
+                          {0.0, 0.0}},
+        std::vector<cp_t>{
+            {0.955336489125606, 0.0},
+            {-0.29552020666133955, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+            {0.0, 0.0},
+        },
+    };
+
+    const auto init_state = svdat.sv.getDataVector();
+    SECTION("adj = false") {
+        SECTION("Apply directly") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+
+                svdat_direct.cuda_sv.applyPauliRot({"RZ", "RY"}, {0, 2}, false,
+                                                   angles[index]);
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      Pennylane::approx(expected_results[index]));
+            }
+        }
+        SECTION("Apply using dispatcher") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
+                svdat_dispatch.cuda_sv.applyOperation(
+                    "PauliRot", {0, 2}, false, {angles[index]}, {"RZ", "RY"});
+                svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      Pennylane::approx(expected_results[index]));
+            }
+        }
+    }
+    SECTION("adj = true") {
+        SECTION("Apply directly") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_direct{num_qubits, init_state};
+                svdat_direct.cuda_sv.applyPauliRot({"RZ", "RY"}, {0, 2}, true,
+                                                   {angles[index]});
+                svdat_direct.cuda_sv.CopyGpuDataToHost(svdat_direct.sv);
+                CHECK(svdat_direct.sv.getDataVector() ==
+                      Pennylane::approx(expected_results_adj[index]));
+            }
+        }
+        SECTION("Apply using dispatcher") {
+            for (size_t index = 0; index < angles.size(); index++) {
+                SVDataGPU<TestType> svdat_dispatch{num_qubits, init_state};
+                svdat_dispatch.cuda_sv.applyOperation(
+                    "PauliRot", {0, 2}, true, {angles[index]}, {"RZ", "RY"});
+                svdat_dispatch.cuda_sv.CopyGpuDataToHost(svdat_dispatch.sv);
+                CHECK(svdat_dispatch.sv.getDataVector() ==
+                      Pennylane::approx(expected_results_adj[index]));
+            }
+        }
+    }
+}
+
 TEMPLATE_TEST_CASE("LightningGPU::applyRX", "[LightningGPU_Param]", double) {
     using cp_t = std::complex<TestType>;
     const size_t num_qubits = 1;
