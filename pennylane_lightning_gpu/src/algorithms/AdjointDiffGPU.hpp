@@ -19,12 +19,24 @@ template <class CFP_t> static constexpr auto getP11_CU() -> std::vector<CFP_t> {
 }
 
 template <class T = double, class SVType>
-void applyGeneratorPauliRot_GPU(
-    [[maybe_unused]] SVType &sv,
-    [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    [[maybe_unused]] const std::vector<size_t> &wires,
-    [[maybe_unused]] const bool adj = false) {
-    // TODO: applyGeneratorPauliRot_GPU
+void applyGeneratorPauliRot_GPU(SVType &sv,
+                                const std::vector<std::string> &hyperparams,
+                                const std::vector<size_t> &wires,
+                                const bool adj = false) {
+    PL_ABORT_IF(hyperparams.size() != wires.size(),
+                "Incompatible number of Pauli words and wires");
+    for (size_t i = 0; i < wires.size(); i++) {
+        if (hyperparams[i] == "RX") {
+            sv.applyPauliX({wires[i]}, adj);
+        } else if (hyperparams[i] == "RY") {
+            sv.applyPauliY({wires[i]}, adj);
+        } else if (hyperparams[i] == "RZ") {
+            sv.applyPauliZ({wires[i]}, adj);
+        } else {
+            std::string message = "Unsupported Pauli word: " + hyperparams[i];
+            throw LightningException(message);
+        }
+    } // TODO: test & re-write this part
 }
 
 template <class T = double, class SVType>

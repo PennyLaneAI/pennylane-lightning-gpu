@@ -15,6 +15,7 @@ r"""
 This module contains the :class:`~.LightningGPU` class, a PennyLane simulator device that
 interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enabled calculations.
 """
+from ast import operator
 from warnings import warn
 
 import numpy as np
@@ -56,7 +57,7 @@ try:
         OpsStructGPU_C64,
     )
 
-    from ._serialize import _serialize_obs, _serialize_ops
+    from ._serialize import _serialize_obs, _serialize_ops, _get_cuq_pauli_names
     from ctypes.util import find_library
     from importlib import util as imp_util
 
@@ -95,6 +96,48 @@ class LightningGPU(LightningQubit):
     version = __version__
     author = "Xanadu Inc."
     _CPP_BINARY_AVAILABLE = True
+
+    operations = {
+        "BasisState",
+        "QubitStateVector",
+        "QubitUnitary",
+        "Identity",
+        "PauliX",
+        "PauliY",
+        "PauliZ",
+        "MultiRZ",
+        "Hadamard",
+        "S",
+        "T",
+        "CNOT",
+        "SWAP",
+        "CSWAP",
+        "Toffoli",
+        "CY",
+        "CZ",
+        "PhaseShift",
+        "ControlledPhaseShift",
+        "CPhase",
+        "RX",
+        "RY",
+        "RZ",
+        "Rot",
+        "CRX",
+        "CRY",
+        "CRZ",
+        "CRot",
+        "IsingXX",
+        "IsingYY",
+        "IsingZZ",
+        "IsingXY",
+        "SingleExcitation",
+        "SingleExcitationPlus",
+        "SingleExcitationMinus",
+        "DoubleExcitation",
+        "DoubleExcitationPlus",
+        "DoubleExcitationMinus",
+        "PauliRot",
+    }  # TODO: double-check the list of supported operations.
 
     observables = {
         "PauliX",
@@ -153,6 +196,10 @@ class LightningGPU(LightningQubit):
             name = o.name.split(".")[0]  # The split is because inverse gates have .inv appended
             method = getattr(self._gpu_state, name, None)
 
+            hp = []
+            if name is "PauliRot":
+                hp = _get_cuq_pauli_names(o.hyperparameters["pauli_word"])
+
             wires = self.wires.indices(o.wires)
 
             if method is None:
@@ -170,13 +217,17 @@ class LightningGPU(LightningQubit):
                     wires,
                     False,
                     [],
+                    hp,
                     mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
                 )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
 
             else:
                 inv = o.inverse
                 param = o.parameters
-                method(wires, inv, param)
+                if name is "PauliRot":
+                    method(wires, inv, param, hp)
+                else:
+                    method(wires, inv, param)
 
     def apply(self, operations, **kwargs):
         # State preparation is currently done in Python

@@ -51,7 +51,6 @@ def op(op_name):
         "SISWAP": qml.SISWAP(wires=[0, 1]),
         "SQISW": qml.SQISW(wires=[0, 1]),
         "CSWAP": qml.CSWAP(wires=[0, 1, 2]),
-        "PauliRot": qml.PauliRot(0.123, "Y", wires=0),
         "IsingXX": qml.IsingXX(0.123, wires=[0, 1]),
         "IsingYY": qml.IsingYY(0.123, wires=[0, 1]),
         "IsingZZ": qml.IsingZZ(0.123, wires=[0, 1]),
@@ -134,6 +133,31 @@ def test_gate_unitary_correct(op, op_name):
         unitary[:, i] = out
 
     unitary_expected = qml.matrix(op(*p, wires=range(wires)))
+
+    assert np.allclose(unitary, unitary_expected)
+
+
+@pytest.mark.parametrize("wires, pauli_words", [[4, "XYIZ"], [1, "X"]])
+def test_paulirot_unitary_correct(wires, pauli_words):
+    """Test if lightning.gpu correctly applies PauliRot by reconstructing the unitary matrix and
+    comparing to the expected version"""
+
+    dev = qml.device("lightning.gpu", wires=wires)
+    p = [0.1]
+
+    @qml.qnode(dev)
+    def output(input):
+        qml.BasisState(input, wires=range(wires))
+        qml.PauliRot(*p, pauli_words, wires=range(wires))
+        return qml.state()
+
+    unitary = np.zeros((2**wires, 2**wires), dtype=np.complex128)
+
+    for i, input in enumerate(itertools.product([0, 1], repeat=wires)):
+        out = output(input)
+        unitary[:, i] = out
+
+    unitary_expected = qml.matrix(qml.PauliRot(*p, pauli_words, wires=range(wires)))
 
     assert np.allclose(unitary, unitary_expected)
 

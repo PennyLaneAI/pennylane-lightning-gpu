@@ -380,6 +380,16 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             },
             "Apply the MultiRZ gate.")
         .def(
+            "PauliRot",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params,
+               const std::vector<std::string> &pauli_words) {
+                return sv.applyPauliRot(pauli_words, wires, adjoint,
+                                        params.front());
+            },
+            "Apply the PauliRot gate.")
+        .def(
             "ExpectationValue",
             [](StateVectorCudaManaged<PrecisionT> &sv,
                const std::string &obsName,
@@ -633,8 +643,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
              [](AdjointJacobianGPU<PrecisionT> &adj,
                 const std::vector<std::string> &ops_name,
                 const std::vector<np_arr_r> &ops_params,
-                // const std::vector<std::vector<std::string>> &ops_hyperparams,
-                // // TODO
+                const std::vector<std::vector<std::string>> &ops_hyperparams,
                 const std::vector<std::vector<size_t>> &ops_wires,
                 const std::vector<bool> &ops_inverses,
                 const std::vector<np_arr_c> &ops_matrices) {
@@ -661,8 +670,6 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                              m_ptr, m_ptr + m_buffer.size};
                      }
                  }
-                 const std::vector<std::vector<std::string>> ops_hyperparams{
-                     {}};
                  return cuOpsData<PrecisionT>{ops_name,        conv_params,
                                               ops_hyperparams, ops_wires,
                                               ops_inverses,    conv_matrices};

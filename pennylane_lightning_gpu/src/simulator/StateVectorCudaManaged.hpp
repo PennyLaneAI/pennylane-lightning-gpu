@@ -447,12 +447,12 @@ class StateVectorCudaManaged
                               {wires.begin(), wires.end() - 1}, {wires.back()},
                               adjoint);
     }
-    inline void applyPauliRot(const std::vector<std::string> pauli_word,
+    inline void applyPauliRot(const std::vector<std::string> pauli_words,
                               const std::vector<size_t> &wires, bool adjoint,
                               Precision param) {
-        PL_ABORT_IF(pauli_word.size() != wires.size(),
+        PL_ABORT_IF(pauli_words.size() != wires.size(),
                     "Incompatible number of Pauli words and wires");
-        applyParametricPauliGate(pauli_word, {}, wires, param, adjoint);
+        applyParametricPauliGate(pauli_words, {}, wires, param, adjoint);
     }
     inline void applyRX(const std::vector<std::size_t> &wires, bool adjoint,
                         Precision param) {
