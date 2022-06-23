@@ -226,7 +226,7 @@ template <class fp_t> class GateCache {
      *
      * @param gate_name String representing the name of the given gate.
      * @param gate_param Gate parameter value. `0.0` if non-parametric gate.
-     * @return CFP_t* Pointer to gate values on device.
+     * @return const CFP_t* Pointer to gate values on device.
      */
     const CFP_t *get_gate_device_ptr(const std::string &gate_name,
                                      fp_t gate_param) {

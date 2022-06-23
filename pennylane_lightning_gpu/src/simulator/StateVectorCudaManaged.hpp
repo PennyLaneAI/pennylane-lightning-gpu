@@ -833,32 +833,6 @@ class StateVectorCudaManaged
 
   private:
     GateCache<Precision> gate_cache_;
-    const std::unordered_map<std::string, size_t> gate_wires_{
-        // Add mapping from function name to required wires.
-        {"Identity", 1},
-        {"PauliX", 1},
-        {"PauliY", 1},
-        {"PauliZ", 1},
-        {"Hadamard", 1},
-        {"T", 1},
-        {"S", 1},
-        {"RX", 1},
-        {"RY", 1},
-        {"RZ", 1},
-        {"Rot", 1},
-        {"PhaseShift", 1},
-        {"ControlledPhaseShift", 2},
-        {"CNOT", 2},
-        {"SWAP", 2},
-        {"CY", 2},
-        {"CZ", 2},
-        {"CRX", 2},
-        {"CRY", 2},
-        {"CRZ", 2},
-        {"CRot", 2},
-        {"CSWAP", 3},
-        {"Toffoli", 3}};
-
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
                                        const std::vector<Precision> &)>;
     using FMap = std::unordered_map<std::string, ParFunc>;
@@ -886,6 +860,30 @@ class StateVectorCudaManaged
              applyPhaseShift(std::forward<decltype(wires)>(wires),
                              std::forward<decltype(adjoint)>(adjoint),
                              std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"MultiRZ",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applyMultiRZ(std::forward<decltype(wires)>(wires),
+                          std::forward<decltype(adjoint)>(adjoint),
+                          std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"IsingXX",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applyIsingXX(std::forward<decltype(wires)>(wires),
+                          std::forward<decltype(adjoint)>(adjoint),
+                          std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"IsingYY",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applyIsingYY(std::forward<decltype(wires)>(wires),
+                          std::forward<decltype(adjoint)>(adjoint),
+                          std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"IsingZZ",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applyIsingZZ(std::forward<decltype(wires)>(wires),
+                          std::forward<decltype(adjoint)>(adjoint),
+                          std::forward<decltype(params[0])>(params[0]));
          }},
         {"CRX",
          [&](auto &&wires, auto &&adjoint, auto &&params) {
