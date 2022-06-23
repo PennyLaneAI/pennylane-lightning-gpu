@@ -23,10 +23,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "Error.hpp"
-#include "StateVectorBase.hpp"
 #include "DataBuffer.hpp"
 #include "DevTag.hpp"
+#include "Error.hpp"
+#include "StateVectorBase.hpp"
 #include "StateVectorManagedCPU.hpp"
 #include "cuda_helpers.hpp"
 

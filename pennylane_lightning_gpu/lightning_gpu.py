@@ -116,7 +116,6 @@ class LightningGPU(LightningQubit):
         "Identity",
     }
 
-
     def __init__(self, wires, *, sync=True, c_dtype=np.complex128, shots=None, batch_obs=False):
         super().__init__(wires, c_dtype=c_dtype, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
@@ -322,7 +321,7 @@ class LightningGPU(LightningQubit):
             )
         else:
             jac = adj.adjoint_jacobian(self._gpu_state, obs_serialized, ops_serialized, tp_shift)
-            
+
         jac = np.array(jac)  # only for parameters differentiable with the adjoint method
         jac = jac.reshape(-1, len(tp_shift))
         jac_r = np.zeros((jac.shape[0], all_params))
