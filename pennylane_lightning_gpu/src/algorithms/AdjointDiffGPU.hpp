@@ -544,7 +544,7 @@ template <class T = double> class AdjointJacobianGPU {
 
     /**
      * @brief Batches the adjoint_jacobian method over the available GPUs.
-     * Explicitly fobids OMP_NUM_THREADS>1 to avoid issues with std::thread
+     * Explicitly forbids OMP_NUM_THREADS>1 to avoid issues with std::thread
      * contention and state access issues.
      *
      * @param ref_data Pointer to the statevector data.
