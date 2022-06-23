@@ -7,7 +7,7 @@
 namespace Pennylane::CUDA {
 
 /**
- * @brief Data storage class for CUDA memory. Maintsins an associated stream and
+ * @brief Data storage class for CUDA memory. Maintains an associated stream and
  * device ID taken during time of allocation.
  *
  * @tparam GPUDataT GPU data type.
