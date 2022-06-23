@@ -10,7 +10,8 @@ namespace Pennylane::CUDA {
  * @brief Data storage class for CUDA memory. Maintsins an associated stream and
  * device ID taken during time of allocation.
  *
- * @tparam DataT Data type to store.
+ * @tparam GPUDataT GPU data type.
+ * @tparam DevTagT Device tag index type.
  */
 template <class GPUDataT, class DevTagT = int> class DataBuffer {
   public:
@@ -20,7 +21,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
      * @param length Number of elements in data buffer.
      * @param device_id Associated device ID. Must be `cudaSetDevice`
      * compatible.
-     * @param stream_id Associated stread ID. Must be `cudaSetDevice`
+     * @param stream_id Associated stream ID. Must be `cudaSetStream`
      * compatible.
      * @param alloc_memory Indicate whether to allocate the memory for the
      * buffer. Defaults to `true`

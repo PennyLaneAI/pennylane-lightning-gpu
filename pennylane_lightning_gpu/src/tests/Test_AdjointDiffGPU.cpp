@@ -385,7 +385,8 @@ TEST_CASE("AdjointJacobianGPU::batchAdjointJacobian Mixed Ops, Obs and TParams",
             {Pennylane::Util::ZERO<double>()},
             {Pennylane::Util::ZERO<double>()},
             {Pennylane::Util::ZERO<double>()}};
-        SVDataGPU<double> psi(num_qubits, {cdata.begin(), cdata.end()});
+        SVDataGPU<double> psi(num_qubits, std::vector<std::complex<double>>{
+                                              cdata.begin(), cdata.end()});
 
         auto obs = ObsDatum<double>({"PauliX", "PauliZ"}, {{}, {}}, {{0}, {1}});
         auto ops =

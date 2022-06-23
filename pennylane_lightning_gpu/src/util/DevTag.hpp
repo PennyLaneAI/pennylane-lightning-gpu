@@ -29,12 +29,10 @@ class DevTag {
         if (this != &other) {
             device_id_ = other.device_id_;
             stream_id_ = other.stream_id_;
-            auto ref_id = &other.device_id_;
-            auto ref_st = &other.stream_id_;
+            [[maybe_unused]] auto ref_id = &other.device_id_;
+            [[maybe_unused]] auto ref_st = &other.stream_id_;
             ref_id = nullptr;
             ref_st = nullptr;
-            static_cast<void>(ref_id);
-            static_cast<void>(ref_st);
         }
         return *this;
     }

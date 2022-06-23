@@ -84,14 +84,6 @@ def _gpu_dtype(dtype):
     return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
 
 
-def _discrete_chunks(data, num_chunks):
-    "Adapted from https://stackoverflow.com/questions/24483182/python-split-list-into-n-chunks/54802737#54802737"
-    quot, rem = divmod(len(data), num_chunks)
-    for idx in range(num_chunks):
-        idx_step = (quot + 1) * (idx if idx < rem else rem) + quot * (0 if idx < rem else idx - rem)
-        yield data[idx_step : idx_step + (quot + 1 if idx < rem else quot)]
-
-
 class LightningGPU(LightningQubit):
     """PennyLane-Lightning-GPU device.
 
