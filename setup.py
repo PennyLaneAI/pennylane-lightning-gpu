@@ -71,6 +71,7 @@ if not os.getenv("READTHEDOCS"):
                 f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
                 "-GNinja",
                 f"-DCMAKE_MAKE_PROGRAM={ninja_path}",
+                f"-DENABLE_OPENMP=OFF",
                 *(self.cmake_defines),
             ]
 
