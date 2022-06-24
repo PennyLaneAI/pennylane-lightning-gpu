@@ -43,8 +43,8 @@ except ImportError as e:
     print(e)
 
 
-def _get_cuq_pauli_names(hyperparams: List[str]) -> List[str]:
-    return [w if w is "I" else "R" + w for w in hyperparams]
+def _get_cuq_pauli_names(hyper_params: List[str]) -> List[str]:
+    return [w if w is "I" else "R" + w for w in hyper_params]
 
 
 def _obs_has_kernel(obs: Observable) -> bool:
@@ -146,7 +146,7 @@ def _serialize_ops(
         do not have a dedicated kernel.
     """
     names = []
-    hyperparams = []
+    hyper_params = []
     params = []
     wires = []
     inverses = []
@@ -172,9 +172,9 @@ def _serialize_ops(
             names.append(name)
 
             if name is "PauliRot":
-                hyperparams.append(_get_cuq_pauli_names(single_op.hyperparameters["pauli_word"]))
+                hyper_params.append(_get_cuq_pauli_names(single_op.hyperparameters["pauli_word"]))
             else:
-                hyperparams.append([])
+                hyper_params.append([])
 
             if getattr(sv_py, name, None) is None:
                 params.append([])
@@ -190,4 +190,4 @@ def _serialize_ops(
             wires.append([wires_map[w] for w in wires_list])
             inverses.append(is_inverse)
 
-    return (names, params, hyperparams, wires, inverses, mats), uses_stateprep
+    return (names, params, hyper_params, wires, inverses, mats), uses_stateprep

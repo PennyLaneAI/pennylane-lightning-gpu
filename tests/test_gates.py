@@ -15,6 +15,7 @@
 Unit tests for the correct application of gates with lightning.gpu
 """
 import itertools
+from multiprocessing.sharedctypes import Value
 
 import numpy as np
 import pennylane as qml
@@ -137,7 +138,7 @@ def test_gate_unitary_correct(op, op_name):
     assert np.allclose(unitary, unitary_expected)
 
 
-@pytest.mark.parametrize("wires, pauli_words", [[4, "XYIZ"], [1, "X"]])
+@pytest.mark.parametrize("wires, pauli_words", [[4, "XYIZ"], [3, {"X", "I", "Z"}], [1, "X"]])
 def test_paulirot_unitary_correct(wires, pauli_words):
     """Test if lightning.gpu correctly applies PauliRot by reconstructing the unitary matrix and
     comparing to the expected version"""
@@ -160,6 +161,17 @@ def test_paulirot_unitary_correct(wires, pauli_words):
     unitary_expected = qml.matrix(qml.PauliRot(*p, pauli_words, wires=range(wires)))
 
     assert np.allclose(unitary, unitary_expected)
+
+
+@pytest.mark.parametrize("wires, pauli_words", [[4, "XYIW"], [1, {"Q"}]])
+def test_paulirot_error(wires, pauli_words):
+    """Test if lightning.gpu raises errors applying PauliRot for invalid Pauli words"""
+
+    with pytest.raises(
+        ValueError,
+        match="Allowed characters are I, X, Y and Z",
+    ):
+        qml.PauliRot(0.1, pauli_words, wires=range(wires))
 
 
 @pytest.mark.parametrize("op_name", LightningGPU.operations)

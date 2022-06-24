@@ -359,9 +359,8 @@ class StateVectorCudaManaged
                     "Incompatible number of ops and wires");
         PL_ABORT_IF(opNames.size() != adjoints.size(),
                     "Incompatible number of ops and adjoints");
-        PL_ABORT_IF(
-            opNames.size() != hyperparams.size(),
-            "Incompatible number of hyper-parameters and adjoints"); // TODO: ??
+        PL_ABORT_IF(opNames.size() != hyperparams.size(),
+                    "Incompatible number of hyper-parameters and adjoints");
         const auto num_ops = opNames.size();
         for (std::size_t op_idx = 0; op_idx < num_ops; op_idx++) {
             applyOperation(opNames[op_idx], wires[op_idx], adjoints[op_idx],

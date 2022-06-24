@@ -5,8 +5,7 @@
 #include "DevicePool.hpp"
 #include "StateVectorCudaManaged.hpp"
 
-#include "ObsDatum.hpp"
-#include "cuOpsData.hpp"
+#include "AdjointDataGPU.hpp"
 
 /// @cond DEV
 namespace {
@@ -19,10 +18,9 @@ template <class CFP_t> static constexpr auto getP11_CU() -> std::vector<CFP_t> {
 }
 
 template <class T = double, class SVType>
-void applyGeneratorPauliRot_GPU(SVType &sv,
-                                const std::vector<std::string> &hyperparams,
-                                const std::vector<size_t> &wires,
-                                const bool adj = false) {
+void applyGeneratorPauliRot_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    const std::vector<std::string> &hyperparams = {}) {
     PL_ABORT_IF(hyperparams.size() != wires.size(),
                 "Incompatible number of Pauli words and wires");
     for (size_t i = 0; i < wires.size(); i++) {
@@ -33,129 +31,129 @@ void applyGeneratorPauliRot_GPU(SVType &sv,
         } else if (hyperparams[i] == "RZ") {
             sv.applyPauliZ({wires[i]}, adj);
         } else {
-            std::string message = "Unsupported Pauli word: " + hyperparams[i];
-            throw LightningException(message);
+            PL_ABORT("Unsupported Pauli word. Allowed characters are I, RX, RY "
+                     "and RZ");
         }
-    } // TODO: test & re-write this part
+    }
 }
 
 template <class T = double, class SVType>
 void applyGeneratorRX_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliX(wires, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorRY_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliY(wires, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorRZ_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliZ(wires, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorIsingXX_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorIsingXX(wires, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorIsingYY_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorIsingYY(wires, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorIsingZZ_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorIsingZZ(wires, adj);
 }
 template <class T = double, class SVType>
 void applyGeneratorPhaseShift_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyOperation("P_11", wires, adj, {0.0}, {},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
 }
 
 template <class T = double, class SVType>
 void applyGeneratorCRX_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliX(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorCRY_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliY(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorCRZ_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliZ(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
 void applyGeneratorControlledPhaseShift_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyOperation("P_11", {wires.back()}, adj, {0.0}, {},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
 }
 template <class T = double, class SVType>
 void applyGeneratorSingleExcitation_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorSingleExcitation(wires, adj);
 }
 template <class T = double, class SVType>
 void applyGeneratorSingleExcitationMinus_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorSingleExcitationMinus(wires, adj);
 }
 template <class T = double, class SVType>
 void applyGeneratorSingleExcitationPlus_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorSingleExcitationPlus(wires, adj);
 }
 template <class T = double, class SVType>
 void applyGeneratorDoubleExcitation_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorDoubleExcitation(wires, adj);
 }
 template <class T = double, class SVType>
 void applyGeneratorDoubleExcitationMinus_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorDoubleExcitationMinus(wires, adj);
 }
 template <class T = double, class SVType>
 void applyGeneratorDoubleExcitationPlus_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorDoubleExcitationPlus(wires, adj);
 }
 template <class T = double, class SVType>
 void applyGeneratorMultiRZ_GPU(
-    SVType &sv, [[maybe_unused]] const std::vector<std::string> &hyperparams,
-    const std::vector<size_t> &wires, const bool adj = false) {
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorMultiRZ(wires, adj);
 }
 } // namespace
@@ -173,10 +171,9 @@ template <class T = double> class AdjointJacobianGPU {
   private:
     using CFP_t = decltype(cuUtil::getCudaType(T{}));
     using scalar_type_t = T;
-    using GeneratorFunc = void (*)(StateVectorCudaManaged<T> &,
-                                   const std::vector<std::string> &,
-                                   const std::vector<size_t> &,
-                                   const bool); // function pointer type
+    using GeneratorFunc = void (*)(
+        StateVectorCudaManaged<T> &, const std::vector<size_t> &, const bool,
+        const std::vector<std::string> &); // function pointer type
 
     // Holds the mapping from gate labels to associated generator functions.
     const std::unordered_map<std::string, GeneratorFunc> generator_map{
@@ -470,7 +467,7 @@ template <class T = double> class AdjointJacobianGPU {
                                const std::vector<size_t> &wires, const bool adj,
                                const std::vector<std::string> &hyperparams = {})
         -> T {
-        generator_map.at(op_name)(sv, hyperparams, wires, adj);
+        generator_map.at(op_name)(sv, wires, adj, hyperparams);
         return scaling_factors.at(op_name);
     }
 

@@ -98,46 +98,9 @@ class LightningGPU(LightningQubit):
     _CPP_BINARY_AVAILABLE = True
 
     operations = {
-        "BasisState",
-        "QubitStateVector",
-        "QubitUnitary",
-        "Identity",
-        "PauliX",
-        "PauliY",
-        "PauliZ",
-        "MultiRZ",
-        "Hadamard",
-        "S",
-        "T",
-        "CNOT",
-        "SWAP",
-        "CSWAP",
-        "Toffoli",
-        "CY",
-        "CZ",
-        "PhaseShift",
-        "ControlledPhaseShift",
-        "CPhase",
-        "RX",
-        "RY",
-        "RZ",
-        "Rot",
-        "CRX",
-        "CRY",
-        "CRZ",
-        "CRot",
-        "IsingXX",
-        "IsingYY",
-        "IsingZZ",
-        "IsingXY",
-        "SingleExcitation",
-        "SingleExcitationPlus",
-        "SingleExcitationMinus",
-        "DoubleExcitation",
-        "DoubleExcitationPlus",
-        "DoubleExcitationMinus",
+        *LightningQubit.operations,
         "PauliRot",
-    }  # TODO: double-check the list of supported operations.
+    }
 
     observables = {
         "PauliX",
@@ -196,9 +159,9 @@ class LightningGPU(LightningQubit):
             name = o.name.split(".")[0]  # The split is because inverse gates have .inv appended
             method = getattr(self._gpu_state, name, None)
 
-            hp = []
+            hyper_params = []
             if name is "PauliRot":
-                hp = _get_cuq_pauli_names(o.hyperparameters["pauli_word"])
+                hyper_params = _get_cuq_pauli_names(o.hyperparameters["pauli_word"])
 
             wires = self.wires.indices(o.wires)
 
@@ -217,7 +180,7 @@ class LightningGPU(LightningQubit):
                     wires,
                     False,
                     [],
-                    hp,
+                    hyper_params,
                     mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
                 )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
 
@@ -225,7 +188,7 @@ class LightningGPU(LightningQubit):
                 inv = o.inverse
                 param = o.parameters
                 if name is "PauliRot":
-                    method(wires, inv, param, hp)
+                    method(wires, inv, param, hyper_params)
                 else:
                     method(wires, inv, param)
 
