@@ -127,7 +127,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         data_buffer_->CopyGpuDataToGpu(gpu_sv, length, async);
     }
     /**
-     * @brief Explicitly copy data from antoher GPU device memory block to this
+     * @brief Explicitly copy data from another GPU device memory block to this
      * GPU device.
      *
      * @param sv LightningGPU object to send data.
