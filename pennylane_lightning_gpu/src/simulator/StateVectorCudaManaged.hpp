@@ -867,86 +867,100 @@ class StateVectorCudaManaged
                            std::forward<decltype(params[0])>(params[0]));
          }},
         {"RX",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyRX(std::forward<decltype(wires)>(wires),
                      std::forward<decltype(adjoint)>(adjoint),
                      std::forward<decltype(params[0])>(params[0]));
          }},
         {"RY",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyRY(std::forward<decltype(wires)>(wires),
                      std::forward<decltype(adjoint)>(adjoint),
                      std::forward<decltype(params[0])>(params[0]));
          }},
         {"RZ",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyRZ(std::forward<decltype(wires)>(wires),
                      std::forward<decltype(adjoint)>(adjoint),
                      std::forward<decltype(params[0])>(params[0]));
          }},
         {"PhaseShift",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyPhaseShift(std::forward<decltype(wires)>(wires),
                              std::forward<decltype(adjoint)>(adjoint),
                              std::forward<decltype(params[0])>(params[0]));
          }},
         {"MultiRZ",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyMultiRZ(std::forward<decltype(wires)>(wires),
                           std::forward<decltype(adjoint)>(adjoint),
                           std::forward<decltype(params[0])>(params[0]));
          }},
         {"IsingXX",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyIsingXX(std::forward<decltype(wires)>(wires),
                           std::forward<decltype(adjoint)>(adjoint),
                           std::forward<decltype(params[0])>(params[0]));
          }},
         {"IsingYY",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyIsingYY(std::forward<decltype(wires)>(wires),
                           std::forward<decltype(adjoint)>(adjoint),
                           std::forward<decltype(params[0])>(params[0]));
          }},
         {"IsingZZ",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyIsingZZ(std::forward<decltype(wires)>(wires),
                           std::forward<decltype(adjoint)>(adjoint),
                           std::forward<decltype(params[0])>(params[0]));
          }},
         {"CRX",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyCRX(std::forward<decltype(wires)>(wires),
                       std::forward<decltype(adjoint)>(adjoint),
                       std::forward<decltype(params[0])>(params[0]));
          }},
         {"CRY",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyCRY(std::forward<decltype(wires)>(wires),
                       std::forward<decltype(adjoint)>(adjoint),
                       std::forward<decltype(params[0])>(params[0]));
          }},
         {"CRZ",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyCRZ(std::forward<decltype(wires)>(wires),
                       std::forward<decltype(adjoint)>(adjoint),
                       std::forward<decltype(params[0])>(params[0]));
          }},
         {"ControlledPhaseShift",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyControlledPhaseShift(
                  std::forward<decltype(wires)>(wires),
                  std::forward<decltype(adjoint)>(adjoint),
                  std::forward<decltype(params[0])>(params[0]));
          }},
         {"Rot",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyRot(std::forward<decltype(wires)>(wires),
                       std::forward<decltype(adjoint)>(adjoint),
                       std::forward<decltype(params)>(params));
          }},
         {"CRot",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyCRot(std::forward<decltype(wires)>(wires),
                        std::forward<decltype(adjoint)>(adjoint),
                        std::forward<decltype(params)>(params));

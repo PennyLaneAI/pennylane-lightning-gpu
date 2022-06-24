@@ -101,12 +101,12 @@ template <class T> class cuOpsData {
      * @param ops_matrices Numerical representation of given matrix if not
      * supported.
      */
-    cuOpsData(std::vector<std::string> ops_name,
+    cuOpsData(const std::vector<std::string> ops_name,
               const std::vector<std::vector<T>> ops_params,
               const std::vector<std::vector<std::string>> ops_hyperparams,
-              std::vector<std::vector<size_t>> ops_wires,
-              std::vector<bool> ops_inverses,
-              std::vector<std::vector<std::complex<T>>> ops_matrices)
+              const std::vector<std::vector<size_t>> ops_wires,
+              const std::vector<bool> ops_inverses,
+              const std::vector<std::vector<std::complex<T>>> ops_matrices)
         : ops_name_{std::move(ops_name)}, ops_params_{std::move(ops_params)},
           ops_hyperparams_{std::move(ops_hyperparams)}, ops_wires_{std::move(
                                                             ops_wires)},
@@ -127,15 +127,18 @@ template <class T> class cuOpsData {
      *
      * @see  cuOpsData(const std::vector<std::string> &ops_name,
             const std::vector<std::vector<T>> &ops_params,
+            const std::vector<std::vector<std::string>> ops_hyperparams,
             const std::vector<std::vector<size_t>> &ops_wires,
             const std::vector<bool> &ops_inverses,
             const std::vector<std::vector<std::complex<T>>> &ops_matrices)
      */
     cuOpsData(const std::vector<std::string> ops_name,
               const std::vector<std::vector<T>> ops_params,
-              std::vector<std::vector<size_t>> ops_wires,
-              std::vector<bool> ops_inverses)
+              const std::vector<std::vector<std::string>> ops_hyperparams,
+              const std::vector<std::vector<size_t>> ops_wires,
+              const std::vector<bool> ops_inverses)
         : ops_name_{std::move(ops_name)}, ops_params_{std::move(ops_params)},
+          ops_hyperparams_{std::move(ops_hyperparams)},
           ops_wires_{std::move(ops_wires)}, ops_inverses_{std::move(
                                                 ops_inverses)},
           ops_matrices_(ops_name.size()) {
@@ -174,7 +177,7 @@ template <class T> class cuOpsData {
         return ops_params_;
     }
     /**
-     * @brief Get the wires for each operation.
+     * @brief Get the list of wires for all operations.
      *
      * @return const std::vector<std::vector<size_t>>&
      */

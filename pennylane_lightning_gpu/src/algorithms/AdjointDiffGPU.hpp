@@ -521,13 +521,12 @@ template <class T = double> class AdjointJacobianGPU {
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void batchAdjointJacobian(
-        const CFP_t *ref_data, std::size_t length,
-        std::vector<std::vector<T>> &jac,
-        const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
-        const Pennylane::Algorithms::OpsData<T> &ops,
-        const std::vector<size_t> &trainableParams,
-        bool apply_operations = false) {
+    void batchAdjointJacobian(const CFP_t *ref_data, std::size_t length,
+                              std::vector<std::vector<T>> &jac,
+                              const std::vector<ObsDatum<T>> &obs,
+                              const cuOpsData<T> &ops,
+                              const std::vector<size_t> &trainableParams,
+                              bool apply_operations = false) {
 
         // Create a pool of available GPU devices
         DevicePool<int> dp;
@@ -684,7 +683,8 @@ template <class T = double> class AdjointJacobianGPU {
                     const T scalingFactor =
                         applyGenerator(mu, ops.getOpsName()[op_idx],
                                        ops.getOpsWires()[op_idx],
-                                       !ops.getOpsInverses()[op_idx]) *
+                                       !ops.getOpsInverses()[op_idx],
+                                       ops.getOpsHyperParams()[op_idx]) *
                         (ops.getOpsInverses()[op_idx] ? -1 : 1);
 
                     // clang-format off

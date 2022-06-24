@@ -15,7 +15,6 @@ r"""
 This module contains the :class:`~.LightningGPU` class, a PennyLane simulator device that
 interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enabled calculations.
 """
-from ast import operator
 from warnings import warn
 
 import numpy as np
