@@ -107,6 +107,14 @@ template <typename DeviceIndexType = int> class DevicePool {
         return dev_uid;
     }
 
+    /**
+     * @brief Explicitly set the device ID for the given thread.
+     *
+     */
+    static void setDeviceIdx(int device_id) {
+        PL_CUDA_IS_SUCCESS(cudaSetDevice(device_id));
+    }
+
   private:
     std::unordered_set<DeviceIndexType> active_devices_;
     std::mutex m_;

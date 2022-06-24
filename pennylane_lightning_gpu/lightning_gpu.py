@@ -19,6 +19,9 @@ from ast import operator
 from warnings import warn
 
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
+
 from pennylane import (
     math,
     BasisState,
@@ -51,6 +54,7 @@ try:
         is_gpu_supported,
         get_gpu_arch,
         DevPool,
+        DevTag,
         ObsStructGPU_C128,
         ObsStructGPU_C64,
         OpsStructGPU_C128,
@@ -114,6 +118,8 @@ class LightningGPU(LightningQubit):
         super().__init__(wires, c_dtype=c_dtype, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._sync = sync
+        self._dp = DevPool()
+        self._batch_obs = batch_obs
 
     def reset(self):
         super().reset()
@@ -136,7 +142,7 @@ class LightningGPU(LightningQubit):
             supports_reversible_diff=False,
             supports_inverse_operations=True,
             supports_analytic_computation=True,
-            supports_finite_shots=False,
+            supports_finite_shots=True,
             returns_state=True,
         )
         capabilities.pop("passthru_devices", None)
@@ -256,7 +262,7 @@ class LightningGPU(LightningQubit):
                     'the "adjoint" differentiation method'
                 )
 
-    def adjoint_jacobian(self, tape, starting_state=None, use_device_state=False):
+    def adjoint_jacobian(self, tape, starting_state=None, use_device_state=False, **kwargs):
         if self.shots is not None:
             warn(
                 "Requested adjoint differentiation to be computed with finite shots."
@@ -312,7 +318,16 @@ class LightningGPU(LightningQubit):
             # whether there must be only one state preparation...
             tp_shift = [i - 1 for i in tp_shift]
 
-        jac = adj.adjoint_jacobian(self._gpu_state, obs_serialized, ops_serialized, tp_shift)
+        if self._dp.getTotalDevices() > 1 and self._batch_obs:
+            jac = adj.adjoint_jacobian_batched(
+                self._gpu_state,
+                obs_serialized,
+                ops_serialized,
+                tp_shift,
+            )
+        else:
+            jac = adj.adjoint_jacobian(self._gpu_state, obs_serialized, ops_serialized, tp_shift)
+
         jac = np.array(jac)  # only for parameters differentiable with the adjoint method
         jac = jac.reshape(-1, len(tp_shift))
         jac_r = np.zeros((jac.shape[0], all_params))

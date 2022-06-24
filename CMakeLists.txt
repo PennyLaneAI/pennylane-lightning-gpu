@@ -98,7 +98,7 @@ set(ENABLE_OPENMP ON)
 FetchContent_Declare(
     pennylane_lightning
     GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
-    GIT_TAG       latest
+    GIT_TAG      master 
 )
 set(ENABLE_KOKKOS OFF CACHE BOOL "Disable Kokkos")
 FetchContent_MakeAvailable(pennylane_lightning)

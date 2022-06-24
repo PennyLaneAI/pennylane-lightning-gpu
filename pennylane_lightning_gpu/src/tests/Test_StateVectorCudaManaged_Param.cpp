@@ -1706,8 +1706,6 @@ TEMPLATE_TEST_CASE("Sample", "[LightningGPU_Param]", float, double) {
         probabilities[i] = counts[i] / (TestType)num_samples;
     }
 
-    SECTION("No wires provided:") {
-        REQUIRE_THAT(probabilities,
-                     Catch::Approx(expected_probabilities).margin(.05));
-    }
+    REQUIRE_THAT(probabilities,
+                 Catch::Approx(expected_probabilities).margin(.05));
 }
