@@ -125,12 +125,15 @@ template <class T> class cuOpsData {
      * @brief Construct an cuOpsData object, representing the serialized
      operations to apply upon the `%StateVector`.
      *
-     * @see  cuOpsData(const std::vector<std::string> &ops_name,
-            const std::vector<std::vector<T>> &ops_params,
-            const std::vector<std::vector<std::string>> ops_hyperparams,
-            const std::vector<std::vector<size_t>> &ops_wires,
-            const std::vector<bool> &ops_inverses,
-            const std::vector<std::vector<std::complex<T>>> &ops_matrices)
+     * @see cuOpsData(const std::vector<std::string> &ops_name,
+     *       const std::vector<std::vector<T>> &ops_params,
+     *       const std::vector<std::vector<std::string>> ops_hyperparams,
+     *       const std::vector<std::vector<size_t>> &ops_wires,
+     *       const std::vector<bool> &ops_inverses,
+     *       const std::vector<std::vector<std::complex<T>>> &ops_matrices)
+     *
+     * @note It doesn't require `ops_matrices` as the input for supported
+     * operations.
      */
     cuOpsData(const std::vector<std::string> ops_name,
               const std::vector<std::vector<T>> ops_params,
