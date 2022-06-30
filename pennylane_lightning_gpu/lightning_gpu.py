@@ -305,6 +305,12 @@ class LightningGPU(LightningQubit):
         jac_r[:, record_tp_rows] = jac
         return jac_r
 
+    def sample(self, observable, shot_range=None, bin_size=None):
+        if observable.name != "PauliZ":
+            self.apply_cq(observable.diagonalizing_gates())
+            self._samples = self.generate_samples()
+        return super().sample(observable, shot_range=shot_range, bin_size=bin_size)
+
     def expval(self, observable, shot_range=None, bin_size=None):
         if observable.name in [
             "Projector",
@@ -315,9 +321,9 @@ class LightningGPU(LightningQubit):
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
 
         if self.shots is not None:
-            if observable.name != "PauliZ":
-                self.apply_cq(observable.diagonalizing_gates())
-                self._samples = self.generate_samples()
+            # if observable.name != "PauliZ":
+            #    self.apply_cq(observable.diagonalizing_gates())
+            #    self._samples = self.generate_samples()
             # estimate the expectation value
             samples = self.sample(observable, shot_range=shot_range, bin_size=bin_size)
             return np.squeeze(np.mean(samples, axis=0))
@@ -363,6 +369,9 @@ class LightningGPU(LightningQubit):
 
     def var(self, observable, shot_range=None, bin_size=None):
         if self.shots is not None:
+            # if observable.name != "PauliZ":
+            #    self.apply_cq(observable.diagonalizing_gates())
+            #    self._samples = self.generate_samples()
             # estimate the var
             # Lightning doesn't support sampling yet
             samples = self.sample(observable, shot_range=shot_range, bin_size=bin_size)
