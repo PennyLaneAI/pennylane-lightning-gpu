@@ -1,5 +1,9 @@
 # Release 0.25.0-dev
 
+---
+
+# Release 0.24.1
+
 ### Bug fixes
 
 * Ensure diagonalizing gates are applied before sampling on GPU. [(#36)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/36)
