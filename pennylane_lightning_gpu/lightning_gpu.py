@@ -320,6 +320,12 @@ class LightningGPU(LightningQubit):
         jac_r[:, record_tp_rows] = jac
         return jac_r
 
+    def sample(self, observable, shot_range=None, bin_size=None):
+        if observable.name != "PauliZ":
+            self.apply_cq(observable.diagonalizing_gates())
+            self._samples = self.generate_samples()
+        return super().sample(observable, shot_range=shot_range, bin_size=bin_size)
+
     def expval(self, observable, shot_range=None, bin_size=None):
         if observable.name in [
             "Projector",
