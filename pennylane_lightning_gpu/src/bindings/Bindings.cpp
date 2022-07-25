@@ -687,7 +687,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
                     &observables,
                 const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
-                const std::vector<size_t> &trainableParams, size_t num_params) {
+                const std::vector<size_t> &trainableParams) {
                  std::vector<std::vector<PrecisionT>> jac(
                      observables.size(),
                      std::vector<PrecisionT>(trainableParams.size(), 0));
