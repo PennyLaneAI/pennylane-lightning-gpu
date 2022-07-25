@@ -17,12 +17,15 @@
 #include <variant>
 #include <vector>
 
+#include "cuda.h"
+
 #include "AdjointDiff.hpp"
 #include "AdjointDiffGPU.hpp"
 #include "JacobianTape.hpp"
 
-#include "DevicePool.hpp" // LightningException
-#include "Error.hpp"      // LightningException
+#include "DevTag.hpp"
+#include "DevicePool.hpp"
+#include "Error.hpp"
 #include "StateVectorCudaManaged.hpp"
 #include "StateVectorManagedCPU.hpp"
 #include "StateVectorRawCPU.hpp"
@@ -67,7 +70,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     std::string class_name = "LightningGPU_C" + bitsize;
 
     py::class_<StateVectorCudaManaged<PrecisionT>>(m, class_name.c_str())
-        .def(py::init<std::size_t>()) // qubits, device
+        .def(py::init<std::size_t>())              // qubits, device
+        .def(py::init<std::size_t, DevTag<int>>()) // qubits, dev-tag
         .def(
             py::init<const StateVectorCudaManaged<PrecisionT> &>()) // copy ctor
         .def(py::init([](const np_arr_c &arr) {
@@ -450,7 +454,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                      strides /* strides for each axis     */
                      ));
              })
-
+        .def("DeviceToDevice", &StateVectorCudaManaged<PrecisionT>::updateData,
+             "Synchronize data from another GPU device to current device.")
         .def("DeviceToHost",
              py::overload_cast<StateVectorManagedCPU<PrecisionT> &, bool>(
                  &StateVectorCudaManaged<PrecisionT>::CopyGpuDataToHost,
@@ -672,7 +677,24 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                      std::vector<PrecisionT>(trainableParams.size(), 0));
 
                  adj.adjointJacobian(sv.getData(), sv.getLength(), jac,
-                                     observables, operations, trainableParams);
+                                     observables, operations, trainableParams,
+                                     false, sv.getDataBuffer().getDevTag());
+                 return py::array_t<ParamT>(py::cast(jac));
+             })
+        .def("adjoint_jacobian_batched",
+             [](AdjointJacobianGPU<PrecisionT> &adj,
+                const StateVectorCudaManaged<PrecisionT> &sv,
+                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
+                    &observables,
+                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+                const std::vector<size_t> &trainableParams, size_t num_params) {
+                 std::vector<std::vector<PrecisionT>> jac(
+                     observables.size(),
+                     std::vector<PrecisionT>(trainableParams.size(), 0));
+
+                 adj.batchAdjointJacobian(sv.getData(), sv.getLength(), jac,
+                                          observables, operations,
+                                          trainableParams, false);
                  return py::array_t<ParamT>(py::cast(jac));
              });
 }
@@ -701,15 +723,35 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
           "support for the PennyLane-Lightning-GPU device.");
     m.def("get_gpu_arch", &getGPUArch, py::arg("device_number") = 0,
           "Returns the given GPU major and minor GPU support.");
-
     py::class_<DevicePool<int>>(m, "DevPool")
         .def(py::init<>())
         .def("getActiveDevices", &DevicePool<int>::getActiveDevices)
         .def("isActive", &DevicePool<int>::isActive)
         .def("isInactive", &DevicePool<int>::isInactive)
-        .def("getTotalDevices", &DevicePool<int>::getTotalDevices)
         .def("acquireDevice", &DevicePool<int>::acquireDevice)
-        .def("releaseDevice", &DevicePool<int>::releaseDevice);
+        .def("releaseDevice", &DevicePool<int>::releaseDevice)
+        .def_static("getTotalDevices", &DevicePool<int>::getTotalDevices)
+        .def_static("getDeviceUIDs", &DevicePool<int>::getDeviceUIDs)
+        .def_static("setDeviceID", &DevicePool<int>::setDeviceIdx);
+
+    py::class_<DevTag<int>>(m, "DevTag")
+        .def(py::init<>())
+        .def(py::init<int>())
+        .def(py::init([](int device_id, void *stream_id) {
+            // Note, streams must be handled externally for now.
+            // Binding support provided through void* conversion to cudaStream_t
+            return new DevTag<int>(device_id,
+                                   static_cast<cudaStream_t>(stream_id));
+        }))
+        .def(py::init<const DevTag<int> &>())
+        .def("getDeviceID", &DevTag<int>::getDeviceID)
+        .def("getStreamID",
+             [](DevTag<int> &dev_tag) {
+                 // default stream points to nullptr, so just return void* as
+                 // type
+                 return static_cast<void *>(dev_tag.getStreamID());
+             })
+        .def("refresh", &DevTag<int>::refresh);
 
     StateVectorCudaManaged_class_bindings<float, float>(m);
     StateVectorCudaManaged_class_bindings<double, double>(m);

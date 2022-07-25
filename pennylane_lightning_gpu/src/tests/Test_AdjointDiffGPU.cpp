@@ -363,3 +363,69 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Mixed Ops, Obs and TParams",
         CHECK(expected[2] == Approx(jacobian[0][2]));
     }
 }
+
+TEST_CASE("AdjointJacobianGPU::batchAdjointJacobian Mixed Ops, Obs and TParams",
+          "[AdjointJacobianGPU]") {
+    AdjointJacobianGPU<double> adj;
+    std::vector<double> param{-M_PI / 7, M_PI / 5, 2 * M_PI / 3};
+    {
+        const size_t num_qubits = 2;
+        const std::vector<size_t> t_params{1, 2, 3};
+        const size_t num_obs = 1;
+
+        const auto thetas = Pennylane::Util::linspace(-2 * M_PI, 2 * M_PI, 8);
+
+        std::vector<double> local_params{0.543, 0.54, 0.1,  0.5, 1.3,
+                                         -2.3,  0.5,  -0.5, 0.5};
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(t_params.size(), 0));
+
+        std::vector<std::complex<double>> cdata{
+            {Pennylane::Util::ONE<double>()},
+            {Pennylane::Util::ZERO<double>()},
+            {Pennylane::Util::ZERO<double>()},
+            {Pennylane::Util::ZERO<double>()}};
+        SVDataGPU<double> psi(num_qubits, std::vector<std::complex<double>>{
+                                              cdata.begin(), cdata.end()});
+
+        auto obs = ObsDatum<double>({"PauliX", "PauliZ"}, {{}, {}}, {{0}, {1}});
+        auto ops =
+            adj.createOpsData({"Hadamard", "RX", "CNOT", "RZ", "RY", "RZ", "RZ",
+                               "RY", "RZ", "RZ", "RY", "CNOT"},
+                              {{},
+                               {local_params[0]},
+                               {},
+                               {local_params[1]},
+                               {local_params[2]},
+                               {local_params[3]},
+                               {local_params[4]},
+                               {local_params[5]},
+                               {local_params[6]},
+                               {local_params[7]},
+                               {local_params[8]},
+                               {}},
+                              std::vector<std::vector<std::size_t>>{{0},
+                                                                    {0},
+                                                                    {0, 1},
+                                                                    {0},
+                                                                    {0},
+                                                                    {0},
+                                                                    {0},
+                                                                    {0},
+                                                                    {0},
+                                                                    {0},
+                                                                    {1},
+                                                                    {0, 1}},
+                              {false, false, false, false, false, false, false,
+                               false, false, false, false, false});
+
+        adj.batchAdjointJacobian(psi.cuda_sv.getData(), psi.cuda_sv.getLength(),
+                                 jacobian, {obs}, ops, t_params, true);
+
+        std::vector<double> expected{-0.71429188, 0.04998561, -0.71904837};
+        // Computed with PennyLane using default.qubit
+        CHECK(expected[0] == Approx(jacobian[0][0]));
+        CHECK(expected[1] == Approx(jacobian[0][1]));
+        CHECK(expected[2] == Approx(jacobian[0][2]));
+    }
+}
