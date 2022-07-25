@@ -10,6 +10,8 @@
 
 ### Bug fixes
 
+* Updates to ensure compatibility with cuQuantum 22.0.7 [(#38)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/38)
+
 ### Contributors
 
 ---
