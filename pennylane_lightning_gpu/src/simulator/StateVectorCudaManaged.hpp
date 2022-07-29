@@ -183,6 +183,7 @@ class StateVectorCudaManaged
      * @brief STL-fiendly variant of `applyOperation(
         const std::string &opName, const std::vector<size_t> &wires,
         bool adjoint = false, const std::vector<Precision> &params = {0.0},
+        [[maybe_unused]] const std::vector<std::string> &hyperparams = {},
         [[maybe_unused]] const std::vector<CFP_t> &gate_matrix = {})`
      *
      */

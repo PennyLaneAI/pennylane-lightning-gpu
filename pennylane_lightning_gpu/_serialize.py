@@ -146,8 +146,8 @@ def _serialize_ops(
         do not have a dedicated kernel.
     """
     names = []
-    hyper_params = []
     params = []
+    hyper_params = []
     wires = []
     inverses = []
     mats = []

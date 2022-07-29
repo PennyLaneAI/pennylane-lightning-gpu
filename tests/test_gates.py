@@ -163,7 +163,7 @@ def test_paulirot_unitary_correct(wires, pauli_words):
     assert np.allclose(unitary, unitary_expected)
 
 
-@pytest.mark.parametrize("wires, pauli_words", [[4, "XYIW"], [1, {"Q"}]])
+@pytest.mark.parametrize("wires, pauli_words", [[4, "XYIW"], [1, "Q"], [1, {"Q"}]])
 def test_paulirot_error(wires, pauli_words):
     """Test if lightning.gpu raises errors applying PauliRot for invalid Pauli words"""
 
