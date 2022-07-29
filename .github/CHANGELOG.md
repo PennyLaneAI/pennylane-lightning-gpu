@@ -1,16 +1,26 @@
 # Release 0.25.0-dev
 
-### New features since last release
+### Bug fixes
 
-### Breaking changes
+* Updates to ensure compatibility with cuQuantum 22.0.7 [(#38)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/38)
 
-### Improvements
+### Contributors
 
-### Documentation
+Lee James O'Riordan
+
+---
+
+# Release 0.24.1
 
 ### Bug fixes
 
+* Ensure diagonalizing gates are applied before sampling on GPU. [(#36)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/36)
+
 ### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Christina Lee, Lee James O'Riordan
 
 ---
 

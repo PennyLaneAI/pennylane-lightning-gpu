@@ -62,8 +62,8 @@ endif()
 # Required for external deps when loading in Python
 set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
-set(CMAKE_BUILD_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/")
-set(CMAKE_INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/")
+set(CMAKE_BUILD_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
 
 if(ENABLE_CLANG_TIDY)
     if (NOT DEFINED CLANG_TIDY_BINARY)
@@ -98,7 +98,7 @@ set(ENABLE_OPENMP ON)
 FetchContent_Declare(
     pennylane_lightning
     GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
-    GIT_TAG      master 
+    GIT_TAG       latest
 )
 set(ENABLE_KOKKOS OFF CACHE BOOL "Enable Kokkos")
 FetchContent_MakeAvailable(pennylane_lightning)
@@ -170,7 +170,7 @@ if(ENABLE_PYTHON)
     pybind11_add_module(lightning_gpu_qubit_ops     "pennylane_lightning_gpu/src/bindings/Bindings.cpp")
     target_link_libraries(lightning_gpu_qubit_ops PRIVATE pennylane_lightning_gpu)
     set_target_properties(lightning_gpu_qubit_ops PROPERTIES CXX_VISIBILITY_PRESET hidden)
-    set_target_properties(lightning_gpu_qubit_ops PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/")
+    set_target_properties(lightning_gpu_qubit_ops PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
     target_compile_options(lightning_gpu_qubit_ops PRIVATE "$<$<CONFIG:RELEASE>:-W>")
     target_compile_definitions(lightning_gpu_qubit_ops PRIVATE VERSION_INFO=${VERSION_STRING})
     target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include)
@@ -181,7 +181,7 @@ endif()
 # string(REPLACE "libcudart_static.a" "libcudart.so" CUDA_SHARED_RT "${CUDA_LIBRARIES}")
 target_include_directories(pennylane_lightning_gpu INTERFACE ${CUDA_TOOLKIT_ROOT_DIR}/include)
 target_link_libraries(pennylane_lightning_gpu INTERFACE CUDA::cudart)
-set_target_properties(pennylane_lightning_gpu PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/")
+set_target_properties(pennylane_lightning_gpu PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
 
 if(ENABLE_OPENMP)
 	target_link_libraries(pennylane_lightning_gpu INTERFACE OpenMP::OpenMP_CXX)

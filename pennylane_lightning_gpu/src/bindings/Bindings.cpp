@@ -687,11 +687,13 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def("adjoint_jacobian_batched",
              [](AdjointJacobianGPU<PrecisionT> &adj,
                 const StateVectorCudaManaged<PrecisionT> &sv,
-                const vector<ObsDatum<PrecisionT>> &observables,
+                const std::vector<ObsDatum<PrecisionT>>
+                    &observables,
                 const cuOpsData<PrecisionT> &operations,
-                const vector<size_t> &trainableParams, size_t num_params) {
-                 vector<vector<PrecisionT>> jac(
-                     observables.size(), vector<PrecisionT>(num_params, 0));
+                const std::vector<size_t> &trainableParams) {
+                 std::vector<std::vector<PrecisionT>> jac(
+                     observables.size(),
+                     std::vector<PrecisionT>(trainableParams.size(), 0));
 
                  adj.batchAdjointJacobian(sv.getData(), sv.getLength(), jac,
                                           observables, operations,

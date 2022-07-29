@@ -654,25 +654,42 @@ class TestLightningGPUIntegration:
 
         assert np.isclose(circuit(p), 1, atol=tol, rtol=0)
 
-    def test_nonzero_shots(self, tol):
+    @pytest.mark.parametrize(
+        "op,obs,expec_result",
+        [
+            (qml.RX, qml.PauliY, lambda x: -np.sin(x)),
+            (qml.RY, qml.PauliZ, np.cos),
+            (
+                lambda p, wires: (qml.RZ(p, wires=wires), (qml.RY(p, wires=wires + 1))),
+                lambda wires: qml.PauliZ(wires) @ qml.PauliX(wires + 1),
+                np.sin,
+            ),
+            (
+                lambda p, wires: (qml.RZ(p, wires=wires), (qml.RY(p, wires=wires + 1))),
+                lambda wires: qml.PauliZ(wires) @ qml.PauliZ(wires + 1),
+                np.cos,
+            ),
+        ],
+    )
+    def test_nonzero_shots(self, tol, op, obs, expec_result):
         """Test that the default qubit plugin provides correct result for high shot number"""
 
         shots = 10**4
-        dev = qml.device("lightning.gpu", wires=1, shots=shots)
+        dev = qml.device("lightning.gpu", wires=2, shots=shots)
 
         p = 0.543
 
         @qml.qnode(dev)
         def circuit(x):
             """Test quantum function"""
-            qml.RX(x, wires=0)
-            return qml.expval(qml.PauliY(0))
+            op(x, wires=0)
+            return qml.expval(obs(0))
 
         runs = []
         for _ in range(100):
             runs.append(circuit(p))
 
-        assert np.isclose(np.mean(runs), -np.sin(p), atol=1e-2, rtol=0)
+        assert np.isclose(np.mean(runs), expec_result(p), atol=1e-2, rtol=0)
 
     # This test is ran against the state |0> with one Z expval
     @pytest.mark.parametrize(
