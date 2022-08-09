@@ -77,7 +77,7 @@ test-cpp:
 	rm -rf ./BuildTests
 	cmake . -BBuildTests -DBUILD_TESTS=1
 	cmake --build ./BuildTests
-	./BuildTests/pennylane_lightning_gpu/src/tests/runner
+	./BuildTests/pennylane_lightning_gpu/src/tests/runner_gpu
 
 coverage:
 	@echo "Generating coverage report..."
