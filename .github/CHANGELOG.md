@@ -8,7 +8,9 @@
 
 * Updates to ensure compatibility with cuQuantum 22.0.7. [(#38)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/38)
 
-* Bugfix for IsingZZ generator indices and adjoint tests. [(#41)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/41)
+* Bugfix for IsingZZ generator indices and adjoint tests. [(#40)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/40)
+
+* Add RAII wrapping of custatevec handles to avoid GPU memory leaking of CUDA contexts [(#41)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/41)
 
 * Updated capabilities dictionary to ensure finite-shots support is set to `True`. [(#34)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/34)
 
