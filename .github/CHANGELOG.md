@@ -1,8 +1,14 @@
 # Release 0.25.0-dev
 
+### New features since last release
+
+* Added support for multi-GPU adjoint observable batching [(#27)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/27)
+
 ### Bug fixes
 
 * Updates to ensure compatibility with cuQuantum 22.0.7 [(#38)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/38)
+
+* Bugfix for IsingZZ generator indices and adjoint tests [(#41)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/41)
 
 ### Contributors
 
