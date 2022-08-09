@@ -2,7 +2,7 @@
 
 ### Bug fixed
 
-* Fix the typo error to make sure test-cpp run the correct executable [(#42)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/42)
+* Fix `test-cpp` Makefile rule to run the correct GPU-compiled executable [(#42)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/42)
 
 ### Bug fixes
 
