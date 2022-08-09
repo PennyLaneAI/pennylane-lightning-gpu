@@ -1,5 +1,9 @@
 # Release 0.25.0-dev
 
+### Bug fixed
+
+* Fix the typo error to make sure test-cpp run the correct executable [(#42)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/42)
+
 ### Bug fixes
 
 * Updates to ensure compatibility with cuQuantum 22.0.7 [(#38)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/38)
