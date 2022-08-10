@@ -15,6 +15,9 @@
       qml.RX(params[idx], w)
     return [qml.expval(qml.PauliZ(i))  for i in range(dev.num_wires)]
   ```
+For comparison, we can re-examine the benchmark script from the [Lightning GPU PennyLane blog post](https://pennylane.ai/blog/2022/07/lightning-fast-simulations-with-pennylane-and-the-nvidia-cuquantum-sdk/). Comparing with and without the multi-GPU supports on a machine with 4 A100 40GB GPUs shows a significant improvement over the single GPU run-times.
+
+![image](https://user-images.githubusercontent.com/858615/184025758-7adeb433-5f7b-451a-bc72-ee3f7e321c49.png)
 
 ### Bug fixed
 
