@@ -6,6 +6,16 @@
 
   This new feature allows users to batch their gradients over observables using the `adjoint` method. Assuming multiple GPUs on a host-system, this functionality can be enabled by adding the `batch_obs=True` argument when creating a device, such as:
 
+  ```python
+  dev = qml.device("lightning.gpu", wires=6, batch_obs=True)
+  ...
+  @qml.qnode(dev, diff_method="adjoint")
+  def circuit(params):
+    for idx,w in enumerate(dev.wires):
+      qml.RX(params[idx], w)
+    return [qml.expval(qml.PauliZ(i))  for i in range(dev.num_wires)]
+  ```
+
 ### Bug fixed
 
 * Fix `test-cpp` Makefile rule to run the correct GPU-compiled executable [(#42)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/42)
