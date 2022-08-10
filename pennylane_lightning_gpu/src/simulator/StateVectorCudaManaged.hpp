@@ -113,7 +113,7 @@ class StateVectorCudaManaged
         BaseType::CopyGpuDataToGpuIn(other);
     }
 
-    ~StateVectorCudaManaged() {}
+    ~StateVectorCudaManaged() = default;
 
     /**
      * @brief Apply a single gate to the state-vector. Offloads to custatevec

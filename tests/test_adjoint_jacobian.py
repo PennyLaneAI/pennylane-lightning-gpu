@@ -643,32 +643,34 @@ def circuit_ansatz(params, wires):
     qml.CRZ(params[5], wires=[wires[0], wires[3]]).inv()
     qml.PhaseShift(params[6], wires=wires[0]).inv()
     qml.Rot(params[6], params[7], params[8], wires=wires[0])
-    # #     qml.Rot(params[8], params[8], params[9], wires=wires[1]).inv()
+    qml.Rot(params[8], params[8], params[9], wires=wires[1]).inv()
     qml.MultiRZ(params[11], wires=[wires[0], wires[1]])
     # #     qml.PauliRot(params[12], "XXYZ", wires=[wires[0], wires[1], wires[2], wires[3]])
     qml.CPhase(params[12], wires=[wires[3], wires[2]])
     qml.IsingXX(params[13], wires=[wires[1], wires[0]])
     qml.IsingYY(params[14], wires=[wires[3], wires[2]])
-    qml.IsingZZ(params[14], wires=[wires[2], wires[1]])
-    qml.U1(params[15], wires=wires[0])
-    qml.U2(params[16], params[17], wires=wires[0])
-    qml.U3(params[18], params[19], params[20], wires=wires[1])
-    # #     qml.CRot(params[21], params[22], params[23], wires=[wires[1], wires[2]]).inv()  # expected tofail
+    qml.IsingZZ(params[15], wires=[wires[2], wires[1]])
+
+    qml.CRot(params[21], params[22], params[23], wires=[wires[1], wires[2]]).inv()
     qml.SingleExcitation(params[24], wires=[wires[2], wires[0]])
     qml.DoubleExcitation(params[25], wires=[wires[2], wires[0], wires[1], wires[3]])
-    qml.SingleExcitationPlus(params[26], wires=[wires[0], wires[2]])
-    qml.SingleExcitationMinus(params[27], wires=[wires[0], wires[2]])
-    qml.DoubleExcitationPlus(params[27], wires=[wires[2], wires[0], wires[1], wires[3]])
-    qml.DoubleExcitationMinus(params[27], wires=[wires[2], wires[0], wires[1], wires[3]])
-    qml.RX(params[28], wires=wires[0])
-    qml.RX(params[29], wires=wires[1])
 
 
 @pytest.mark.parametrize(
     "returns",
     [
+        qml.PauliX(0),
+        qml.PauliY(0),
         qml.PauliZ(0),
+        qml.PauliX(1),
+        qml.PauliY(1),
+        qml.PauliZ(1),
         qml.PauliX(2),
+        qml.PauliY(2),
+        qml.PauliZ(2),
+        qml.PauliX(3),
+        qml.PauliY(3),
+        qml.PauliZ(3),
         qml.PauliZ(0) @ qml.PauliY(3),
         qml.Hadamard(2),
         qml.Hadamard(3) @ qml.PauliZ(2),
@@ -676,6 +678,7 @@ def circuit_ansatz(params, wires):
         # qml.Projector([0, 0], wires=[2, 0])
         qml.PauliX(0) @ qml.PauliY(3),
         qml.PauliY(0) @ qml.PauliY(2) @ qml.PauliY(3),
+        qml.PauliZ(0) @ qml.PauliZ(1) @ qml.PauliZ(2),
         # qml.Hermitian(np.kron(qml.PauliY.matrix, qml.PauliZ.matrix), wires=[3, 2]),
         # qml.Hermitian(np.array([[0,1],[1,0]], requires_grad=False), wires=0),
         # qml.Hermitian(np.array([[0,1],[1,0]], requires_grad=False), wires=0) @ qml.PauliZ(2),
@@ -684,7 +687,7 @@ def circuit_ansatz(params, wires):
 def test_integration(returns):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations"""
-    dev_lightning = qml.device("lightning.qubit", wires=range(4))
+    dev_default = qml.device("default.qubit", wires=range(4))
     dev_gpu = qml.device("lightning.gpu", wires=range(4))
 
     def circuit(params):
@@ -692,15 +695,16 @@ def test_integration(returns):
         return qml.expval(returns), qml.expval(qml.PauliY(1))
 
     n_params = 30
-    params = np.linspace(0, 10, n_params)
+    np.random.seed(1337)
+    params = np.random.rand(n_params)
 
-    qnode_gpu = qml.QNode(circuit, dev_gpu)
-    qnode_lightning = qml.QNode(circuit, dev_lightning, diff_method="adjoint")
+    qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
+    qnode_default = qml.QNode(circuit, dev_default, diff_method="adjoint")
 
     j_gpu = qml.jacobian(qnode_gpu)(params)
-    j_lightning = qml.jacobian(qnode_lightning)(params)
+    j_default = qml.jacobian(qnode_default)(params)
 
-    assert np.allclose(j_gpu, j_lightning, atol=1e-7)
+    assert np.allclose(j_gpu, j_default, atol=1e-7)
 
 
 custom_wires = ["alice", 3.14, -1, 0]
@@ -735,7 +739,8 @@ def test_integration_custom_wires(returns):
         return qml.expval(returns), qml.expval(qml.PauliY(custom_wires[1]))
 
     n_params = 30
-    params = np.linspace(0, 10, n_params)
+    np.random.seed(1337)
+    params = np.random.rand(n_params)
 
     qnode_gpu = qml.QNode(circuit, dev_gpu)
     qnode_lightning = qml.QNode(circuit, dev_lightning, diff_method="adjoint")
