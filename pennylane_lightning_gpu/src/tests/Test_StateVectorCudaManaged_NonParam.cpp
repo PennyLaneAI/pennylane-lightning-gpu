@@ -830,3 +830,34 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCSWAP",
         }
     }
 }
+
+TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval",
+                   "[StateVectorCudaManaged_Nonparam]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const std::size_t num_qubits = 3;
+    SECTION("Apply directly") {
+        SVDataGPU<TestType> svdat{num_qubits};
+
+        CHECK(svdat.sv.getDataVector()[0] == cp_t{1, 0});
+        svdat.cuda_sv.applyHadamard({0}, false);
+        svdat.cuda_sv.applyCNOT({0, 1}, false);
+        svdat.cuda_sv.applyCNOT({1, 2}, false);
+
+        size_t matrix_dim = static_cast<size_t>(1U) << num_qubits;
+        std::vector<cp_t> matrix(matrix_dim * matrix_dim);
+
+        for (size_t i = 0; i < matrix.size(); i++) {
+            if (i % matrix_dim == i / matrix_dim)
+                matrix[i] = std::complex<TestType>(1, 0);
+            else
+                matrix[i] = std::complex<TestType>(0, 0);
+        }
+
+        auto results = svdat.cuda_sv.expval(matrix);
+
+        printf("%f\n%f\n", results.x, results.y);
+        cp_t expected(1, 0);
+        CHECK(expected.real() == Approx(results.x).epsilon(0.001));
+        CHECK(expected.imag() == Approx(results.y).epsilon(0.001));
+    }
+}

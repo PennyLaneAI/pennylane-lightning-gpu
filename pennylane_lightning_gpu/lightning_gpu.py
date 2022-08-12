@@ -329,11 +329,15 @@ class LightningGPU(LightningQubit):
     def expval(self, observable, shot_range=None, bin_size=None):
         if observable.name in [
             "Projector",
-            "Hamiltonian",
+            # "Hamiltonian",
             "SparseHamiltonian",
         ]:
             self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
+
+        if observable.name == "Hamiltonian":
+            DenseHamiltonianMatrix = observable.data[0].toarray(copy=False)
+            return self._gpu_state.ExpectationValue(DenseHamiltonianMatrix)
 
         if self.shots is not None:
             # estimate the expectation value

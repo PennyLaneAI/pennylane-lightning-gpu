@@ -693,6 +693,33 @@ class StateVectorCudaManaged
         return expval(obsName, wires, params, matrix_cu);
     }
     /**
+     * @brief See `expval(std::vector<CFP_t> &gate_matrix = {})`
+     */
+    auto expval(const std::vector<std::complex<Precision>> &gate_matrix) {
+
+        std::vector<CFP_t> matrix_cu(gate_matrix.size());
+
+        for (std::size_t i = 0; i < gate_matrix.size(); i++) {
+            matrix_cu[i] =
+                cuUtil::complexToCu<std::complex<Precision>>(gate_matrix[i]);
+        }
+
+        if (gate_matrix.empty()) {
+            std::string message = "Currently unsupported observable";
+            throw LightningException(message.c_str());
+        }
+        std::vector<size_t> local_wires(
+            static_cast<size_t>(BaseType::getNumQubits()));
+
+        for (std::size_t i = 0; i < local_wires.size(); i++) {
+            local_wires[i] = i;
+        }
+
+        auto expect_val =
+            getExpectationValueDeviceMatrix(matrix_cu.data(), local_wires);
+        return expect_val;
+    }
+    /**
      * @brief Utility method for probability calculation using given wires.
      *
      * @param wires List of wires to return probabilities for in lexicographical

@@ -429,6 +429,23 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             },
             "Calculate the expectation value of the given observable.")
         .def(
+            "ExpectationValue",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               [[maybe_unused]] const np_arr_c &gate_matrix) {
+                // prefixed # for string
+                const auto m_buffer = gate_matrix.request();
+                std::vector<std::complex<ParamT>> conv_matrix;
+                if (m_buffer.size) {
+                    const auto m_ptr =
+                        static_cast<const std::complex<ParamT> *>(m_buffer.ptr);
+                    conv_matrix = std::vector<std::complex<ParamT>>{
+                        m_ptr, m_ptr + m_buffer.size};
+                }
+                // Return the real component only & ignore params
+                return sv.expval(conv_matrix).x;
+            },
+            "Calculate the expectation value of the Hamiltonian observable.")
+        .def(
             "Probability",
             [](StateVectorCudaManaged<PrecisionT> &sv,
                const std::vector<std::size_t> &wires) {
