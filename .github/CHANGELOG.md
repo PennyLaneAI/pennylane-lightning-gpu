@@ -1,12 +1,41 @@
-# Release 0.25.0-dev
+# Release 0.25.0
+
+### New features since last release
+
+* Added support for multi-GPU adjoint observable batching. [(#27)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/27)
+
+  This new feature allows users to batch their gradients over observables using the `adjoint` method. Assuming multiple GPUs on a host-system, this functionality can be enabled by adding the `batch_obs=True` argument when creating a device, such as:
+
+  ```python
+  dev = qml.device("lightning.gpu", wires=6, batch_obs=True)
+  ...
+  @qml.qnode(dev, diff_method="adjoint")
+  def circuit(params):
+    for idx,w in enumerate(dev.wires):
+      qml.RX(params[idx], w)
+    return [qml.expval(qml.PauliZ(i))  for i in range(dev.num_wires)]
+  ```
+For comparison, we can re-examine the benchmark script from the [Lightning GPU PennyLane blog post](https://pennylane.ai/blog/2022/07/lightning-fast-simulations-with-pennylane-and-the-nvidia-cuquantum-sdk/). Comparing with and without the multi-GPU supports on a machine with 4 A100 40GB GPUs shows a significant improvement over the single GPU run-times.
+
+![image](https://user-images.githubusercontent.com/858615/184025758-7adeb433-5f7b-451a-bc72-ee3f7e321c49.png)
+
+### Bug fixed
+
+* Fix `test-cpp` Makefile rule to run the correct GPU-compiled executable [(#42)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/42)
 
 ### Bug fixes
 
-* Updates to ensure compatibility with cuQuantum 22.0.7 [(#38)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/38)
+* Updates to ensure compatibility with cuQuantum 22.0.7. [(#38)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/38)
+
+* Bugfix for IsingZZ generator indices and adjoint tests. [(#40)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/40)
+
+* Add RAII wrapping of custatevec handles to avoid GPU memory leaking of CUDA contexts [(#41)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/41)
+
+* Updated capabilities dictionary to ensure finite-shots support is set to `True`. [(#34)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/34)
 
 ### Contributors
 
-Lee James O'Riordan
+Lee James O'Riordan, Trevor Vincent
 
 ---
 
