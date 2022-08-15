@@ -336,8 +336,11 @@ class LightningGPU(LightningQubit):
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
 
         if observable.name == "Hamiltonian":
-            DenseHamiltonianMatrix = observable.data[0].toarray(copy=False)
-            return self._gpu_state.ExpectationValue(DenseHamiltonianMatrix)
+            DenseHamiltonianMatrix = qml.utils.sparse_hamiltonian(observable).toarray()
+            return self._gpu_state.ExpectationValue(
+                self.wires.indices(observable.wires),
+                DenseHamiltonianMatrix
+            )
 
         if self.shots is not None:
             # estimate the expectation value

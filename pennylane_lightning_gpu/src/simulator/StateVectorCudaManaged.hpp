@@ -695,7 +695,8 @@ class StateVectorCudaManaged
     /**
      * @brief See `expval(std::vector<CFP_t> &gate_matrix = {})`
      */
-    auto expval(const std::vector<std::complex<Precision>> &gate_matrix) {
+    auto expval(const std::vector<size_t> &wires,
+                const std::vector<std::complex<Precision>> &gate_matrix) {
 
         std::vector<CFP_t> matrix_cu(gate_matrix.size());
 
@@ -708,12 +709,11 @@ class StateVectorCudaManaged
             std::string message = "Currently unsupported observable";
             throw LightningException(message.c_str());
         }
-        std::vector<size_t> local_wires(
-            static_cast<size_t>(BaseType::getNumQubits()));
 
-        for (std::size_t i = 0; i < local_wires.size(); i++) {
-            local_wires[i] = i;
-        }
+        auto &&local_wires =
+            (gate_matrix.empty())
+                ? wires
+                : std::vector<size_t>{wires.rbegin(), wires.rend()};
 
         auto expect_val =
             getExpectationValueDeviceMatrix(matrix_cu.data(), local_wires);

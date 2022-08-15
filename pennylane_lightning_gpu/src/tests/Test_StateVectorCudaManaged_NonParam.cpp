@@ -832,11 +832,12 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::applyCSWAP",
 }
 
 TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval",
-                   "[StateVectorCudaManaged_Nonparam]", float, double) {
+                   "[StateVectorCudaManaged_Nonparam]", double) {
     using cp_t = std::complex<TestType>;
     const std::size_t num_qubits = 3;
-    SECTION("Apply directly") {
+    SECTION("GetExpectionIdentity") {
         SVDataGPU<TestType> svdat{num_qubits};
+        std::vector<size_t> wires{0, 1, 2};
 
         CHECK(svdat.sv.getDataVector()[0] == cp_t{1, 0});
         svdat.cuda_sv.applyHadamard({0}, false);
@@ -853,10 +854,41 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval",
                 matrix[i] = std::complex<TestType>(0, 0);
         }
 
-        auto results = svdat.cuda_sv.expval(matrix);
+        auto results = svdat.cuda_sv.expval(wires, matrix);
 
-        printf("%f\n%f\n", results.x, results.y);
         cp_t expected(1, 0);
+        CHECK(expected.real() == Approx(results.x).epsilon(0.001));
+        CHECK(expected.imag() == Approx(results.y).epsilon(0.001));
+    }
+
+    SECTION("GetExpectionRandomMatrix") {
+        using cp_t = std::complex<TestType>;
+        const std::size_t num_qubits = 3;
+        std::vector<cp_t> init_state{{0.0, 0.0}, {0.0, 0.1}, {0.1, 0.1},
+                                     {0.1, 0.2}, {0.2, 0.2}, {0.3, 0.3},
+                                     {0.3, 0.4}, {0.4, 0.5}};
+        SVDataGPU<TestType> svdat{num_qubits};
+        svdat.cuda_sv.CopyHostDataToGpu(init_state.data(), init_state.size());
+        std::vector<size_t> wires{0, 1, 2};
+        std::vector<cp_t> matrix{
+            {0.5, 0.0},  {0.2, 0.5},  {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5},
+            {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},
+            {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5},
+            {0.3, 0.0},  {0.5, 0.0},  {0.2, 0.5},  {0.2, -0.5}, {0.3, 0.0},
+            {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5},
+            {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},
+            {0.2, -0.5}, {0.3, 0.0},  {0.5, 0.0},  {0.2, 0.5},  {0.2, -0.5},
+            {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},
+            {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5},
+            {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},  {0.5, 0.0},  {0.2, 0.5},
+            {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5},
+            {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0},
+            {0.2, -0.5}, {0.3, 0.0},  {0.2, -0.5}, {0.3, 0.0}};
+
+        auto results = svdat.cuda_sv.expval(wires, matrix);
+
+        cp_t expected(1.263000, -1.011000);
+
         CHECK(expected.real() == Approx(results.x).epsilon(0.001));
         CHECK(expected.imag() == Approx(results.y).epsilon(0.001));
     }
