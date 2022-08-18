@@ -360,22 +360,12 @@ class LightningGPU(LightningQubit):
                 break
 
             if obs_supported is True:
-               
-                warn(
-                    "passed",
-                    RuntimeWarning,
-                )
-                
+
                 wire_list = [
                     [observable.ops[i].wires[j] for j in range(len(observable.ops[i].wires))]
                     for i in range(len(observable.ops))
                 ]
-                
-                #name_list0 = [["PauliX","PauliX","PauliZ"],["PauliY"],["Identity"]]
-                #wire_list0 = [[0,1,2],[1],[2]]
-                #coeff0 = [1,0,0]
 
-                #return self._gpu_state.ExpectationValue(name_list0, wire_list0, coeff0)
                 return self._gpu_state.ExpectationValue(name_list, wire_list, observable.coeffs)
             else:
                 DenseHamiltonianMatrix = qml.utils.sparse_hamiltonian(observable).toarray()

@@ -43,30 +43,31 @@ class TestHamiltonianExpval:
 
         dev = qubit_device_3_wires
 
-        #obs = qml.PauliX(0) @ qml.PauliX(1)@ qml.PauliZ(2)
-        
-        #obs = qml.Identity(0)@ qml.PauliZ(1) @ qml.PauliX(2)
+        obs = qml.PauliX(0) @ qml.PauliX(1) @ qml.PauliY(2)
 
         obs1 = qml.Identity(1)
 
-        #obs2 = qml.PauliX(2) @ qml.Identity(0) @ qml.PauliY(1)
+        H = qml.Hamiltonian([1.0, 1.0], [obs, obs1])
 
-        obs = qml.PauliX(0) @ qml.PauliX(1) @ qml.PauliY(2)
-
-        H = qml.Hamiltonian(
-            [1.0,1.0], [obs, obs1]
-            #[1.0,1.0,-1.0 ], [qml.PauliY(0) @ qml.PauliZ(1) @ qml.PauliX(2), qml.PauliZ(0) @ qml.Identity(1) @ qml.PauliZ(2), qml.PauliZ(0) @ qml.Identity(1) @ qml.PauliZ(2)]
+        dev._state = np.array(
+            [
+                0.0 + 0.0j,
+                0.0 + 0.1j,
+                0.1 + 0.1j,
+                0.1 + 0.2j,
+                0.2 + 0.2j,
+                0.3 + 0.3j,
+                0.3 + 0.4j,
+                0.4 + 0.5j,
+            ]
         )
 
-        dev._state = np.array([0.0 + 0.0j, 0.0 + 0.1j, 0.1 + 0.1j, 0.1 + 0.2j, 0.2 + 0.2j, 0.3 + 0.3j, 0.3 + 0.4j, 0.4 + 0.5j])
-        print(dev._state)
-        
         dev.apply(
             [
                 qml.Identity(wires=[1]),
-                #qml.RX(theta, wires=[0]),
-                #qml.RY(phi, wires=[1]),
-                #qml.RZ(varphi, wires=[2]),
+                # qml.RX(theta, wires=[0]),
+                # qml.RY(phi, wires=[1]),
+                # qml.RZ(varphi, wires=[2]),
                 qml.CNOT(wires=[0, 1]),
                 qml.CNOT(wires=[1, 2]),
             ],
@@ -75,57 +76,5 @@ class TestHamiltonianExpval:
 
         res = dev.expval(H)
 
-        print(dev._state)
-        #wires_list = []
-        #for i in range(len(H.ops)):
-        #    wires_list.append([])
-        #    for j in range(len(H.ops[i].wires)):
-        #        wires_list[i].append(H.ops[i].wires[j])
-
-        # print(wires_list)
-
-        #wire_list = [
-        #    [H.ops[i].wires[j] for j in range(len(H.ops[i].wires))] for i in range(len(H.ops))
-        #]
-
-        #print(wire_list, type(wire_list))
-
-        #supported_pauli_basis = ["PauliX", "PauliY", "PauliZ", "Identity"]
-
-        #obs_supported = False
-
-        # name_list = [[if len(H.ops[i].wires) == 1: H.ops[i].name[j] else: H.ops[i].name for j in range(len(H.ops[i].wires))] for i in range(len(H.ops))]
-
-        #name_list = []
-        # print(len(H.ops))
-
-        #for i in range(len(H.ops)):
-        #    name_list.append([])
-        #    for j in range(len(H.ops[i].wires)):
-        #        obst = H.ops[i].name[j]
-        #        if len(H.ops[i].wires) == 1:
-        #            obst = H.ops[i].name
-        #        name_list[i].append(obst)
-        #        if obst not in supported_pauli_basis:
-        #            obs_supported = False
-        #            break
-        #        else:
-        #            obs_supported = True
-        #    else:
-        #        continue
-        #    break
-
-        # print(obs_supported)
-
-        #print(name_list, len(name_list[0]), len(name_list[1]), len(name_list[2]))
-        # print(type(H.ops[0].name), len(H.ops[1].name))
-
-        #print(H.coeffs, type(H.coeffs))
-
-        # print(type(H.ops[0].name[0]),len(H.ops[0].name))
-        # print(type(H.ops),H.ops[0].wires,H.ops[1].wires,H.ops[2].wires)
-        # print(len(np.asarray(obs.name)),type(obs.wires))
-        expected0 = dev.expval(obs) + dev.expval(obs1)# + dev.expval(obs2)
-        expected =  np.cos(varphi) * np.cos(phi)
+        expected0 = dev.expval(obs) + dev.expval(obs1)
         assert np.allclose(res, expected0)
-        #assert np.allclose(expected0, expected)

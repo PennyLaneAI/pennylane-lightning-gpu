@@ -918,8 +918,5 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval_pauli_basis",
         TestType expected = 0.86;
 
         CHECK(expected == Approx(results).epsilon(0.001));
-
-        // CHECK(expected.real() == Approx(results.x).epsilon(0.001));
-        // CHECK(expected.imag() == Approx(results.y).epsilon(0.001));
     }
 }
