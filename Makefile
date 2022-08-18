@@ -74,8 +74,8 @@ test-suite:
 	pl-device-test --device lightning.gpu --shots=None --skip-ops
 
 test-cpp:
-	rm -rf ./BuildTests
-	cmake . -BBuildTests -DBUILD_TESTS=1
+	#rm -rf ./BuildTests
+	cmake . -BBuildTests -DBUILD_TESTS=1 -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
 	cmake --build ./BuildTests
 	./BuildTests/pennylane_lightning_gpu/src/tests/runner_gpu
 
