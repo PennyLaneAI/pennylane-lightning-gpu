@@ -336,10 +336,52 @@ class LightningGPU(LightningQubit):
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
 
         if observable.name == "Hamiltonian":
-            DenseHamiltonianMatrix = qml.utils.sparse_hamiltonian(observable).toarray()
-            return self._gpu_state.ExpectationValue(
-                self.wires.indices(observable.wires), DenseHamiltonianMatrix
-            )
+            # check if all obs are Pauli basis
+            supported_pauli_basis = ["PauliX", "PauliY", "PauliZ", "Identity"]
+
+            obs_supported = False
+
+            name_list = []
+
+            for i in range(len(observable.ops)):
+                name_list.append([])
+                for j in range(len(observable.ops[i].wires)):
+                    obst = observable.ops[i].name[j]
+                    if len(observable.ops[i].wires) == 1:
+                        obst = observable.ops[i].name
+                    name_list[i].append(obst)
+                    if obst not in supported_pauli_basis:
+                        obs_supported = False
+                        break
+                    else:
+                        obs_supported = True
+                else:
+                    continue
+                break
+
+            if obs_supported is True:
+               
+                warn(
+                    "passed",
+                    RuntimeWarning,
+                )
+                
+                wire_list = [
+                    [observable.ops[i].wires[j] for j in range(len(observable.ops[i].wires))]
+                    for i in range(len(observable.ops))
+                ]
+                
+                #name_list0 = [["PauliX","PauliX","PauliZ"],["PauliY"],["Identity"]]
+                #wire_list0 = [[0,1,2],[1],[2]]
+                #coeff0 = [1,0,0]
+
+                #return self._gpu_state.ExpectationValue(name_list0, wire_list0, coeff0)
+                return self._gpu_state.ExpectationValue(name_list, wire_list, observable.coeffs)
+            else:
+                DenseHamiltonianMatrix = qml.utils.sparse_hamiltonian(observable).toarray()
+                return self._gpu_state.ExpectationValue(
+                    self.wires.indices(observable.wires), DenseHamiltonianMatrix
+                )
 
         if self.shots is not None:
             # estimate the expectation value

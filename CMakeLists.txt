@@ -47,7 +47,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Compiler options
 option(ENABLE_NATIVE "Enable native CPU build tuning" OFF)
 option(BUILD_TESTS "Build cpp tests" OFF)
-option(ENABLE_WARNINGS "Enable warnings" ON)
+option(ENABLE_WARNINGS "Enable warnings" OFF)
 option(ENABLE_CLANG_TIDY "Enable clang-tidy build checks" OFF)
 option(DISABLE_CUDA_SAFETY "Build without CUDA call safety checks" OFF)
 option(ENABLE_PYTHON "Build Python bindings" ON)

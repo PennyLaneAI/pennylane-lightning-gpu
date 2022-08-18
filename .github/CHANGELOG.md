@@ -2,6 +2,9 @@
 
 ### New features since last release
 
+* Added support for expval(H). [(#43)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/43)
+
+
 * Added support for multi-GPU adjoint observable batching. [(#27)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/27)
 
   This new feature allows users to batch their gradients over observables using the `adjoint` method. Assuming multiple GPUs on a host-system, this functionality can be enabled by adding the `batch_obs=True` argument when creating a device, such as:

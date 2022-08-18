@@ -445,7 +445,46 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 // Return the real component only & ignore params
                 return sv.expval(wires, conv_matrix).x;
             },
-            "Calculate the expectation value of the Hamiltonian observable.")
+            "Calculate the expectation value of the Hamiltonian observable "
+            "with custatevecComputeExpectation.")
+        .def(
+            "ExpectationValue",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::vector<std::string>> &obsName,
+               const std::vector<std::vector<std::size_t>> &wires,
+               const std::vector<PrecisionT> &coeffs//,
+               //[[maybe_unused]] const std::vector<std::vector<ParamT>> &params
+		   ) {
+                // internally cache by concatenation of obs names, indicated by
+                // prefixed # for string
+                /*
+                std::string obs_concat{"#"};
+                for (const auto &sub : obsName) {
+                    obs_concat += sub;
+                }
+                const auto m_buffer = gate_matrix.request();
+                std::vector<std::complex<ParamT>> conv_matrix;
+                if (m_buffer.size) {
+                    const auto m_ptr =
+                        static_cast<const std::complex<ParamT> *>(m_buffer.ptr);
+                    conv_matrix = std::vector<std::complex<ParamT>>{
+                        m_ptr, m_ptr + m_buffer.size};
+                }
+                */
+                //PrecisionT res =
+                return  sv.getExpectationValueOnPauliBasis(obsName, wires, coeffs);
+
+                // for (std::size_t i=0;i<coeffs.size();i++) {
+                //	res += coeffs[i]*sv.expval(obsName[i],wire[i]).x;
+                // }
+                //  Return the real component only & ignore params
+                //return res;
+                // return sv
+                //     .expval(obsName, wires, coeffs, std::vector<ParamT>{})
+                //     .x;
+            },
+            "Calculate the expectation value of the Hamiltonian observable on "
+            "Pauli Basis.")
         .def(
             "Probability",
             [](StateVectorCudaManaged<PrecisionT> &sv,

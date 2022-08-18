@@ -719,6 +719,160 @@ class StateVectorCudaManaged
             getExpectationValueDeviceMatrix(matrix_cu.data(), local_wires);
         return expect_val;
     }
+
+    /**
+     * @brief Get expectation of a given host or device defined array.
+     *
+     * @param matrix Host or device defined row-major order gate matrix array.
+     * @param tgts Target qubits.
+     * @return auto Expectation value.
+     */
+    auto getExpectationValueOnPauliBasis(
+        const std::vector<std::vector<std::string>> &obsNames,
+        const std::vector<std::vector<std::size_t>> &wires,
+        const std::vector<Precision> &coeffs) {
+        const size_t nPauliOperatorArrays = coeffs.size();
+        const size_t nIndexBits = BaseType::getNumQubits();
+        double expectationValues[nPauliOperatorArrays];
+
+        Precision expect = 0;
+
+        cudaDataType_t data_type;
+        custatevecComputeType_t compute_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+            compute_type = CUSTATEVEC_COMPUTE_64F;
+        } else {
+            data_type = CUDA_C_32F;
+            compute_type = CUSTATEVEC_COMPUTE_32F;
+        }
+
+        for (size_t i = 0; i < coeffs.size(); i++) {
+            // convert vector of vector of obsName strings to a vector of
+            // custatevecPauli_t
+            std::vector<custatevecPauli_t> pauliOperatorsArray;
+            pauliOperatorsArray.reserve(obsNames[i].size());
+
+            for (size_t j = 0; j < obsNames[i].size(); j++) {
+                pauliOperatorsArray.push_back(
+                    expval_pauli_gates_.at(obsNames[i][j]));
+            }
+
+            // cast std::vector to double pointer of the pauliOperatorsArray
+            const custatevecPauli_t *ptr =
+                reinterpret_cast<const custatevecPauli_t *>(
+                    &pauliOperatorsArray[0]);
+
+            const custatevecPauli_t **ptrTopauliOperatorsArray = &ptr;
+
+            // convert vector of vector of wires to a vector of int32_t
+            std::vector<int32_t> local_wires;
+            local_wires.reserve(wires[i].size());
+
+            for (size_t j = 0; j < wires[i].size(); j++) {
+                local_wires.push_back(static_cast<int32_t>(wires[i][j]));
+            }
+
+            // cast std::vector of wires to double pointer to basisBitsArray
+
+            const int32_t *local_wire_ptr =
+                reinterpret_cast<const int32_t *>(&local_wires[0]);
+            const int32_t **basisBitsArray = &local_wire_ptr;
+
+            //
+            std::vector<std::uint32_t> nBasisBitsArray;
+            nBasisBitsArray.reserve(static_cast<size_t>(1));
+
+            nBasisBitsArray[0] = wires[i].size();
+
+            PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationsOnPauliBasis(
+                /* custatevecHandle_t */ handle.ref(),
+                /* void* */ BaseType::getData(),
+                /* cudaDataType_t */ data_type,
+                /* const uint32_t */ nIndexBits,
+                /* double* */ &expectationValues[i],
+                /* const custatevecPauli_t** */ ptrTopauliOperatorsArray,
+                /* const uint32_t */ static_cast<uint32_t>(1),
+                /* const int32_t** */ basisBitsArray,
+                /* const uint32_t* */ nBasisBitsArray.data()));
+
+            expect += coeffs[i] * expectationValues[i];
+        }
+
+        /*
+        const size_t nPauliOperatorArrays = coeffs.size();
+        const size_t nIndexBits = BaseType::getNumQubits();
+        double expectationValues[nPauliOperatorArrays];
+
+        std::vector<std::vector<custatevecPauli_t>> pauliOperatorsArray;
+
+        std::vector<custatevecPauli_t *> ptrTopauliOperatorsArray;
+
+        pauliOperatorsArray.reserve(obsNames.size());
+
+
+        for (size_t i = 0; i<obsNames.size();i++) {
+               pauliOperatorsArray.push_back(std::vector<custatevecPauli_t>());
+            for(size_t j=0; j<obsNames[i].size();j++){
+                    pauliOperatorsArray[i].push_back(expval_pauli_gates_.at(obsNames[i][j]));
+            }
+        }
+
+        for (auto& vec : pauliOperatorsArray) {
+                ptrTopauliOperatorsArray.push_back(vec.data());
+        }
+
+
+        const custatevecPauli_t *ptr_t=reinterpret_cast<const custatevecPauli_t
+        *>(ptrTopauliOperatorsArray[0]); const custatevecPauli_t **ptr=&ptr_t;
+
+        const int32_t *wires_tmp =reinterpret_cast<const int32_t *>(&wires[0]);
+        const int32_t **wires_p = &wires_tmp;
+
+        std::vector<std::size_t> nBasisBitsArray;
+        nBasisBitsArray.reserve(wires.size());
+
+        for (size_t i = 0; i < wires.size(); i++){
+                nBasisBitsArray[i]=wires[i].size();
+        }
+
+        const uint32_t *nBBA =reinterpret_cast<const uint32_t
+        *>(&nBasisBitsArray[0]);
+
+        cudaDataType_t data_type;
+        custatevecComputeType_t compute_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+            compute_type = CUSTATEVEC_COMPUTE_64F;
+        } else {
+            data_type = CUDA_C_32F;
+            compute_type = CUSTATEVEC_COMPUTE_32F;
+        }
+
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationsOnPauliBasis(
+                                /-* custatevecHandle_t *-/ handle.ref(),
+                                /-* void* *-/ BaseType::getData(),
+                                /-* cudaDataType_t *-/ data_type,
+                                /-* const uint32_t *-/ nIndexBits,
+                                /-* double *-/ expectationValues,
+                                /-* const custatevecPauli_t** *-/
+        ptr,//pauliOperatorsArray.data(),
+                                /-* const uint32_t *-/ nPauliOperatorArrays,
+                                /-* const int32_t *-/ wires_p,
+                                /-* const uint32_t *-/ nBBA
+                                //));
+
+        Precision expect = 0;
+
+        for(size_t i=0; i<nPauliOperatorArrays; i++)
+                expect += coeffs[i]*expectationValues[i];
+        */
+        return expect;
+    }
     /**
      * @brief Utility method for probability calculation using given wires.
      *
@@ -955,6 +1109,12 @@ class StateVectorCudaManaged
         {"RZ", CUSTATEVEC_PAULI_Z},       {"CRX", CUSTATEVEC_PAULI_X},
         {"CRY", CUSTATEVEC_PAULI_Y},      {"CRZ", CUSTATEVEC_PAULI_Z},
         {"Identity", CUSTATEVEC_PAULI_I}, {"I", CUSTATEVEC_PAULI_I}};
+    const std::unordered_map<std::string, custatevecPauli_t>
+        expval_pauli_gates_{{"PauliX", CUSTATEVEC_PAULI_X},
+                            {"PauliY", CUSTATEVEC_PAULI_Y},
+                            {"PauliZ", CUSTATEVEC_PAULI_Z},
+                            {"Identity", CUSTATEVEC_PAULI_I},
+                            {"I", CUSTATEVEC_PAULI_I}};
 
     /**
      * @brief Normalize the index ordering to match PennyLane.
@@ -1357,6 +1517,82 @@ class StateVectorCudaManaged
             PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
         return expect;
     }
-};
 
+    // public:
+    /**
+     * @brief Get expectation of a given host or device defined array.
+     *
+     * @param matrix Host or device defined row-major order gate matrix array.
+     * @param tgts Target qubits.
+     * @return auto Expectation value.
+     */
+    /*
+    auto getExpectationValueOnPauliBasis(const
+    std::vector<std::vector<std::string>> &obsNames, const
+    std::vector<std::vector<std::size_t>> &wires, const std::vector<Precision>
+    &coeffs ) {
+
+        const size_t nPauliOperatorArrays = coeffs.size();
+        const size_t nIndexBits = BaseType::getNumQubits();
+        Precision expectationValues[nPauliOperatorArrays];
+
+        std::vector<std::vector<custatevecPauli_t>> pauliOperatorsArray;
+        std::vector<custatevecPauli_t *> ptrTopauliOperatorsArray;
+
+        pauliOperatorsArray.reserve(obsNames.size());
+
+
+        for (size_t i = 0; i<obsNames.size();i++) {
+               pauliOperatorsArray.push_back(std::vector<custatevecPauli_t>());
+            for(size_t j=0; j<obsNames[i].size();j++){
+                    pauliOperatorsArray[i].push_back(expval_pauli_gates_.at(obsNames[i][j]));
+            }
+        }
+
+        for (auto& vec : pauliOperatorsArray) {
+                ptrTopauliOperatorsArray.push_back(vec.data());
+        }
+
+
+        std::vector<std::size_t> nBasisBitsArray;
+        nBasisBitsArray.reserve(wires.size());
+
+        for (size_t i = 0; i < wires.size(); i++){
+                //nBasisBitsArray[i].push_back(wires[i].size());
+        }
+
+        cudaDataType_t data_type;
+        custatevecComputeType_t compute_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+            compute_type = CUSTATEVEC_COMPUTE_64F;
+        } else {
+            data_type = CUDA_C_32F;
+            compute_type = CUSTATEVEC_COMPUTE_32F;
+        }
+
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationsOnPauliBasis(
+                                /-* custatevecHandle_t *-/ handle.ref(),
+                                /-* void* *-/ BaseType::getData(),
+                                /-* cudaDataType_t *-/ data_type,
+                                /-* const uint32_t *-/ nIndexBits,
+                                /-* double *-/ expectationValues,
+                                /-* const custatevecPauli_t *-/
+    ptrTopauliOperatorsArray.data(),//pauliOperatorsArray.data(),
+                                /-* const uint32_t *-/ nPauliOperatorArrays,
+                                /-* const int32_t *-/ wires.data(),
+                                /-* const uint32_t *-/ nBasisBitsArray.data()
+                                ));
+
+        Precision expect = 0;
+
+        for(size_t i=0; i<nPauliOperatorArrays; i++)
+                expect += coeffs[i]*expectationValues[i];
+
+        return expect;
+    }
+    */
+};
 }; // namespace Pennylane
