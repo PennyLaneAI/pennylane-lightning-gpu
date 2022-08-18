@@ -43,11 +43,11 @@ class TestHamiltonianExpval:
 
         dev = qubit_device_3_wires
 
-        obs = qml.PauliX(0) @ qml.PauliX(1) @ qml.PauliY(2)
+        obs = qml.PauliX(1) @ qml.PauliY(2)
 
         obs1 = qml.Identity(1)
 
-        H = qml.Hamiltonian([1.0, 1.0], [obs, obs1])
+        H = qml.Hamiltonian([1.0, 1.0], [obs1, obs])
 
         dev._state = np.array(
             [
@@ -59,22 +59,28 @@ class TestHamiltonianExpval:
                 0.3 + 0.3j,
                 0.3 + 0.4j,
                 0.4 + 0.5j,
-            ]
+            ],
+            dtype=np.complex128
         )
 
-        dev.apply(
-            [
-                qml.Identity(wires=[1]),
-                # qml.RX(theta, wires=[0]),
-                # qml.RY(phi, wires=[1]),
-                # qml.RZ(varphi, wires=[2]),
-                qml.CNOT(wires=[0, 1]),
-                qml.CNOT(wires=[1, 2]),
-            ],
-            rotations=obs.diagonalizing_gates(),
-        )
+        #dev.apply(
+            #[
+                #qml.Identity(wires=[1]),
+                #qml.PauliX(wires=[1]),
+                #qml.PauliY(wires=[0]),
+                #qml.PauliZ(wires=[0]),
+                #qml.RY(phi, wires=[1]),
+                #qml.RZ(varphi, wires=[2]),
+                #qml.CNOT(wires=[0, 1]),
+                #qml.CNOT(wires=[0, 2]),
+                #qml.CNOT(wires=[1, 2]),
+            #],
+            #rotations=obs.diagonalizing_gates(),
+        #)
+
+        dev.syncH2D()
 
         res = dev.expval(H)
-
-        expected0 = dev.expval(obs) + dev.expval(obs1)
-        assert np.allclose(res, expected0)
+        expected = 0.86
+        #expected0 = 1 + 0*dev.expval(obs) + dev.expval(obs1)
+        assert np.allclose(res, expected)
