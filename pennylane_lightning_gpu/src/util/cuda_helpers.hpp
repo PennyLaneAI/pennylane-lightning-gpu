@@ -10,6 +10,7 @@
 #include <cuComplex.h>
 #include <cublas_v2.h>
 #include <cuda.h>
+#include <cusparse_v2.h>
 #include <custatevec.h>
 
 #include "Error.hpp"
@@ -31,6 +32,9 @@ namespace Pennylane::CUDA::Util {
 #define PL_CUBLAS_IS_SUCCESS(err)                                              \
     PL_ABORT_IF_NOT(err == CUBLAS_STATUS_SUCCESS, GetCuBlasErrorString(err))
 
+#define PL_CUSPARSE_IS_SUCCESS(err)                                            \
+    PL_ABORT_IF_NOT(err == CUSPARSE_STATUS_SUCCESS, GetCuSparseErrorString(err))
+
 /**
  * @brief Macro that throws Exception from cuQuantum failure error codes.
  *
@@ -44,6 +48,8 @@ namespace Pennylane::CUDA::Util {
 #define PL_CUDA_IS_SUCCESS(err)                                                \
     { static_cast<void>(err); }
 #define PL_CUBLAS_IS_SUCCESS(err)                                              \
+    { static_cast<void>(err); }
+#define PL_CUSPARSE_IS_SUCCESS(err)                                            \
     { static_cast<void>(err); }
 #define PL_CUSTATEVEC_IS_SUCCESS(err)                                          \
     { static_cast<void>(err); }
@@ -78,6 +84,45 @@ static const std::string GetCuBlasErrorString(const cublasStatus_t &err) {
         break;
     case CUBLAS_STATUS_EXECUTION_FAILED:
         result = "GPU program failed to execute";
+        break;
+    default:
+        result = "Status not found";
+    }
+    return result;
+}
+
+static const std::string GetCuSparseErrorString(const cusparseStatus_t &err) {
+    std::string result;
+    switch (err) {
+    case CUSPARSE_STATUS_SUCCESS:
+        result = "No errors";
+        break;
+    case CUSPARSE_STATUS_NOT_INITIALIZED:
+        result = "cuSparse library was not initialized";
+        break;
+    case CUSPARSE_STATUS_ALLOC_FAILED:
+        result = "cuSparse memory allocation failed";
+        break;
+    case CUSPARSE_STATUS_INVALID_VALUE:
+        result = "Invalid value";
+        break;
+    case CUSPARSE_STATUS_ARCH_MISMATCH:
+        result = "CUDA device architecture mismatch";
+        break;
+    case CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
+        result = "The matrix type is not supported by cuSparse";
+        break;
+    case CUSPARSE_STATUS_INTERNAL_ERROR:
+        result = "Internal cuBLAS error";
+        break;
+    case CUSPARSE_STATUS_NOT_SUPPORTED:
+        result = "Unsupported operation/device";
+        break;
+    case CUSPARSE_STATUS_EXECUTION_FAILED:
+        result = "GPU program failed to execute";
+        break;
+    case CUSPARSE_STATUS_INSUFFICIENT_RESOURCES:
+        result = "The resources are not sufficient to complete the operation.";
         break;
     default:
         result = "Status not found";

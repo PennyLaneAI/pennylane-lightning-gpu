@@ -920,3 +920,35 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval_pauli_basis",
         CHECK(expected == Approx(results).epsilon(0.001));
     }
 }
+
+TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval_cuSparse",
+                   "[StateVectorCudaManaged_Nonparam]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const std::size_t num_qubits = 3;
+
+    SECTION("GetExpectionCuSparse") {
+        using cp_t = std::complex<TestType>;
+        const std::size_t num_qubits = 3;
+        std::vector<cp_t> init_state{{0.0, 0.0}, {0.0, 0.1}, {0.1, 0.1},
+                                     {0.1, 0.2}, {0.2, 0.2}, {0.3, 0.3},
+                                     {0.3, 0.4}, {0.4, 0.5}};
+        SVDataGPU<TestType> svdat{num_qubits};
+        svdat.cuda_sv.CopyHostDataToGpu(init_state.data(), init_state.size());
+        int csrOffsets[9] = {0, 2, 4, 6, 8, 10, 12, 14, 16};
+        int columns[16] = {0, 3, 1, 2, 1, 2, 0, 3, 4, 7, 5, 6, 5, 6, 4, 7};
+        std::complex<TestType> values[16] = {
+            {1.0, 0.0},  {0.0, -1.0}, {1.0, 0.0}, {0.0, 1.0},
+            {0.0, -1.0}, {1.0, 0.0},  {0.0, 1.0}, {1.0, 0.0},
+            {1.0, 0.0},  {0.0, -1.0}, {1.0, 0.0}, {0.0, 1.0},
+            {0.0, -1.0}, {1.0, 0.0},  {0.0, 1.0}, {1.0, 0.0}};
+        int num_csrOffsets = 9;
+        int nnz = 16;
+
+        auto results = svdat.cuda_sv.getExpectationValueOnSparseSpVM(
+            csrOffsets, num_csrOffsets, columns, values, nnz);
+
+        TestType expected = 1;
+
+        CHECK(expected == Approx(results).epsilon(0.001));
+    }
+}

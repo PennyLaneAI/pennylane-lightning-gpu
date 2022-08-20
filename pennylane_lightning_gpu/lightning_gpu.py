@@ -329,11 +329,17 @@ class LightningGPU(LightningQubit):
     def expval(self, observable, shot_range=None, bin_size=None):
         if observable.name in [
             "Projector",
-            # "Hamiltonian",
-            "SparseHamiltonian",
         ]:
             self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
+
+        if observable.name == "SparseHamiltonian":
+            CSR_SparseHamiltonian = observable.data[0].tocsr(copy=False)
+            return self._gpu_state.ExpectationValue(
+                CSR_SparseHamiltonian.indptr,
+                CSR_SparseHamiltonian.indices,
+                CSR_SparseHamiltonian.data,
+            )
 
         if observable.name == "Hamiltonian":
             # check if all obs are Pauli basis

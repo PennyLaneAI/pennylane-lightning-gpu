@@ -53,6 +53,19 @@ class CSVHandle {
     custatevecHandle_t handle;
 };
 
+/*
+class CSPHandle {
+  public:
+    CSPHandle() { PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&handle_sp)); }
+    ~CSPHandle() { PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle_sp)); }
+
+    const cusparseHandle_t &ref() const { return handle_sp; }
+    cusparseHandle_t &ref() { return handle_sp; }
+
+  private:
+    cusparseHandle_t handle_sp;
+};
+*/
 } // namespace
 /// @endcond
 
@@ -804,6 +817,118 @@ class StateVectorCudaManaged
     }
 
     /**
+     * @brief Get expectation of a given host or device defined array.
+     *
+     * @param matrix Host or device defined row-major order gate matrix array.
+     * @param tgts Target qubits.
+     * @return auto Expectation value.
+     */
+    auto getExpectationValueOnSparseSpVM(
+        const int *csrOffsets_ptr, const int csrOffsets_size,
+        const int *columns_ptr, const std::complex<Precision> *values_ptr,
+        const int numNNZ) {
+
+        const int nIndexBits = BaseType::getNumQubits();
+        const int length = 1 << nIndexBits;
+        const int num_rows = csrOffsets_size - 1;
+        const int num_cols = num_rows;
+
+        int *d_csrOffsets, *d_columns;
+        CFP_t *d_values, *d_tmp;
+
+        Precision alpha = 1.0;
+        Precision beta = 0.0;
+
+        Precision expect = 0;
+
+        PL_CUDA_IS_SUCCESS(
+            cudaMalloc((void **)&d_csrOffsets, csrOffsets_size * sizeof(int)))
+        PL_CUDA_IS_SUCCESS(
+            cudaMalloc((void **)&d_columns, numNNZ * sizeof(int)))
+        PL_CUDA_IS_SUCCESS(
+            cudaMalloc((void **)&d_values, numNNZ * sizeof(CFP_t)))
+        PL_CUDA_IS_SUCCESS(cudaMalloc((void **)&d_tmp, length * sizeof(CFP_t)))
+
+        PL_CUDA_IS_SUCCESS(cudaMemcpy(d_csrOffsets, csrOffsets_ptr,
+                                      csrOffsets_size * sizeof(int),
+                                      cudaMemcpyHostToDevice))
+        PL_CUDA_IS_SUCCESS(cudaMemcpy(d_columns, columns_ptr,
+                                      numNNZ * sizeof(int),
+                                      cudaMemcpyHostToDevice))
+        PL_CUDA_IS_SUCCESS(cudaMemcpy(d_values, values_ptr,
+                                      numNNZ * sizeof(CFP_t),
+                                      cudaMemcpyHostToDevice))
+
+        cudaDataType_t data_type;
+        cusparseIndexType_t compute_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+            compute_type = CUSPARSE_INDEX_32I;
+        } else {
+            data_type = CUDA_C_32F;
+            compute_type = CUSPARSE_INDEX_32I;
+        }
+
+        // CUSPARSE APIs
+        cusparseHandle_t handle = NULL;
+        cusparseSpMatDescr_t mat;
+        cusparseDnVecDescr_t vecX, vecY;
+
+        void *dBuffer = NULL;
+        size_t bufferSize = 0;
+
+        PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&handle))
+
+        // Create sparse matrix A in CSR format
+        PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
+            &mat, num_rows, num_cols, numNNZ, d_csrOffsets, d_columns, d_values,
+            compute_type, compute_type, CUSPARSE_INDEX_BASE_ZERO, data_type))
+
+        // Create dense vector X
+        PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
+            &vecX, num_cols, BaseType::getData(), data_type))
+
+        // Create dense vector y
+        PL_CUSPARSE_IS_SUCCESS(
+            cusparseCreateDnVec(&vecY, num_rows, d_tmp, data_type))
+
+        // allocate an external buffer if needed
+        PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
+            handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX, &beta,
+            vecY, data_type, CUSPARSE_MV_ALG_DEFAULT, &bufferSize))
+
+        PL_CUDA_IS_SUCCESS(cudaMalloc(&dBuffer, bufferSize))
+
+        // execute SpMV
+
+        PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
+            handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX, &beta,
+            vecY, data_type, CUSPARSE_MV_ALG_DEFAULT, dBuffer))
+
+        // destroy matrix/vector descriptors
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecX))
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY))
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle))
+        //--------------------------------------------------------------------------
+
+        expect =
+            innerProdC_CUDA(BaseType::getData(), d_tmp, BaseType::getLength(),
+                            BaseType::getDataBuffer().getDevTag().getDeviceID(),
+                            BaseType::getDataBuffer().getDevTag().getStreamID())
+                .x;
+
+        PL_CUDA_IS_SUCCESS(cudaFree(dBuffer))
+        PL_CUDA_IS_SUCCESS(cudaFree(d_csrOffsets))
+        PL_CUDA_IS_SUCCESS(cudaFree(d_columns))
+        PL_CUDA_IS_SUCCESS(cudaFree(d_values))
+        PL_CUDA_IS_SUCCESS(cudaFree(d_tmp))
+
+        return expect;
+    }
+    /**
      * @brief Utility method for probability calculation using given wires.
      *
      * @param wires List of wires to return probabilities for in lexicographical
@@ -1033,6 +1158,7 @@ class StateVectorCudaManaged
                        std::forward<decltype(params)>(params));
          }}};
     CSVHandle handle;
+    //CSPHandle handle_sp;
 
     const std::unordered_map<std::string, custatevecPauli_t> native_gates_{
         {"RX", CUSTATEVEC_PAULI_X},       {"RY", CUSTATEVEC_PAULI_Y},

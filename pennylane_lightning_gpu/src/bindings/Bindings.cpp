@@ -63,7 +63,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         py::array_t<ParamT, py::array::c_style | py::array::forcecast>;
     using np_arr_c = py::array_t<std::complex<ParamT>,
                                  py::array::c_style | py::array::forcecast>;
-
+    using np_arr_sparse_ind =
+        py::array_t<int, py::array::c_style | py::array::forcecast>;
     // Enable module name to be based on size of complex datatype
     const std::string bitsize =
         std::to_string(sizeof(std::complex<PrecisionT>) * 8);
@@ -458,6 +459,21 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             },
             "Calculate the expectation value of the Hamiltonian observable on "
             "Pauli Basis.")
+        .def(
+            "ExpectationValue",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const np_arr_sparse_ind &csrOffsets,
+               const np_arr_sparse_ind &columns, const np_arr_c values) {
+                return sv.getExpectationValueOnSparseSpVM(
+                    static_cast<int *>(csrOffsets.request().ptr),
+                    static_cast<int>(csrOffsets.request()
+                                         .size), // num_rows + 1 or csrOffsets
+                    static_cast<int *>(columns.request().ptr), // columns
+                    static_cast<std::complex<PrecisionT> *>(
+                        values.request().ptr),
+                    static_cast<int>(values.request().size)); // nnz
+            },
+            "Calculate the expectation value of a sparse Hamiltonian.")
         .def(
             "Probability",
             [](StateVectorCudaManaged<PrecisionT> &sv,
