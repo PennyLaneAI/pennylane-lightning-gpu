@@ -135,74 +135,323 @@ void applyGeneratorMultiRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
 namespace Pennylane::Algorithms {
 
 /**
- * @brief Utility struct for observable operations used by AdjointJacobianGPU
- * class.
+ * @brief A base class for all observable classes.
  *
+ * We note that all subclasses must be immutable (does not provide any setter).
+ *
+ * @tparam T Floating point type
  */
-template <class T = double> class ObsDatum {
-  public:
+template <typename T> class Observable {
+  private:
     /**
-     * @brief Variant type of stored parameter data.
+     * @brief Polymorphic function comparing this to another Observable
+     * object.
+     *
+     * @param Another instance of subclass of Observable<T> to compare
      */
-    using param_var_t = std::variant<std::monostate, std::vector<T>,
-                                     std::vector<std::complex<T>>>;
+    [[nodiscard]] virtual bool isEqual(const Observable<T> &other) const = 0;
+
+  protected:
+    Observable() = default;
+    Observable(const Observable &) = default;
+    Observable(Observable &&) noexcept = default;
+    Observable &operator=(const Observable &) = default;
+    Observable &operator=(Observable &&) noexcept = default;
+
+  public:
+    virtual ~Observable() = default;
 
     /**
-     * @brief Copy constructor for an ObsDatum object, representing a given
-     * observable.
-     *
-     * @param obs_name Name of each operation of the observable. Tensor product
-     * observables have more than one operation.
-     * @param obs_params Parameters for a given observable operation ({} if
-     * optional).
-     * @param obs_wires Wires upon which to apply operation. Each observable
-     * operation will be a separate nested list.
+     * @brief Apply the observable to the given statevector in place.
      */
-    ObsDatum(std::vector<std::string> obs_name,
-             std::vector<param_var_t> obs_params,
-             std::vector<std::vector<size_t>> obs_wires)
-        : obs_name_{std::move(obs_name)},
-          obs_params_(std::move(obs_params)), obs_wires_{
-                                                  std::move(obs_wires)} {};
+    virtual void applyInPlace(StateVectorCudaManaged<T> &sv) const = 0;
+
+    /**
+     * @brief Get the name of the observable
+     */
+    [[nodiscard]] virtual auto getObsName() const -> std::string = 0;
+
+    /**
+     * @brief Get the wires the observable applies to.
+     */
+    [[nodiscard]] virtual auto getWires() const -> std::vector<size_t> = 0;
+
+    /**
+     * @brief Test whether this object is equal to another object
+     */
+    [[nodiscard]] bool operator==(const Observable<T> &other) const {
+        return typeid(*this) == typeid(other) && isEqual(other);
+    }
+
+    /**
+     * @brief Test whether this object is different from another object.
+     */
+    [[nodiscard]] bool operator!=(const Observable<T> &other) const {
+        return !(*this == other);
+    }
+};
+
+/**
+ * @brief Class models named observables (PauliX, PauliY, PauliZ, etc.)
+ *
+ * @tparam T Floating point type
+ */
+template <typename T> class NamedObs final : public Observable<T> {
+  private:
+    std::string obs_name_;
+    std::vector<size_t> wires_;
+    std::vector<T> params_;
+
+    [[nodiscard]] bool isEqual(const Observable<T> &other) const override {
+        const auto &other_cast = static_cast<const NamedObs<T> &>(other);
+
+        return (obs_name_ == other_cast.obs_name_) &&
+               (wires_ == other_cast.wires_) && (params_ == other_cast.params_);
+    }
+
+  public:
+    /**
+     * @brief Construct a NamedObs object, representing a given observable.
+     *
+     * @param arg1 Name of the observable.
+     * @param arg2 Argument to construct wires.
+     * @param arg3 Argument to construct parameters
+     */
+    NamedObs(std::string obs_name, std::vector<size_t> wires,
+             std::vector<T> params = {})
+        : obs_name_{std::move(obs_name)}, wires_{std::move(wires)},
+          params_{std::move(params)} {}
+
+    [[nodiscard]] auto getObsName() const -> std::string override {
+        using Pennylane::Util::operator<<;
+        std::ostringstream obs_stream;
+        obs_stream << obs_name_ << wires_;
+        return obs_stream.str();
+    }
+
+    [[nodiscard]] auto getWires() const -> std::vector<size_t> override {
+        return wires_;
+    }
+
+    void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
+        sv.applyOperation(obs_name_, wires_, false, params_);
+    }
+};
+
+
+/**
+ * @brief Tensor product observable class
+ */
+template <typename T> class TensorProdObs final : public Observable<T> {
+  private:
+    std::vector<std::shared_ptr<Observable<T>>> obs_;
+    std::vector<size_t> all_wires_;
+
+    [[nodiscard]] bool isEqual(const Observable<T> &other) const override {
+        const auto &other_cast = static_cast<const TensorProdObs<T> &>(other);
+
+        if (obs_.size() != other_cast.obs_.size()) {
+            return false;
+        }
+
+        for (size_t i = 0; i < obs_.size(); i++) {
+            if (*obs_[i] != *other_cast.obs_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+  public:
+    /**
+     * @brief Create a tensor product of observables
+     *
+     * @param arg Arguments perfect forwarded to vector of observables.
+     */
+    template <typename... Ts>
+    explicit TensorProdObs(Ts &&...arg) : obs_{std::forward<Ts>(arg)...} {
+        std::unordered_set<size_t> wires;
+
+        for (const auto &ob : obs_) {
+            const auto ob_wires = ob->getWires();
+            for (const auto wire : ob_wires) {
+                if (wires.contains(wire)) {
+                    PL_ABORT("All wires in observables must be disjoint.");
+                }
+                wires.insert(wire);
+            }
+        }
+        all_wires_ = std::vector<size_t>(wires.begin(), wires.end());
+        std::sort(all_wires_.begin(), all_wires_.end());
+    }
+
+    /**
+     * @brief Convenient wrapper for the constructor as the constructor does not
+     * convert the std::shared_ptr with a derived class correctly.
+     *
+     * This function is useful as std::make_shared does not handle
+     * brace-enclosed initializer list correctly.
+     *
+     * @param obs List of observables
+     */
+    static auto
+    create(std::initializer_list<std::shared_ptr<Observable<T>>> obs)
+        -> std::shared_ptr<TensorProdObs<T>> {
+        return std::shared_ptr<TensorProdObs<T>>{
+            new TensorProdObs(std::move(obs))};
+    }
+
+    static auto create(std::vector<std::shared_ptr<Observable<T>>> obs)
+        -> std::shared_ptr<TensorProdObs<T>> {
+        return std::shared_ptr<TensorProdObs<T>>{
+            new TensorProdObs(std::move(obs))};
+    }
 
     /**
      * @brief Get the number of operations in observable.
      *
      * @return size_t
      */
-    [[nodiscard]] auto getSize() const -> size_t { return obs_name_.size(); }
-    /**
-     * @brief Get the name of the observable operations.
-     *
-     * @return const std::vector<std::string>&
-     */
-    [[nodiscard]] auto getObsName() const -> const std::vector<std::string> & {
-        return obs_name_;
-    }
-    /**
-     * @brief Get the parameters for the observable operations.
-     *
-     * @return const std::vector<std::vector<T>>&
-     */
-    [[nodiscard]] auto getObsParams() const
-        -> const std::vector<param_var_t> & {
-        return obs_params_;
-    }
+    [[nodiscard]] auto getSize() const -> size_t { return obs_.size(); }
+
     /**
      * @brief Get the wires for each observable operation.
      *
      * @return const std::vector<std::vector<size_t>>&
      */
-    [[nodiscard]] auto getObsWires() const
-        -> const std::vector<std::vector<size_t>> & {
-        return obs_wires_;
+    [[nodiscard]] auto getWires() const -> std::vector<size_t> override {
+        return all_wires_;
     }
 
-  private:
-    const std::vector<std::string> obs_name_;
-    const std::vector<param_var_t> obs_params_;
-    const std::vector<std::vector<size_t>> obs_wires_;
+    void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
+        for (const auto &ob : obs_) {
+            ob->applyInPlace(sv);
+        }
+    }
+
+    [[nodiscard]] auto getObsName() const -> std::string override {
+        using Pennylane::Util::operator<<;
+        std::ostringstream obs_stream;
+        const auto obs_size = obs_.size();
+        for (size_t idx = 0; idx < obs_size; idx++) {
+            obs_stream << obs_[idx]->getObsName();
+            if (idx != obs_size - 1) {
+                obs_stream << " @ ";
+            }
+        }
+        return obs_stream.str();
+    }
 };
+
+
+
+/**
+ * @brief General Hamiltonian as a sum of observables.
+ *
+ * TODO: Check whether caching a sparse matrix representation can give
+ * a speedup
+ */
+template <typename T> class Hamiltonian final : public Observable<T> {
+  public:
+    using PrecisionT = T;
+
+  private:
+    std::vector<T> coeffs_;
+    std::vector<std::shared_ptr<Observable<T>>> obs_;
+
+    [[nodiscard]] bool isEqual(const Observable<T> &other) const override {
+        const auto &other_cast = static_cast<const Hamiltonian<T> &>(other);
+
+        if (coeffs_ != other_cast.coeffs_) {
+            return false;
+        }
+
+        for (size_t i = 0; i < obs_.size(); i++) {
+            if (*obs_[i] != *other_cast.obs_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+  public:
+    /**
+     * @brief Create a Hamiltonian from coefficients and observables
+     *
+     * @param arg1 Arguments to construct coefficients
+     * @param arg2 Arguments to construct observables
+     */
+    template <typename T1, typename T2>
+    Hamiltonian(T1 &&arg1, T2 &&arg2)
+        : coeffs_{std::forward<T1>(arg1)}, obs_{std::forward<T2>(arg2)} {
+        PL_ASSERT(coeffs_.size() == obs_.size());
+    }
+
+    /**
+     * @brief Convenient wrapper for the constructor as the constructor does not
+     * convert the std::shared_ptr with a derived class correctly.
+     *
+     * This function is useful as std::make_shared does not handle
+     * brace-enclosed initializer list correctly.
+     *
+     * @param arg1 Argument to construct coefficients
+     * @param arg2 Argument to construct terms
+     */
+    static auto
+    create(std::initializer_list<T> arg1,
+           std::initializer_list<std::shared_ptr<Observable<T>>> arg2)
+        -> std::shared_ptr<Hamiltonian<T>> {
+        return std::shared_ptr<Hamiltonian<T>>(
+            new Hamiltonian<T>{std::move(arg1), std::move(arg2)});
+    }
+    
+    //to work with
+    void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
+        //auto allocator = sv.allocator();
+        std::vector<std::complex<T>> h_res(sv.getLength(), std::complex<T>{0.0, 0.0});
+        StateVectorCudaManaged<T> d_res(h_res);
+        for (size_t term_idx = 0; term_idx < coeffs.size(); term_idx++) {
+            StateVectorCudaManaged<T> tmp(sv);
+            terms[term_idx]->applyInPlace(tmp);
+            scaleAndAddC_CUDA(std::complex<T>{coeffs[term_idx], 0.0},
+                              tmp.getData(), 
+                              d_res,
+                              tmp.getLength(),
+                              tmp.getDataBuffer().getDevTag().getDeviceID(),
+                              tmp.getDataBuffer().getDevTag().getStreamID());
+        }
+        sv.updateData(d_res);
+    }
+
+    [[nodiscard]] auto getWires() const -> std::vector<size_t> override {
+        std::unordered_set<size_t> wires;
+
+        for (const auto &ob : obs_) {
+            const auto ob_wires = ob->getWires();
+            wires.insert(ob_wires.begin(), ob_wires.end());
+        }
+        auto all_wires = std::vector<size_t>(wires.begin(), wires.end());
+        std::sort(all_wires.begin(), all_wires.end());
+        return all_wires;
+    }
+
+    [[nodiscard]] auto getObsName() const -> std::string override {
+        
+        using Pennylane::Util::operator<<;
+        std::ostringstream ss;
+        ss << "Hamiltonian: { 'coeffs' : " << coeffs_ << ", 'observables' : [";
+        const auto term_size = coeffs_.size();
+        for (size_t t = 0; t < term_size; t++) {
+            ss << obs_[t]->getObsName();
+            if (t != term_size - 1) {
+                ss << ", ";
+            }
+        }
+        ss << "]}";
+        return ss.str();
+    }
+};
+
 
 /**
  * @brief GPU-enabled adjoint Jacobian evaluator following the method of
@@ -350,43 +599,13 @@ template <class T = double> class AdjointJacobianGPU {
      * @param state Statevector to be updated.
      * @param observable Observable to apply.
      */
-    inline void applyObservable(StateVectorCudaManaged<T> &state,
-                                const ObsDatum<T> &observable) {
-        using namespace Pennylane::Util;
-        for (size_t j = 0; j < observable.getSize(); j++) {
-            if (!observable.getObsParams().empty()) {
-                std::visit(
-                    [&](const auto &param) {
-                        using p_t = std::decay_t<decltype(param)>;
-                        using cucomplex_t =
-                            std::decay_t<decltype(state.getData())>;
-
-                        // Apply supported gate with given params
-                        if constexpr (std::is_same_v<p_t, std::vector<T>>) {
-                            state.applyOperation(observable.getObsName()[j],
-                                                 observable.getObsWires()[j],
-                                                 false, param);
-                        }
-                        // Apply provided matrix
-                        else if constexpr (std::is_same_v<
-                                               p_t, std::vector<cucomplex_t>>) {
-                            state.applyOperation(observable.getObsName()[j],
-                                                 observable.getObsWires()[j],
-                                                 false, {}, param);
-                        } else {
-                            state.applyOperation(observable.getObsName()[j],
-                                                 observable.getObsWires()[j],
-                                                 false);
-                        }
-                    },
-                    observable.getObsParams()[j]);
-            } else { // Offloat to SV dispatcher if no parameters provided
-                state.applyOperation(observable.getObsName()[j],
-                                     observable.getObsWires()[j], false);
-            }
-        }
+    /*
+    */
+   template <typename T>
+    inline void applyObservable(StateVectorCudaManaged<T> &state, 
+                                Observable<T> &observable) {
+                                observable.applyInPlace(state);
     }
-
     /**
      * @brief OpenMP accelerated application of observables to given
      * statevectors
@@ -398,7 +617,7 @@ template <class T = double> class AdjointJacobianGPU {
     inline void
     applyObservables(std::vector<StateVectorCudaManaged<T>> &states,
                      const StateVectorCudaManaged<T> &reference_state,
-                     const std::vector<ObsDatum<T>> &observables) {
+                     const std::vector<std::shared_ptr<Observable<T>>> &observables) {
         // clang-format off
         // Globally scoped exception value to be captured within OpenMP block.
         // See the following for OpenMP design decisions:
@@ -560,7 +779,8 @@ template <class T = double> class AdjointJacobianGPU {
     void batchAdjointJacobian(
         const CFP_t *ref_data, std::size_t length,
         std::vector<std::vector<T>> &jac,
-        const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
+        //const std::vector<Pennylane::Algorithms::<T>> &obs,
+        std::vector<std::shared_ptr<Observable<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
         const std::vector<size_t> &trainableParams,
         bool apply_operations = false) {
@@ -661,7 +881,7 @@ template <class T = double> class AdjointJacobianGPU {
     void
     adjointJacobian(const CFP_t *ref_data, std::size_t length,
                     std::vector<std::vector<T>> &jac,
-                    const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
+                    std::vector<std::shared_ptr<Observable<T>>> &obs,
                     const Pennylane::Algorithms::OpsData<T> &ops,
                     const std::vector<size_t> &trainableParams,
                     bool apply_operations = false,
