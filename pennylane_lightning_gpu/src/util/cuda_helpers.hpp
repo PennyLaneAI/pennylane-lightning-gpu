@@ -398,6 +398,38 @@ inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
 }
 
 /**
+ * @brief cuBLAS backed GPU data scaling.
+ *
+ * @tparam T Complex data-type. Accepts cuFloatComplex and cuDoubleComplex
+ * @param
+ * @param v1 Device data pointer 1
+ * @param v2 Device data pointer 2
+ * @param data_size Lengtyh of device data.
+ * @return T Inner-product result
+ */
+template <class T0 = std::complex<float>, class T = cuFloatComplex,
+          class DevTypeID = int>
+inline auto scaleAndAddC_CUDA(const T0 a, const T *v1, T *v2,
+                              const int data_size, int dev_id,
+                              cudaStream_t stream_id) {
+    // T result{0.0, 0.0}; // Host result
+    // cuComplex alpha{a.real(),a.imag()};
+    cublasHandle_t handle;
+    PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
+    PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));
+    PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream_id));
+
+    if constexpr (std::is_same_v<T, cuComplex>) {
+        const cuComplex alpha{a.real(), a.imag()};
+        cublasCaxpy(handle, data_size, &alpha, v1, 1, v2, 1);
+    } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
+        const cuDoubleComplex alpha{a.real(), a.imag()};
+        cublasZaxpy(handle, data_size, &alpha, v1, 1, v2, 1);
+    }
+    cublasDestroy(handle);
+}
+
+/**
  * If T is a supported data type for gates, this expression will
  * evaluate to `true`. Otherwise, it will evaluate to `false`.
  *

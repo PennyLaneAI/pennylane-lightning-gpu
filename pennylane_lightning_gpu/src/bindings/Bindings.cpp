@@ -558,6 +558,128 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     //                              Observable
     //***********************************************************************//
 
+    //    using np_arr_c = py::array_t<std::complex<ParamT>,
+    //    py::array::c_style>;
+    // using np_arr_r = py::array_t<ParamT, py::array::c_style>;
+
+    // std::string class_name;
+
+    class_name = "ObservableGPU_C" + bitsize;
+    py::class_<ObservableGPU<PrecisionT>,
+               std::shared_ptr<ObservableGPU<PrecisionT>>>(
+        m, class_name.c_str(), py::module_local());
+
+    class_name = "NamedObsGPU_C" + bitsize;
+    py::class_<NamedObsGPU<PrecisionT>,
+               std::shared_ptr<NamedObsGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                          py::module_local())
+        .def(py::init(
+            [](const std::string &name, const std::vector<size_t> &wires) {
+                return NamedObsGPU<PrecisionT>(name, wires);
+            }))
+        .def("__repr__", &NamedObsGPU<PrecisionT>::getObsName)
+        .def("get_wires", &NamedObsGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const NamedObsGPU<PrecisionT> &self, py::handle other) -> bool {
+                if (!py::isinstance<NamedObsGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<NamedObsGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+    
+    class_name = "HermitianObsGPU_C" + bitsize;
+    py::class_<HermitianObsGPU<PrecisionT>,
+               std::shared_ptr<HermitianObsGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                       py::module_local())
+        .def(py::init([](const np_arr_c &matrix,
+                         const std::vector<size_t> &wires) {
+            auto buffer = matrix.request();
+            const auto *ptr =
+                static_cast<std::complex<PrecisionT> *>(buffer.ptr);
+	    
+	    const auto m_buffer = matrix.request();
+            std::vector<std::complex<ParamT>> conv_matrix;
+                if (m_buffer.size) {
+                    const auto m_ptr =
+                        static_cast<const std::complex<PrecisionT> *>(m_buffer.ptr);
+                    conv_matrix = std::vector<std::complex<PrecisionT>>{
+                        m_ptr, m_ptr + m_buffer.size};
+                }
+
+            return HermitianObsGPU<PrecisionT>(conv_matrix,wires);
+        }))
+        .def("__repr__", &HermitianObsGPU<PrecisionT>::getObsName)
+        .def("get_wires", &HermitianObsGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const HermitianObsGPU<PrecisionT> &self, py::handle other) -> bool {
+                if (!py::isinstance<HermitianObsGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<HermitianObsGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "TensorProdObsGPU_C" + bitsize;
+    py::class_<TensorProdObsGPU<PrecisionT>,
+               std::shared_ptr<TensorProdObsGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                          py::module_local())
+        .def(py::init(
+            [](const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
+                   &obs) { return TensorProdObsGPU<PrecisionT>(obs); }))
+        .def("__repr__", &TensorProdObsGPU<PrecisionT>::getObsName)
+        .def("get_wires", &TensorProdObsGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const TensorProdObsGPU<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<TensorProdObsGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<TensorProdObsGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "HamiltonianGPU_C" + bitsize;
+    using ObsPtr = std::shared_ptr<ObservableGPU<PrecisionT>>;
+    py::class_<HamiltonianGPU<PrecisionT>,
+               std::shared_ptr<HamiltonianGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                          py::module_local())
+        .def(py::init(
+            [](const np_arr_r &coeffs, const std::vector<ObsPtr> &obs) {
+                auto buffer = coeffs.request();
+                const auto ptr = static_cast<const ParamT *>(buffer.ptr);
+                return HamiltonianGPU<PrecisionT>{
+                    std::vector(ptr, ptr + buffer.size), obs};
+            }))
+        .def("__repr__", &HamiltonianGPU<PrecisionT>::getObsName)
+        .def("get_wires", &HamiltonianGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const HamiltonianGPU<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<HamiltonianGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<HamiltonianGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    /*
     class_name = "ObsStructGPU_C" + bitsize;
     using obs_data_var = std::variant<std::monostate, np_arr_r, np_arr_c>;
     py::class_<ObsDatum<PrecisionT>>(m, class_name.c_str(), py::module_local())
@@ -640,6 +762,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             }
             return params;
         });
+      */
 
     //***********************************************************************//
     //                              Operations
@@ -711,38 +834,46 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
              })
         .def("adjoint_jacobian",
              &AdjointJacobianGPU<PrecisionT>::adjointJacobian)
-        .def("adjoint_jacobian",
-             [](AdjointJacobianGPU<PrecisionT> &adj,
-                const StateVectorCudaManaged<PrecisionT> &sv,
-                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
-                    &observables,
-                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
-                const std::vector<size_t> &trainableParams) {
-                 std::vector<std::vector<PrecisionT>> jac(
-                     observables.size(),
-                     std::vector<PrecisionT>(trainableParams.size(), 0));
+        .def(
+            "adjoint_jacobian",
+            [](AdjointJacobianGPU<PrecisionT> &adj,
+               const StateVectorCudaManaged<PrecisionT> &sv,
+               // const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
+               const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
+                   &observables,
+               const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+               const std::vector<size_t> &trainableParams) {
+                // std::vector<std::vector<PrecisionT>> jac(
+                //     observables.size(),
+                //     std::vector<PrecisionT>(trainableParams.size(), 0));
+                std::vector<PrecisionT> jac(
+                    observables.size() * trainableParams.size(), 0);
 
-                 adj.adjointJacobian(sv.getData(), sv.getLength(), jac,
-                                     observables, operations, trainableParams,
-                                     false, sv.getDataBuffer().getDevTag());
-                 return py::array_t<ParamT>(py::cast(jac));
-             })
-        .def("adjoint_jacobian_batched",
-             [](AdjointJacobianGPU<PrecisionT> &adj,
-                const StateVectorCudaManaged<PrecisionT> &sv,
-                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
-                    &observables,
-                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
-                const std::vector<size_t> &trainableParams) {
-                 std::vector<std::vector<PrecisionT>> jac(
-                     observables.size(),
-                     std::vector<PrecisionT>(trainableParams.size(), 0));
+                adj.adjointJacobian(sv.getData(), sv.getLength(), jac,
+                                    observables, operations, trainableParams,
+                                    false, sv.getDataBuffer().getDevTag());
+                return py::array_t<ParamT>(py::cast(jac));
+            })
+        .def(
+            "adjoint_jacobian_batched",
+            [](AdjointJacobianGPU<PrecisionT> &adj,
+               const StateVectorCudaManaged<PrecisionT> &sv,
+               // const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
+               const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
+                   &observables,
+               const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+               const std::vector<size_t> &trainableParams) {
+                // std::vector<std::vector<PrecisionT>> jac(
+                //     observables.size(),
+                //     std::vector<PrecisionT>(trainableParams.size(), 0));
+                std::vector<PrecisionT> jac(
+                    observables.size() * trainableParams.size(), 0);
 
-                 adj.batchAdjointJacobian(sv.getData(), sv.getLength(), jac,
-                                          observables, operations,
-                                          trainableParams, false);
-                 return py::array_t<ParamT>(py::cast(jac));
-             });
+                adj.batchAdjointJacobian(sv.getData(), sv.getLength(), jac,
+                                         observables, operations,
+                                         trainableParams, false);
+                return py::array_t<ParamT>(py::cast(jac));
+            });
 }
 
 /**

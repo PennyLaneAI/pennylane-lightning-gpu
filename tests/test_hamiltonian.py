@@ -60,27 +60,27 @@ class TestHamiltonianExpval:
                 0.3 + 0.4j,
                 0.4 + 0.5j,
             ],
-            dtype=np.complex128
+            dtype=np.complex128,
         )
 
-        #dev.apply(
-            #[
-                #qml.Identity(wires=[1]),
-                #qml.PauliX(wires=[1]),
-                #qml.PauliY(wires=[0]),
-                #qml.PauliZ(wires=[0]),
-                #qml.RY(phi, wires=[1]),
-                #qml.RZ(varphi, wires=[2]),
-                #qml.CNOT(wires=[0, 1]),
-                #qml.CNOT(wires=[0, 2]),
-                #qml.CNOT(wires=[1, 2]),
-            #],
-            #rotations=obs.diagonalizing_gates(),
-        #)
+        # dev.apply(
+        # [
+        # qml.Identity(wires=[1]),
+        # qml.PauliX(wires=[1]),
+        # qml.PauliY(wires=[0]),
+        # qml.PauliZ(wires=[0]),
+        # qml.RY(phi, wires=[1]),
+        # qml.RZ(varphi, wires=[2]),
+        # qml.CNOT(wires=[0, 1]),
+        # qml.CNOT(wires=[0, 2]),
+        # qml.CNOT(wires=[1, 2]),
+        # ],
+        # rotations=obs.diagonalizing_gates(),
+        # )
 
         dev.syncH2D()
 
         res = dev.expval(H)
-        expected = 0.86
-        #expected0 = 1 + 0*dev.expval(obs) + dev.expval(obs1)
+        expected = 1
+        
         assert np.allclose(res, expected)

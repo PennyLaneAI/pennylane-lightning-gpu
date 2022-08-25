@@ -1158,7 +1158,7 @@ class StateVectorCudaManaged
                        std::forward<decltype(params)>(params));
          }}};
     CSVHandle handle;
-    //CSPHandle handle_sp;
+    // CSPHandle handle_sp;
 
     const std::unordered_map<std::string, custatevecPauli_t> native_gates_{
         {"RX", CUSTATEVEC_PAULI_X},       {"RY", CUSTATEVEC_PAULI_Y},

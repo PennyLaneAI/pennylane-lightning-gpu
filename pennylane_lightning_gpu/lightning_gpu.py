@@ -15,6 +15,7 @@ r"""
 This module contains the :class:`~.LightningGPU` class, a PennyLane simulator device that
 interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enabled calculations.
 """
+from typing import List
 from warnings import warn
 
 import numpy as np
@@ -34,7 +35,7 @@ from pennylane import (
 )
 from pennylane_lightning import LightningQubit
 from pennylane.operation import Tensor, Operation
-from pennylane.measurements import Expectation
+from pennylane.measurements import Expectation, MeasurementProcess, State
 from pennylane.wires import Wires
 
 # Remove after the next release of PL
@@ -54,13 +55,21 @@ try:
         get_gpu_arch,
         DevPool,
         DevTag,
-        ObsStructGPU_C128,
-        ObsStructGPU_C64,
+        # ObsStructGPU_C128,
+        # ObsStructGPU_C64,
+        NamedObsGPU_C64,
+        NamedObsGPU_C128,
+        HermitianObsGPU_C64,
+        HermitianObsGPU_C128,
+        TensorProdObsGPU_C64,
+        TensorProdObsGPU_C128,
+        HamiltonianGPU_C64,
+        HamiltonianGPU_C128,
         OpsStructGPU_C128,
         OpsStructGPU_C64,
     )
 
-    from ._serialize import _serialize_obs, _serialize_ops
+    from ._serialize import _serialize_ob, _serialize_observables, _serialize_ops
     from ctypes.util import find_library
     from importlib import util as imp_util
 
@@ -248,6 +257,58 @@ class LightningGPU(LightningQubit):
                     'the "adjoint" differentiation method'
                 )
 
+    @staticmethod
+    def _check_adjdiff_supported_measurements(measurements: List[MeasurementProcess]):
+        """Check whether given list of measurement is supported by adjoint_diff.
+        Args:
+            measurements (List[MeasurementProcess]): a list of measurement processes to check.
+        Returns:
+            Expectation or State: a common return type of measurements.
+        """
+        if len(measurements) == 0:
+            return None
+
+        if len(measurements) == 1 and measurements[0].return_type is State:
+            # return State
+            raise QuantumFunctionError("Not supported")
+
+        # The return_type of measurement processes must be expectation
+        if not all([m.return_type is Expectation for m in measurements]):
+            raise QuantumFunctionError(
+                "Adjoint differentiation method does not support expectation return type "
+                "mixed with other return types"
+            )
+
+        for m in measurements:
+            if not isinstance(m.obs, Tensor):
+                if isinstance(m.obs, Projector):
+                    raise QuantumFunctionError(
+                        "Adjoint differentiation method does not support the Projector observable"
+                    )
+            else:
+                if any([isinstance(o, Projector) for o in m.obs.non_identity_obs]):
+                    raise QuantumFunctionError(
+                        "Adjoint differentiation method does not support the Projector observable"
+                    )
+        return Expectation
+
+    @staticmethod
+    def _check_adjdiff_supported_operations(operations):
+        """Check Lightning adjoint differentiation method support for a tape.
+
+        Raise ``QuantumFunctionError`` if ``tape`` contains not supported measurements,
+        observables, or operations by the Lightning adjoint differentiation method.
+
+        Args:
+            tape (.QuantumTape): quantum tape to differentiate.
+        """
+        for op in operations:
+            if op.num_params > 1 and not isinstance(op, Rot):
+                raise QuantumFunctionError(
+                    f"The {op.name} operation is not supported using "
+                    'the "adjoint" differentiation method'
+                )
+
     def adjoint_jacobian(self, tape, starting_state=None, use_device_state=False, **kwargs):
         if self.shots is not None:
             warn(
@@ -256,11 +317,14 @@ class LightningGPU(LightningQubit):
                 UserWarning,
             )
 
+        tape_return_type = self._check_adjdiff_supported_measurements(tape.measurements)
+
         if len(tape.trainable_params) == 0:
             return np.array(0)
 
         # Check adjoint diff support
         self.adjoint_diff_support_check(tape)
+        self._check_adjdiff_supported_operations(tape.operations)
 
         # Initialization of state
         if starting_state is not None:
@@ -277,7 +341,7 @@ class LightningGPU(LightningQubit):
         else:
             adj = AdjointJacobianGPU_C128()
 
-        obs_serialized = _serialize_obs(tape, self.wire_map, use_csingle=self.use_csingle)
+        obs_serialized = _serialize_observables(tape, self.wire_map, use_csingle=self.use_csingle)
         ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=self.use_csingle)
 
         ops_serialized = adj.create_ops_list(*ops_serialized)
@@ -320,6 +384,47 @@ class LightningGPU(LightningQubit):
         jac_r[:, record_tp_rows] = jac
         return jac_r
 
+    def vjp(self, measurements, dy, starting_state=None, use_device_state=False):
+        """Generate the processing function required to compute the vector-Jacobian products of a tape."""
+        if self.shots is not None:
+            warn(
+                "Requested adjoint differentiation to be computed with finite shots."
+                " The derivative is always exact when using the adjoint differentiation method.",
+                UserWarning,
+            )
+
+        tape_return_type = self._check_adjdiff_supported_measurements(measurements)
+
+        if math.allclose(dy, 0) or tape_return_type is None:
+            return lambda tape: math.convert_like(np.zeros(len(tape.trainable_params)), dy)
+
+        if tape_return_type is Expectation:
+            if len(dy) != len(measurements):
+                raise ValueError(
+                    "Number of observables in the tape must be the same as the length of dy in the vjp method"
+                )
+
+            if np.iscomplexobj(dy):
+                raise ValueError(
+                    "The vjp method only works with a real-valued dy when the tape is returning an expectation value"
+                )
+
+            ham = qml.Hamiltonian(dy, [m.obs for m in measurements])
+
+            def processing_fn(tape):
+                nonlocal ham
+                num_params = len(tape.trainable_params)
+
+                if num_params == 0:
+                    return np.array([], dtype=self._state.dtype)
+
+                new_tape = tape.copy()
+                new_tape._measurements = [qml.expval(ham)]
+
+                return self.adjoint_jacobian(new_tape, starting_state, use_device_state).reshape(-1)
+
+            return processing_fn
+
     def sample(self, observable, shot_range=None, bin_size=None, counts=False):
         if observable.name != "PauliZ":
             self.apply_cq(observable.diagonalizing_gates())
@@ -329,6 +434,7 @@ class LightningGPU(LightningQubit):
     def expval(self, observable, shot_range=None, bin_size=None):
         if observable.name in [
             "Projector",
+            "Hamiltonian",
         ]:
             self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
@@ -341,8 +447,9 @@ class LightningGPU(LightningQubit):
                 CSR_SparseHamiltonian.data,
             )
 
-        if observable.name == "Hamiltonian":
+        if observable.name in ["Hamiltonian"]:
             # check if all obs are Pauli basis
+            """
             supported_pauli_basis = ["PauliX", "PauliY", "PauliZ", "Identity"]
 
             obs_supported = False
@@ -374,11 +481,16 @@ class LightningGPU(LightningQubit):
 
                 return self._gpu_state.ExpectationValue(name_list, wire_list, observable.coeffs)
             else:
-                DenseHamiltonianMatrix = qml.utils.sparse_hamiltonian(observable).toarray()
-                return self._gpu_state.ExpectationValue(
-                    self.wires.indices(observable.wires), DenseHamiltonianMatrix
-                )
-
+            """
+            
+            DenseHamiltonianMatrix = qml.utils.sparse_hamiltonian(observable).toarray()
+            return self._gpu_state.ExpectationValue(
+                self.wires.indices(observable.wires), DenseHamiltonianMatrix
+            )
+            """
+            ob_serialized = _serialize_ob(observable, self.wire_map, use_csingle=self.use_csingle)
+            return self._gpu_state.ExpectationValue(ob_serialized)
+            """
         if self.shots is not None:
             # estimate the expectation value
             samples = self.sample(observable, shot_range=shot_range, bin_size=bin_size)

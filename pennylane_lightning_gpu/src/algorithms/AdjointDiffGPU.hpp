@@ -139,69 +139,368 @@ namespace Pennylane::Algorithms {
  * class.
  *
  */
-template <class T = double> class ObsDatum {
-  public:
+
+/**
+ * @brief A base class for all observable classes.
+ *
+ * We note that all subclasses must be immutable (does not provide any setter).
+ *
+ * @tparam T Floating point type
+ */
+
+template <typename T> class ObservableGPU {
+  private:
     /**
-     * @brief Variant type of stored parameter data.
+     * @brief Polymorphic function comparing this to another Observable
+     * object.
+     *
+     * @param Another instance of subclass of Observable<T> to compare
      */
-    using param_var_t = std::variant<std::monostate, std::vector<T>,
-                                     std::vector<std::complex<T>>>;
+    [[nodiscard]] virtual bool isEqual(const ObservableGPU<T> &other) const = 0;
+
+  protected:
+    ObservableGPU() = default;
+    ObservableGPU(const ObservableGPU &) = default;
+    ObservableGPU(ObservableGPU &&) noexcept = default;
+    ObservableGPU &operator=(const ObservableGPU &) = default;
+    ObservableGPU &operator=(ObservableGPU &&) noexcept = default;
+
+  public:
+    virtual ~ObservableGPU() = default;
 
     /**
-     * @brief Copy constructor for an ObsDatum object, representing a given
-     * observable.
-     *
-     * @param obs_name Name of each operation of the observable. Tensor product
-     * observables have more than one operation.
-     * @param obs_params Parameters for a given observable operation ({} if
-     * optional).
-     * @param obs_wires Wires upon which to apply operation. Each observable
-     * operation will be a separate nested list.
+     * @brief Apply the observable to the given statevector in place.
      */
-    ObsDatum(std::vector<std::string> obs_name,
-             std::vector<param_var_t> obs_params,
-             std::vector<std::vector<size_t>> obs_wires)
-        : obs_name_{std::move(obs_name)},
-          obs_params_(std::move(obs_params)), obs_wires_{
-                                                  std::move(obs_wires)} {};
+    virtual void applyInPlace(StateVectorCudaManaged<T> &sv) const = 0;
+
+    /**
+     * @brief Get the name of the observable
+     */
+    [[nodiscard]] virtual auto getObsName() const -> std::string = 0;
+
+    /**
+     * @brief Get the wires the observable applies to.
+     */
+    [[nodiscard]] virtual auto getWires() const -> std::vector<size_t> = 0;
+
+    /**
+     * @brief Test whether this object is equal to another object
+     */
+    [[nodiscard]] bool operator==(const ObservableGPU<T> &other) const {
+        return typeid(*this) == typeid(other) && isEqual(other);
+    }
+
+    /**
+     * @brief Test whether this object is different from another object.
+     */
+    [[nodiscard]] bool operator!=(const ObservableGPU<T> &other) const {
+        return !(*this == other);
+    }
+};
+
+/**
+ * @brief Class models named observables (PauliX, PauliY, PauliZ, etc.)
+ *
+ * @tparam T Floating point type
+ */
+template <typename T> class NamedObsGPU final : public ObservableGPU<T> {
+  private:
+    std::string obs_name_;
+    std::vector<size_t> wires_;
+    std::vector<T> params_;
+
+    [[nodiscard]] bool isEqual(const ObservableGPU<T> &other) const override {
+        const auto &other_cast = static_cast<const NamedObsGPU<T> &>(other);
+
+        return (obs_name_ == other_cast.obs_name_) &&
+               (wires_ == other_cast.wires_) && (params_ == other_cast.params_);
+    }
+
+  public:
+    /**
+     * @brief Construct a NamedObs object, representing a given observable.
+     *
+     * @param arg1 Name of the observable.
+     * @param arg2 Argument to construct wires.
+     * @param arg3 Argument to construct parameters
+     */
+    NamedObsGPU(std::string obs_name, std::vector<size_t> wires,
+                std::vector<T> params = {})
+        : obs_name_{std::move(obs_name)}, wires_{std::move(wires)},
+          params_{std::move(params)} {}
+
+    [[nodiscard]] auto getObsName() const -> std::string override {
+        using Pennylane::Util::operator<<;
+        std::ostringstream obs_stream;
+        obs_stream << obs_name_ << wires_;
+        return obs_stream.str();
+    }
+
+    [[nodiscard]] auto getWires() const -> std::vector<size_t> override {
+        return wires_;
+    }
+
+    void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
+        sv.applyOperation(obs_name_, wires_, false, params_);
+    }
+};
+
+/**
+ * @brief Class models
+ *
+ */
+template <typename T> class HermitianObsGPU final : public ObservableGPU<T> {
+  public:
+    using MatrixT = std::vector<std::complex<T>>;
+
+  private:
+    std::vector<std::complex<T>> matrix_;
+    std::vector<size_t> wires_;
+
+    [[nodiscard]] bool isEqual(const ObservableGPU<T> &other) const override {
+        const auto &other_cast = static_cast<const HermitianObsGPU<T> &>(other);
+
+        return (matrix_ == other_cast.matrix_) && (wires_ == other_cast.wires_);
+    }
+
+  public:
+    /**
+     * @brief Create Hermitian observable
+     *
+     * @param matrix Matrix in row major format.
+     * @param wires Wires the observable applies to.
+     */
+    //template <typename T1>
+    HermitianObsGPU(MatrixT matrix, std::vector<size_t> wires)
+        : matrix_{std::move(matrix)}, wires_{std::move(wires)} {
+        //PL_ASSERT(matrix_.size() ==
+        //          Util::exp2(wires_.size()) * Util::exp2(wires_.size()));
+    }
+
+    [[nodiscard]] auto getMatrix() const -> const std::vector<std::complex<T>> { return matrix_; }
+
+    [[nodiscard]] auto getWires() const -> std::vector<size_t> override {
+        return wires_;
+    }
+
+    [[nodiscard]] auto getObsName() const -> std::string override {
+        return "Hermitian";
+    }
+
+    void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
+    	std::string obs_name_="Hermitian";
+        sv.applyOperation_std(obs_name_,wires_,false,{},matrix_);
+    }
+};
+
+/**
+ * @brief Tensor product observable class
+ */
+template <typename T> class TensorProdObsGPU final : public ObservableGPU<T> {
+  private:
+    std::vector<std::shared_ptr<ObservableGPU<T>>> obs_;
+    std::vector<size_t> all_wires_;
+
+    [[nodiscard]] bool isEqual(const ObservableGPU<T> &other) const override {
+        const auto &other_cast =
+            static_cast<const TensorProdObsGPU<T> &>(other);
+
+        if (obs_.size() != other_cast.obs_.size()) {
+            return false;
+        }
+
+        for (size_t i = 0; i < obs_.size(); i++) {
+            if (*obs_[i] != *other_cast.obs_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+  public:
+    /**
+     * @brief Create a tensor product of observables
+     *
+     * @param arg Arguments perfect forwarded to vector of observables.
+     */
+    template <typename... Ts>
+    explicit TensorProdObsGPU(Ts &&...arg) : obs_{std::forward<Ts>(arg)...} {
+        std::unordered_set<size_t> wires;
+
+        for (const auto &ob : obs_) {
+            const auto ob_wires = ob->getWires();
+            for (const auto wire : ob_wires) {
+                if (wires.contains(wire)) {
+                    PL_ABORT("All wires in observables must be disjoint.");
+                }
+                wires.insert(wire);
+            }
+        }
+        all_wires_ = std::vector<size_t>(wires.begin(), wires.end());
+        std::sort(all_wires_.begin(), all_wires_.end());
+    }
+
+    /**
+     * @brief Convenient wrapper for the constructor as the constructor does not
+     * convert the std::shared_ptr with a derived class correctly.
+     *
+     * This function is useful as std::make_shared does not handle
+     * brace-enclosed initializer list correctly.
+     *
+     * @param obs List of observables
+     */
+    static auto
+    create(std::initializer_list<std::shared_ptr<ObservableGPU<T>>> obs)
+        -> std::shared_ptr<TensorProdObsGPU<T>> {
+        return std::shared_ptr<TensorProdObsGPU<T>>{
+            new TensorProdObsGPU(std::move(obs))};
+    }
+
+    static auto create(std::vector<std::shared_ptr<ObservableGPU<T>>> obs)
+        -> std::shared_ptr<TensorProdObsGPU<T>> {
+        return std::shared_ptr<TensorProdObsGPU<T>>{
+            new TensorProdObsGPU(std::move(obs))};
+    }
 
     /**
      * @brief Get the number of operations in observable.
      *
      * @return size_t
      */
-    [[nodiscard]] auto getSize() const -> size_t { return obs_name_.size(); }
-    /**
-     * @brief Get the name of the observable operations.
-     *
-     * @return const std::vector<std::string>&
-     */
-    [[nodiscard]] auto getObsName() const -> const std::vector<std::string> & {
-        return obs_name_;
-    }
-    /**
-     * @brief Get the parameters for the observable operations.
-     *
-     * @return const std::vector<std::vector<T>>&
-     */
-    [[nodiscard]] auto getObsParams() const
-        -> const std::vector<param_var_t> & {
-        return obs_params_;
-    }
+    [[nodiscard]] auto getSize() const -> size_t { return obs_.size(); }
+
     /**
      * @brief Get the wires for each observable operation.
      *
      * @return const std::vector<std::vector<size_t>>&
      */
-    [[nodiscard]] auto getObsWires() const
-        -> const std::vector<std::vector<size_t>> & {
-        return obs_wires_;
+    [[nodiscard]] auto getWires() const -> std::vector<size_t> override {
+        return all_wires_;
     }
 
+    void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
+        for (const auto &ob : obs_) {
+            ob->applyInPlace(sv);
+        }
+    }
+
+    [[nodiscard]] auto getObsName() const -> std::string override {
+        using Pennylane::Util::operator<<;
+        std::ostringstream obs_stream;
+        const auto obs_size = obs_.size();
+        for (size_t idx = 0; idx < obs_size; idx++) {
+            obs_stream << obs_[idx]->getObsName();
+            if (idx != obs_size - 1) {
+                obs_stream << " @ ";
+            }
+        }
+        return obs_stream.str();
+    }
+};
+
+/**
+ * @brief General Hamiltonian as a sum of observables.
+ *
+ * TODO: Check whether caching a sparse matrix representation can give
+ * a speedup
+ */
+template <typename T> class HamiltonianGPU final : public ObservableGPU<T> {
+  public:
+    using PrecisionT = T;
+
   private:
-    const std::vector<std::string> obs_name_;
-    const std::vector<param_var_t> obs_params_;
-    const std::vector<std::vector<size_t>> obs_wires_;
+    std::vector<T> coeffs_;
+    std::vector<std::shared_ptr<ObservableGPU<T>>> obs_;
+
+    [[nodiscard]] bool isEqual(const ObservableGPU<T> &other) const override {
+        const auto &other_cast = static_cast<const HamiltonianGPU<T> &>(other);
+
+        if (coeffs_ != other_cast.coeffs_) {
+            return false;
+        }
+
+        for (size_t i = 0; i < obs_.size(); i++) {
+            if (*obs_[i] != *other_cast.obs_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+  public:
+    /**
+     * @brief Create a Hamiltonian from coefficients and observables
+     *
+     * @param arg1 Arguments to construct coefficients
+     * @param arg2 Arguments to construct observables
+     */
+    template <typename T1, typename T2>
+    HamiltonianGPU(T1 &&arg1, T2 &&arg2)
+        : coeffs_{std::forward<T1>(arg1)}, obs_{std::forward<T2>(arg2)} {
+        PL_ASSERT(coeffs_.size() == obs_.size());
+    }
+
+    /**
+     * @brief Convenient wrapper for the constructor as the constructor does not
+     * convert the std::shared_ptr with a derived class correctly.
+     *
+     * This function is useful as std::make_shared does not handle
+     * brace-enclosed initializer list correctly.
+     *
+     * @param arg1 Argument to construct coefficients
+     * @param arg2 Argument to construct terms
+     */
+    static auto
+    create(std::initializer_list<T> arg1,
+           std::initializer_list<std::shared_ptr<ObservableGPU<T>>> arg2)
+        -> std::shared_ptr<HamiltonianGPU<T>> {
+        return std::shared_ptr<HamiltonianGPU<T>>(
+            new HamiltonianGPU<T>{std::move(arg1), std::move(arg2)});
+    }
+
+    // to work with
+    void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
+        std::vector<std::complex<T>> h_res(sv.getLength(),
+                                           std::complex<T>{0.0, 0.0});
+        StateVectorCudaManaged<T> d_res(h_res.data(), sv.getLength());
+        for (size_t term_idx = 0; term_idx < coeffs_.size(); term_idx++) {
+            StateVectorCudaManaged<T> tmp(sv);
+            obs_[term_idx]->applyInPlace(tmp);
+            scaleAndAddC_CUDA(std::complex<T>{coeffs_[term_idx], 0.0},
+                              tmp.getData(), d_res.getData(), tmp.getLength(),
+                              tmp.getDataBuffer().getDevTag().getDeviceID(),
+                              tmp.getDataBuffer().getDevTag().getStreamID());
+        }
+        sv.updateData(d_res);
+    }
+
+    [[nodiscard]] auto getWires() const -> std::vector<size_t> override {
+        std::unordered_set<size_t> wires;
+
+        for (const auto &ob : obs_) {
+            const auto ob_wires = ob->getWires();
+            wires.insert(ob_wires.begin(), ob_wires.end());
+        }
+        auto all_wires = std::vector<size_t>(wires.begin(), wires.end());
+        std::sort(all_wires.begin(), all_wires.end());
+        return all_wires;
+    }
+
+    [[nodiscard]] auto getObsName() const -> std::string override {
+
+        using Pennylane::Util::operator<<;
+        std::ostringstream ss;
+        ss << "Hamiltonian: { 'coeffs' : " << coeffs_ << ", 'observables' : [";
+        const auto term_size = coeffs_.size();
+        for (size_t t = 0; t < term_size; t++) {
+            ss << obs_[t]->getObsName();
+            if (t != term_size - 1) {
+                ss << ", ";
+            }
+        }
+        ss << "]}";
+        return ss.str();
+    }
 };
 
 /**
@@ -281,19 +580,21 @@ template <class T = double> class AdjointJacobianGPU {
      * @param sv2 Statevector |sv2>
      * @param jac Jacobian receiving the values.
      * @param scaling_coeff Generator coefficient for given gate derivative.
-     * @param obs_index Observable index position of Jacobian to update.
+     * @param obs_index ObservableGPU index position of Jacobian to update.
      * @param param_index Parameter index position of Jacobian to update.
      */
     inline void updateJacobian(const StateVectorCudaManaged<T> &sv1,
                                const StateVectorCudaManaged<T> &sv2,
-                               std::vector<std::vector<T>> &jac,
-                               T scaling_coeff, size_t obs_index,
-                               size_t param_index) {
+                               std::vector<T> &jac, T scaling_coeff,
+                               size_t obs_index, size_t param_index,
+                               size_t tp_size) {
+                               //size_t mat_row_idx) {
         PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
                             sv2.getDataBuffer().getDevTag().getDeviceID(),
                         "Data exists on different GPUs. Aborting.");
 
-        jac[obs_index][param_index] =
+        //jac[mat_row_idx+obs_index] =
+        jac[obs_index*tp_size + param_index] =
             -2 * scaling_coeff *
             innerProdC_CUDA(sv1.getData(), sv2.getData(), sv1.getLength(),
                             sv1.getDataBuffer().getDevTag().getDeviceID(),
@@ -348,9 +649,10 @@ template <class T = double> class AdjointJacobianGPU {
      * `%StateVectorCudaManaged<T>`
      *
      * @param state Statevector to be updated.
-     * @param observable Observable to apply.
+     * @param observable ObservableGPU to apply.
      */
-    inline void applyObservable(StateVectorCudaManaged<T> &state,
+    /*
+    inline void applyObservableGPU(StateVectorCudaManaged<T> &state,
                                 const ObsDatum<T> &observable) {
         using namespace Pennylane::Util;
         for (size_t j = 0; j < observable.getSize(); j++) {
@@ -386,6 +688,20 @@ template <class T = double> class AdjointJacobianGPU {
             }
         }
     }
+    */
+
+    /**
+     * @brief Utility method to apply a given operations from given
+     * `%Pennylane::Algorithms::ObsDatum<T>` object to
+     * `%StateVectorCudaManaged<T>`
+     *
+     * @param state Statevector to be updated.
+     * @param observable ObservableGPU to apply.
+     */
+    inline void applyObservable(StateVectorCudaManaged<T> &state,
+                                ObservableGPU<T> &observable) {
+        observable.applyInPlace(state);
+    }
 
     /**
      * @brief OpenMP accelerated application of observables to given
@@ -395,10 +711,10 @@ template <class T = double> class AdjointJacobianGPU {
      * @param reference_state Reference statevector
      * @param observables Vector of observables to apply to each statevector.
      */
-    inline void
-    applyObservables(std::vector<StateVectorCudaManaged<T>> &states,
-                     const StateVectorCudaManaged<T> &reference_state,
-                     const std::vector<ObsDatum<T>> &observables) {
+    inline void applyObservables(
+        std::vector<StateVectorCudaManaged<T>> &states,
+        const StateVectorCudaManaged<T> &reference_state,
+        const std::vector<std::shared_ptr<ObservableGPU<T>>> &observables) {
         // clang-format off
         // Globally scoped exception value to be captured within OpenMP block.
         // See the following for OpenMP design decisions:
@@ -414,7 +730,7 @@ template <class T = double> class AdjointJacobianGPU {
             for (size_t h_i = 0; h_i < num_observables; h_i++) {
                 try {
                     states[h_i].updateData(reference_state);
-                    applyObservable(states[h_i], observables[h_i]);
+                    applyObservable(states[h_i], *observables[h_i]);
                 } catch (...) {
                     #if defined(_OPENMP)
                         #pragma omp critical
@@ -550,17 +866,19 @@ template <class T = double> class AdjointJacobianGPU {
      * @param ref_data Pointer to the statevector data.
      * @param length Length of the statevector data.
      * @param jac Preallocated vector for Jacobian data results.
-     * @param obs Observables for which to calculate Jacobian.
+     * @param obs ObservableGPUs for which to calculate Jacobian.
      * @param ops Operations used to create given state.
      * @param trainableParams List of parameters participating in Jacobian
      * calculation.
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
+
     void batchAdjointJacobian(
-        const CFP_t *ref_data, std::size_t length,
-        std::vector<std::vector<T>> &jac,
-        const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
+        const CFP_t *ref_data, std::size_t length, std::vector<T> &jac,
+        // std::vector<std::vector<T>> &jac,
+        // const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
+        const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
         const std::vector<size_t> &trainableParams,
         bool apply_operations = false) {
@@ -576,7 +894,8 @@ template <class T = double> class AdjointJacobianGPU {
         threads.reserve(num_gpus);
 
         // Hold results of threaded GPU executions
-        std::vector<std::future<std::vector<std::vector<T>>>> futures;
+        // std::vector<std::future<std::vector<std::vector<T>>>> futures;
+        std::vector<std::future<std::vector<T>>> futures;
 
         // Iterate over the chunked observables, and submit the Jacobian task
         // for execution
@@ -586,36 +905,34 @@ template <class T = double> class AdjointJacobianGPU {
             const auto last = static_cast<std::size_t>(
                 std::ceil((obs.size() * (i + 1) / num_chunks) - 1));
 
-            std::promise<std::vector<std::vector<T>>> jac_subset_promise;
+            // std::promise<std::vector<std::vector<T>>> jac_subset_promise;
+            std::promise<std::vector<T>> jac_subset_promise;
             futures.emplace_back(jac_subset_promise.get_future());
 
-            auto adj_lambda =
-                [&](std::promise<std::vector<std::vector<T>>> j_promise) {
-                    // Ensure No OpenMP threads spawned;
-                    // to be resolved with streams in future releases
-                    omp_set_num_threads(1);
-                    // Grab a GPU index, and set a device tag
-                    const auto id = dp.acquireDevice();
-                    DevTag<int> dt_local(id, 0);
-                    dt_local.refresh();
+            auto adj_lambda = [&](std::promise<std::vector<T>> j_promise) {
+                // Ensure No OpenMP threads spawned;
+                // to be resolved with streams in future releases
+                omp_set_num_threads(1);
+                // Grab a GPU index, and set a device tag
+                const auto id = dp.acquireDevice();
+                DevTag<int> dt_local(id, 0);
+                dt_local.refresh();
 
-                    // Create a sv copy on this thread and device; may not be
-                    // necessary, could do in adjoint calculation directly
-                    StateVectorCudaManaged<T> local_sv(ref_data, length,
-                                                       dt_local);
+                // Create a sv copy on this thread and device; may not be
+                // necessary, could do in adjoint calculation directly
+                StateVectorCudaManaged<T> local_sv(ref_data, length, dt_local);
 
-                    // Create local store for Jacobian subset
-                    std::vector<std::vector<T>> jac_local(
-                        (last - first + 1),
-                        std::vector<T>(trainableParams.size(), 0));
-                    adjointJacobian(
-                        local_sv.getData(), length, jac_local,
-                        {obs.begin() + first, obs.begin() + last + 1}, ops,
-                        trainableParams, apply_operations, dt_local);
+                // Create local store for Jacobian subset
+                std::vector<T> jac_local(
+                    (last - first + 1) * trainableParams.size(), 0);
+                adjointJacobian(local_sv.getData(), length, jac_local,
+                                {obs.begin() + first, obs.begin() + last + 1},
+                                ops, trainableParams, apply_operations,
+                                dt_local);
 
-                    j_promise.set_value(std::move(jac_local));
-                    dp.releaseDevice(id);
-                };
+                j_promise.set_value(std::move(jac_local));
+                dp.releaseDevice(id);
+            };
             threads.emplace_back(adj_lambda, std::move(jac_subset_promise));
         }
         /// Keep going here; ensure the new local jacs are inserted and
@@ -628,6 +945,12 @@ template <class T = double> class AdjointJacobianGPU {
             for (std::size_t j = 0; j < jac_rows.size(); j++) {
                 jac.at(first + j) = std::move(jac_rows[j]);
             }
+            // size_t num_jac_rows = std::ceil(obs.size() / num_chunks);
+            // for (std::size_t j = 0; j < num_jac_rows; j++)
+            //{
+            // auto tmp = futures[first + j].get();
+            //	    jac.at(first + j) = futures[first + j].get();
+            //}
         }
         for (std::size_t t = 0; t < threads.size(); t++) {
             threads[t].join();
@@ -651,21 +974,21 @@ template <class T = double> class AdjointJacobianGPU {
      * @param ref_data Pointer to the statevector data.
      * @param length Length of the statevector data.
      * @param jac Preallocated vector for Jacobian data results.
-     * @param obs Observables for which to calculate Jacobian.
+     * @param obs ObservableGPUs for which to calculate Jacobian.
      * @param ops Operations used to create given state.
      * @param trainableParams List of parameters participating in Jacobian
      * calculation.
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void
-    adjointJacobian(const CFP_t *ref_data, std::size_t length,
-                    std::vector<std::vector<T>> &jac,
-                    const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
-                    const Pennylane::Algorithms::OpsData<T> &ops,
-                    const std::vector<size_t> &trainableParams,
-                    bool apply_operations = false,
-                    CUDA::DevTag<int> dev_tag = {0, 0}) {
+    void adjointJacobian(
+        const CFP_t *ref_data, std::size_t length, std::vector<T> &jac,
+        // std::vector<std::vector<T>> &jac,
+        // const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
+        const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
+        const Pennylane::Algorithms::OpsData<T> &ops,
+        const std::vector<size_t> &trainableParams,
+        bool apply_operations = false, CUDA::DevTag<int> dev_tag = {0, 0}) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 
@@ -724,12 +1047,15 @@ template <class T = double> class AdjointJacobianGPU {
                                        !ops.getOpsInverses()[op_idx]) *
                         (ops.getOpsInverses()[op_idx] ? -1 : 1);
 
+                    const size_t mat_row_idx =
+                        trainableParamNumber * num_observables;
+
                     // clang-format off
 
                     #if defined(_OPENMP)
                         #pragma omp parallel for default(none)   \
                         shared(H_lambda, jac, mu, scalingFactor, \
-                            trainableParamNumber, tp_it,         \
+                            trainableParamNumber,mat_row_idx,tp_size, tp_it,         \
                             num_observables)
                     #endif
 
@@ -738,7 +1064,8 @@ template <class T = double> class AdjointJacobianGPU {
                          obs_idx++) {
                         updateJacobian(H_lambda[obs_idx], mu, jac,
                                        scalingFactor, obs_idx,
-                                       trainableParamNumber);
+                                       trainableParamNumber, tp_size);
+                                       //trainableParamNumber, mat_row_idx);
                     }
                     trainableParamNumber--;
                     ++tp_it;
