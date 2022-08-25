@@ -11,6 +11,7 @@
 ### Bug fixes
 
 * Update Lightning tag to latest_release.
+[(#51)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/51)
 
 ### Contributors
 
