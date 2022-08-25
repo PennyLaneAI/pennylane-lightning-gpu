@@ -582,10 +582,6 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                                           py::module_local())
         .def(py::init([](const np_arr_c &matrix,
                          const std::vector<size_t> &wires) {
-            auto buffer = matrix.request();
-            const auto *ptr =
-                static_cast<std::complex<PrecisionT> *>(buffer.ptr);
-
             const auto m_buffer = matrix.request();
             std::vector<std::complex<ParamT>> conv_matrix;
             if (m_buffer.size) {
