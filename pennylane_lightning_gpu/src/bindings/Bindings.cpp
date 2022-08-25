@@ -733,46 +733,36 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
              })
         .def("adjoint_jacobian",
              &AdjointJacobianGPU<PrecisionT>::adjointJacobian)
-        .def(
-            "adjoint_jacobian",
-            [](AdjointJacobianGPU<PrecisionT> &adj,
-               const StateVectorCudaManaged<PrecisionT> &sv,
-               // const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
-               const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
-                   &observables,
-               const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
-               const std::vector<size_t> &trainableParams) {
-                // std::vector<std::vector<PrecisionT>> jac(
-                //     observables.size(),
-                //     std::vector<PrecisionT>(trainableParams.size(), 0));
-                std::vector<PrecisionT> jac(
-                    observables.size() * trainableParams.size(), 0);
+        .def("adjoint_jacobian",
+             [](AdjointJacobianGPU<PrecisionT> &adj,
+                const StateVectorCudaManaged<PrecisionT> &sv,
+                const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
+                    &observables,
+                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+                const std::vector<size_t> &trainableParams) {
+                 std::vector<PrecisionT> jac(
+                     observables.size() * trainableParams.size(), 0);
 
-                adj.adjointJacobian(sv.getData(), sv.getLength(), jac,
-                                    observables, operations, trainableParams,
-                                    false, sv.getDataBuffer().getDevTag());
-                return py::array_t<ParamT>(py::cast(jac));
-            })
-        .def(
-            "adjoint_jacobian_batched",
-            [](AdjointJacobianGPU<PrecisionT> &adj,
-               const StateVectorCudaManaged<PrecisionT> &sv,
-               // const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
-               const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
-                   &observables,
-               const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
-               const std::vector<size_t> &trainableParams) {
-                // std::vector<std::vector<PrecisionT>> jac(
-                //     observables.size(),
-                //     std::vector<PrecisionT>(trainableParams.size(), 0));
-                std::vector<PrecisionT> jac(
-                    observables.size() * trainableParams.size(), 0);
+                 adj.adjointJacobian(sv.getData(), sv.getLength(), jac,
+                                     observables, operations, trainableParams,
+                                     false, sv.getDataBuffer().getDevTag());
+                 return py::array_t<ParamT>(py::cast(jac));
+             })
+        .def("adjoint_jacobian_batched",
+             [](AdjointJacobianGPU<PrecisionT> &adj,
+                const StateVectorCudaManaged<PrecisionT> &sv,
+                const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
+                    &observables,
+                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+                const std::vector<size_t> &trainableParams) {
+                 std::vector<PrecisionT> jac(
+                     observables.size() * trainableParams.size(), 0);
 
-                adj.batchAdjointJacobian(sv.getData(), sv.getLength(), jac,
-                                         observables, operations,
-                                         trainableParams, false);
-                return py::array_t<ParamT>(py::cast(jac));
-            });
+                 adj.batchAdjointJacobian(sv.getData(), sv.getLength(), jac,
+                                          observables, operations,
+                                          trainableParams, false);
+                 return py::array_t<ParamT>(py::cast(jac));
+             });
 }
 
 /**

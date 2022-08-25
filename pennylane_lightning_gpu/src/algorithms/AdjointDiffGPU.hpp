@@ -272,8 +272,7 @@ template <typename T> class HermitianObsGPU final : public ObservableGPU<T> {
      */
     // template <typename T1>
     HermitianObsGPU(MatrixT matrix, std::vector<size_t> wires)
-        : matrix_{std::move(matrix)}, wires_{std::move(wires)} {
-    }
+        : matrix_{std::move(matrix)}, wires_{std::move(wires)} {}
 
     [[nodiscard]] auto getMatrix() const -> const std::vector<std::complex<T>> {
         return matrix_;
@@ -924,8 +923,6 @@ template <class T = double> class AdjointJacobianGPU {
      */
     void adjointJacobian(
         const CFP_t *ref_data, std::size_t length, std::vector<T> &jac,
-        // std::vector<std::vector<T>> &jac,
-        // const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
         const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
         const std::vector<size_t> &trainableParams,
@@ -988,15 +985,12 @@ template <class T = double> class AdjointJacobianGPU {
                                        !ops.getOpsInverses()[op_idx]) *
                         (ops.getOpsInverses()[op_idx] ? -1 : 1);
 
-                    const size_t mat_row_idx =
-                        trainableParamNumber * num_observables;
-
                     // clang-format off
 
                     #if defined(_OPENMP)
                         #pragma omp parallel for default(none)   \
                         shared(H_lambda, jac, mu, scalingFactor, \
-                            trainableParamNumber,mat_row_idx,tp_size, tp_it,         \
+                            trainableParamNumber,tp_size, tp_it,         \
                             num_observables)
                     #endif
 
@@ -1006,7 +1000,6 @@ template <class T = double> class AdjointJacobianGPU {
                         updateJacobian(H_lambda[obs_idx], mu, jac,
                                        scalingFactor, obs_idx,
                                        trainableParamNumber, tp_size);
-                        // trainableParamNumber, mat_row_idx);
                     }
                     trainableParamNumber--;
                     ++tp_it;

@@ -130,7 +130,6 @@ def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool
     return [_serialize_ob(ob, wires_map, use_csingle) for ob in tape.observables]
 
 
-
 def _serialize_ops(
     tape: QuantumTape, wires_map: dict, use_csingle: bool = False
 ) -> Tuple[List[List[str]], List[np.ndarray], List[List[int]], List[bool], List[np.ndarray]]:

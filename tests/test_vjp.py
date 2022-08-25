@@ -66,7 +66,7 @@ class TestVectorJacobianProduct:
         tape2.trainable_params = {1, 2, 3}
 
         fn1 = dev.vjp(tape1.measurements, dy, use_device_state=True)
-        
+
         vjp1 = fn1(tape1)
 
         vjp2 = dev.adjoint_jacobian(tape2, use_device_state=True)

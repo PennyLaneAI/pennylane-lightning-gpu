@@ -53,19 +53,6 @@ class CSVHandle {
     custatevecHandle_t handle;
 };
 
-/*
-class CSPHandle {
-  public:
-    CSPHandle() { PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&handle_sp)); }
-    ~CSPHandle() { PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle_sp)); }
-
-    const cusparseHandle_t &ref() const { return handle_sp; }
-    cusparseHandle_t &ref() { return handle_sp; }
-
-  private:
-    cusparseHandle_t handle_sp;
-};
-*/
 } // namespace
 /// @endcond
 
@@ -1075,19 +1062,12 @@ class StateVectorCudaManaged
                        std::forward<decltype(params)>(params));
          }}};
     CSVHandle handle;
-    // CSPHandle handle_sp;
 
     const std::unordered_map<std::string, custatevecPauli_t> native_gates_{
         {"RX", CUSTATEVEC_PAULI_X},       {"RY", CUSTATEVEC_PAULI_Y},
         {"RZ", CUSTATEVEC_PAULI_Z},       {"CRX", CUSTATEVEC_PAULI_X},
         {"CRY", CUSTATEVEC_PAULI_Y},      {"CRZ", CUSTATEVEC_PAULI_Z},
         {"Identity", CUSTATEVEC_PAULI_I}, {"I", CUSTATEVEC_PAULI_I}};
-    const std::unordered_map<std::string, custatevecPauli_t>
-        expval_pauli_gates_{{"PauliX", CUSTATEVEC_PAULI_X},
-                            {"PauliY", CUSTATEVEC_PAULI_Y},
-                            {"PauliZ", CUSTATEVEC_PAULI_Z},
-                            {"Identity", CUSTATEVEC_PAULI_I},
-                            {"I", CUSTATEVEC_PAULI_I}};
 
     /**
      * @brief Normalize the index ordering to match PennyLane.

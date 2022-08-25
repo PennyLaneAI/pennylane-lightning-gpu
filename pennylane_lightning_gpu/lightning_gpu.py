@@ -417,7 +417,7 @@ class LightningGPU(LightningQubit):
                 self.wires.indices(observable.wires), DenseHamiltonianMatrix
             )
             """
-            
+
             name_list = []
 
             for i in range(len(observable.ops)):
