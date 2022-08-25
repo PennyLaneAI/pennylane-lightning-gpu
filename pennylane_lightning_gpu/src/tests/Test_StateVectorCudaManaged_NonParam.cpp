@@ -894,33 +894,6 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval",
     }
 }
 
-TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval_pauli_basis",
-                   "[StateVectorCudaManaged_Nonparam]", double) {
-    using cp_t = std::complex<TestType>;
-    const std::size_t num_qubits = 3;
-
-    SECTION("GetExpectionPaulix") {
-        using cp_t = std::complex<TestType>;
-        const std::size_t num_qubits = 3;
-        std::vector<cp_t> init_state{{0.0, 0.0}, {0.0, 0.1}, {0.1, 0.1},
-                                     {0.1, 0.2}, {0.2, 0.2}, {0.3, 0.3},
-                                     {0.3, 0.4}, {0.4, 0.5}};
-        SVDataGPU<TestType> svdat{num_qubits};
-        svdat.cuda_sv.CopyHostDataToGpu(init_state.data(), init_state.size());
-        std::vector<std::vector<std::string>> obsNames{{"PauliX", "PauliY"},
-                                                       {"Identity"}};
-        std::vector<std::vector<size_t>> wires{{1, 2}, {1}};
-        std::vector<TestType> coeffs{1.0, 1.0};
-
-        auto results = svdat.cuda_sv.getExpectationValueOnPauliBasis(
-            obsNames, wires, coeffs);
-
-        TestType expected = 0.86;
-
-        CHECK(expected == Approx(results).epsilon(0.001));
-    }
-}
-
 TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval_cuSparse",
                    "[StateVectorCudaManaged_Nonparam]", float, double) {
     using cp_t = std::complex<TestType>;

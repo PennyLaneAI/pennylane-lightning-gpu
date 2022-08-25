@@ -38,14 +38,10 @@ try:
         LightningGPU_C64,
         NamedObsGPU_C64,
         NamedObsGPU_C128,
-        HermitianObsGPU_C64,
-        HermitianObsGPU_C128,
         TensorProdObsGPU_C64,
         TensorProdObsGPU_C128,
         HamiltonianGPU_C64,
         HamiltonianGPU_C128,
-        # ObsStructGPU_C64,
-        # ObsStructGPU_C128,
     )
 except ImportError as e:
     print(e)
@@ -69,24 +65,21 @@ def _obs_has_kernel(obs: Observable) -> bool:
     return False
 
 
-def _serialize_named_hermitian_ob(o, wires_map: dict, use_csingle: bool):
-    """Serializes an observable (Named or Hermitian)"""
+def _serialize_named_ob(o, wires_map: dict, use_csingle: bool):
+    """Serializes an observable (Named)"""
     assert not isinstance(o, Tensor)
 
     if use_csingle:
         ctype = np.complex64
         named_obs = NamedObsGPU_C64
-        hermitian_obs = HermitianObsGPU_C64
     else:
         ctype = np.complex128
         named_obs = NamedObsGPU_C128
-        hermitian_obs = HermitianObsGPU_C128
 
     wires_list = o.wires.tolist()
     wires = [wires_map[w] for w in wires_list]
     if _obs_has_kernel(o):
         return named_obs(o.name, wires)
-    return hermitian_obs(qml.matrix(o).ravel().astype(ctype), wires)
 
 
 def _serialize_tensor_ob(ob, wires_map: dict, use_csingle: bool):
@@ -119,7 +112,7 @@ def _serialize_ob(ob, wires_map, use_csingle):
     elif ob.name == "Hamiltonian":
         return _serialize_hamiltonian(ob, wires_map, use_csingle)
     else:
-        return _serialize_named_hermitian_ob(ob, wires_map, use_csingle)
+        return _serialize_named_ob(ob, wires_map, use_csingle)
 
 
 def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool = False) -> List:
@@ -136,65 +129,6 @@ def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool
 
     return [_serialize_ob(ob, wires_map, use_csingle) for ob in tape.observables]
 
-    # def _serialize_obs(tape: QuantumTape, wires_map: dict, use_csingle: bool = False) -> List:
-    """Serializes the observables of an input tape.
-
-    Args:
-        tape (QuantumTape): the input quantum tape
-        wires_map (dict): a dictionary mapping input wires to the device's backend wires
-        use_csingle (bool): whether to use np.complex64 instead of np.complex128
-
-    Returns:
-        list(ObsStructGPU_C128 or ObsStructGPU_C64): A list of observable objects compatible with the C++ backend
-    """
-
-
-#    obs = []
-
-#    if use_csingle:
-#        ctype = np.complex64
-#        obs_py = ObsStructGPU_C64
-#    else:
-#        ctype = np.complex128
-#        obs_py = ObsStructGPU_C128
-
-#    for o in tape.observables:
-#        is_tensor = isinstance(o, Tensor)
-
-#        wires = []
-
-#        if is_tensor:
-#            for o_ in o.obs:
-#                wires_list = o_.wires.tolist()
-#                w = [wires_map[w] for w in wires_list]
-#                wires.append(w)
-#        """
-#        elif o.name == "Hamiltonian": ##adding hamiltonian support
-#
-#        """
-#        else:
-#            wires_list = o.wires.tolist()
-#            w = [wires_map[w] for w in wires_list]
-#            wires.append(w)
-
-#        name = o.name if is_tensor else [o.name]
-
-#        params = []
-
-#        if not _obs_has_kernel(o):
-#            if is_tensor:
-#                for o_ in o.obs:
-#                    if not _obs_has_kernel(o_):
-#                        params.append(qml.matrix(o_).ravel().astype(ctype))
-#                    else:
-#                        params.append([])
-#            else:
-#                params.append(qml.matrix(o).ravel().astype(ctype))
-
-#        ob = obs_py(name, params, wires)
-#        obs.append(ob)
-
-#    return obs
 
 
 def _serialize_ops(

@@ -55,12 +55,8 @@ try:
         get_gpu_arch,
         DevPool,
         DevTag,
-        # ObsStructGPU_C128,
-        # ObsStructGPU_C64,
         NamedObsGPU_C64,
         NamedObsGPU_C128,
-        HermitianObsGPU_C64,
-        HermitianObsGPU_C128,
         TensorProdObsGPU_C64,
         TensorProdObsGPU_C128,
         HamiltonianGPU_C64,
@@ -216,47 +212,6 @@ class LightningGPU(LightningQubit):
         if self._sync:
             self.syncD2H()
 
-    def adjoint_diff_support_check(self, tape):
-        """Check Lightning adjoint differentiation method support for a tape.
-
-        Raise ``QuantumFunctionError`` if ``tape`` contains not supported measurements,
-        observables, or operations by the Lightning adjoint differentiation method.
-
-        Args:
-            tape (.QuantumTape): quantum tape to differentiate
-        """
-        for m in tape.measurements:
-            if m.return_type is not Expectation:
-                raise QuantumFunctionError(
-                    "Adjoint differentiation method does not support"
-                    f" measurement {m.return_type.value}"
-                )
-            if not isinstance(m.obs, Tensor):
-                if isinstance(m.obs, Projector):
-                    raise QuantumFunctionError(
-                        "Adjoint differentiation method does not support the Projector observable"
-                    )
-                if isinstance(m.obs, Hermitian):
-                    raise QuantumFunctionError(
-                        "Lightning adjoint differentiation method does not currently support the Hermitian observable"
-                    )
-            else:
-                if any([isinstance(o, Projector) for o in m.obs.non_identity_obs]):
-                    raise QuantumFunctionError(
-                        "Adjoint differentiation method does not support the Projector observable"
-                    )
-                if any([isinstance(o, Hermitian) for o in m.obs.non_identity_obs]):
-                    raise QuantumFunctionError(
-                        "Lightning adjoint differentiation method does not currently support the Hermitian observable"
-                    )
-
-        for op in tape.operations:
-            if op.num_params > 1 and not isinstance(op, Rot):
-                raise QuantumFunctionError(
-                    f"The {op.name} operation is not supported using "
-                    'the "adjoint" differentiation method'
-                )
-
     @staticmethod
     def _check_adjdiff_supported_measurements(measurements: List[MeasurementProcess]):
         """Check whether given list of measurement is supported by adjoint_diff.
@@ -285,10 +240,18 @@ class LightningGPU(LightningQubit):
                     raise QuantumFunctionError(
                         "Adjoint differentiation method does not support the Projector observable"
                     )
+                if isinstance(m.obs, Hermitian):
+                    raise QuantumFunctionError(
+                        "Lightning adjoint differentiation method does not currently support the Hermitian observable"
+                    )
             else:
                 if any([isinstance(o, Projector) for o in m.obs.non_identity_obs]):
                     raise QuantumFunctionError(
                         "Adjoint differentiation method does not support the Projector observable"
+                    )
+                if any([isinstance(o, Hermitian) for o in m.obs.non_identity_obs]):
+                    raise QuantumFunctionError(
+                        "Lightning adjoint differentiation method does not currently support the Hermitian observable"
                     )
         return Expectation
 
@@ -323,7 +286,6 @@ class LightningGPU(LightningQubit):
             return np.array(0)
 
         # Check adjoint diff support
-        self.adjoint_diff_support_check(tape)
         self._check_adjdiff_supported_operations(tape.operations)
 
         # Initialization of state
@@ -434,7 +396,7 @@ class LightningGPU(LightningQubit):
     def expval(self, observable, shot_range=None, bin_size=None):
         if observable.name in [
             "Projector",
-            "Hamiltonian",
+            "Hermitian",
         ]:
             self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
@@ -448,12 +410,14 @@ class LightningGPU(LightningQubit):
             )
 
         if observable.name in ["Hamiltonian"]:
-            # check if all obs are Pauli basis
             """
-            supported_pauli_basis = ["PauliX", "PauliY", "PauliZ", "Identity"]
-
-            obs_supported = False
-
+            #dense matrix representation
+            DenseHamiltonianMatrix = qml.utils.sparse_hamiltonian(observable).toarray()
+            return self._gpu_state.ExpectationValue(
+                self.wires.indices(observable.wires), DenseHamiltonianMatrix
+            )
+            """
+            
             name_list = []
 
             for i in range(len(observable.ops)):
@@ -463,34 +427,22 @@ class LightningGPU(LightningQubit):
                     if len(observable.ops[i].wires) == 1:
                         obst = observable.ops[i].name
                     name_list[i].append(obst)
-                    if obst not in supported_pauli_basis:
-                        obs_supported = False
-                        break
-                    else:
-                        obs_supported = True
-                else:
-                    continue
-                break
 
-            if obs_supported is True:
+            wire_list = [
+                [observable.ops[i].wires[j] for j in range(len(observable.ops[i].wires))]
+                for i in range(len(observable.ops))
+            ]
 
-                wire_list = [
-                    [observable.ops[i].wires[j] for j in range(len(observable.ops[i].wires))]
-                    for i in range(len(observable.ops))
-                ]
+            res = 0
+            for i in range(len(observable.ops)):
+                res += observable.coeffs[i] * self._gpu_state.ExpectationValue(
+                    name_list[i],
+                    wire_list[i],
+                    [],  # observables should not pass parameters, use matrix instead
+                    qml.matrix(observable.ops[i]).ravel(order="C"),
+                )
+            return res
 
-                return self._gpu_state.ExpectationValue(name_list, wire_list, observable.coeffs)
-            else:
-            """
-            
-            DenseHamiltonianMatrix = qml.utils.sparse_hamiltonian(observable).toarray()
-            return self._gpu_state.ExpectationValue(
-                self.wires.indices(observable.wires), DenseHamiltonianMatrix
-            )
-            """
-            ob_serialized = _serialize_ob(observable, self.wire_map, use_csingle=self.use_csingle)
-            return self._gpu_state.ExpectationValue(ob_serialized)
-            """
         if self.shots is not None:
             # estimate the expectation value
             samples = self.sample(observable, shot_range=shot_range, bin_size=bin_size)

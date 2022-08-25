@@ -18,6 +18,9 @@ import pytest
 
 import numpy as np
 import pennylane as qml
+import math
+
+from pennylane_lightning_gpu import LightningGPU
 
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
@@ -30,16 +33,37 @@ except (ImportError, ModuleNotFoundError):
         allow_module_level=True,
     )
 
-np.random.seed(42)
 
-THETA = np.linspace(0.11, 1, 3)
-PHI = np.linspace(0.32, 1, 3)
-VARPHI = np.linspace(0.02, 1, 3)
-
-
-@pytest.mark.parametrize("theta,phi,varphi", list(zip(THETA, PHI, VARPHI)))
 class TestHamiltonianExpval:
-    def test_hamiltionian_expectation(self, theta, phi, varphi, qubit_device_3_wires, tol):
+    @pytest.fixture(params=[np.complex128])
+    def dev(self, request):
+        return LightningGPU(wires=2, c_dtype=request.param)
+
+    @pytest.mark.parametrize(
+        "obs, coeffs, res",
+        [
+            ([qml.PauliX(0) @ qml.PauliZ(1)], [1.0], 0.0),
+            ([qml.PauliZ(0) @ qml.PauliZ(1)], [1.0], math.cos(0.4) * math.cos(-0.2)),
+            (
+                [qml.PauliX(0) @ qml.PauliZ(1), qml.PauliZ(0) @ qml.PauliZ(1)],
+                [1.0, 0.2],
+                0.2 * math.cos(0.4) * math.cos(-0.2),
+            ),
+        ],
+    )
+    def test_expval_hamiltonian(self, obs, coeffs, res, tol, dev):
+        """Test expval with Hamiltonian"""
+        ham = qml.Hamiltonian(coeffs, obs)
+
+        @qml.qnode(dev)
+        def circuit():
+            qml.RX(0.4, wires=[0])
+            qml.RY(-0.2, wires=[1])
+            return qml.expval(ham)
+
+        assert np.allclose(circuit(), res, atol=tol, rtol=0)
+
+    def test_hamiltonan_expectation(self, qubit_device_3_wires, tol):
 
         dev = qubit_device_3_wires
 
@@ -63,24 +87,9 @@ class TestHamiltonianExpval:
             dtype=np.complex128,
         )
 
-        # dev.apply(
-        # [
-        # qml.Identity(wires=[1]),
-        # qml.PauliX(wires=[1]),
-        # qml.PauliY(wires=[0]),
-        # qml.PauliZ(wires=[0]),
-        # qml.RY(phi, wires=[1]),
-        # qml.RZ(varphi, wires=[2]),
-        # qml.CNOT(wires=[0, 1]),
-        # qml.CNOT(wires=[0, 2]),
-        # qml.CNOT(wires=[1, 2]),
-        # ],
-        # rotations=obs.diagonalizing_gates(),
-        # )
-
         dev.syncH2D()
 
         res = dev.expval(H)
         expected = 1
-        
+
         assert np.allclose(res, expected)

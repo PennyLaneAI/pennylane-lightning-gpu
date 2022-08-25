@@ -31,16 +31,9 @@ except (ImportError, ModuleNotFoundError):
         allow_module_level=True,
     )
 
-np.random.seed(42)
 
-THETA = np.linspace(0.11, 1, 3)
-PHI = np.linspace(0.32, 1, 3)
-VARPHI = np.linspace(0.02, 1, 3)
-
-
-@pytest.mark.parametrize("theta,phi,varphi", list(zip(THETA, PHI, VARPHI)))
 class TestHamiltonianExpval:
-    def test_hamiltionian_expectation(self, theta, phi, varphi, qubit_device_3_wires, tol):
+    def test_hamiltionan_expectation(self, qubit_device_3_wires, tol):
 
         dev = qubit_device_3_wires
         obs = qml.Identity(0) @ qml.PauliX(1) @ qml.PauliY(2)

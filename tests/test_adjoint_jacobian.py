@@ -301,8 +301,8 @@ class TestAdjointJacobian:
 
             qml.expval(obs(wires=0))
             qml.expval(qml.PauliZ(wires=1))
-            #qml.expval(obs(wires=0))
-            #qml.expval(qml.PauliZ(wires=0))
+            # qml.expval(obs(wires=0))
+            # qml.expval(qml.PauliZ(wires=0))
 
         tape.trainable_params = set(range(1, 1 + op.num_params))
 
@@ -695,14 +695,14 @@ def test_integration(returns):
     def circuit(params):
         circuit_ansatz(params, wires=range(4))
         return qml.expval(returns), qml.expval(qml.PauliY(1))
-        #return qml.expval(qml.PauliY(1))
+        # return qml.expval(qml.PauliY(1))
 
     n_params = 30
     np.random.seed(1337)
     params = np.random.rand(n_params)
 
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
-    #qnode_gpu = qml.QNode(circuit, dev_gpu)
+    # qnode_gpu = qml.QNode(circuit, dev_gpu)
     qnode_default = qml.QNode(circuit, dev_default, diff_method="adjoint")
 
     j_gpu = qml.jacobian(qnode_gpu)(params)
@@ -746,7 +746,7 @@ def test_integration_custom_wires(returns):
     np.random.seed(1337)
     params = np.random.rand(n_params)
 
-    qnode_gpu = qml.QNode(circuit, dev_gpu)# works when remove #diff_method="adjoint"#
+    qnode_gpu = qml.QNode(circuit, dev_gpu)  # works when remove #diff_method="adjoint"#
     qnode_lightning = qml.QNode(circuit, dev_lightning, diff_method="adjoint")
 
     j_gpu = qml.jacobian(qnode_gpu)(params)

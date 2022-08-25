@@ -218,7 +218,7 @@ template <typename T> class NamedObsGPU final : public ObservableGPU<T> {
 
   public:
     /**
-     * @brief Construct a NamedObs object, representing a given observable.
+     * @brief Construct a NamedObsGPU object, representing a given observable.
      *
      * @param arg1 Name of the observable.
      * @param arg2 Argument to construct wires.
@@ -270,14 +270,14 @@ template <typename T> class HermitianObsGPU final : public ObservableGPU<T> {
      * @param matrix Matrix in row major format.
      * @param wires Wires the observable applies to.
      */
-    //template <typename T1>
+    // template <typename T1>
     HermitianObsGPU(MatrixT matrix, std::vector<size_t> wires)
         : matrix_{std::move(matrix)}, wires_{std::move(wires)} {
-        //PL_ASSERT(matrix_.size() ==
-        //          Util::exp2(wires_.size()) * Util::exp2(wires_.size()));
     }
 
-    [[nodiscard]] auto getMatrix() const -> const std::vector<std::complex<T>> { return matrix_; }
+    [[nodiscard]] auto getMatrix() const -> const std::vector<std::complex<T>> {
+        return matrix_;
+    }
 
     [[nodiscard]] auto getWires() const -> std::vector<size_t> override {
         return wires_;
@@ -288,8 +288,8 @@ template <typename T> class HermitianObsGPU final : public ObservableGPU<T> {
     }
 
     void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
-    	std::string obs_name_="Hermitian";
-        sv.applyOperation_std(obs_name_,wires_,false,{},matrix_);
+        std::string obs_name_ = "Hermitian";
+        sv.applyOperation_std(obs_name_, wires_, false, {}, matrix_);
     }
 };
 
@@ -588,13 +588,11 @@ template <class T = double> class AdjointJacobianGPU {
                                std::vector<T> &jac, T scaling_coeff,
                                size_t obs_index, size_t param_index,
                                size_t tp_size) {
-                               //size_t mat_row_idx) {
         PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
                             sv2.getDataBuffer().getDevTag().getDeviceID(),
                         "Data exists on different GPUs. Aborting.");
 
-        //jac[mat_row_idx+obs_index] =
-        jac[obs_index*tp_size + param_index] =
+        jac[obs_index * tp_size + param_index] =
             -2 * scaling_coeff *
             innerProdC_CUDA(sv1.getData(), sv2.getData(), sv1.getLength(),
                             sv1.getDataBuffer().getDevTag().getDeviceID(),
@@ -645,54 +643,7 @@ template <class T = double> class AdjointJacobianGPU {
 
     /**
      * @brief Utility method to apply a given operations from given
-     * `%Pennylane::Algorithms::ObsDatum<T>` object to
-     * `%StateVectorCudaManaged<T>`
-     *
-     * @param state Statevector to be updated.
-     * @param observable ObservableGPU to apply.
-     */
-    /*
-    inline void applyObservableGPU(StateVectorCudaManaged<T> &state,
-                                const ObsDatum<T> &observable) {
-        using namespace Pennylane::Util;
-        for (size_t j = 0; j < observable.getSize(); j++) {
-            if (!observable.getObsParams().empty()) {
-                std::visit(
-                    [&](const auto &param) {
-                        using p_t = std::decay_t<decltype(param)>;
-                        using cucomplex_t =
-                            std::decay_t<decltype(state.getData())>;
-
-                        // Apply supported gate with given params
-                        if constexpr (std::is_same_v<p_t, std::vector<T>>) {
-                            state.applyOperation(observable.getObsName()[j],
-                                                 observable.getObsWires()[j],
-                                                 false, param);
-                        }
-                        // Apply provided matrix
-                        else if constexpr (std::is_same_v<
-                                               p_t, std::vector<cucomplex_t>>) {
-                            state.applyOperation(observable.getObsName()[j],
-                                                 observable.getObsWires()[j],
-                                                 false, {}, param);
-                        } else {
-                            state.applyOperation(observable.getObsName()[j],
-                                                 observable.getObsWires()[j],
-                                                 false);
-                        }
-                    },
-                    observable.getObsParams()[j]);
-            } else { // Offloat to SV dispatcher if no parameters provided
-                state.applyOperation(observable.getObsName()[j],
-                                     observable.getObsWires()[j], false);
-            }
-        }
-    }
-    */
-
-    /**
-     * @brief Utility method to apply a given operations from given
-     * `%Pennylane::Algorithms::ObsDatum<T>` object to
+     * `%ObservableGPU` object to
      * `%StateVectorCudaManaged<T>`
      *
      * @param state Statevector to be updated.
@@ -876,8 +827,6 @@ template <class T = double> class AdjointJacobianGPU {
 
     void batchAdjointJacobian(
         const CFP_t *ref_data, std::size_t length, std::vector<T> &jac,
-        // std::vector<std::vector<T>> &jac,
-        // const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
         const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
         const std::vector<size_t> &trainableParams,
@@ -894,7 +843,6 @@ template <class T = double> class AdjointJacobianGPU {
         threads.reserve(num_gpus);
 
         // Hold results of threaded GPU executions
-        // std::vector<std::future<std::vector<std::vector<T>>>> futures;
         std::vector<std::future<std::vector<T>>> futures;
 
         // Iterate over the chunked observables, and submit the Jacobian task
@@ -905,7 +853,6 @@ template <class T = double> class AdjointJacobianGPU {
             const auto last = static_cast<std::size_t>(
                 std::ceil((obs.size() * (i + 1) / num_chunks) - 1));
 
-            // std::promise<std::vector<std::vector<T>>> jac_subset_promise;
             std::promise<std::vector<T>> jac_subset_promise;
             futures.emplace_back(jac_subset_promise.get_future());
 
@@ -945,12 +892,6 @@ template <class T = double> class AdjointJacobianGPU {
             for (std::size_t j = 0; j < jac_rows.size(); j++) {
                 jac.at(first + j) = std::move(jac_rows[j]);
             }
-            // size_t num_jac_rows = std::ceil(obs.size() / num_chunks);
-            // for (std::size_t j = 0; j < num_jac_rows; j++)
-            //{
-            // auto tmp = futures[first + j].get();
-            //	    jac.at(first + j) = futures[first + j].get();
-            //}
         }
         for (std::size_t t = 0; t < threads.size(); t++) {
             threads[t].join();
@@ -1065,7 +1006,7 @@ template <class T = double> class AdjointJacobianGPU {
                         updateJacobian(H_lambda[obs_idx], mu, jac,
                                        scalingFactor, obs_idx,
                                        trainableParamNumber, tp_size);
-                                       //trainableParamNumber, mat_row_idx);
+                        // trainableParamNumber, mat_row_idx);
                     }
                     trainableParamNumber--;
                     ++tp_it;
