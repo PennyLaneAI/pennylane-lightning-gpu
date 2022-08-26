@@ -110,6 +110,8 @@ class LightningGPU(LightningQubit):
         "PauliY",
         "PauliZ",
         "Hadamard",
+        "SparseHamiltonian",
+        "Hamiltonian",
         "Identity",
     }
 
@@ -401,8 +403,8 @@ class LightningGPU(LightningQubit):
             self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
 
-        if observable.name == "SparseHamiltonian":
-            CSR_SparseHamiltonian = observable.data[0].tocsr(copy=False)
+        if observable.name in ["SparseHamiltonian"]:
+            CSR_SparseHamiltonian = observable.data[0].tocsr(copy=True)
             return self._gpu_state.ExpectationValue(
                 CSR_SparseHamiltonian.indptr,
                 CSR_SparseHamiltonian.indices,

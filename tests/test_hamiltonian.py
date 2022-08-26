@@ -15,7 +15,7 @@
 Unit tests for the var method of the :mod:`pennylane_lightning_gpu.LightningGPU` device.
 """
 import pytest
-
+from scipy.sparse import coo_matrix, csr_matrix
 import numpy as np
 import pennylane as qml
 import math
@@ -36,7 +36,7 @@ except (ImportError, ModuleNotFoundError):
 
 class TestHamiltonianExpval:
     @pytest.fixture(params=[np.complex128])
-    def dev(self, request):
+    def gpu_dev(self, request):
         return LightningGPU(wires=2, c_dtype=request.param)
 
     @pytest.mark.parametrize(
@@ -51,11 +51,11 @@ class TestHamiltonianExpval:
             ),
         ],
     )
-    def test_expval_hamiltonian(self, obs, coeffs, res, tol, dev):
+    def test_expval_hamiltonian(self, obs, coeffs, res, tol, gpu_dev):
         """Test expval with Hamiltonian"""
         ham = qml.Hamiltonian(coeffs, obs)
 
-        @qml.qnode(dev)
+        @qml.qnode(gpu_dev)
         def circuit():
             qml.RX(0.4, wires=[0])
             qml.RY(-0.2, wires=[1])
