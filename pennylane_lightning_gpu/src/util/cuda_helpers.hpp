@@ -407,9 +407,9 @@ inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
  * @param data_size Lengtyh of device data.
  * @return T Inner-product result
  */
-template <class T0 = std::complex<float>, class T = cuFloatComplex,
+template <class CFP_t = std::complex<float>, class T = cuFloatComplex,
           class DevTypeID = int>
-inline auto scaleAndAddC_CUDA(const T0 a, const T *v1, T *v2,
+inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
                               const int data_size, int dev_id,
                               cudaStream_t stream_id) {
     cublasHandle_t handle;
