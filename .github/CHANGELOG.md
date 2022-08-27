@@ -1,3 +1,25 @@
+# Release 0.26.0-dev
+
+### New features since last release
+
+### Breaking changes
+
+### Improvements
+
+### Documentation
+
+### Bug fixes
+
+* Update Lightning tag to latest_release.
+[(#51)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/51)
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Amintor Dusko
+
+---
 # Release 0.25.0
 
 ### New features since last release
