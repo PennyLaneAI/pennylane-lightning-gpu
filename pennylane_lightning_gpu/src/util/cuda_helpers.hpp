@@ -412,8 +412,6 @@ template <class T0 = std::complex<float>, class T = cuFloatComplex,
 inline auto scaleAndAddC_CUDA(const T0 a, const T *v1, T *v2,
                               const int data_size, int dev_id,
                               cudaStream_t stream_id) {
-    // T result{0.0, 0.0}; // Host result
-    // cuComplex alpha{a.real(),a.imag()};
     cublasHandle_t handle;
     PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
     PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));

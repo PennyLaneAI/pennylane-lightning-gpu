@@ -699,7 +699,6 @@ def test_integration(returns):
     params = np.random.rand(n_params)
 
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
-
     qnode_default = qml.QNode(circuit, dev_default, diff_method="adjoint")
 
     j_gpu = qml.jacobian(qnode_gpu)(params)

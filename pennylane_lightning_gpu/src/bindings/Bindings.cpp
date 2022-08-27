@@ -63,9 +63,11 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         py::array_t<ParamT, py::array::c_style | py::array::forcecast>;
     using np_arr_c = py::array_t<std::complex<ParamT>,
                                  py::array::c_style | py::array::forcecast>;
-    using np_arr_sparse_ind =
-        py::array_t<int, py::array::c_style | py::array::forcecast>;
-    // Enable module name to be based on size of complex datatype
+    using np_arr_sparse_ind = typename std::conditional<
+        std::is_same<ParamT, float>::value,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast>,
+        py::array_t<int64_t, py::array::c_style | py::array::forcecast>>::type;
+    //  Enable module name to be based on size of complex datatype
     const std::string bitsize =
         std::to_string(sizeof(std::complex<PrecisionT>) * 8);
     std::string class_name = "LightningGPU_C" + bitsize;
@@ -453,14 +455,17 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             [](StateVectorCudaManaged<PrecisionT> &sv,
                const np_arr_sparse_ind &csrOffsets,
                const np_arr_sparse_ind &columns, const np_arr_c values) {
-                return sv.getExpectationValueOnSparseSpVM(
-                    static_cast<int *>(csrOffsets.request().ptr),
-                    static_cast<int>(csrOffsets.request()
-                                         .size), // num_rows + 1 or csrOffsets
-                    static_cast<int *>(columns.request().ptr), // columns
+                using index_type = typename std::conditional<
+                    std::is_same<ParamT, float>::value, int32_t, int64_t>::type;
+                return sv.template getExpectationValueOnSparseSpVM<index_type>(
+                    static_cast<index_type *>(csrOffsets.request().ptr),
+                    static_cast<index_type>(
+                        csrOffsets.request()
+                            .size), // num_rows + 1 or csrOffsets
+                    static_cast<index_type *>(columns.request().ptr), // columns
                     static_cast<std::complex<PrecisionT> *>(
                         values.request().ptr),
-                    static_cast<int>(values.request().size)); // nnz
+                    static_cast<index_type>(values.request().size)); // nnz
             },
             "Calculate the expectation value of a sparse Hamiltonian.")
         .def(

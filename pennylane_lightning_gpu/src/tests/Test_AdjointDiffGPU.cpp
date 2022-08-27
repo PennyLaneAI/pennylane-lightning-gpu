@@ -43,7 +43,6 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Op=RX, Obs=Z",
     const std::vector<size_t> tp{0};
     {
         const size_t num_qubits = 1;
-        const size_t num_params = 3;
         const size_t num_obs = 1;
         const auto obs = std::make_shared<NamedObsGPU<double>>(
             "PauliZ", std::vector<size_t>{0});
@@ -68,7 +67,6 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Op=RY, Obs=X",
     const std::vector<size_t> tp{0};
     {
         const size_t num_qubits = 1;
-        const size_t num_params = 3;
         const size_t num_obs = 1;
 
         const auto obs = std::make_shared<NamedObsGPU<double>>(
@@ -95,7 +93,6 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Op=RX, Obs=[Z,Z]",
     std::vector<size_t> tp{0};
     {
         const size_t num_qubits = 2;
-        const size_t num_params = 1;
         const size_t num_obs = 2;
         std::vector<double> jacobian(num_obs * tp.size(), 0);
 
@@ -164,7 +161,6 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Op=[RX,RX,RX], Obs=[Z,Z,Z],"
     std::vector<size_t> tp{0, 2};
     {
         const size_t num_qubits = 3;
-        const size_t num_params = 3;
         const size_t num_obs = 3;
         std::vector<double> jacobian(num_obs * tp.size(), 0);
 
@@ -200,7 +196,6 @@ TEST_CASE("Algorithms::adjointJacobian Op=[RX,RX,RX], Obs=[ZZZ]",
     std::vector<size_t> tp{0, 1, 2};
     {
         const size_t num_qubits = 3;
-        const size_t num_params = 3;
         const size_t num_obs = 1;
         std::vector<double> jacobian(num_obs * tp.size(), 0);
 
@@ -236,7 +231,6 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Op=Mixed, Obs=[XXX]",
     std::vector<size_t> tp{0, 1, 2, 3, 4, 5};
     {
         const size_t num_qubits = 3;
-        const size_t num_params = 6;
         const size_t num_obs = 1;
         std::vector<double> jacobian(num_obs * tp.size(), 0);
 
@@ -284,7 +278,6 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Decomposed Rot gate, non "
     const std::vector<size_t> tp{0, 1, 2};
     {
         const size_t num_qubits = 1;
-        const size_t num_params = 3;
         const size_t num_obs = 1;
 
         const auto thetas = Pennylane::Util::linspace(-2 * M_PI, 2 * M_PI, 7);
@@ -354,8 +347,6 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Mixed Ops, Obs and TParams",
         std::vector<std::complex<double>> new_data{cdata.begin(), cdata.end()};
         SVDataGPU<double> psi(num_qubits, new_data);
 
-        // auto obs = ObsDatum<double>({"PauliX", "PauliZ"}, {{}, {}}, {{0},
-        // {1}});
         const auto obs = std::make_shared<TensorProdObsGPU<double>>(
             std::make_shared<NamedObsGPU<double>>("PauliX",
                                                   std::vector<size_t>{0}),
@@ -477,13 +468,9 @@ TEST_CASE("Algorithms::adjointJacobian Op=RX, Obs=Ham[Z0+Z1]", "[Algorithms]") {
     std::vector<size_t> tp{0};
     {
         const size_t num_qubits = 2;
-        const size_t num_params = 1;
         const size_t num_obs = 1;
         std::vector<double> jacobian(num_obs * tp.size(), 0);
 
-        // std::vector<std::complex<double>> cdata(1U << num_qubits);
-        // StateVectorRawCPU<double> psi(cdata.data(), cdata.size());
-        // cdata[0] = std::complex<double>{1, 0};
         SVDataGPU<double> psi(num_qubits);
 
         const auto obs1 = std::make_shared<NamedObsGPU<double>>(
@@ -512,7 +499,6 @@ TEST_CASE(
     std::vector<size_t> t_params{0, 2};
     {
         const size_t num_qubits = 3;
-        const size_t num_params = 3;
         const size_t num_obs = 1;
         std::vector<double> jacobian(num_obs * t_params.size(), 0);
 
@@ -548,7 +534,6 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Test HermitianObs",
     std::vector<size_t> t_params{0, 2};
     {
         const size_t num_qubits = 3;
-        const size_t num_params = 3;
         const size_t num_obs = 1;
         std::vector<double> jacobian1(num_obs * t_params.size(), 0);
         std::vector<double> jacobian2(num_obs * t_params.size(), 0);

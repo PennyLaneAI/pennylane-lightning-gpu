@@ -8,7 +8,7 @@ from auditwheel.main import main
 from auditwheel.policy import _POLICIES as POLICIES
 
 # Do not include licensed dynamic libraries
-libs = ["libcudart.so.11.0", "libcublasLt.so.11", "libcublas.so.11", "libcustatevec.so.1"]
+libs = ["libcudart.so.11.0", "libcublasLt.so.11", "libcublas.so.11", "libcusparse.so.11", "libcustatevec.so.1"]
 
 print(f"Excluding {libs}")
 

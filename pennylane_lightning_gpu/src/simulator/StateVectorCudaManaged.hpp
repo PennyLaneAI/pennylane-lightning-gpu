@@ -727,41 +727,44 @@ class StateVectorCudaManaged
      * @param tgts Target qubits.
      * @return auto Expectation value.
      */
+    template <class index_type>
     auto getExpectationValueOnSparseSpVM(
-        const int *csrOffsets_ptr, const int csrOffsets_size,
-        const int *columns_ptr, const std::complex<Precision> *values_ptr,
-        const int numNNZ) {
+        const index_type *csrOffsets_ptr, const index_type csrOffsets_size,
+        const index_type *columns_ptr,
+        const std::complex<Precision> *values_ptr, const index_type numNNZ) {
 
-        const int nIndexBits = BaseType::getNumQubits();
-        const int length = 1 << nIndexBits;
-        const int num_rows = csrOffsets_size - 1;
-        const int num_cols = num_rows;
-
-        int *d_csrOffsets, *d_columns;
-        CFP_t *d_values, *d_tmp;
+        const index_type nIndexBits = BaseType::getNumQubits();
+        const index_type length = 1 << nIndexBits;
+        const int64_t num_rows = static_cast<int64_t>(
+            csrOffsets_size -
+            1); // int64_t is required for num_rows by cusparseCreateCsr
+        const int64_t num_cols = static_cast<int64_t>(
+            num_rows); // int64_t is required for num_cols by cusparseCreateCsr
+        const int64_t nnz = static_cast<int64_t>(
+            numNNZ); // int64_t is required for nnz by cusparseCreateCsr
 
         Precision alpha = 1.0;
         Precision beta = 0.0;
 
         Precision expect = 0;
 
-        PL_CUDA_IS_SUCCESS(
-            cudaMalloc((void **)&d_csrOffsets, csrOffsets_size * sizeof(int)))
-        PL_CUDA_IS_SUCCESS(
-            cudaMalloc((void **)&d_columns, numNNZ * sizeof(int)))
-        PL_CUDA_IS_SUCCESS(
-            cudaMalloc((void **)&d_values, numNNZ * sizeof(CFP_t)))
-        PL_CUDA_IS_SUCCESS(cudaMalloc((void **)&d_tmp, length * sizeof(CFP_t)))
+        auto device_id = BaseType::getDataBuffer().getDevTag().getDeviceID();
+        auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
 
-        PL_CUDA_IS_SUCCESS(cudaMemcpy(d_csrOffsets, csrOffsets_ptr,
-                                      csrOffsets_size * sizeof(int),
-                                      cudaMemcpyHostToDevice))
-        PL_CUDA_IS_SUCCESS(cudaMemcpy(d_columns, columns_ptr,
-                                      numNNZ * sizeof(int),
-                                      cudaMemcpyHostToDevice))
-        PL_CUDA_IS_SUCCESS(cudaMemcpy(d_values, values_ptr,
-                                      numNNZ * sizeof(CFP_t),
-                                      cudaMemcpyHostToDevice))
+        DataBuffer<index_type, int> d_csrOffsets{
+            static_cast<std::size_t>(csrOffsets_size), device_id, stream_id,
+            true};
+        DataBuffer<index_type, int> d_columns{static_cast<std::size_t>(numNNZ),
+                                              device_id, stream_id, true};
+        DataBuffer<CFP_t, int> d_values{static_cast<std::size_t>(numNNZ),
+                                        device_id, stream_id, true};
+        DataBuffer<CFP_t, int> d_tmp{static_cast<std::size_t>(length),
+                                     device_id, stream_id, true};
+
+        d_csrOffsets.CopyHostDataToGpu(csrOffsets_ptr, d_csrOffsets.getLength(),
+                                       false);
+        d_columns.CopyHostDataToGpu(columns_ptr, d_columns.getLength(), false);
+        d_values.CopyHostDataToGpu(values_ptr, d_values.getLength(), false);
 
         cudaDataType_t data_type;
         cusparseIndexType_t compute_type;
@@ -769,7 +772,7 @@ class StateVectorCudaManaged
         if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
                       std::is_same_v<CFP_t, double2>) {
             data_type = CUDA_C_64F;
-            compute_type = CUSPARSE_INDEX_32I;
+            compute_type = CUSPARSE_INDEX_64I;
         } else {
             data_type = CUDA_C_32F;
             compute_type = CUSPARSE_INDEX_32I;
@@ -787,8 +790,9 @@ class StateVectorCudaManaged
 
         // Create sparse matrix A in CSR format
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
-            &mat, num_rows, num_cols, numNNZ, d_csrOffsets, d_columns, d_values,
-            compute_type, compute_type, CUSPARSE_INDEX_BASE_ZERO, data_type))
+            &mat, num_rows, num_cols, nnz, d_csrOffsets.getData(),
+            d_columns.getData(), d_values.getData(), compute_type, compute_type,
+            CUSPARSE_INDEX_BASE_ZERO, data_type))
 
         // Create dense vector X
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
@@ -796,7 +800,7 @@ class StateVectorCudaManaged
 
         // Create dense vector y
         PL_CUSPARSE_IS_SUCCESS(
-            cusparseCreateDnVec(&vecY, num_rows, d_tmp, data_type))
+            cusparseCreateDnVec(&vecY, num_rows, d_tmp.getData(), data_type))
 
         // allocate an external buffer if needed
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
@@ -806,7 +810,6 @@ class StateVectorCudaManaged
         PL_CUDA_IS_SUCCESS(cudaMalloc(&dBuffer, bufferSize))
 
         // execute SpMV
-
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
             handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX, &beta,
             vecY, data_type, CUSPARSE_MV_ALG_DEFAULT, dBuffer))
@@ -816,22 +819,16 @@ class StateVectorCudaManaged
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecX))
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY))
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle))
-        //--------------------------------------------------------------------------
 
-        expect =
-            innerProdC_CUDA(BaseType::getData(), d_tmp, BaseType::getLength(),
-                            BaseType::getDataBuffer().getDevTag().getDeviceID(),
-                            BaseType::getDataBuffer().getDevTag().getStreamID())
-                .x;
+        expect = innerProdC_CUDA(BaseType::getData(), d_tmp.getData(),
+                                 BaseType::getLength(), device_id, stream_id)
+                     .x;
 
         PL_CUDA_IS_SUCCESS(cudaFree(dBuffer))
-        PL_CUDA_IS_SUCCESS(cudaFree(d_csrOffsets))
-        PL_CUDA_IS_SUCCESS(cudaFree(d_columns))
-        PL_CUDA_IS_SUCCESS(cudaFree(d_values))
-        PL_CUDA_IS_SUCCESS(cudaFree(d_tmp))
 
         return expect;
     }
+
     /**
      * @brief Utility method for probability calculation using given wires.
      *
