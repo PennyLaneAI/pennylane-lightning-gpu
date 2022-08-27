@@ -2,6 +2,9 @@
 
 ### New features since last release
 
+* Added native support for expval(H) in adjoint method. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
+* Added cuSparse SpMV in expval(H) calculations. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
+
 ### Breaking changes
 
 ### Improvements
@@ -17,15 +20,12 @@
 
 This release contains contributions from (in alphabetical order):
 
-Amintor Dusko
+Amintor Dusko, Lee James O'Riordan, Shuli Shu
 
 ---
 # Release 0.25.0
 
 ### New features since last release
-
-* Added support for expval(H). [(#43)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/43)
-
 
 * Added support for multi-GPU adjoint observable batching. [(#27)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/27)
 
