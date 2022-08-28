@@ -198,6 +198,7 @@ html_theme_path = ["."]
 html_theme_options = {
     # Set the name of the project to appear in the left sidebar.
     "project_nav_name": "PennyLane-Lightning-GPU",
+    "google_analytics_account": "UA-130507810-1",
     # Path to a touch icon
     "touch_icon": "logo_new.png",
     "large_toc": True,
