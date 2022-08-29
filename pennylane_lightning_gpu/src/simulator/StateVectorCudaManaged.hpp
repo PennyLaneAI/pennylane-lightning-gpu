@@ -721,14 +721,20 @@ class StateVectorCudaManaged
     }
 
     /**
-     * @brief Get expectation of a given host or device defined array.
+     * @brief expval(H) calculation with cuSparseSpMV.
      *
-     * @param matrix Host or device defined row-major order gate matrix array.
-     * @param tgts Target qubits.
+     * @tparam index_type Integer type used as indices of the sparse matrix.
+     * @param csr_Offsets_ptr Pointer to the array of row offsets of the sparse
+     * matrix. Array of size csrOffsets_size.
+     * @param csrOffsets_size Number of Row offsets of the sparse matrix.
+     * @param columns_ptr Pointer to the array of column indices of the sparse
+     * matrix. Array of size numNNZ
+     * @param values_ptr Pointer to the array of the non-zero elements
+     * @param numNNZ Number of non-zero elements.
      * @return auto Expectation value.
      */
     template <class index_type>
-    auto getExpectationValueOnSparseSpVM(
+    auto getExpectationValueOnSparseSpMV(
         const index_type *csrOffsets_ptr, const index_type csrOffsets_size,
         const index_type *columns_ptr,
         const std::complex<Precision> *values_ptr, const index_type numNNZ) {
@@ -743,8 +749,8 @@ class StateVectorCudaManaged
         const int64_t nnz = static_cast<int64_t>(
             numNNZ); // int64_t is required for nnz by cusparseCreateCsr
 
-        CFP_t alpha = {1.0, 0.0};
-        CFP_t beta = {0.0, 0.0};
+        const CFP_t alpha = {1.0, 0.0};
+        const CFP_t beta = {0.0, 0.0};
 
         Precision expect = 0;
 
@@ -789,31 +795,60 @@ class StateVectorCudaManaged
 
         // Create sparse matrix A in CSR format
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
-            &mat, num_rows, num_cols, nnz, d_csrOffsets.getData(),
-            d_columns.getData(), d_values.getData(), compute_type, compute_type,
-            CUSPARSE_INDEX_BASE_ZERO, data_type))
+            /* cusparseSpMatDescr_t* */ &mat,
+            /* int64_t */ num_rows,
+            /* int64_t */ num_cols,
+            /* int64_t */ nnz,
+            /* void* */ d_csrOffsets.getData(),
+            /* void* */ d_columns.getData(),
+            /* void* */ d_values.getData(),
+            /* cusparseIndexType_t */ compute_type,
+            /* cusparseIndexType_t */ compute_type,
+            /* cusparseIndexBase_t */ CUSPARSE_INDEX_BASE_ZERO,
+            /* cudaDataType */ data_type))
 
         // Create dense vector X
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
-            &vecX, num_cols, BaseType::getData(), data_type))
+            /* cusparseDnVecDescr_t* */ &vecX,
+            /* int64_t */ num_cols,
+            /* void* */ BaseType::getData(),
+            /* cudaDataType */ data_type))
 
         // Create dense vector y
-        PL_CUSPARSE_IS_SUCCESS(
-            cusparseCreateDnVec(&vecY, num_rows, d_tmp.getData(), data_type))
+        PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
+            /* cusparseDnVecDescr_t* */ &vecY,
+            /* int64_t */ num_rows,
+            /* void* */ d_tmp.getData(),
+            /* cudaDataType */ data_type))
 
         // allocate an external buffer if needed
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
-            handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX, &beta,
-            vecY, data_type, CUSPARSE_SPMV_CSR_ALG1,
-            &bufferSize)) // Can also use CUSPARSE_MV_ALG_DEFAULT
+            /* cusparseHandle_t */ handle,
+            /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+            /* const void* */ &alpha,
+            /* cusparseSpMatDescr_t */ mat,
+            /* cusparseDnVecDescr_t */ vecX,
+            /* const void* */ &beta,
+            /* cusparseDnVecDescr_t */ vecY,
+            /* cudaDataType */ data_type,
+            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_CSR_ALG1,
+            /* size_t* */ &bufferSize)) // Can also use CUSPARSE_MV_ALG_DEFAULT
 
         DataBuffer<void, int> dBuffer{bufferSize, device_id, stream_id, true};
 
         // execute SpMV
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
-            handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX, &beta,
-            vecY, data_type, CUSPARSE_SPMV_CSR_ALG1,
-            dBuffer.getData())) // Can also use CUSPARSE_MV_ALG_DEFAULT
+            /* cusparseHandle_t */ handle,
+            /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+            /* const void* */ &alpha,
+            /* cusparseSpMatDescr_t */ mat,
+            /* cusparseDnVecDescr_t */ vecX,
+            /* const void* */ &beta,
+            /* cusparseDnVecDescr_t */ vecY,
+            /* cudaDataType */ data_type,
+            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_CSR_ALG1,
+            /* void* */ dBuffer.getData())) // Can also use
+                                            // CUSPARSE_MV_ALG_DEFAULT
 
         // destroy matrix/vector descriptors
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))
@@ -1038,6 +1073,48 @@ class StateVectorCudaManaged
              applyCRZ(std::forward<decltype(wires)>(wires),
                       std::forward<decltype(adjoint)>(adjoint),
                       std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"SingleExcitation",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applySingleExcitation(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"SingleExcitationPlus",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applySingleExcitationPlus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"SingleExcitationMinus",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applySingleExcitationMinus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"DoubleExcitation",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applyDoubleExcitation(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"DoubleExcitationPlus",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applyDoubleExcitationPlus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"DoubleExcitationMinus",
+         [&](auto &&wires, auto &&adjoint, auto &&params) {
+             applyDoubleExcitationMinus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
          }},
         {"ControlledPhaseShift",
          [&](auto &&wires, auto &&adjoint, auto &&params) {
