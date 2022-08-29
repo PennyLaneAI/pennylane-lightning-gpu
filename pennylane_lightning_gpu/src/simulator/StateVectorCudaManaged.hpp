@@ -785,7 +785,7 @@ class StateVectorCudaManaged
         }
 
         // CUSPARSE APIs
-        cusparseHandle_t handle = NULL;
+        cusparseHandle_t handle = nullptr;
         cusparseSpMatDescr_t mat;
         cusparseDnVecDescr_t vecX, vecY;
 
