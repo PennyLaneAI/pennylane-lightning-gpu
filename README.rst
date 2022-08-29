@@ -1,7 +1,7 @@
 PennyLane-Lightning-GPU Plugin
 ##############################
 
-.. image:: https://img.shields.io/readthedocs/pennylane-lightning-gpu.svg?logo=read-the-docs&style=flat-square
+.. image:: https://readthedocs.com/projects/xanaduai-pennylane-lightning-gpu/badge/?version=latest&style=flat-square
     :alt: Read the Docs
     :target: https://docs.pennylane.ai/projects/lightning-gpu
 
