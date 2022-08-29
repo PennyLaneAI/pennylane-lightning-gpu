@@ -16,11 +16,14 @@
 * Update Lightning tag to latest_release.
 [(#51)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/51)
 
+* Reintroduce dispatching support for `SingleExcitation` and `DoubleExcitation` gates in C++ layer.
+[(#56)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/56)
+
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
 
-Amintor Dusko
+Amintor Dusko, Lee James O'Riordan
 
 ---
 # Release 0.25.0
