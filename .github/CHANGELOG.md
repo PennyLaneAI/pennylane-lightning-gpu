@@ -10,6 +10,9 @@
 
 ### Bug fixes
 
+* Fix statistics method to support changes in qubit device API.
+[(#55)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/55)
+
 * Update Lightning tag to latest_release.
 [(#51)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/51)
 
