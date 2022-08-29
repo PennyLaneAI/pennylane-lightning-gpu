@@ -857,8 +857,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval",
         auto results = svdat.cuda_sv.expval(wires, matrix);
 
         cp_t expected(1, 0);
-        CHECK(expected.real() == Approx(results.x).epsilon(0.001));
-        CHECK(expected.imag() == Approx(results.y).epsilon(0.001));
+        CHECK(expected.real() == Approx(results.x).epsilon(1e-7));
+        CHECK(expected.imag() == Approx(results.y).epsilon(1e-7));
     }
 
     SECTION("GetExpectionRandomMatrix") {
@@ -889,8 +889,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval",
 
         cp_t expected(1.263000, -1.011000);
 
-        CHECK(expected.real() == Approx(results.x).epsilon(0.001));
-        CHECK(expected.imag() == Approx(results.y).epsilon(0.001));
+        CHECK(expected.real() == Approx(results.x).epsilon(1e-7));
+        CHECK(expected.imag() == Approx(results.y).epsilon(1e-7));
     }
 }
 
@@ -922,11 +922,11 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval_cuSparse",
         index_type nnz = 16;
 
         auto results =
-            svdat.cuda_sv.template getExpectationValueOnSparseSpVM<index_type>(
+            svdat.cuda_sv.template getExpectationValueOnSparseSpMV<index_type>(
                 csrOffsets, num_csrOffsets, columns, values, nnz);
 
         TestType expected = 1;
 
-        CHECK(expected == Approx(results).epsilon(0.001));
+        CHECK(expected == Approx(results).epsilon(1e-7));
     }
 }

@@ -400,12 +400,12 @@ inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
 /**
  * @brief cuBLAS backed GPU data scaling.
  *
- * @tparam T Complex data-type. Accepts cuFloatComplex and cuDoubleComplex
- * @param
- * @param v1 Device data pointer 1
- * @param v2 Device data pointer 2
+ * @tparam CFP_t Complex data-type. Accepts std::complex<float> and
+ * std::complex<double>
+ * @param a scaling factor
+ * @param v1 Device data pointer 1 (data to be modified)
+ * @param v2 Device data pointer 2 (the result data)
  * @param data_size Lengtyh of device data.
- * @return T Inner-product result
  */
 template <class CFP_t = std::complex<float>, class T = cuFloatComplex,
           class DevTypeID = int>

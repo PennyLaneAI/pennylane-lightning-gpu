@@ -412,14 +412,6 @@ class LightningGPU(LightningQubit):
             )
 
         if observable.name in ["Hamiltonian"]:
-            """
-            #dense matrix representation
-            DenseHamiltonianMatrix = qml.utils.sparse_hamiltonian(observable).toarray()
-            return self._gpu_state.ExpectationValue(
-                self.wires.indices(observable.wires), DenseHamiltonianMatrix
-            )
-            """
-
             name_list = []
 
             for i in range(len(observable.ops)):
