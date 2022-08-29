@@ -905,39 +905,45 @@ class StateVectorCudaManaged
          }},
         {"SingleExcitation",
          [&](auto &&wires, auto &&adjoint, auto &&params) {
-             applySingleExcitation(std::forward<decltype(wires)>(wires),
-                      std::forward<decltype(adjoint)>(adjoint),
-                      std::forward<decltype(params[0])>(params[0]));
+             applySingleExcitation(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
          }},
         {"SingleExcitationPlus",
          [&](auto &&wires, auto &&adjoint, auto &&params) {
-             applySingleExcitationPlus(std::forward<decltype(wires)>(wires),
-                      std::forward<decltype(adjoint)>(adjoint),
-                      std::forward<decltype(params[0])>(params[0]));
+             applySingleExcitationPlus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
          }},
         {"SingleExcitationMinus",
          [&](auto &&wires, auto &&adjoint, auto &&params) {
-             applySingleExcitationMinus(std::forward<decltype(wires)>(wires),
-                      std::forward<decltype(adjoint)>(adjoint),
-                      std::forward<decltype(params[0])>(params[0]));
+             applySingleExcitationMinus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
          }},
         {"DoubleExcitation",
          [&](auto &&wires, auto &&adjoint, auto &&params) {
-             applyDoubleExcitation(std::forward<decltype(wires)>(wires),
-                      std::forward<decltype(adjoint)>(adjoint),
-                      std::forward<decltype(params[0])>(params[0]));
+             applyDoubleExcitation(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
          }},
         {"DoubleExcitationPlus",
          [&](auto &&wires, auto &&adjoint, auto &&params) {
-             applyDoubleExcitationPlus(std::forward<decltype(wires)>(wires),
-                      std::forward<decltype(adjoint)>(adjoint),
-                      std::forward<decltype(params[0])>(params[0]));
+             applyDoubleExcitationPlus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
          }},
         {"DoubleExcitationMinus",
          [&](auto &&wires, auto &&adjoint, auto &&params) {
-             applyDoubleExcitationMinus(std::forward<decltype(wires)>(wires),
-                      std::forward<decltype(adjoint)>(adjoint),
-                      std::forward<decltype(params[0])>(params[0]));
+             applyDoubleExcitationMinus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
          }},
         {"ControlledPhaseShift",
          [&](auto &&wires, auto &&adjoint, auto &&params) {
