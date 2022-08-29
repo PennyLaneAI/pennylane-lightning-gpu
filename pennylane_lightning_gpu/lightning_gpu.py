@@ -142,11 +142,11 @@ class LightningGPU(LightningQubit):
         capabilities.pop("passthru_devices", None)
         return capabilities
 
-    def statistics(self, observables, shot_range=None, bin_size=None):
+    def statistics(self, observables, shot_range=None, bin_size=None, circuit=None):
         ## Ensure D2H sync before calculating non-GPU supported operations
         if self._sync:
             self.syncD2H()
-        return super().statistics(observables, shot_range, bin_size)
+        return super().statistics(observables, shot_range, bin_size, circuit)
 
     def apply_cq(self, operations, **kwargs):
         # Skip over identity operations instead of performing
