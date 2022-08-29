@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Unit tests for the Halmitonian expval(H) of the :mod:`pennylane_lightning_gpu.LightningGPU` device.
+Unit tests for the Hamiltonian expval(H) of the :mod:`pennylane_lightning_gpu.LightningGPU` device.
 """
 import pytest
 from scipy.sparse import coo_matrix, csr_matrix
