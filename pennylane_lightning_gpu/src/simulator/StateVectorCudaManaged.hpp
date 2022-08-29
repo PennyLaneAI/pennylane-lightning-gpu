@@ -743,8 +743,8 @@ class StateVectorCudaManaged
         const int64_t nnz = static_cast<int64_t>(
             numNNZ); // int64_t is required for nnz by cusparseCreateCsr
 
-        Precision alpha = 1.0;
-        Precision beta = 0.0;
+        CFP_t alpha = {1.0, 0.0};
+        CFP_t beta = {0.0, 0.0};
 
         Precision expect = 0;
 
@@ -783,7 +783,6 @@ class StateVectorCudaManaged
         cusparseSpMatDescr_t mat;
         cusparseDnVecDescr_t vecX, vecY;
 
-        void *dBuffer = NULL;
         size_t bufferSize = 0;
 
         PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&handle))
@@ -805,14 +804,16 @@ class StateVectorCudaManaged
         // allocate an external buffer if needed
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
             handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX, &beta,
-            vecY, data_type, CUSPARSE_MV_ALG_DEFAULT, &bufferSize))
+            vecY, data_type, CUSPARSE_SPMV_CSR_ALG1,
+            &bufferSize)) // Can also use CUSPARSE_MV_ALG_DEFAULT
 
-        PL_CUDA_IS_SUCCESS(cudaMalloc(&dBuffer, bufferSize))
+        DataBuffer<void, int> dBuffer{bufferSize, device_id, stream_id, true};
 
         // execute SpMV
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
             handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX, &beta,
-            vecY, data_type, CUSPARSE_MV_ALG_DEFAULT, dBuffer))
+            vecY, data_type, CUSPARSE_SPMV_CSR_ALG1,
+            dBuffer.getData())) // Can also use CUSPARSE_MV_ALG_DEFAULT
 
         // destroy matrix/vector descriptors
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))
@@ -823,8 +824,6 @@ class StateVectorCudaManaged
         expect = innerProdC_CUDA(BaseType::getData(), d_tmp.getData(),
                                  BaseType::getLength(), device_id, stream_id)
                      .x;
-
-        PL_CUDA_IS_SUCCESS(cudaFree(dBuffer))
 
         return expect;
     }
