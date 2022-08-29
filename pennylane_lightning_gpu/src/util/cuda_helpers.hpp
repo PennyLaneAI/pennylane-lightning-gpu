@@ -410,7 +410,7 @@ inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
 template <class CFP_t = std::complex<float>, class T = cuFloatComplex,
           class DevTypeID = int>
 inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
-                              const int data_size, int dev_id,
+                              const int data_size, DevTypeID dev_id,
                               cudaStream_t stream_id) {
     cublasHandle_t handle;
     PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
