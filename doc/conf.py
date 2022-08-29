@@ -61,7 +61,7 @@ extensions = [
     "exhale",
 ]
 
-intersphinx_mapping = {"https://pennylane.readthedocs.io/en/stable/": None}
+intersphinx_mapping = {"https://docs.pennylane.ai/en/stable/": None}
 
 autosummary_generate = True
 autosummary_imported_members = False
@@ -108,7 +108,7 @@ exhale_args = {
 }
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates", "xanadu_theme"]
+templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -183,7 +183,6 @@ html_static_path = ["_static"]
 # refs: http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
 html_sidebars = {
     "**": [
-        "logo-text.html",
         "searchbox.html",
         "globaltoc.html",
     ]
@@ -191,28 +190,79 @@ html_sidebars = {
 
 
 # -- Xanadu theme ---------------------------------------------------------
-html_theme = "xanadu_theme"
+html_theme = "xanadu"
 html_theme_path = ["."]
 
-# xanadu theme options (see theme.conf for more information)
 html_theme_options = {
-    # Set the name of the project to appear in the left sidebar.
-    "project_nav_name": "PennyLane-Lightning-GPU",
-    "google_analytics_account": "UA-130507810-1",
-    # Path to a touch icon
-    "touch_icon": "logo_new.png",
-    "large_toc": True,
-    "navigation_button": "#19b37b",
-    "navigation_button_hover": "#0e714d",
-    "toc_caption": "#19b37b",
-    "toc_hover": "#19b37b",
-    "table_header_bg": "#edf7f4",
-    "table_header_border": "#19b37b",
-    "download_button": "#19b37b",
+    "navbar_logo_path": "_static/logo.png",
+    "navbar_wordmark_path": "_static/pennylane.svg",
+    # Specifying #19b37b is more correct but does not match the other PL websites.
+
+    "navbar_logo_colour": "#2d7c7f",
+
+    "navbar_home_link": "https://pennylane.ai",
+
+    "navbar_left_links": [
+        {
+            "name": "Quantum machine learning",
+            "href": "https://pennylane.ai/qml/",
+        },
+        {
+            "name": "Demos",
+            "href": "https://pennylane.ai/qml/demonstrations.html",
+        },
+        {
+            "name": "Install",
+            "href": "https://pennylane.ai/install.html",
+        },
+        {
+            "name": "Plugins",
+            "href": "https://pennylane.ai/plugins.html",
+            "active": True,
+        },
+        {
+            "name": "Documentation",
+            "href": "https://docs.pennylane.ai/",
+        },
+        {
+            "name": "Blog",
+            "href": "https://pennylane.ai/blog/",
+        }
+    ],
+
+    "navbar_right_links": [
+        {
+            "name": "FAQ",
+            "href": "https://pennylane.ai/faq.html",
+            "icon": "fas fa-question",
+        },
+        {
+            "name": "Support",
+            "href": "https://discuss.pennylane.ai/",
+            "icon": "fab fa-discourse",
+        },
+        {
+            "name": "GitHub",
+            "href": "https://github.com/PennyLaneAI/pennylane-lightning-gpu",
+            "icon": "fab fa-github",
+        }
+    ],
+
+    "extra_copyrights": [
+        "TensorFlow, the TensorFlow logo, and any related marks are trademarks "
+        "of Google Inc."
+    ],
+    "google_analytics_tracking_id": "UA-130507810-1",
+    "border_colour": "#19b37b",
+    "prev_next_button_colour": "#19b37b",
+    "prev_next_button_hover_colour": "#0e714d",
+    "table_header_background_colour": "#edf7f4",
+    "text_accent_colour": "#19b37b",
+    "toc_marker_colour": "#19b37b",
 }
 
-edit_on_github_project = "XanaduAI/pennylane-lightning-gpu"
-edit_on_github_branch = "master/doc"
+edit_on_github_project = "PennyLaneAI/pennylane-lightning-gpu"
+edit_on_github_branch = "main/doc"
 
 # ============================================================
 
