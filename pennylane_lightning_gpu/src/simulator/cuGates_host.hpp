@@ -1309,17 +1309,17 @@ static auto getIsingZZ(const std::vector<U> &params) -> std::vector<CFP_t> {
 template <class CFP_t, class U = double>
 static constexpr auto getGeneratorIsingZZ() -> std::vector<CFP_t> {
     return {
-        -cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
-
-        cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
-
-        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
         cuUtil::ONE<CFP_t>(),  cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+
+        cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
-        cuUtil::ZERO<CFP_t>(), -cuUtil::ONE<CFP_t>(),
+        -cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+
+        cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::ONE<CFP_t>(),
     };
 }
 
