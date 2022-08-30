@@ -100,6 +100,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
     GIT_TAG       latest_release
 )
+set(ENABLE_KOKKOS OFF CACHE BOOL "Enable Kokkos")
 FetchContent_MakeAvailable(pennylane_lightning)
 
 find_package(CUDA REQUIRED)

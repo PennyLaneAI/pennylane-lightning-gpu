@@ -4,12 +4,12 @@
 #include <future>
 #include <omp.h>
 #include <thread>
-#include <variant>
 
 #include "DevTag.hpp"
 #include "DevicePool.hpp"
-#include "JacobianTape.hpp"
 #include "StateVectorCudaManaged.hpp"
+
+#include "AdjointDataGPU.hpp"
 
 /// @cond DEV
 namespace {
@@ -22,187 +22,148 @@ template <class CFP_t> static constexpr auto getP11_CU() -> std::vector<CFP_t> {
 }
 
 template <class T = double, class SVType>
-void applyGeneratorRX_GPU(SVType &sv, const std::vector<size_t> &wires,
-                          const bool adj = false) {
+void applyGeneratorPauliRot_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    const std::vector<std::string> &hyperparams = {}) {
+    PL_ABORT_IF(hyperparams.size() != wires.size(),
+                "Incompatible number of Pauli words and wires");
+    for (size_t i = 0; i < wires.size(); i++) {
+        if (hyperparams[i] == "RX") {
+            sv.applyPauliX({wires[i]}, adj);
+        } else if (hyperparams[i] == "RY") {
+            sv.applyPauliY({wires[i]}, adj);
+        } else if (hyperparams[i] == "RZ") {
+            sv.applyPauliZ({wires[i]}, adj);
+        } else {
+            PL_ABORT("Unsupported Pauli word. Allowed characters are I, RX, RY "
+                     "and RZ");
+        }
+    }
+}
+
+template <class T = double, class SVType>
+void applyGeneratorRX_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliX(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorRY_GPU(SVType &sv, const std::vector<size_t> &wires,
-                          const bool adj = false) {
+void applyGeneratorRY_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliY(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                          const bool adj = false) {
+void applyGeneratorRZ_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliZ(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorIsingXX_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
+void applyGeneratorIsingXX_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorIsingXX(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorIsingYY_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
+void applyGeneratorIsingYY_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorIsingYY(wires, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorIsingZZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
+void applyGeneratorIsingZZ_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorIsingZZ(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorPhaseShift_GPU(SVType &sv, const std::vector<size_t> &wires,
-                                  const bool adj = false) {
-    sv.applyOperation("P_11", wires, adj, {0.0},
+void applyGeneratorPhaseShift_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
+    sv.applyOperation("P_11", wires, adj, {0.0}, {},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
 }
 
 template <class T = double, class SVType>
-void applyGeneratorCRX_GPU(SVType &sv, const std::vector<size_t> &wires,
-                           const bool adj = false) {
+void applyGeneratorCRX_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliX(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorCRY_GPU(SVType &sv, const std::vector<size_t> &wires,
-                           const bool adj = false) {
+void applyGeneratorCRY_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliY(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorCRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                           const bool adj = false) {
+void applyGeneratorCRZ_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyPauliZ(std::vector<size_t>{wires.back()}, adj);
 }
 
 template <class T = double, class SVType>
-void applyGeneratorControlledPhaseShift_GPU(SVType &sv,
-                                            const std::vector<size_t> &wires,
-                                            const bool adj = false) {
-    sv.applyOperation("P_11", {wires.back()}, adj, {0.0},
+void applyGeneratorControlledPhaseShift_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
+    sv.applyOperation("P_11", {wires.back()}, adj, {0.0}, {},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
 }
 template <class T = double, class SVType>
-void applyGeneratorSingleExcitation_GPU(SVType &sv,
-                                        const std::vector<size_t> &wires,
-                                        const bool adj = false) {
+void applyGeneratorSingleExcitation_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorSingleExcitation(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorSingleExcitationMinus_GPU(SVType &sv,
-                                             const std::vector<size_t> &wires,
-                                             const bool adj = false) {
+void applyGeneratorSingleExcitationMinus_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorSingleExcitationMinus(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorSingleExcitationPlus_GPU(SVType &sv,
-                                            const std::vector<size_t> &wires,
-                                            const bool adj = false) {
+void applyGeneratorSingleExcitationPlus_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorSingleExcitationPlus(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorDoubleExcitation_GPU(SVType &sv,
-                                        const std::vector<size_t> &wires,
-                                        const bool adj = false) {
+void applyGeneratorDoubleExcitation_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorDoubleExcitation(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorDoubleExcitationMinus_GPU(SVType &sv,
-                                             const std::vector<size_t> &wires,
-                                             const bool adj = false) {
+void applyGeneratorDoubleExcitationMinus_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorDoubleExcitationMinus(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorDoubleExcitationPlus_GPU(SVType &sv,
-                                            const std::vector<size_t> &wires,
-                                            const bool adj = false) {
+void applyGeneratorDoubleExcitationPlus_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorDoubleExcitationPlus(wires, adj);
 }
 template <class T = double, class SVType>
-void applyGeneratorMultiRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
+void applyGeneratorMultiRZ_GPU(
+    SVType &sv, const std::vector<size_t> &wires, const bool adj = false,
+    [[maybe_unused]] const std::vector<std::string> &hyperparams = {}) {
     sv.applyGeneratorMultiRZ(wires, adj);
 }
 } // namespace
 /// @endcond
 
 namespace Pennylane::Algorithms {
-
-/**
- * @brief Utility struct for observable operations used by AdjointJacobianGPU
- * class.
- *
- */
-template <class T = double> class ObsDatum {
-  public:
-    /**
-     * @brief Variant type of stored parameter data.
-     */
-    using param_var_t = std::variant<std::monostate, std::vector<T>,
-                                     std::vector<std::complex<T>>>;
-
-    /**
-     * @brief Copy constructor for an ObsDatum object, representing a given
-     * observable.
-     *
-     * @param obs_name Name of each operation of the observable. Tensor product
-     * observables have more than one operation.
-     * @param obs_params Parameters for a given observable operation ({} if
-     * optional).
-     * @param obs_wires Wires upon which to apply operation. Each observable
-     * operation will be a separate nested list.
-     */
-    ObsDatum(std::vector<std::string> obs_name,
-             std::vector<param_var_t> obs_params,
-             std::vector<std::vector<size_t>> obs_wires)
-        : obs_name_{std::move(obs_name)},
-          obs_params_(std::move(obs_params)), obs_wires_{
-                                                  std::move(obs_wires)} {};
-
-    /**
-     * @brief Get the number of operations in observable.
-     *
-     * @return size_t
-     */
-    [[nodiscard]] auto getSize() const -> size_t { return obs_name_.size(); }
-    /**
-     * @brief Get the name of the observable operations.
-     *
-     * @return const std::vector<std::string>&
-     */
-    [[nodiscard]] auto getObsName() const -> const std::vector<std::string> & {
-        return obs_name_;
-    }
-    /**
-     * @brief Get the parameters for the observable operations.
-     *
-     * @return const std::vector<std::vector<T>>&
-     */
-    [[nodiscard]] auto getObsParams() const
-        -> const std::vector<param_var_t> & {
-        return obs_params_;
-    }
-    /**
-     * @brief Get the wires for each observable operation.
-     *
-     * @return const std::vector<std::vector<size_t>>&
-     */
-    [[nodiscard]] auto getObsWires() const
-        -> const std::vector<std::vector<size_t>> & {
-        return obs_wires_;
-    }
-
-  private:
-    const std::vector<std::string> obs_name_;
-    const std::vector<param_var_t> obs_params_;
-    const std::vector<std::vector<size_t>> obs_wires_;
-};
 
 /**
  * @brief GPU-enabled adjoint Jacobian evaluator following the method of
@@ -214,12 +175,14 @@ template <class T = double> class AdjointJacobianGPU {
   private:
     using CFP_t = decltype(cuUtil::getCudaType(T{}));
     using scalar_type_t = T;
-    using GeneratorFunc = void (*)(StateVectorCudaManaged<T> &,
-                                   const std::vector<size_t> &,
-                                   const bool); // function pointer type
+    using GeneratorFunc = void (*)(
+        StateVectorCudaManaged<T> &, const std::vector<size_t> &, const bool,
+        const std::vector<std::string> &); // function pointer type
 
     // Holds the mapping from gate labels to associated generator functions.
     const std::unordered_map<std::string, GeneratorFunc> generator_map{
+        {"PauliRot",
+         &::applyGeneratorPauliRot_GPU<T, StateVectorCudaManaged<T>>},
         {"RX", &::applyGeneratorRX_GPU<T, StateVectorCudaManaged<T>>},
         {"RY", &::applyGeneratorRY_GPU<T, StateVectorCudaManaged<T>>},
         {"RZ", &::applyGeneratorRZ_GPU<T, StateVectorCudaManaged<T>>},
@@ -254,6 +217,7 @@ template <class T = double> class AdjointJacobianGPU {
 
     // Holds the mappings from gate labels to associated generator coefficients.
     const std::unordered_map<std::string, T> scaling_factors{
+        {"PauliRot", -static_cast<T>(0.5)},
         {"RX", -static_cast<T>(0.5)},
         {"RY", -static_cast<T>(0.5)},
         {"RZ", -static_cast<T>(0.5)},
@@ -303,43 +267,41 @@ template <class T = double> class AdjointJacobianGPU {
 
     /**
      * @brief Utility method to apply all operations from given
-     * `%Pennylane::Algorithms::OpsData<T>` object to
-     * `%StateVectorCudaManaged<T>`
+     * `%cuOpsData<T>` object to `%StateVectorCudaManaged<T>`
      *
      * @param state Statevector to be updated.
      * @param operations Operations to apply.
      * @param adj Take the adjoint of the given operations.
      */
-    inline void
-    applyOperations(StateVectorCudaManaged<T> &state,
-                    const Pennylane::Algorithms::OpsData<T> &operations,
-                    bool adj = false) {
+    inline void applyOperations(StateVectorCudaManaged<T> &state,
+                                const cuOpsData<T> &operations,
+                                bool adj = false) {
         for (size_t op_idx = 0; op_idx < operations.getOpsName().size();
              op_idx++) {
             state.applyOperation(operations.getOpsName()[op_idx],
                                  operations.getOpsWires()[op_idx],
                                  operations.getOpsInverses()[op_idx] ^ adj,
-                                 operations.getOpsParams()[op_idx]);
+                                 operations.getOpsParams()[op_idx],
+                                 operations.getOpsHyperParams()[op_idx]);
         }
     }
 
     /**
      * @brief Utility method to apply the adjoint indexed operation from
-     * `%Pennylane::Algorithms::OpsData<T>` object to
-     * `%StateVectorCudaManaged<T>`.
+     * `%cuOpsData<T>` object to `%StateVectorCudaManaged<T>`.
      *
      * @param state Statevector to be updated.
      * @param operations Operations to apply.
      * @param op_idx Adjointed operation index to apply.
      */
-    inline void
-    applyOperationAdj(StateVectorCudaManaged<T> &state,
-                      const Pennylane::Algorithms::OpsData<T> &operations,
-                      size_t op_idx) {
+    inline void applyOperationAdj(StateVectorCudaManaged<T> &state,
+                                  const cuOpsData<T> &operations,
+                                  size_t op_idx) {
         state.applyOperation(operations.getOpsName()[op_idx],
                              operations.getOpsWires()[op_idx],
                              !operations.getOpsInverses()[op_idx],
-                             operations.getOpsParams()[op_idx]);
+                             operations.getOpsParams()[op_idx],
+                             operations.getOpsHyperParams()[op_idx]);
     }
 
     /**
@@ -448,8 +410,7 @@ template <class T = double> class AdjointJacobianGPU {
      */
     inline void
     applyOperationsAdj(std::vector<StateVectorCudaManaged<T>> &states,
-                       const Pennylane::Algorithms::OpsData<T> &operations,
-                       size_t op_idx) {
+                       const cuOpsData<T> &operations, size_t op_idx) {
         // clang-format off
         // Globally scoped exception value to be captured within OpenMP block.
         // See the following for OpenMP design decisions:
@@ -512,9 +473,10 @@ template <class T = double> class AdjointJacobianGPU {
      */
     inline auto applyGenerator(StateVectorCudaManaged<T> &sv,
                                const std::string &op_name,
-                               const std::vector<size_t> &wires, const bool adj)
+                               const std::vector<size_t> &wires, const bool adj,
+                               const std::vector<std::string> &hyperparams = {})
         -> T {
-        generator_map.at(op_name)(sv, wires, adj);
+        generator_map.at(op_name)(sv, wires, adj, hyperparams);
         return scaling_factors.at(op_name);
     }
 
@@ -530,16 +492,18 @@ template <class T = double> class AdjointJacobianGPU {
      * @param ops_inverses Indicate whether to take adjoint of each operation in
      * ops_name.
      * @param ops_matrices Matrix definition of an operation if unsupported.
-     * @return const Pennylane::Algorithms::OpsData<T>
+     * @return const cuOpsData<T>
      */
     auto createOpsData(
         const std::vector<std::string> &ops_name,
         const std::vector<std::vector<T>> &ops_params,
+        const std::vector<std::vector<std::string>> &ops_hyperparams,
         const std::vector<std::vector<size_t>> &ops_wires,
         const std::vector<bool> &ops_inverses,
         const std::vector<std::vector<std::complex<T>>> &ops_matrices = {{}})
-        -> Pennylane::Algorithms::OpsData<T> {
-        return {ops_name, ops_params, ops_wires, ops_inverses, ops_matrices};
+        -> cuOpsData<T> {
+        return {ops_name,  ops_params,   ops_hyperparams,
+                ops_wires, ops_inverses, ops_matrices};
     }
 
     /**
@@ -557,13 +521,12 @@ template <class T = double> class AdjointJacobianGPU {
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void batchAdjointJacobian(
-        const CFP_t *ref_data, std::size_t length,
-        std::vector<std::vector<T>> &jac,
-        const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
-        const Pennylane::Algorithms::OpsData<T> &ops,
-        const std::vector<size_t> &trainableParams,
-        bool apply_operations = false) {
+    void batchAdjointJacobian(const CFP_t *ref_data, std::size_t length,
+                              std::vector<std::vector<T>> &jac,
+                              const std::vector<ObsDatum<T>> &obs,
+                              const cuOpsData<T> &ops,
+                              const std::vector<size_t> &trainableParams,
+                              bool apply_operations = false) {
 
         // Create a pool of available GPU devices
         DevicePool<int> dp;
@@ -658,14 +621,13 @@ template <class T = double> class AdjointJacobianGPU {
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void
-    adjointJacobian(const CFP_t *ref_data, std::size_t length,
-                    std::vector<std::vector<T>> &jac,
-                    const std::vector<Pennylane::Algorithms::ObsDatum<T>> &obs,
-                    const Pennylane::Algorithms::OpsData<T> &ops,
-                    const std::vector<size_t> &trainableParams,
-                    bool apply_operations = false,
-                    CUDA::DevTag<int> dev_tag = {0, 0}) {
+    void adjointJacobian(const CFP_t *ref_data, std::size_t length,
+                         std::vector<std::vector<T>> &jac,
+                         const std::vector<ObsDatum<T>> &obs,
+                         const cuOpsData<T> &ops,
+                         const std::vector<size_t> &trainableParams,
+                         bool apply_operations = false,
+                         CUDA::DevTag<int> dev_tag = {0, 0}) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 
@@ -721,7 +683,8 @@ template <class T = double> class AdjointJacobianGPU {
                     const T scalingFactor =
                         applyGenerator(mu, ops.getOpsName()[op_idx],
                                        ops.getOpsWires()[op_idx],
-                                       !ops.getOpsInverses()[op_idx]) *
+                                       !ops.getOpsInverses()[op_idx],
+                                       ops.getOpsHyperParams()[op_idx]) *
                         (ops.getOpsInverses()[op_idx] ? -1 : 1);
 
                     // clang-format off

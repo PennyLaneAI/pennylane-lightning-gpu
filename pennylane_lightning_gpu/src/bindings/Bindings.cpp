@@ -43,6 +43,7 @@ using namespace Pennylane;
 using namespace Pennylane::CUDA;
 using namespace Pennylane::Algorithms;
 using namespace Pennylane::CUDA::Util;
+
 using std::complex;
 using std::set;
 using std::string;
@@ -61,13 +62,12 @@ template <class PrecisionT, class ParamT>
 void StateVectorCudaManaged_class_bindings(py::module &m) {
     using np_arr_r =
         py::array_t<ParamT, py::array::c_style | py::array::forcecast>;
-    using np_arr_c = py::array_t<std::complex<ParamT>,
-                                 py::array::c_style | py::array::forcecast>;
+    using np_arr_c =
+        py::array_t<complex<ParamT>, py::array::c_style | py::array::forcecast>;
 
     // Enable module name to be based on size of complex datatype
-    const std::string bitsize =
-        std::to_string(sizeof(std::complex<PrecisionT>) * 8);
-    std::string class_name = "LightningGPU_C" + bitsize;
+    const string bitsize = std::to_string(sizeof(complex<PrecisionT>) * 8);
+    string class_name = "LightningGPU_C" + bitsize;
 
     py::class_<StateVectorCudaManaged<PrecisionT>>(m, class_name.c_str())
         .def(py::init<std::size_t>())              // qubits, device
@@ -77,16 +77,15 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(py::init([](const np_arr_c &arr) {
             py::buffer_info numpyArrayInfo = arr.request();
             const auto *data_ptr =
-                static_cast<const std::complex<PrecisionT> *>(
-                    numpyArrayInfo.ptr);
+                static_cast<const complex<PrecisionT> *>(numpyArrayInfo.ptr);
             return new StateVectorCudaManaged<PrecisionT>(
                 data_ptr, static_cast<std::size_t>(arr.size()));
         }))
         .def(
             "Identity",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyIdentity(wires, adjoint);
             },
             "Apply the Identity gate.")
@@ -94,8 +93,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "PauliX",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyPauliX(wires, adjoint);
             },
             "Apply the PauliX gate.")
@@ -103,8 +102,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "PauliY",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyPauliY(wires, adjoint);
             },
             "Apply the PauliY gate.")
@@ -112,8 +111,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "PauliZ",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyPauliZ(wires, adjoint);
             },
             "Apply the PauliZ gate.")
@@ -121,8 +120,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "Hadamard",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyHadamard(wires, adjoint);
             },
             "Apply the Hadamard gate.")
@@ -130,8 +129,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "S",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyS(wires, adjoint);
             },
             "Apply the S gate.")
@@ -139,8 +138,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "T",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyT(wires, adjoint);
             },
             "Apply the T gate.")
@@ -148,8 +147,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "CNOT",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyCNOT(wires, adjoint);
             },
             "Apply the CNOT gate.")
@@ -157,8 +156,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "SWAP",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applySWAP(wires, adjoint);
             },
             "Apply the SWAP gate.")
@@ -166,8 +165,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "CSWAP",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyCSWAP(wires, adjoint);
             },
             "Apply the CSWAP gate.")
@@ -175,8 +174,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "Toffoli",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyToffoli(wires, adjoint);
             },
             "Apply the Toffoli gate.")
@@ -184,8 +183,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "CZ",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               [[maybe_unused]] const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const vector<ParamT> &params) {
                 return sv.applyCZ(wires, adjoint);
             },
             "Apply the CZ gate.")
@@ -193,8 +192,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "PhaseShift",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyPhaseShift(wires, adjoint, params.front());
             },
             "Apply the PhaseShift gate.")
@@ -202,7 +201,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def("apply",
              py::overload_cast<
                  const vector<string> &, const vector<vector<std::size_t>> &,
-                 const vector<bool> &, const vector<vector<PrecisionT>> &>(
+                 const vector<bool> &, const vector<vector<PrecisionT>> &,
+                 const vector<vector<string>> &>(
                  &StateVectorCudaManaged<PrecisionT>::applyOperation))
 
         .def("apply", py::overload_cast<const vector<string> &,
@@ -211,16 +211,17 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                           &StateVectorCudaManaged<PrecisionT>::applyOperation))
 
         .def("apply",
-             py::overload_cast<const std::string &, const vector<size_t> &,
-                               bool, const vector<PrecisionT> &,
-                               const std::vector<std::complex<PrecisionT>> &>(
+             py::overload_cast<const string &, const vector<size_t> &, bool,
+                               const vector<PrecisionT> &,
+                               const vector<string> &,
+                               const vector<complex<PrecisionT>> &>(
                  &StateVectorCudaManaged<PrecisionT>::applyOperation_std))
 
         .def(
             "ControlledPhaseShift",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyControlledPhaseShift(wires, adjoint,
                                                     params.front());
             },
@@ -229,8 +230,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "RX",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyRX(wires, adjoint, params.front());
             },
             "Apply the RX gate.")
@@ -238,8 +239,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "RY",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyRY(wires, adjoint, params.front());
             },
             "Apply the RY gate.")
@@ -247,8 +248,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "RZ",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyRZ(wires, adjoint, params.front());
             },
             "Apply the RZ gate.")
@@ -256,8 +257,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "Rot",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyRot(wires, adjoint, params);
             },
             "Apply the Rot gate.")
@@ -265,8 +266,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "CRX",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyCRX(wires, adjoint, params.front());
             },
             "Apply the CRX gate.")
@@ -274,8 +275,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "CRY",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyCRY(wires, adjoint, params.front());
             },
             "Apply the CRY gate.")
@@ -283,8 +284,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "CRZ",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyCRZ(wires, adjoint, params.front());
             },
             "Apply the CRZ gate.")
@@ -292,48 +293,48 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "CRot",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyCRot(wires, adjoint, params);
             },
             "Apply the CRot gate.")
         .def(
             "IsingXX",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyIsingXX(wires, adjoint, params.front());
             },
             "Apply the IsingXX gate.")
         .def(
             "IsingYY",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyIsingYY(wires, adjoint, params.front());
             },
             "Apply the IsingYY gate.")
         .def(
             "IsingZZ",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyIsingZZ(wires, adjoint, params.front());
             },
             "Apply the IsingZZ gate.")
         .def(
             "SingleExcitation",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applySingleExcitation(wires, adjoint, params.front());
             },
             "Apply the SingleExcitation gate.")
         .def(
             "SingleExcitationMinus",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applySingleExcitationMinus(wires, adjoint,
                                                      params.front());
             },
@@ -341,8 +342,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "SingleExcitationPlus",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applySingleExcitationPlus(wires, adjoint,
                                                     params.front());
             },
@@ -350,16 +351,16 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "DoubleExcitation",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyDoubleExcitation(wires, adjoint, params.front());
             },
             "Apply the DoubleExcitation gate.")
         .def(
             "DoubleExcitationMinus",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyDoubleExcitationMinus(wires, adjoint,
                                                      params.front());
             },
@@ -367,8 +368,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "DoubleExcitationPlus",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyDoubleExcitationPlus(wires, adjoint,
                                                     params.front());
             },
@@ -376,25 +377,34 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "MultiRZ",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires, bool adjoint,
-               const std::vector<ParamT> &params) {
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params) {
                 return sv.applyMultiRZ(wires, adjoint, params.front());
             },
             "Apply the MultiRZ gate.")
         .def(
-            "ExpectationValue",
+            "PauliRot",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::string &obsName,
-               const std::vector<std::size_t> &wires,
-               [[maybe_unused]] const std::vector<ParamT> &params,
+               const vector<std::size_t> &wires, bool adjoint,
+               const vector<ParamT> &params,
+               const vector<string> &pauli_words) {
+                return sv.applyPauliRot(pauli_words, wires, adjoint,
+                                        params.front());
+            },
+            "Apply the PauliRot gate.")
+        .def(
+            "ExpectationValue",
+            [](StateVectorCudaManaged<PrecisionT> &sv, const string &obsName,
+               const vector<std::size_t> &wires,
+               [[maybe_unused]] const vector<ParamT> &params,
                [[maybe_unused]] const np_arr_c &gate_matrix) {
                 const auto m_buffer = gate_matrix.request();
-                std::vector<std::complex<ParamT>> conv_matrix;
+                vector<complex<ParamT>> conv_matrix;
                 if (m_buffer.size) {
                     const auto m_ptr =
-                        static_cast<const std::complex<ParamT> *>(m_buffer.ptr);
-                    conv_matrix = std::vector<std::complex<ParamT>>{
-                        m_ptr, m_ptr + m_buffer.size};
+                        static_cast<const complex<ParamT> *>(m_buffer.ptr);
+                    conv_matrix =
+                        vector<complex<ParamT>>{m_ptr, m_ptr + m_buffer.size};
                 }
                 // Return the real component only
                 return sv.expval(obsName, wires, params, conv_matrix).x;
@@ -403,35 +413,33 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "ExpectationValue",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::string> &obsName,
-               const std::vector<std::size_t> &wires,
-               [[maybe_unused]] const std::vector<std::vector<ParamT>> &params,
+               const vector<string> &obsName, const vector<std::size_t> &wires,
+               [[maybe_unused]] const vector<vector<ParamT>> &params,
                [[maybe_unused]] const np_arr_c &gate_matrix) {
                 // internally cache by concatenation of obs names, indicated by
                 // prefixed # for string
-                std::string obs_concat{"#"};
+                string obs_concat{"#"};
                 for (const auto &sub : obsName) {
                     obs_concat += sub;
                 }
                 const auto m_buffer = gate_matrix.request();
-                std::vector<std::complex<ParamT>> conv_matrix;
+                vector<complex<ParamT>> conv_matrix;
                 if (m_buffer.size) {
                     const auto m_ptr =
-                        static_cast<const std::complex<ParamT> *>(m_buffer.ptr);
-                    conv_matrix = std::vector<std::complex<ParamT>>{
-                        m_ptr, m_ptr + m_buffer.size};
+                        static_cast<const complex<ParamT> *>(m_buffer.ptr);
+                    conv_matrix =
+                        vector<complex<ParamT>>{m_ptr, m_ptr + m_buffer.size};
                 }
                 // Return the real component only & ignore params
                 return sv
-                    .expval(obs_concat, wires, std::vector<ParamT>{},
-                            conv_matrix)
+                    .expval(obs_concat, wires, vector<ParamT>{}, conv_matrix)
                     .x;
             },
             "Calculate the expectation value of the given observable.")
         .def(
             "Probability",
             [](StateVectorCudaManaged<PrecisionT> &sv,
-               const std::vector<std::size_t> &wires) {
+               const vector<std::size_t> &wires) {
                 return py::array_t<ParamT>(py::cast(sv.probability(wires)));
             },
             "Calculate the probabilities for given wires. Results returned in "
@@ -441,9 +449,9 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 size_t num_shots) {
                  auto &&result = sv.generate_samples(num_shots);
                  const size_t ndim = 2;
-                 const std::vector<size_t> shape{num_shots, num_wires};
+                 const vector<size_t> shape{num_shots, num_wires};
                  constexpr auto sz = sizeof(size_t);
-                 const std::vector<size_t> strides{sz * num_wires, sz};
+                 const vector<size_t> strides{sz * num_wires, sz};
                  // return 2-D NumPy array
                  return py::array(py::buffer_info(
                      result.data(), /* data as contiguous array  */
@@ -462,7 +470,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                  py::const_),
              "Synchronize data from the GPU device to host.")
         .def("DeviceToHost",
-             py::overload_cast<std::complex<PrecisionT> *, size_t, bool>(
+             py::overload_cast<complex<PrecisionT> *, size_t, bool>(
                  &StateVectorCudaManaged<PrecisionT>::CopyGpuDataToHost,
                  py::const_),
              "Synchronize data from the GPU device to host.")
@@ -479,12 +487,11 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             },
             "Synchronize data from the GPU device to host.")
         .def("HostToDevice",
-             py::overload_cast<const std::complex<PrecisionT> *, size_t, bool>(
+             py::overload_cast<const complex<PrecisionT> *, size_t, bool>(
                  &StateVectorCudaManaged<PrecisionT>::CopyHostDataToGpu),
              "Synchronize data from the host device to GPU.")
         .def("HostToDevice",
-             py::overload_cast<const std::vector<std::complex<PrecisionT>> &,
-                               bool>(
+             py::overload_cast<const vector<complex<PrecisionT>> &, bool>(
                  &StateVectorCudaManaged<PrecisionT>::CopyHostDataToGpu),
              "Synchronize data from the host device to GPU.")
         .def(
@@ -515,10 +522,10 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     class_name = "ObsStructGPU_C" + bitsize;
     using obs_data_var = std::variant<std::monostate, np_arr_r, np_arr_c>;
     py::class_<ObsDatum<PrecisionT>>(m, class_name.c_str(), py::module_local())
-        .def(py::init([](const std::vector<std::string> &names,
-                         const std::vector<obs_data_var> &params,
-                         const std::vector<std::vector<size_t>> &wires) {
-            std::vector<typename ObsDatum<PrecisionT>::param_var_t> conv_params(
+        .def(py::init([](const vector<string> &names,
+                         const vector<obs_data_var> &params,
+                         const vector<vector<size_t>> &wires) {
+            vector<typename ObsDatum<PrecisionT>::param_var_t> conv_params(
                 params.size());
             for (size_t p_idx = 0; p_idx < params.size(); p_idx++) {
                 std::visit(
@@ -527,11 +534,10 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                         if constexpr (std::is_same_v<p_t, np_arr_c>) {
                             auto buffer = param.request();
                             auto ptr =
-                                static_cast<std::complex<ParamT> *>(buffer.ptr);
+                                static_cast<complex<ParamT> *>(buffer.ptr);
                             if (buffer.size) {
-                                conv_params[p_idx] =
-                                    std::vector<std::complex<ParamT>>{
-                                        ptr, ptr + buffer.size};
+                                conv_params[p_idx] = vector<complex<ParamT>>{
+                                    ptr, ptr + buffer.size};
                             }
                         } else if constexpr (std::is_same_v<p_t, np_arr_r>) {
                             auto buffer = param.request();
@@ -539,7 +545,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                             auto *ptr = static_cast<ParamT *>(buffer.ptr);
                             if (buffer.size) {
                                 conv_params[p_idx] =
-                                    std::vector<ParamT>{ptr, ptr + buffer.size};
+                                    vector<ParamT>{ptr, ptr + buffer.size};
                             }
                         } else {
                             PL_ABORT(
@@ -554,7 +560,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
              [](const ObsDatum<PrecisionT> &obs) {
                  using namespace Pennylane::Util;
                  std::ostringstream obs_stream;
-                 std::string obs_name = obs.getObsName()[0];
+                 string obs_name = obs.getObsName()[0];
                  for (size_t o = 1; o < obs.getObsName().size(); o++) {
                      if (o < obs.getObsName().size()) {
                          obs_name += " @ ";
@@ -575,13 +581,12 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 std::visit(
                     [&](const auto &param) {
                         using p_t = std::decay_t<decltype(param)>;
-                        if constexpr (std::is_same_v<
-                                          p_t,
-                                          std::vector<std::complex<ParamT>>>) {
-                            params.append(py::array_t<std::complex<ParamT>>(
-                                py::cast(param)));
-                        } else if constexpr (std::is_same_v<
-                                                 p_t, std::vector<ParamT>>) {
+                        if constexpr (std::is_same_v<p_t,
+                                                     vector<complex<ParamT>>>) {
+                            params.append(
+                                py::array_t<complex<ParamT>>(py::cast(param)));
+                        } else if constexpr (std::is_same_v<p_t,
+                                                            vector<ParamT>>) {
                             params.append(py::array_t<ParamT>(py::cast(param)));
                         } else if constexpr (std::is_same_v<p_t,
                                                             std::monostate>) {
@@ -599,19 +604,19 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     //                              Operations
     //***********************************************************************//
     class_name = "OpsStructGPU_C" + bitsize;
-    py::class_<OpsData<PrecisionT>>(m, class_name.c_str(), py::module_local())
-        .def(py::init<
-             const std::vector<std::string> &,
-             const std::vector<std::vector<ParamT>> &,
-             const std::vector<std::vector<size_t>> &,
-             const std::vector<bool> &,
-             const std::vector<std::vector<std::complex<PrecisionT>>> &>())
-        .def("__repr__", [](const OpsData<PrecisionT> &ops) {
+    py::class_<cuOpsData<PrecisionT>>(m, class_name.c_str(), py::module_local())
+        .def(py::init<const vector<string> &, const vector<vector<ParamT>> &,
+                      const vector<vector<string>> &,
+                      const vector<vector<size_t>> &, const vector<bool> &,
+                      const vector<vector<complex<PrecisionT>>> &>())
+        .def("__repr__", [](const cuOpsData<PrecisionT> &ops) {
             using namespace Pennylane::Util;
             std::ostringstream ops_stream;
             for (size_t op = 0; op < ops.getSize(); op++) {
                 ops_stream << "{'name': " << ops.getOpsName()[op];
                 ops_stream << ", 'params': " << ops.getOpsParams()[op];
+                ops_stream << ", 'hyperparams': "
+                           << ops.getOpsHyperParams()[op];
                 ops_stream << ", 'inv': " << ops.getOpsInverses()[op];
                 ops_stream << "}";
                 if (op < ops.getSize() - 1) {
@@ -631,15 +636,15 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(py::init<>())
         .def("create_ops_list",
              [](AdjointJacobianGPU<PrecisionT> &adj,
-                const std::vector<std::string> &ops_name,
-                const std::vector<np_arr_r> &ops_params,
-                const std::vector<std::vector<size_t>> &ops_wires,
-                const std::vector<bool> &ops_inverses,
-                const std::vector<np_arr_c> &ops_matrices) {
-                 std::vector<std::vector<PrecisionT>> conv_params(
-                     ops_params.size());
-                 std::vector<std::vector<std::complex<PrecisionT>>>
-                     conv_matrices(ops_matrices.size());
+                const vector<string> &ops_name,
+                const vector<np_arr_r> &ops_params,
+                const vector<vector<string>> &ops_hyperparams,
+                const vector<vector<size_t>> &ops_wires,
+                const vector<bool> &ops_inverses,
+                const vector<np_arr_c> &ops_matrices) {
+                 vector<vector<PrecisionT>> conv_params(ops_params.size());
+                 vector<vector<complex<PrecisionT>>> conv_matrices(
+                     ops_matrices.size());
                  static_cast<void>(adj);
                  for (size_t op = 0; op < ops_name.size(); op++) {
                      const auto p_buffer = ops_params[op].request();
@@ -648,33 +653,31 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                          const auto *const p_ptr =
                              static_cast<const ParamT *>(p_buffer.ptr);
                          conv_params[op] =
-                             std::vector<ParamT>{p_ptr, p_ptr + p_buffer.size};
+                             vector<ParamT>{p_ptr, p_ptr + p_buffer.size};
                      }
 
                      if (m_buffer.size) {
                          const auto m_ptr =
-                             static_cast<const std::complex<ParamT> *>(
-                                 m_buffer.ptr);
-                         conv_matrices[op] = std::vector<std::complex<ParamT>>{
+                             static_cast<const complex<ParamT> *>(m_buffer.ptr);
+                         conv_matrices[op] = vector<complex<ParamT>>{
                              m_ptr, m_ptr + m_buffer.size};
                      }
                  }
-
-                 return OpsData<PrecisionT>{ops_name, conv_params, ops_wires,
-                                            ops_inverses, conv_matrices};
+                 return cuOpsData<PrecisionT>{ops_name,        conv_params,
+                                              ops_hyperparams, ops_wires,
+                                              ops_inverses,    conv_matrices};
              })
         .def("adjoint_jacobian",
              &AdjointJacobianGPU<PrecisionT>::adjointJacobian)
         .def("adjoint_jacobian",
              [](AdjointJacobianGPU<PrecisionT> &adj,
                 const StateVectorCudaManaged<PrecisionT> &sv,
-                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
-                    &observables,
-                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
-                const std::vector<size_t> &trainableParams) {
-                 std::vector<std::vector<PrecisionT>> jac(
+                const vector<ObsDatum<PrecisionT>> &observables,
+                const cuOpsData<PrecisionT> &operations,
+                const vector<size_t> &trainableParams) {
+                 vector<vector<PrecisionT>> jac(
                      observables.size(),
-                     std::vector<PrecisionT>(trainableParams.size(), 0));
+                     vector<PrecisionT>(trainableParams.size(), 0));
 
                  adj.adjointJacobian(sv.getData(), sv.getLength(), jac,
                                      observables, operations, trainableParams,
@@ -684,9 +687,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def("adjoint_jacobian_batched",
              [](AdjointJacobianGPU<PrecisionT> &adj,
                 const StateVectorCudaManaged<PrecisionT> &sv,
-                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
-                    &observables,
-                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+                const std::vector<ObsDatum<PrecisionT>> &observables,
+                const cuOpsData<PrecisionT> &operations,
                 const std::vector<size_t> &trainableParams) {
                  std::vector<std::vector<PrecisionT>> jac(
                      observables.size(),

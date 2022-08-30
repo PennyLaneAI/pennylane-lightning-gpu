@@ -60,7 +60,7 @@ try:
         OpsStructGPU_C64,
     )
 
-    from ._serialize import _serialize_obs, _serialize_ops
+    from ._serialize import _serialize_obs, _serialize_ops, _get_cuq_pauli_names
     from ctypes.util import find_library
     from importlib import util as imp_util
 
@@ -99,6 +99,11 @@ class LightningGPU(LightningQubit):
     version = __version__
     author = "Xanadu Inc."
     _CPP_BINARY_AVAILABLE = True
+
+    operations = {
+        *LightningQubit.operations,
+        "PauliRot",
+    }
 
     observables = {
         "PauliX",
@@ -159,6 +164,10 @@ class LightningGPU(LightningQubit):
             name = o.name.split(".")[0]  # The split is because inverse gates have .inv appended
             method = getattr(self._gpu_state, name, None)
 
+            hyper_params = []
+            if name is "PauliRot":
+                hyper_params = _get_cuq_pauli_names(o.hyperparameters["pauli_word"])
+
             wires = self.wires.indices(o.wires)
 
             if method is None:
@@ -176,13 +185,17 @@ class LightningGPU(LightningQubit):
                     wires,
                     False,
                     [],
+                    hyper_params,
                     mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
                 )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
 
             else:
                 inv = o.inverse
                 param = o.parameters
-                method(wires, inv, param)
+                if name is "PauliRot":
+                    method(wires, inv, param, hyper_params)
+                else:
+                    method(wires, inv, param)
 
     def apply(self, operations, **kwargs):
         # State preparation is currently done in Python

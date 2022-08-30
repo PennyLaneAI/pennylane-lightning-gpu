@@ -125,10 +125,13 @@ class StateVectorCudaManaged
      * @param wires Wires to apply gate to.
      * @param adjoint Indicates whether to use adjoint of gate.
      * @param params Optional parameter list for parametric gates.
+     * @param hyperparams Hyper-parameter list for parametric gates ({} if
+     * None).
      */
     void applyOperation(
         const std::string &opName, const std::vector<size_t> &wires,
         bool adjoint = false, const std::vector<Precision> &params = {0.0},
+        [[maybe_unused]] const std::vector<std::string> hyperparams = {},
         [[maybe_unused]] const std::vector<CFP_t> &gate_matrix = {}) {
         const auto ctrl_offset = (BaseType::getCtrlMap().find(opName) !=
                                   BaseType::getCtrlMap().end())
@@ -154,7 +157,7 @@ class StateVectorCudaManaged
                 applyParametricPauliGate({"RZ"}, ctrls, tgts, params[2], false);
             }
         } else if (par_gates_.find(opName) != par_gates_.end()) {
-            par_gates_.at(opName)(wires, adjoint, params);
+            par_gates_.at(opName)(wires, adjoint, params, hyperparams);
         } else { // No offloadable function call; defer to matrix passing
             auto &&par =
                 (params.empty()) ? std::vector<Precision>{0.0} : params;
@@ -180,12 +183,14 @@ class StateVectorCudaManaged
      * @brief STL-fiendly variant of `applyOperation(
         const std::string &opName, const std::vector<size_t> &wires,
         bool adjoint = false, const std::vector<Precision> &params = {0.0},
+        [[maybe_unused]] const std::vector<std::string> &hyperparams = {},
         [[maybe_unused]] const std::vector<CFP_t> &gate_matrix = {})`
      *
      */
     void applyOperation_std(
         const std::string &opName, const std::vector<size_t> &wires,
         bool adjoint = false, const std::vector<Precision> &params = {0.0},
+        [[maybe_unused]] const std::vector<std::string> &hyperparams = {},
         [[maybe_unused]] const std::vector<std::complex<Precision>>
             &gate_matrix = {}) {
         std::vector<CFP_t> matrix_cu(gate_matrix.size());
@@ -194,7 +199,7 @@ class StateVectorCudaManaged
                            return cuUtil::complexToCu<std::complex<Precision>>(
                                x);
                        });
-        applyOperation(opName, wires, adjoint, params, matrix_cu);
+        applyOperation(opName, wires, adjoint, params, hyperparams, matrix_cu);
     }
 
     /**
@@ -202,23 +207,30 @@ class StateVectorCudaManaged
      std::vector<int> &wires, bool adjoint = false, const std::vector<Precision>
      &params)`
      *
-     * @param opNames
-     * @param wires
-     * @param adjoints
-     * @param params
+     * @param opName List of names of gates to apply.
+     * @param wires List of wires to apply gates to.
+     * @param adjoint List of booleans indicating whether to use adjoint of
+     gate.
+     * @param params List of optional parameters for parametric gates.
+     * @param hyperparams List of hyper-parameters for parametric gates ({} if
+     None).
      */
-    void applyOperation(const std::vector<std::string> &opNames,
-                        const std::vector<std::vector<size_t>> &wires,
-                        const std::vector<bool> &adjoints,
-                        const std::vector<std::vector<Precision>> &params) {
+    void
+    applyOperation(const std::vector<std::string> &opNames,
+                   const std::vector<std::vector<size_t>> &wires,
+                   const std::vector<bool> &adjoints,
+                   const std::vector<std::vector<Precision>> &params,
+                   const std::vector<std::vector<std::string>> &hyperparams) {
         PL_ABORT_IF(opNames.size() != wires.size(),
                     "Incompatible number of ops and wires");
         PL_ABORT_IF(opNames.size() != adjoints.size(),
                     "Incompatible number of ops and adjoints");
+        PL_ABORT_IF(opNames.size() != hyperparams.size(),
+                    "Incompatible number of hyper-parameters and adjoints");
         const auto num_ops = opNames.size();
         for (std::size_t op_idx = 0; op_idx < num_ops; op_idx++) {
             applyOperation(opNames[op_idx], wires[op_idx], adjoints[op_idx],
-                           params[op_idx]);
+                           params[op_idx], hyperparams[op_idx]);
         }
     }
 
@@ -227,10 +239,10 @@ class StateVectorCudaManaged
      std::vector<int> &wires, bool adjoint = false, const std::vector<Precision>
      &params)`
      *
-     * @param opNames
-     * @param wires
-     * @param adjoints
-     * @param params
+     * @param opName List of names of gates to apply.
+     * @param wires List of wires to apply gates to.
+     * @param adjoint List of booleans indicating whether to use adjoint of
+     gate.
      */
     void applyOperation(const std::vector<std::string> &opNames,
                         const std::vector<std::vector<size_t>> &wires,
@@ -300,23 +312,27 @@ class StateVectorCudaManaged
                               {wires.begin(), wires.end() - 1}, {wires.back()},
                               adjoint);
     }
+    inline void applyPauliRot(const std::vector<std::string> pauli_words,
+                              const std::vector<size_t> &wires, bool adjoint,
+                              Precision param) {
+        PL_ABORT_IF(pauli_words.size() != wires.size(),
+                    "Incompatible number of Pauli words and wires");
+        applyParametricPauliGate(pauli_words, {}, wires, param, adjoint);
+    }
     inline void applyRX(const std::vector<std::size_t> &wires, bool adjoint,
                         Precision param) {
         static const std::vector<std::string> name{{"RX"}};
-        applyParametricPauliGate(name, {wires.begin(), wires.end() - 1},
-                                 {wires.back()}, param, adjoint);
+        applyPauliRot(name, wires, adjoint, param);
     }
     inline void applyRY(const std::vector<std::size_t> &wires, bool adjoint,
                         Precision param) {
         static const std::vector<std::string> name{{"RY"}};
-        applyParametricPauliGate(name, {wires.begin(), wires.end() - 1},
-                                 {wires.back()}, param, adjoint);
+        applyPauliRot(name, wires, adjoint, param);
     }
     inline void applyRZ(const std::vector<std::size_t> &wires, bool adjoint,
                         Precision param) {
         static const std::vector<std::string> name{{"RZ"}};
-        applyParametricPauliGate(name, {wires.begin(), wires.end() - 1},
-                                 {wires.back()}, param, adjoint);
+        applyPauliRot(name, wires, adjoint, param);
     }
     inline void applyRot(const std::vector<std::size_t> &wires, bool adjoint,
                          Precision param0, Precision param1, Precision param2) {
@@ -378,17 +394,17 @@ class StateVectorCudaManaged
     inline void applyIsingXX(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
         static const std::vector<std::string> names(wires.size(), {"RX"});
-        applyParametricPauliGate(names, {}, wires, param, adjoint);
+        applyPauliRot(names, wires, adjoint, param);
     }
     inline void applyIsingYY(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
         static const std::vector<std::string> names(wires.size(), {"RY"});
-        applyParametricPauliGate(names, {}, wires, param, adjoint);
+        applyPauliRot(names, wires, adjoint, param);
     }
     inline void applyIsingZZ(const std::vector<std::size_t> &wires,
                              bool adjoint, Precision param) {
         static const std::vector<std::string> names(wires.size(), {"RZ"});
-        applyParametricPauliGate(names, {}, wires, param, adjoint);
+        applyPauliRot(names, wires, adjoint, param);
     }
     inline void applyCRot(const std::vector<std::size_t> &wires, bool adjoint,
                           const std::vector<Precision> &params) {
@@ -410,15 +426,21 @@ class StateVectorCudaManaged
 
     inline void applyCRX(const std::vector<std::size_t> &wires, bool adjoint,
                          Precision param) {
-        applyRX(wires, adjoint, param);
+        static const std::vector<std::string> name{{"RX"}};
+        applyParametricPauliGate(name, {wires.begin(), wires.end() - 1},
+                                 {wires.back()}, param, adjoint);
     }
     inline void applyCRY(const std::vector<std::size_t> &wires, bool adjoint,
                          Precision param) {
-        applyRY(wires, adjoint, param);
+        static const std::vector<std::string> name{{"RY"}};
+        applyParametricPauliGate(name, {wires.begin(), wires.end() - 1},
+                                 {wires.back()}, param, adjoint);
     }
     inline void applyCRZ(const std::vector<std::size_t> &wires, bool adjoint,
                          Precision param) {
-        applyRZ(wires, adjoint, param);
+        static const std::vector<std::string> name{{"RZ"}};
+        applyParametricPauliGate(name, {wires.begin(), wires.end() - 1},
+                                 {wires.back()}, param, adjoint);
     }
     inline void applyControlledPhaseShift(const std::vector<std::size_t> &wires,
                                           bool adjoint, Precision param) {
@@ -834,71 +856,90 @@ class StateVectorCudaManaged
   private:
     GateCache<Precision> gate_cache_;
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
-                                       const std::vector<Precision> &)>;
+                                       const std::vector<Precision> &,
+                                       const std::vector<std::string> &)>;
     using FMap = std::unordered_map<std::string, ParFunc>;
     const FMap par_gates_{
+        {"PauliRot",
+         [&](auto &&wires, auto &&adjoint, auto &&params, auto &&hyperparams) {
+             applyPauliRot(std::forward<decltype(hyperparams)>(hyperparams),
+                           std::forward<decltype(wires)>(wires),
+                           std::forward<decltype(adjoint)>(adjoint),
+                           std::forward<decltype(params[0])>(params[0]));
+         }},
         {"RX",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyRX(std::forward<decltype(wires)>(wires),
                      std::forward<decltype(adjoint)>(adjoint),
                      std::forward<decltype(params[0])>(params[0]));
          }},
         {"RY",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyRY(std::forward<decltype(wires)>(wires),
                      std::forward<decltype(adjoint)>(adjoint),
                      std::forward<decltype(params[0])>(params[0]));
          }},
         {"RZ",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyRZ(std::forward<decltype(wires)>(wires),
                      std::forward<decltype(adjoint)>(adjoint),
                      std::forward<decltype(params[0])>(params[0]));
          }},
         {"PhaseShift",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyPhaseShift(std::forward<decltype(wires)>(wires),
                              std::forward<decltype(adjoint)>(adjoint),
                              std::forward<decltype(params[0])>(params[0]));
          }},
         {"MultiRZ",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyMultiRZ(std::forward<decltype(wires)>(wires),
                           std::forward<decltype(adjoint)>(adjoint),
                           std::forward<decltype(params[0])>(params[0]));
          }},
         {"IsingXX",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyIsingXX(std::forward<decltype(wires)>(wires),
                           std::forward<decltype(adjoint)>(adjoint),
                           std::forward<decltype(params[0])>(params[0]));
          }},
         {"IsingYY",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyIsingYY(std::forward<decltype(wires)>(wires),
                           std::forward<decltype(adjoint)>(adjoint),
                           std::forward<decltype(params[0])>(params[0]));
          }},
         {"IsingZZ",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyIsingZZ(std::forward<decltype(wires)>(wires),
                           std::forward<decltype(adjoint)>(adjoint),
                           std::forward<decltype(params[0])>(params[0]));
          }},
         {"CRX",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyCRX(std::forward<decltype(wires)>(wires),
                       std::forward<decltype(adjoint)>(adjoint),
                       std::forward<decltype(params[0])>(params[0]));
          }},
         {"CRY",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyCRY(std::forward<decltype(wires)>(wires),
                       std::forward<decltype(adjoint)>(adjoint),
                       std::forward<decltype(params[0])>(params[0]));
          }},
         {"CRZ",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyCRZ(std::forward<decltype(wires)>(wires),
                       std::forward<decltype(adjoint)>(adjoint),
                       std::forward<decltype(params[0])>(params[0]));
@@ -946,22 +987,74 @@ class StateVectorCudaManaged
                  std::forward<decltype(params[0])>(params[0]));
          }},
         {"ControlledPhaseShift",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyControlledPhaseShift(
                  std::forward<decltype(wires)>(wires),
                  std::forward<decltype(adjoint)>(adjoint),
                  std::forward<decltype(params[0])>(params[0]));
          }},
         {"Rot",
-         [&](auto &&wires, auto &&adjoint, auto &&params) {
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyRot(std::forward<decltype(wires)>(wires),
                       std::forward<decltype(adjoint)>(adjoint),
                       std::forward<decltype(params)>(params));
          }},
-        {"CRot", [&](auto &&wires, auto &&adjoint, auto &&params) {
+        {"CRot",
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
              applyCRot(std::forward<decltype(wires)>(wires),
                        std::forward<decltype(adjoint)>(adjoint),
                        std::forward<decltype(params)>(params));
+         }},
+        {"SingleExcitation",
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
+             applySingleExcitation(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"SingleExcitationMinus",
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
+             applySingleExcitationMinus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"SingleExcitationPlus",
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
+             applySingleExcitationPlus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"DoubleExcitation",
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
+             applyDoubleExcitation(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"DoubleExcitationMinus",
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
+             applyDoubleExcitationMinus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
+         }},
+        {"DoubleExcitationPlus",
+         [&](auto &&wires, auto &&adjoint, auto &&params,
+             [[maybe_unused]] auto &&hyperparams) {
+             applyDoubleExcitationPlus(
+                 std::forward<decltype(wires)>(wires),
+                 std::forward<decltype(adjoint)>(adjoint),
+                 std::forward<decltype(params[0])>(params[0]));
          }}};
     CSVHandle handle;
 

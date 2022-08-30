@@ -43,6 +43,10 @@ except ImportError as e:
     print(e)
 
 
+def _get_cuq_pauli_names(hyper_params: List[str]) -> List[str]:
+    return [w if w is "I" else "R" + w for w in hyper_params]
+
+
 def _obs_has_kernel(obs: Observable) -> bool:
     """Returns True if the input observable has a supported kernel in the C++ backend.
 
@@ -118,7 +122,14 @@ def _serialize_obs(tape: QuantumTape, wires_map: dict, use_csingle: bool = False
 
 def _serialize_ops(
     tape: QuantumTape, wires_map: dict, use_csingle: bool = False
-) -> Tuple[List[List[str]], List[np.ndarray], List[List[int]], List[bool], List[np.ndarray]]:
+) -> Tuple[
+    List[List[str]],
+    List[np.ndarray],
+    List[List[str]],
+    List[List[int]],
+    List[bool],
+    List[np.ndarray],
+]:
     """Serializes the operations of an input tape.
 
     The state preparation operations are not included.
@@ -129,12 +140,14 @@ def _serialize_ops(
         use_csingle (bool): whether to use np.complex64 instead of np.complex128
 
     Returns:
-        Tuple[list, list, list, list, list]: A serialization of the operations, containing a list
-        of operation names, a list of operation parameters, a list of observable wires, a list of
-        inverses, and a list of matrices for the operations that do not have a dedicated kernel.
+        Tuple[list, list, list, list, list, list]: A serialization of the operations, containing a list
+        of operation names, a list of operation parameters, a list of hyper-parameters for each operation,
+        a list of observable wires, a list of inverses, and a list of matrices for the operations that
+        do not have a dedicated kernel.
     """
     names = []
     params = []
+    hyper_params = []
     wires = []
     inverses = []
     mats = []
@@ -158,6 +171,11 @@ def _serialize_ops(
             name = single_op.name if not is_inverse else single_op.name[:-4]
             names.append(name)
 
+            if name is "PauliRot":
+                hyper_params.append(_get_cuq_pauli_names(single_op.hyperparameters["pauli_word"]))
+            else:
+                hyper_params.append([])
+
             if getattr(sv_py, name, None) is None:
                 params.append([])
                 mats.append(qml.matrix(single_op))
@@ -172,4 +190,4 @@ def _serialize_ops(
             wires.append([wires_map[w] for w in wires_list])
             inverses.append(is_inverse)
 
-    return (names, params, wires, inverses, mats), uses_stateprep
+    return (names, params, hyper_params, wires, inverses, mats), uses_stateprep
