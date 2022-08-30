@@ -584,14 +584,14 @@ template <class T = double> class AdjointJacobianGPU {
      */
     inline void updateJacobian(const StateVectorCudaManaged<T> &sv1,
                                const StateVectorCudaManaged<T> &sv2,
-                               std::vector<T> &jac, T scaling_coeff,
-                               size_t obs_index, size_t param_index,
-                               size_t tp_size) {
+                               std::vector<std::vector<T>> &jac,
+                               T scaling_coeff, size_t obs_index,
+                               size_t param_index) {
         PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
                             sv2.getDataBuffer().getDevTag().getDeviceID(),
                         "Data exists on different GPUs. Aborting.");
 
-        jac[obs_index * tp_size + param_index] =
+        jac[obs_index][param_index] =
             -2 * scaling_coeff *
             innerProdC_CUDA(sv1.getData(), sv2.getData(), sv1.getLength(),
                             sv1.getDataBuffer().getDevTag().getDeviceID(),
@@ -825,7 +825,8 @@ template <class T = double> class AdjointJacobianGPU {
      */
 
     void batchAdjointJacobian(
-        const CFP_t *ref_data, std::size_t length, std::vector<T> &jac,
+        const CFP_t *ref_data, std::size_t length,
+        std::vector<std::vector<T>> &jac,
         const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
         const std::vector<size_t> &trainableParams,
@@ -842,7 +843,7 @@ template <class T = double> class AdjointJacobianGPU {
         threads.reserve(num_gpus);
 
         // Hold results of threaded GPU executions
-        std::vector<std::future<std::vector<T>>> futures;
+        std::vector<std::future<std::vector<std::vector<T>>>> futures;
 
         // Iterate over the chunked observables, and submit the Jacobian task
         // for execution
@@ -852,33 +853,37 @@ template <class T = double> class AdjointJacobianGPU {
             const auto last = static_cast<std::size_t>(
                 std::ceil((obs.size() * (i + 1) / num_chunks) - 1));
 
-            std::promise<std::vector<T>> jac_subset_promise;
+            std::promise<std::vector<std::vector<T>>> jac_subset_promise;
             futures.emplace_back(jac_subset_promise.get_future());
 
-            auto adj_lambda = [&](std::promise<std::vector<T>> j_promise) {
-                // Ensure No OpenMP threads spawned;
-                // to be resolved with streams in future releases
-                omp_set_num_threads(1);
-                // Grab a GPU index, and set a device tag
-                const auto id = dp.acquireDevice();
-                DevTag<int> dt_local(id, 0);
-                dt_local.refresh();
+            auto adj_lambda =
+                [&](std::promise<std::vector<std::vector<T>>> j_promise) {
+                    // Ensure No OpenMP threads spawned;
+                    // to be resolved with streams in future releases
+                    omp_set_num_threads(1);
+                    // Grab a GPU index, and set a device tag
+                    const auto id = dp.acquireDevice();
+                    DevTag<int> dt_local(id, 0);
+                    dt_local.refresh();
 
-                // Create a sv copy on this thread and device; may not be
-                // necessary, could do in adjoint calculation directly
-                StateVectorCudaManaged<T> local_sv(ref_data, length, dt_local);
+                    // Create a sv copy on this thread and device; may not be
+                    // necessary, could do in adjoint calculation directly
+                    StateVectorCudaManaged<T> local_sv(ref_data, length,
+                                                       dt_local);
 
-                // Create local store for Jacobian subset
-                std::vector<T> jac_local(
-                    (last - first + 1) * trainableParams.size(), 0);
-                adjointJacobian(local_sv.getData(), length, jac_local,
-                                {obs.begin() + first, obs.begin() + last + 1},
-                                ops, trainableParams, apply_operations,
-                                dt_local);
+                    // Create local store for Jacobian subset
+                    std::vector<std::vector<T>> jac_local(
+                        (last - first + 1),
+                        std::vector<T>(trainableParams.size(), 0));
 
-                j_promise.set_value(std::move(jac_local));
-                dp.releaseDevice(id);
-            };
+                    adjointJacobian(
+                        local_sv.getData(), length, jac_local,
+                        {obs.begin() + first, obs.begin() + last + 1}, ops,
+                        trainableParams, apply_operations, dt_local);
+
+                    j_promise.set_value(std::move(jac_local));
+                    dp.releaseDevice(id);
+                };
             threads.emplace_back(adj_lambda, std::move(jac_subset_promise));
         }
         /// Keep going here; ensure the new local jacs are inserted and
@@ -921,12 +926,14 @@ template <class T = double> class AdjointJacobianGPU {
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void adjointJacobian(
-        const CFP_t *ref_data, std::size_t length, std::vector<T> &jac,
-        const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
-        const Pennylane::Algorithms::OpsData<T> &ops,
-        const std::vector<size_t> &trainableParams,
-        bool apply_operations = false, CUDA::DevTag<int> dev_tag = {0, 0}) {
+    void
+    adjointJacobian(const CFP_t *ref_data, std::size_t length,
+                    std::vector<std::vector<T>> &jac,
+                    const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
+                    const Pennylane::Algorithms::OpsData<T> &ops,
+                    const std::vector<size_t> &trainableParams,
+                    bool apply_operations = false,
+                    CUDA::DevTag<int> dev_tag = {0, 0}) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 
@@ -990,7 +997,7 @@ template <class T = double> class AdjointJacobianGPU {
                     #if defined(_OPENMP)
                         #pragma omp parallel for default(none)   \
                         shared(H_lambda, jac, mu, scalingFactor, \
-                            trainableParamNumber,tp_size, tp_it,         \
+                            trainableParamNumber, tp_it,         \
                             num_observables)
                     #endif
 
@@ -999,7 +1006,7 @@ template <class T = double> class AdjointJacobianGPU {
                          obs_idx++) {
                         updateJacobian(H_lambda[obs_idx], mu, jac,
                                        scalingFactor, obs_idx,
-                                       trainableParamNumber, tp_size);
+                                       trainableParamNumber);
                     }
                     trainableParamNumber--;
                     ++tp_it;

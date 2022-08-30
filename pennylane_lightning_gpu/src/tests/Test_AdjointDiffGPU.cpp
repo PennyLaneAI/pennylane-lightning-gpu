@@ -46,7 +46,8 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Op=RX, Obs=Z",
         const size_t num_obs = 1;
         const auto obs = std::make_shared<NamedObsGPU<double>>(
             "PauliZ", std::vector<size_t>{0});
-        std::vector<double> jacobian(num_obs * tp.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(tp.size(), 0));
 
         for (const auto &p : param) {
             auto ops = adj.createOpsData({"RX"}, {{p}}, {{0}}, {false});
@@ -55,7 +56,7 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Op=RX, Obs=Z",
             adj.adjointJacobian(psi.cuda_sv.getData(), psi.cuda_sv.getLength(),
                                 jacobian, {obs}, ops, tp, true);
             CAPTURE(jacobian);
-            CHECK(-sin(p) == Approx(jacobian[0]));
+            CHECK(-sin(p) == Approx(jacobian[0].front()));
         }
     }
 }
@@ -71,7 +72,8 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Op=RY, Obs=X",
 
         const auto obs = std::make_shared<NamedObsGPU<double>>(
             "PauliX", std::vector<size_t>{0});
-        std::vector<double> jacobian(num_obs * tp.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(tp.size(), 0));
 
         for (const auto &p : param) {
             auto ops = adj.createOpsData({"RY"}, {{p}}, {{0}}, {false});
@@ -81,7 +83,7 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Op=RY, Obs=X",
                                 jacobian, {obs}, ops, tp, true);
 
             CAPTURE(jacobian);
-            CHECK(cos(p) == Approx(jacobian[0]).margin(1e-7));
+            CHECK(cos(p) == Approx(jacobian[0].front()).margin(1e-7));
         }
     }
 }
@@ -94,7 +96,8 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Op=RX, Obs=[Z,Z]",
     {
         const size_t num_qubits = 2;
         const size_t num_obs = 2;
-        std::vector<double> jacobian(num_obs * tp.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(tp.size(), 0));
 
         SVDataGPU<double> psi(num_qubits);
 
@@ -109,8 +112,8 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Op=RX, Obs=[Z,Z]",
                             jacobian, {obs1, obs2}, ops, tp, true);
 
         CAPTURE(jacobian);
-        CHECK(-sin(param[0]) == Approx(jacobian[0]).margin(1e-7));
-        CHECK(0.0 == Approx(jacobian[1]).margin(1e-7));
+        CHECK(-sin(param[0]) == Approx(jacobian[0][0]).margin(1e-7));
+        CHECK(0.0 == Approx(jacobian[1][0]).margin(1e-7));
     }
 }
 
@@ -122,9 +125,9 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Op=[RX,RX,RX], Obs=[Z,Z,Z]",
     std::vector<size_t> tp{0, 1, 2};
     {
         const size_t num_qubits = 3;
-        const size_t num_params = 3;
         const size_t num_obs = 3;
-        std::vector<double> jacobian(num_obs * tp.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(tp.size(), 0));
 
         SVDataGPU<double> psi(num_qubits);
 
@@ -144,11 +147,9 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Op=[RX,RX,RX], Obs=[Z,Z,Z]",
         CAPTURE(jacobian);
 
         // Computed with parameter shift
-        CHECK(-sin(param[0]) == Approx(jacobian[0]).margin(1e-7));
-        CHECK(-sin(param[1]) ==
-              Approx(jacobian[1 * num_params + 1]).margin(1e-7));
-        CHECK(-sin(param[2]) ==
-              Approx(jacobian[2 * num_params + 2]).margin(1e-7));
+        CHECK(-sin(param[0]) == Approx(jacobian[0][0]).margin(1e-7));
+        CHECK(-sin(param[1]) == Approx(jacobian[1][1]).margin(1e-7));
+        CHECK(-sin(param[2]) == Approx(jacobian[2][2]).margin(1e-7));
     }
 }
 
@@ -162,7 +163,8 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Op=[RX,RX,RX], Obs=[Z,Z,Z],"
     {
         const size_t num_qubits = 3;
         const size_t num_obs = 3;
-        std::vector<double> jacobian(num_obs * tp.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(tp.size(), 0));
 
         SVDataGPU<double> psi(num_qubits);
 
@@ -182,10 +184,9 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Op=[RX,RX,RX], Obs=[Z,Z,Z],"
         CAPTURE(jacobian);
 
         // Computed with parameter shift
-        CHECK(-sin(param[0]) == Approx(jacobian[0]).margin(1e-7));
-        CHECK(0 == Approx(jacobian[1 * tp.size() + 1]).margin(1e-7));
-        CHECK(-sin(param[2]) ==
-              Approx(jacobian[2 * tp.size() + 1]).margin(1e-7));
+        CHECK(-sin(param[0]) == Approx(jacobian[0][0]).margin(1e-7));
+        CHECK(0 == Approx(jacobian[1][1]).margin(1e-7));
+        CHECK(-sin(param[2]) == Approx(jacobian[2][1]).margin(1e-7));
     }
 }
 
@@ -197,7 +198,8 @@ TEST_CASE("Algorithms::adjointJacobian Op=[RX,RX,RX], Obs=[ZZZ]",
     {
         const size_t num_qubits = 3;
         const size_t num_obs = 1;
-        std::vector<double> jacobian(num_obs * tp.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(tp.size(), 0));
 
         SVDataGPU<double> psi(num_qubits);
 
@@ -218,9 +220,9 @@ TEST_CASE("Algorithms::adjointJacobian Op=[RX,RX,RX], Obs=[ZZZ]",
         CAPTURE(jacobian);
 
         // Computed with parameter shift
-        CHECK(-0.1755096592645253 == Approx(jacobian[0]).margin(1e-7));
-        CHECK(0.26478810666384334 == Approx(jacobian[1]).margin(1e-7));
-        CHECK(-0.6312451595102775 == Approx(jacobian[2]).margin(1e-7));
+        CHECK(-0.1755096592645253 == Approx(jacobian[0][0]).margin(1e-7));
+        CHECK(0.26478810666384334 == Approx(jacobian[0][1]).margin(1e-7));
+        CHECK(-0.6312451595102775 == Approx(jacobian[0][2]).margin(1e-7));
     }
 }
 
@@ -232,7 +234,8 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Op=Mixed, Obs=[XXX]",
     {
         const size_t num_qubits = 3;
         const size_t num_obs = 1;
-        std::vector<double> jacobian(num_obs * tp.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(tp.size(), 0));
 
         SVDataGPU<double> psi(num_qubits);
 
@@ -261,12 +264,12 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Op=Mixed, Obs=[XXX]",
         CAPTURE(jacobian);
 
         // Computed with PennyLane using default.qubit.adjoint_jacobian
-        CHECK(0.0 == Approx(jacobian[0]).margin(1e-7));
-        CHECK(-0.674214427 == Approx(jacobian[1]).margin(1e-7));
-        CHECK(0.275139672 == Approx(jacobian[2]).margin(1e-7));
-        CHECK(0.275139672 == Approx(jacobian[3]).margin(1e-7));
-        CHECK(-0.0129093062 == Approx(jacobian[4]).margin(1e-7));
-        CHECK(0.323846156 == Approx(jacobian[5]).margin(1e-7));
+        CHECK(0.0 == Approx(jacobian[0][0]).margin(1e-7));
+        CHECK(-0.674214427 == Approx(jacobian[0][1]).margin(1e-7));
+        CHECK(0.275139672 == Approx(jacobian[0][2]).margin(1e-7));
+        CHECK(0.275139672 == Approx(jacobian[0][3]).margin(1e-7));
+        CHECK(-0.0129093062 == Approx(jacobian[0][4]).margin(1e-7));
+        CHECK(0.323846156 == Approx(jacobian[0][5]).margin(1e-7));
     }
 }
 
@@ -294,7 +297,8 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Decomposed Rot gate, non "
             std::vector<double> local_params{theta, std::pow(theta, 3),
                                              Pennylane::Util::SQRT2<double>() *
                                                  theta};
-            std::vector<double> jacobian(num_obs * tp.size(), 0);
+            std::vector<std::vector<double>> jacobian(
+                num_obs, std::vector<double>(tp.size(), 0));
 
             std::vector<std::complex<double>> cdata{
                 {Pennylane::Util::INVSQRT2<double>()},
@@ -317,9 +321,12 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Decomposed Rot gate, non "
             CAPTURE(jacobian);
 
             // Computed with PennyLane using default.qubit
-            CHECK(expec_results[theta][0] == Approx(jacobian[0]).margin(1e-7));
-            CHECK(expec_results[theta][1] == Approx(jacobian[1]).margin(1e-7));
-            CHECK(expec_results[theta][2] == Approx(jacobian[2]).margin(1e-7));
+            CHECK(expec_results[theta][0] ==
+                  Approx(jacobian[0][0]).margin(1e-7));
+            CHECK(expec_results[theta][1] ==
+                  Approx(jacobian[0][1]).margin(1e-7));
+            CHECK(expec_results[theta][2] ==
+                  Approx(jacobian[0][2]).margin(1e-7));
         }
     }
 }
@@ -337,7 +344,8 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Mixed Ops, Obs and TParams",
 
         std::vector<double> local_params{0.543, 0.54, 0.1,  0.5, 1.3,
                                          -2.3,  0.5,  -0.5, 0.5};
-        std::vector<double> jacobian(num_obs * t_params.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(t_params.size(), 0));
 
         std::vector<std::complex<double>> cdata{
             {Pennylane::Util::ONE<double>()},
@@ -387,9 +395,9 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Mixed Ops, Obs and TParams",
 
         std::vector<double> expected{-0.71429188, 0.04998561, -0.71904837};
         // Computed with PennyLane using default.qubit
-        CHECK(expected[0] == Approx(jacobian[0]));
-        CHECK(expected[1] == Approx(jacobian[1]));
-        CHECK(expected[2] == Approx(jacobian[2]));
+        CHECK(expected[0] == Approx(jacobian[0][0]));
+        CHECK(expected[1] == Approx(jacobian[0][1]));
+        CHECK(expected[2] == Approx(jacobian[0][2]));
     }
 }
 
@@ -406,7 +414,8 @@ TEST_CASE("AdjointJacobianGPU::batchAdjointJacobian Mixed Ops, Obs and TParams",
 
         std::vector<double> local_params{0.543, 0.54, 0.1,  0.5, 1.3,
                                          -2.3,  0.5,  -0.5, 0.5};
-        std::vector<double> jacobian(num_obs * t_params.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(t_params.size(), 0));
 
         std::vector<std::complex<double>> cdata{
             {Pennylane::Util::ONE<double>()},
@@ -456,9 +465,9 @@ TEST_CASE("AdjointJacobianGPU::batchAdjointJacobian Mixed Ops, Obs and TParams",
 
         std::vector<double> expected{-0.71429188, 0.04998561, -0.71904837};
         // Computed with PennyLane using default.qubit
-        CHECK(expected[0] == Approx(jacobian[0]));
-        CHECK(expected[1] == Approx(jacobian[1]));
-        CHECK(expected[2] == Approx(jacobian[2]));
+        CHECK(expected[0] == Approx(jacobian[0][0]));
+        CHECK(expected[1] == Approx(jacobian[0][1]));
+        CHECK(expected[2] == Approx(jacobian[0][2]));
     }
 }
 
@@ -469,7 +478,8 @@ TEST_CASE("Algorithms::adjointJacobian Op=RX, Obs=Ham[Z0+Z1]", "[Algorithms]") {
     {
         const size_t num_qubits = 2;
         const size_t num_obs = 1;
-        std::vector<double> jacobian(num_obs * tp.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(tp.size(), 0));
 
         SVDataGPU<double> psi(num_qubits);
 
@@ -486,7 +496,7 @@ TEST_CASE("Algorithms::adjointJacobian Op=RX, Obs=Ham[Z0+Z1]", "[Algorithms]") {
                             jacobian, {ham}, ops, tp, true);
 
         CAPTURE(jacobian);
-        CHECK(-0.3 * sin(param[0]) == Approx(jacobian[0]).margin(1e-7));
+        CHECK(-0.3 * sin(param[0]) == Approx(jacobian[0][0]).margin(1e-7));
     }
 }
 
@@ -500,7 +510,8 @@ TEST_CASE(
     {
         const size_t num_qubits = 3;
         const size_t num_obs = 1;
-        std::vector<double> jacobian(num_obs * t_params.size(), 0);
+        std::vector<std::vector<double>> jacobian(
+            num_obs, std::vector<double>(t_params.size(), 0));
 
         SVDataGPU<double> psi(num_qubits);
 
@@ -522,8 +533,8 @@ TEST_CASE(
                             jacobian, {ham}, ops, t_params, true);
         CAPTURE(jacobian);
 
-        CHECK((-0.47 * sin(param[0]) == Approx(jacobian[0]).margin(1e-7)));
-        CHECK((-0.96 * sin(param[2]) == Approx(jacobian[1]).margin(1e-7)));
+        CHECK((-0.47 * sin(param[0]) == Approx(jacobian[0][0]).margin(1e-7)));
+        CHECK((-0.96 * sin(param[2]) == Approx(jacobian[0][1]).margin(1e-7)));
     }
 }
 
@@ -535,8 +546,11 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Test HermitianObs",
     {
         const size_t num_qubits = 3;
         const size_t num_obs = 1;
-        std::vector<double> jacobian1(num_obs * t_params.size(), 0);
-        std::vector<double> jacobian2(num_obs * t_params.size(), 0);
+
+        std::vector<std::vector<double>> jacobian1(
+            num_obs, std::vector<double>(t_params.size(), 0));
+        std::vector<std::vector<double>> jacobian2(
+            num_obs, std::vector<double>(t_params.size(), 0));
 
         SVDataGPU<double> psi(num_qubits);
 
@@ -559,6 +573,6 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Test HermitianObs",
         adj.adjointJacobian(psi.cuda_sv.getData(), psi.cuda_sv.getLength(),
                             jacobian2, {obs2}, ops, t_params, true);
 
-        CHECK((jacobian1 == PLApprox(jacobian2).margin(1e-7)));
+        CHECK((jacobian1[0] == PLApprox(jacobian2[0]).margin(1e-7)));
     }
 }

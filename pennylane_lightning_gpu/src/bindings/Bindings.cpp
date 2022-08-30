@@ -741,8 +741,9 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                     &observables,
                 const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
                 const std::vector<size_t> &trainableParams) {
-                 std::vector<PrecisionT> jac(
-                     observables.size() * trainableParams.size(), 0);
+                 std::vector<std::vector<PrecisionT>> jac(
+                     observables.size(),
+                     std::vector<PrecisionT>(trainableParams.size(), 0));
 
                  adj.adjointJacobian(sv.getData(), sv.getLength(), jac,
                                      observables, operations, trainableParams,
@@ -756,8 +757,9 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                     &observables,
                 const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
                 const std::vector<size_t> &trainableParams) {
-                 std::vector<PrecisionT> jac(
-                     observables.size() * trainableParams.size(), 0);
+                 std::vector<std::vector<PrecisionT>> jac(
+                     observables.size(),
+                     std::vector<PrecisionT>(trainableParams.size(), 0));
 
                  adj.batchAdjointJacobian(sv.getData(), sv.getLength(), jac,
                                           observables, operations,
