@@ -124,7 +124,7 @@ def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool
         use_csingle (bool): whether to use np.complex64 instead of np.complex128
 
     Returns:
-        list(ObsStructC128 or ObsStructC64): A list of observable objects compatible with the C++ backend
+        list(ObservableGPU_C64 or ObservableGPU_C128): A list of observable objects compatible with the C++ backend
     """
 
     return [_serialize_ob(ob, wires_map, use_csingle) for ob in tape.observables]
