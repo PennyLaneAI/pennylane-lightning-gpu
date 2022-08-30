@@ -507,11 +507,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def("numQubits", &StateVectorCudaManaged<PrecisionT>::getNumQubits)
         .def("dataLength", &StateVectorCudaManaged<PrecisionT>::getLength)
         .def("resetGPU", &StateVectorCudaManaged<PrecisionT>::initSV)
-        .def(
-            "syncOps",
-            [](StateVectorCudaManaged<PrecisionT>
-                   &gpu_sv) { gpu_sv.syncOps(); },
-            "Synchronize stream operations");
+        .def("syncOps", &StateVectorCudaManaged<PrecisionT>::syncOps);
 
     //***********************************************************************//
     //                              Observable
