@@ -263,6 +263,13 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         return ctrl_map_;
     }
 
+    /**
+     * @brief Synchronize state-vector operations within the associated CUDA
+     * stream.
+     *
+     */
+    void syncOps() { PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(getStream())); }
+
   private:
     std::unique_ptr<CUDA::DataBuffer<CFP_t>> data_buffer_;
     const std::unordered_set<std::string> const_gates_{

@@ -116,8 +116,8 @@ class LightningGPU(LightningQubit):
         self._batch_obs = batch_obs
 
     def reset(self):
+        self._gpu_state.resetGPU(True)  # Sync reset
         super().reset()
-        self._gpu_state.resetGPU(False)  # Sync reset
 
     def syncH2D(self, use_async=False):
         """Explicitly synchronize CPU data to GPU"""
