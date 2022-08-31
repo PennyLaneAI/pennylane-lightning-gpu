@@ -1,9 +1,9 @@
 PennyLane-Lightning-GPU Plugin
 ##############################
 
-.. image:: https://img.shields.io/readthedocs/pennylane-lightning-gpu.svg?logo=read-the-docs&style=flat-square
+.. image:: https://readthedocs.com/projects/xanaduai-pennylane-lightning-gpu/badge/?version=latest&style=flat-square
     :alt: Read the Docs
-    :target: https://pennylane-lightning-gpu.readthedocs.io
+    :target: https://docs.pennylane.ai/projects/lightning-gpu
 
 .. image:: https://img.shields.io/pypi/v/PennyLane-Lightning-GPU.svg?style=flat-square
     :alt: PyPI
@@ -17,7 +17,7 @@ PennyLane-Lightning-GPU Plugin
 
 The `PennyLane-Lightning-GPU <https://github.com/PennyLaneAI/pennylane-lightning-gpu>`_ plugin extends the `Pennylane-Lightning <https://github.com/PennyLaneAI/pennylane-lightning>`_ state-vector simulator written in C++, and offloads to the `NVIDIA cuQuantum SDK <https://developer.nvidia.com/cuquantum-sdk>`_ for GPU accelerated circuit simulation.
 
-`PennyLane <https://pennylane.readthedocs.io>`_ is a cross-platform Python library for quantum machine
+`PennyLane <https://docs.pennylane.ai>`_ is a cross-platform Python library for quantum machine
 learning, automatic differentiation, and optimization of hybrid quantum-classical computations.
 
 .. header-end-inclusion-marker-do-not-remove
@@ -29,7 +29,7 @@ Features
 * Combine the NVIDIA cuQuantum SDK high-performance GPU simulator library with PennyLane's
   automatic differentiation and optimization.
 
-* Direct support for GPU-enabled quantum gradients with the `adjoint differentiation method <https://pennylane.readthedocs.io/en/stable/introduction/interfaces.html#simulation-based-differentiation>`_.
+* Direct support for GPU-enabled quantum gradients with the `adjoint differentiation method <https://docs.pennylane.ai/en/stable/introduction/interfaces.html#simulation-based-differentiation>`_.
 
 .. installation-start-inclusion-marker-do-not-remove
 
@@ -110,8 +110,8 @@ while the C++ code can be tested with
     make test-cpp
 
 
-Please refer to the `GPU plugin documentation <https://pennylane-lightning-gpu.readthedocs.io/>`_ as
-well as to the `CPU documentation <https://pennylane-lightning.readthedocs.io/>`_ and 
+Please refer to the `GPU plugin documentation <https://docs.pennylane.ai/projects/lightning-gpu>`_ as
+well as to the `CPU documentation <https://docs.pennylane.ai/projects/lightning>`_ and 
 `PennyLane documentation <https://pennylane.readthedocs.io/>`_ for further references.
 
 .. installation-end-inclusion-marker-do-not-remove
