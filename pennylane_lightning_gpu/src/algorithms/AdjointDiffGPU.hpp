@@ -857,7 +857,8 @@ template <class T = double> class AdjointJacobianGPU {
             futures.emplace_back(jac_subset_promise.get_future());
 
             auto adj_lambda =
-                [&](std::promise<std::vector<std::vector<T>>> j_promise, std::size_t offset_first, std::size_t offset_last) {
+                [&](std::promise<std::vector<std::vector<T>>> j_promise,
+                    std::size_t offset_first, std::size_t offset_last) {
                     // Ensure No OpenMP threads spawned;
                     // to be resolved with streams in future releases
                     omp_set_num_threads(1);
@@ -876,15 +877,17 @@ template <class T = double> class AdjointJacobianGPU {
                         (offset_last - offset_first + 1),
                         std::vector<T>(trainableParams.size(), 0));
 
-                    adjointJacobian(
-                        local_sv.getData(), length, jac_local,
-                        {obs.begin() + offset_first, obs.begin() + offset_last + 1}, ops,
-                        trainableParams, apply_operations, dt_local);
+                    adjointJacobian(local_sv.getData(), length, jac_local,
+                                    {obs.begin() + offset_first,
+                                     obs.begin() + offset_last + 1},
+                                    ops, trainableParams, apply_operations,
+                                    dt_local);
 
                     j_promise.set_value(std::move(jac_local));
                     dp.releaseDevice(id);
                 };
-            threads.emplace_back(adj_lambda, std::move(jac_subset_promise), first, last);
+            threads.emplace_back(adj_lambda, std::move(jac_subset_promise),
+                                 first, last);
         }
         /// Keep going here; ensure the new local jacs are inserted and
         /// overwrite the 0 jacs values before returning
