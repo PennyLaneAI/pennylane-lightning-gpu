@@ -333,6 +333,11 @@ class LightningGPU(LightningQubit):
             tp_shift = [i - 1 for i in tp_shift]
 
         if self._dp.getTotalDevices() > 1 and self._batch_obs:
+            if any(isinstance(ob, _H_dtype(self.C_DTYPE)) for ob in obs_serialized):
+                raise NotImplementedError(
+                    "Hamiltonian observables are not currently supported in multi-GPU adjoint batching work-loads. Please set `batch_obs=False`."
+                )
+
             jac = adj.adjoint_jacobian_batched(
                 self._gpu_state,
                 obs_serialized,

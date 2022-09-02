@@ -21,6 +21,8 @@ import pennylane as qml
 from pennylane import numpy as np
 from pennylane import QNode, qnode
 from scipy.stats import unitary_group
+from pennylane_lightning_gpu.lightning_gpu.qubit.ops import DevPool
+
 
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
@@ -749,3 +751,97 @@ def test_integration_custom_wires(returns):
     j_lightning = qml.jacobian(qnode_lightning)(params)
 
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
+
+
+@pytest.mark.skipif(DevPool.getTotalDevices() < 2, "Insufficient GPUs to test observable batching")
+@pytest.mark.parametrize(
+    "returns",
+    [
+        qml.PauliZ(custom_wires[0]),
+        (qml.PauliZ(custom_wires[0]), qml.PauliZ(custom_wires[1])),
+        (qml.PauliZ(custom_wires[0]), qml.PauliZ(custom_wires[1]), qml.PauliZ(custom_wires[3])),
+        (
+            qml.PauliZ(custom_wires[0]),
+            qml.PauliZ(custom_wires[1]),
+            qml.PauliZ(custom_wires[3]),
+            qml.PauliZ(custom_wires[4]),
+        ),
+        (
+            qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]),
+            qml.PauliZ(custom_wires[1]) @ qml.PauliY(custom_wires[2]),
+        ),
+        (qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]), qml.PauliZ(custom_wires[1])),
+    ],
+)
+def test_integration_custom_wires_batching(returns):
+    """Integration tests that compare to default.qubit for a large circuit containing parametrized
+    operations and when using custom wire labels"""
+
+    dev_lightning = qml.device("lightning.qubit", wires=custom_wires)
+    dev_gpu = qml.device("lightning.gpu", wires=custom_wires, batch_obs=True)
+
+    def circuit(params):
+        circuit_ansatz(params, wires=custom_wires)
+        return qml.expval(returns), qml.expval(qml.PauliY(custom_wires[1]))
+
+    n_params = 30
+    np.random.seed(1337)
+    params = np.random.rand(n_params)
+
+    qnode_gpu = qml.QNode(circuit, dev_gpu)
+    qnode_lightning = qml.QNode(circuit, dev_lightning, diff_method="adjoint")
+
+    j_gpu = qml.jacobian(qnode_gpu)(params)
+    j_lightning = qml.jacobian(qnode_lightning)(params)
+
+    assert np.allclose(j_gpu, j_lightning, atol=1e-7)
+
+
+@pytest.mark.skipif(DevPool.getTotalDevices() < 2, "Insufficient GPUs to test observable batching")
+@pytest.mark.parametrize(
+    "returns",
+    [
+        0.5 * qml.PauliZ(custom_wires[0]),
+        (0.5 * qml.PauliZ(custom_wires[0]), qml.PauliZ(custom_wires[1])),
+        (
+            qml.PauliZ(custom_wires[0]),
+            0.5 * qml.PauliZ(custom_wires[1]),
+            qml.PauliZ(custom_wires[3]),
+        ),
+        (
+            qml.PauliZ(custom_wires[0]),
+            qml.PauliZ(custom_wires[1]),
+            qml.PauliZ(custom_wires[3]),
+            0.5 * qml.PauliZ(custom_wires[2]),
+        ),
+        (
+            qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]),
+            0.5 * qml.PauliZ(custom_wires[1]) @ qml.PauliY(custom_wires[2]),
+        ),
+        (
+            qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]),
+            0.5 * qml.PauliZ(custom_wires[1]),
+        ),
+    ],
+)
+def test_fail_batching_H(returns):
+    """Integration tests that compare to default.qubit for a large circuit containing parametrized
+    operations and when using custom wire labels"""
+
+    dev_gpu = qml.device("lightning.gpu", wires=custom_wires, batch_obs=True)
+
+    def circuit(params):
+        circuit_ansatz(params, wires=custom_wires)
+        return qml.expval(returns), qml.expval(qml.PauliY(custom_wires[1]))
+
+    n_params = 30
+    np.random.seed(1337)
+    params = np.random.rand(n_params)
+
+    qnode_gpu = qml.QNode(circuit, dev_gpu)
+
+    with pytest.raises(
+        NotImplementedError,
+        match="Hamiltonian observables are not currently supported in multi-GPU",
+    ):
+        j_gpu = qml.jacobian(qnode_gpu)(params)
