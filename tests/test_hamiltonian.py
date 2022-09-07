@@ -15,7 +15,6 @@
 Unit tests for the Hamiltonian expval(H) of the :mod:`pennylane_lightning_gpu.LightningGPU` device.
 """
 import pytest
-from scipy.sparse import coo_matrix, csr_matrix
 import numpy as np
 import pennylane as qml
 import math

@@ -21,8 +21,7 @@ import pennylane as qml
 from pennylane import numpy as np
 from pennylane import QNode, qnode
 from scipy.stats import unitary_group
-from pennylane_lightning_gpu.lightning_gpu.qubit.ops import DevPool
-
+from pennylane_lightning_gpu.lightning_gpu_qubit_ops import DevPool
 
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
@@ -753,7 +752,9 @@ def test_integration_custom_wires(returns):
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
 
-@pytest.mark.skipif(DevPool.getTotalDevices() < 2, "Insufficient GPUs to test observable batching")
+@pytest.mark.skipif(
+    DevPool.getTotalDevices() < 2, reason="Insufficient GPUs to test observable batching"
+)
 @pytest.mark.parametrize(
     "returns",
     [
@@ -764,7 +765,7 @@ def test_integration_custom_wires(returns):
             qml.PauliZ(custom_wires[0]),
             qml.PauliZ(custom_wires[1]),
             qml.PauliZ(custom_wires[3]),
-            qml.PauliZ(custom_wires[4]),
+            qml.PauliZ(custom_wires[2]),
         ),
         (
             qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]),
@@ -797,7 +798,9 @@ def test_integration_custom_wires_batching(returns):
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
 
-@pytest.mark.skipif(DevPool.getTotalDevices() < 2, "Insufficient GPUs to test observable batching")
+@pytest.mark.skipif(
+    DevPool.getTotalDevices() < 2, reason="Insufficient GPUs to test observable batching"
+)
 @pytest.mark.parametrize(
     "returns",
     [

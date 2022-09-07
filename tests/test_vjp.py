@@ -18,8 +18,6 @@ import pytest
 
 import numpy as np
 import pennylane as qml
-import pennylane_lightning
-import math
 from pennylane_lightning_gpu import LightningGPU
 
 try:

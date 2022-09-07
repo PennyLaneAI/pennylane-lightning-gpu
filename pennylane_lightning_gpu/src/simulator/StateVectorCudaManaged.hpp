@@ -710,6 +710,8 @@ class StateVectorCudaManaged
             throw LightningException(message.c_str());
         }
 
+        // Wire order reversed to match expected custatevec wire ordering for
+        // tensor observables.
         auto &&local_wires =
             (gate_matrix.empty())
                 ? wires
