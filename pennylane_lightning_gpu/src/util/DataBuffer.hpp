@@ -119,6 +119,15 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
         }
     };
 
+    /**
+     * @brief Zero-initialize the GPU buffer.
+     *
+     */
+    void zeroInit() {
+        PL_CUDA_IS_SUCCESS(
+            cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
+    }
+
     auto getData() -> GPUDataT * { return gpu_buffer_; }
     auto getData() const -> const GPUDataT * { return gpu_buffer_; }
     auto getLength() const { return length_; }

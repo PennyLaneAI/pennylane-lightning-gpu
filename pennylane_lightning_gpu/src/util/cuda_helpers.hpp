@@ -373,13 +373,13 @@ template <class CFP_t> inline static constexpr auto INVSQRT2() -> CFP_t {
 /**
  * @brief cuBLAS backed inner product for GPU data.
  *
- * @tparam T Complex data-type. Accepts cuFloatComplex and cuDoubleComplex/
+ * @tparam T Complex data-type. Accepts cuFloatComplex and cuDoubleComplex
  * @param v1 Device data pointer 1
  * @param v2 Device data pointer 2
  * @param data_size Lengtyh of device data.
  * @return T Inner-product result
  */
-template <class T = cuFloatComplex, class DevTypeID = int>
+template <class T = cuDoubleComplex, class DevTypeID = int>
 inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
                             int dev_id, cudaStream_t stream_id) -> T {
     T result{0.0, 0.0}; // Host result
@@ -389,25 +389,27 @@ inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
     PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream_id));
 
     if constexpr (std::is_same_v<T, cuFloatComplex>) {
-        cublasCdotc(handle, data_size, v1, 1, v2, 1, &result);
+        PL_CUBLAS_IS_SUCCESS(
+            cublasCdotc(handle, data_size, v1, 1, v2, 1, &result));
     } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
-        cublasZdotc(handle, data_size, v1, 1, v2, 1, &result);
+        PL_CUBLAS_IS_SUCCESS(
+            cublasZdotc(handle, data_size, v1, 1, v2, 1, &result));
     }
-    cublasDestroy(handle);
+    PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
     return result;
 }
 
 /**
- * @brief cuBLAS backed GPU data scaling.
+ * @brief cuBLAS backed GPU C/ZAXPY.
  *
  * @tparam CFP_t Complex data-type. Accepts std::complex<float> and
  * std::complex<double>
  * @param a scaling factor
  * @param v1 Device data pointer 1 (data to be modified)
  * @param v2 Device data pointer 2 (the result data)
- * @param data_size Lengtyh of device data.
+ * @param data_size Length of device data.
  */
-template <class CFP_t = std::complex<float>, class T = cuFloatComplex,
+template <class CFP_t = std::complex<double>, class T = cuDoubleComplex,
           class DevTypeID = int>
 inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
                               const int data_size, DevTypeID dev_id,
@@ -419,12 +421,48 @@ inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
 
     if constexpr (std::is_same_v<T, cuComplex>) {
         const cuComplex alpha{a.real(), a.imag()};
-        cublasCaxpy(handle, data_size, &alpha, v1, 1, v2, 1);
+        PL_CUBLAS_IS_SUCCESS(
+            cublasCaxpy(handle, data_size, &alpha, v1, 1, v2, 1));
     } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
         const cuDoubleComplex alpha{a.real(), a.imag()};
-        cublasZaxpy(handle, data_size, &alpha, v1, 1, v2, 1);
+        PL_CUBLAS_IS_SUCCESS(
+            cublasZaxpy(handle, data_size, &alpha, v1, 1, v2, 1));
     }
-    cublasDestroy(handle);
+    PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
+}
+
+/**
+ * @brief cuBLAS backed GPU data scaling.
+ *
+ * @tparam CFP_t Complex data-type. Accepts std::complex<float> and
+ * std::complex<double>
+ * @param a scaling factor
+ * @param v1 Device data pointer
+ * @param data_size Length of device data.
+ */
+template <class CFP_t = std::complex<double>, class T = cuDoubleComplex,
+          class DevTypeID = int>
+inline auto scaleC_CUDA(const CFP_t a, T *v1, const int data_size,
+                        DevTypeID dev_id, cudaStream_t stream_id) {
+
+    cublasHandle_t handle;
+    PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
+    PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));
+    PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream_id));
+    cudaDataType_t data_type;
+
+    if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                  std::is_same_v<CFP_t, double2>) {
+        data_type = CUDA_C_64F;
+    } else {
+        data_type = CUDA_C_32F;
+    }
+
+    PL_CUBLAS_IS_SUCCESS(cublasScalEx(handle, data_size,
+                                      reinterpret_cast<const void *>(&a),
+                                      data_type, v1, data_type, 1, data_type));
+
+    PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
 }
 
 /**
@@ -486,8 +524,8 @@ inline int getGPUIdx() {
 inline static void deviceReset() { PL_CUDA_IS_SUCCESS(cudaDeviceReset()); }
 
 /**
- * @brief Checks to see if the given GPU supports the PennyLane-Lightning-GPU
- * device. Minimum supported architecture is SM 7.0.
+ * @brief Checks to see if the given GPU supports the
+ * PennyLane-Lightning-GPU device. Minimum supported architecture is SM 7.0.
  *
  * @param device_number GPU device index
  * @return bool
@@ -570,8 +608,8 @@ class CudaScopedDevice {
     }
 
     /**
-     * @brief Destructs a `%CudaScopedDevice`, switching back to the previous
-     *        CUDA device context.
+     * @brief Destructs a `%CudaScopedDevice`, switching back to the
+     * previous CUDA device context.
      */
     ~CudaScopedDevice() {
         if (prev_device_ != -1) {
@@ -586,8 +624,8 @@ class CudaScopedDevice {
     CudaScopedDevice(CudaScopedDevice &&) = delete;
 
   private:
-    /// The previous CUDA device (or -1 if the device passed to the constructor
-    /// is the current CUDA device).
+    /// The previous CUDA device (or -1 if the device passed to the
+    /// constructor is the current CUDA device).
     int prev_device_;
 };
 
