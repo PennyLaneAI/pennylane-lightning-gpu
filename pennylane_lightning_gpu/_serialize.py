@@ -26,6 +26,7 @@ from pennylane import (
 )
 from pennylane.grouping import is_pauli_word
 from pennylane.operation import Observable, Tensor
+from pennylane.ops.qubit.observables import Hermitian
 from pennylane.tape import QuantumTape
 
 # Remove after the next release of PL
@@ -42,6 +43,8 @@ try:
         TensorProdObsGPU_C128,
         HamiltonianGPU_C64,
         HamiltonianGPU_C128,
+        HermitianObsGPU_C64,
+        HermitianObsGPU_C128,
     )
 except ImportError as e:
     print(e)
@@ -106,11 +109,31 @@ def _serialize_hamiltonian(ob, wires_map: dict, use_csingle: bool):
     return hamiltonian_obs(coeffs, terms)
 
 
+def _serialize_hermitian(ob, wires_map: dict, use_csingle: bool):
+    if use_csingle:
+        rtype = np.float32
+        hermitian_obs = HermitianObsGPU_C64
+    else:
+        rtype = np.float64
+        hermitian_obs = HermitianObsGPU_C128
+
+    data = qml.matrix(ob).astype(rtype).ravel(order="C")
+    return hermitian_obs(data, ob.wires.tolist())
+
+
 def _serialize_ob(ob, wires_map, use_csingle):
     if isinstance(ob, Tensor):
         return _serialize_tensor_ob(ob, wires_map, use_csingle)
     elif ob.name == "Hamiltonian":
         return _serialize_hamiltonian(ob, wires_map, use_csingle)
+    elif ob.name == "SparseHamiltonian":
+        raise TypeError(
+            f"SparseHamiltonian observables not currently supported for expectation values. Please use `qml.Hamiltonian`."
+        )
+    elif ob.name == "Hermitian":
+        raise TypeError(
+            f"Hermitian observables not currently supported for expectation values. Please use Pauli-words only."
+        )
     else:
         return _serialize_named_ob(ob, wires_map, use_csingle)
 
