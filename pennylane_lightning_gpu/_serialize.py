@@ -43,6 +43,8 @@ try:
         TensorProdObsGPU_C128,
         HamiltonianGPU_C64,
         HamiltonianGPU_C128,
+        SparseHamiltonianGPU_C64,
+        SparseHamiltonianGPU_C128,
         HermitianObsGPU_C64,
         HermitianObsGPU_C128,
     )
@@ -109,6 +111,28 @@ def _serialize_hamiltonian(ob, wires_map: dict, use_csingle: bool):
     return hamiltonian_obs(coeffs, terms)
 
 
+def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool):
+    if use_csingle:
+        ctype = np.complex64
+        rtype = np.int32
+        sparsehamiltonian_obs = SparseHamiltonianGPU_C64
+    else:
+        ctype = np.complex128
+        rtype = np.int64
+        sparsehamiltonian_obs = SparseHamiltonianGPU_C128
+
+    spm = ob.sparse_matrix()
+    data = np.array(spm.data).astype(ctype)
+    indices = np.array(spm.indices).astype(rtype)
+    offsets = np.array(spm.indptr).astype(rtype)
+
+    wires = []
+    wires_list = ob.wires.tolist()
+    wires.extend([wires_map[w] for w in wires_list])
+
+    return sparsehamiltonian_obs(data, indices, offsets, wires)
+
+
 def _serialize_hermitian(ob, wires_map: dict, use_csingle: bool):
     if use_csingle:
         rtype = np.float32
@@ -128,11 +152,11 @@ def _serialize_ob(ob, wires_map, use_csingle):
         return _serialize_hamiltonian(ob, wires_map, use_csingle)
     elif ob.name == "SparseHamiltonian":
         raise TypeError(
-            f"SparseHamiltonian observables not currently supported for expectation values. Please use `qml.Hamiltonian`."
+            f"SparseHamiltonian observables are not currently supported for adjoint differentiation. Please use `qml.Hamiltonian`."
         )
     elif ob.name == "Hermitian":
         raise TypeError(
-            f"Hermitian observables not currently supported for expectation values. Please use Pauli-words only."
+            f"Hermitian observables are not currently supported for adjoint differentiation. Please use Pauli-words only."
         )
     else:
         return _serialize_named_ob(ob, wires_map, use_csingle)
