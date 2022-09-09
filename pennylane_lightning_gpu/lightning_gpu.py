@@ -243,7 +243,7 @@ class LightningGPU(LightningQubit):
                     )
                 if isinstance(m.obs, Hermitian):
                     raise QuantumFunctionError(
-                        "Lightning adjoint differentiation method does not currently support the Hermitian observable"
+                        "LightningGPU adjoint differentiation method does not currently support the Hermitian observable"
                     )
             else:
                 if any([isinstance(o, Projector) for o in m.obs.non_identity_obs]):
@@ -252,7 +252,7 @@ class LightningGPU(LightningQubit):
                     )
                 if any([isinstance(o, Hermitian) for o in m.obs.non_identity_obs]):
                     raise QuantumFunctionError(
-                        "Lightning adjoint differentiation method does not currently support the Hermitian observable"
+                        "LightningGPU adjoint differentiation method does not currently support the Hermitian observable"
                     )
         return Expectation
 
@@ -407,8 +407,13 @@ class LightningGPU(LightningQubit):
             self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
 
+        if self.shots is not None:
+            # estimate the expectation value
+            samples = self.sample(observable, shot_range=shot_range, bin_size=bin_size)
+            return np.squeeze(np.mean(samples, axis=0))
+
         if observable.name in ["SparseHamiltonian"]:
-            CSR_SparseHamiltonian = observable.data[0].tocsr(copy=True)
+            CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
             return self._gpu_state.ExpectationValue(
                 CSR_SparseHamiltonian.indptr,
                 CSR_SparseHamiltonian.indices,
@@ -416,35 +421,11 @@ class LightningGPU(LightningQubit):
             )
 
         if observable.name in ["Hamiltonian"]:
-            name_list = []
-
-            for i in range(len(observable.ops)):
-                name_list.append([])
-                for j in range(len(observable.ops[i].wires)):
-                    obst = observable.ops[i].name[j]
-                    if len(observable.ops[i].wires) == 1:
-                        obst = observable.ops[i].name
-                    name_list[i].append(obst)
-
-            wire_list = [
-                [observable.ops[i].wires[j] for j in range(len(observable.ops[i].wires))]
-                for i in range(len(observable.ops))
-            ]
-
-            res = 0
-            for i in range(len(observable.ops)):
-                res += observable.coeffs[i] * self._gpu_state.ExpectationValue(
-                    name_list[i],
-                    wire_list[i],
-                    [],  # observables should not pass parameters, use matrix instead
-                    qml.matrix(observable.ops[i]).ravel(order="C"),
-                )
-            return res
-
-        if self.shots is not None:
-            # estimate the expectation value
-            samples = self.sample(observable, shot_range=shot_range, bin_size=bin_size)
-            return np.squeeze(np.mean(samples, axis=0))
+            device_wires = self.map_wires(observable.wires)
+            # Since we currently offload hermitian observables to default.qubit, we can assume the matrix exists
+            return self._gpu_state.ExpectationValue(
+                device_wires, qml.matrix(observable).ravel(order="C")
+            )
 
         par = (
             observable.parameters
