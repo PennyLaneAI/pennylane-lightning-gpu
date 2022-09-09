@@ -58,13 +58,10 @@ class TestHamiltonianExpval:
         )
 
         dev.syncH2D()
-
         Hmat = qml.utils.sparse_hamiltonian(H)
-
         H_sparse = qml.SparseHamiltonian(Hmat, wires=3)
 
         res = dev.expval(H_sparse)
-
         expected = 1
 
         assert np.allclose(res, expected)
@@ -90,6 +87,37 @@ class TestSparseExpval:
         ],
     )
     def test_sparse_Pauli_words(self, cases, tol, dev):
+        """Test expval of some simple sparse Hamiltonian"""
+
+        @qml.qnode(dev, diff_method="parameter-shift")
+        def circuit():
+            qml.RX(0.4, wires=[0])
+            qml.RY(-0.2, wires=[1])
+            return qml.expval(
+                qml.SparseHamiltonian(
+                    qml.utils.sparse_hamiltonian(qml.Hamiltonian([1], [cases[0]])), wires=[0, 1]
+                )
+            )
+
+        assert np.allclose(circuit(), cases[1], atol=tol, rtol=0)
+
+    @pytest.mark.parametrize(
+        "cases",
+        [
+            [qml.PauliX(0) @ qml.Identity(1), 0.00000000000000000],
+            [qml.Identity(0) @ qml.PauliX(1), -0.19866933079506122],
+            [qml.PauliY(0) @ qml.Identity(1), -0.38941834230865050],
+            [qml.Identity(0) @ qml.PauliY(1), 0.00000000000000000],
+            [qml.Hermitian([[1, 0], [0, -1]], wires=0) @ qml.Identity(1), 0.92106099400288520],
+            [qml.Identity(0) @ qml.PauliZ(1), 0.98006657784124170],
+            [
+                qml.Hermitian([[1, 0], [0, 1]], wires=0)
+                @ qml.Hermitian([[1, 0], [0, -1]], wires=1),
+                0.98006657784124170,
+            ],
+        ],
+    )
+    def test_sparse_arbitrary(self, cases, tol, dev):
         """Test expval of some simple sparse Hamiltonian"""
 
         @qml.qnode(dev, diff_method="parameter-shift")

@@ -61,6 +61,8 @@ try:
         TensorProdObsGPU_C128,
         HamiltonianGPU_C64,
         HamiltonianGPU_C128,
+        SparseHamiltonianGPU_C64,
+        SparseHamiltonianGPU_C128,
         OpsStructGPU_C128,
         OpsStructGPU_C64,
     )
@@ -87,6 +89,13 @@ def _gpu_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
     return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
+
+
+def _H_dtype(dtype):
+    "Utility to choose the appropriate H type based on state-vector precision"
+    if dtype not in [np.complex128, np.complex64]:
+        raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
+    return HamiltonianGPU_C128 if dtype == np.complex128 else HamiltonianGPU_C64
 
 
 class LightningGPU(LightningQubit):
