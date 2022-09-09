@@ -148,7 +148,8 @@ namespace Pennylane::Algorithms {
  * @tparam T Floating point type
  */
 
-template <typename T> class ObservableGPU {
+template <typename T>
+class ObservableGPU : public std::enable_shared_from_this<ObservableGPU<T>> {
   private:
     /**
      * @brief Polymorphic function comparing this to another Observable
@@ -515,12 +516,13 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
     using PrecisionT = T;
     // cuSparse required index type
     using IdxT = typename std::conditional<std::is_same<T, float>::value,
-                                           int32_t, int64_t>;
+                                           int32_t, int64_t>::type;
 
   private:
-    std::vector<T> data_;
+    std::vector<std::complex<T>> data_;
     std::vector<IdxT> indices_;
     std::vector<IdxT> offsets_;
+    std::vector<std::size_t> wires_;
 
     [[nodiscard]] bool isEqual(const ObservableGPU<T> &other) const override {
         const auto &other_cast =
@@ -542,11 +544,13 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
      * @param arg1 Arguments to construct data
      * @param arg2 Arguments to construct indices
      * @param arg3 Arguments to construct offsets
+     * @param arg4 Arguments to construct wires
      */
-    template <typename T1, typename T2>
-    SparseHamiltonianGPU(T1 &&arg1, T2 &&arg2, T2 &&arg3)
+    template <typename T1, typename T2, typename T3 = T2,
+              typename T4 = std::vector<std::size_t>>
+    SparseHamiltonianGPU(T1 &&arg1, T2 &&arg2, T3 &&arg3, T4 &&arg4)
         : data_{std::forward<T1>(arg1)}, indices_{std::forward<T2>(arg2)},
-          offsets_{std::forward<T2>(arg3)} {
+          offsets_{std::forward<T3>(arg3)}, wires_{std::forward<T4>(arg4)} {
         PL_ASSERT(data_.size() == indices_.size());
     }
 
@@ -557,16 +561,19 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
      * This function is useful as std::make_shared does not handle
      * brace-enclosed initializer list correctly.
      *
-     * @param arg1 Argument to construct coefficients
-     * @param arg2 Argument to construct terms
+     * @param arg1 Argument to construct data
+     * @param arg2 Argument to construct indices
+     * @param arg3 Argument to construct ofsets
+     * @param arg4 Argument to construct wires
      */
     static auto create(std::initializer_list<T> arg1,
                        std::initializer_list<IdxT> arg2,
-                       std::initializer_list<IdxT> arg3)
+                       std::initializer_list<IdxT> arg3,
+                       std::initializer_list<std::size_t> arg4)
         -> std::shared_ptr<SparseHamiltonianGPU<T>> {
         return std::shared_ptr<SparseHamiltonianGPU<T>>(
             new SparseHamiltonianGPU<T>{std::move(arg1), std::move(arg2),
-                                        std::move(arg3)});
+                                        std::move(arg3), std::move(arg4)});
     }
 
     // to work with
@@ -589,10 +596,10 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
         auto device_id = sv.getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = sv.getDataBuffer().getDevTag().getStreamID();
 
-        DataBuffer<decltype(offsets_.value_type), int> d_csrOffsets{
+        DataBuffer<IdxT, int> d_csrOffsets{
             static_cast<std::size_t>(offsets_.size()), device_id, stream_id,
             true};
-        DataBuffer<decltype(indices_.value_type), int> d_columns{
+        DataBuffer<IdxT, int> d_columns{
             static_cast<std::size_t>(indices_.size()), device_id, stream_id,
             true};
         DataBuffer<CFP_t, int> d_values{static_cast<std::size_t>(data_.size()),
@@ -694,11 +701,24 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
     [[nodiscard]] auto getObsName() const -> std::string override {
         using Pennylane::Util::operator<<;
         std::ostringstream ss;
-        ss << "SparseHamiltonian: {\n'data' : " << data_
-           << ",\n'indices' : " << indices_ << ",\n'offsets' : " << offsets_
-           << "\n}";
+        ss << "SparseHamiltonian: {\n'data' : ";
+        for (const auto &d : data_)
+            ss << d;
+        ss << ",\n'indices' : ";
+        for (const auto &i : indices_)
+            ss << i;
+        ss << ",\n'offsets' : ";
+        for (const auto &o : offsets_)
+            ss << o;
+        ss << "\n}";
         return ss.str();
     }
+    /**
+     * @brief Get the wires the observable applies to.
+     */
+    [[nodiscard]] auto getWires() const -> std::vector<size_t> {
+        return wires_;
+    };
 };
 
 /**

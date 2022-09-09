@@ -431,6 +431,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                     .x;
             },
             "Calculate the expectation value of the given observable.")
+
         .def(
             "ExpectationValue",
             [](StateVectorCudaManaged<PrecisionT> &sv,
@@ -595,7 +596,6 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 conv_matrix = std::vector<std::complex<PrecisionT>>{
                     m_ptr, m_ptr + m_buffer.size};
             }
-
             return HermitianObsGPU<PrecisionT>(conv_matrix, wires);
         }))
         .def("__repr__", &HermitianObsGPU<PrecisionT>::getObsName)
@@ -660,6 +660,48 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                     return false;
                 }
                 auto other_cast = other.cast<HamiltonianGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "SparseHamiltonianGPU_C" + bitsize;
+    using SpIDX = typename SparseHamiltonianGPU<PrecisionT>::IdxT;
+    py::class_<SparseHamiltonianGPU<PrecisionT>,
+               std::shared_ptr<SparseHamiltonianGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                          py::module_local())
+        .def(py::init([](const np_arr_c &data, const np_arr_sparse_ind &indices,
+                         const np_arr_sparse_ind &offsets,
+                         const std::vector<std::size_t> &wires) {
+            const py::buffer_info buffer_data = data.request();
+            const auto *data_ptr =
+                static_cast<complex<PrecisionT> *>(buffer_data.ptr);
+
+            const py::buffer_info buffer_indices = indices.request();
+            const auto *indices_ptr = static_cast<SpIDX *>(buffer_indices.ptr);
+
+            const py::buffer_info buffer_offsets = offsets.request();
+            const auto *offsets_ptr = static_cast<SpIDX *>(buffer_offsets.ptr);
+
+            return SparseHamiltonianGPU<PrecisionT>{
+                std::vector<complex<PrecisionT>>(
+                    {data_ptr, data_ptr + data.size()}),
+                std::vector<SpIDX>({indices_ptr, indices_ptr + indices.size()}),
+                std::vector<SpIDX>({offsets_ptr, offsets_ptr + offsets.size()}),
+                wires};
+        }))
+        .def("__repr__", &SparseHamiltonianGPU<PrecisionT>::getObsName)
+        .def("get_wires", &SparseHamiltonianGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const SparseHamiltonianGPU<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<SparseHamiltonianGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast =
+                    other.cast<SparseHamiltonianGPU<PrecisionT>>();
                 return self == other_cast;
             },
             "Compare two observables");
