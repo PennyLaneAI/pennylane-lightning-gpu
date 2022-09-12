@@ -15,6 +15,7 @@ r"""
 This module contains the :class:`~.LightningGPU` class, a PennyLane simulator device that
 interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enabled calculations.
 """
+from typing import List
 from warnings import warn
 
 import numpy as np
@@ -34,7 +35,7 @@ from pennylane import (
 )
 from pennylane_lightning import LightningQubit
 from pennylane.operation import Tensor, Operation
-from pennylane.measurements import Expectation
+from pennylane.measurements import Expectation, MeasurementProcess, State
 from pennylane.wires import Wires
 
 # Remove after the next release of PL
@@ -54,13 +55,19 @@ try:
         get_gpu_arch,
         DevPool,
         DevTag,
-        ObsStructGPU_C128,
-        ObsStructGPU_C64,
+        NamedObsGPU_C64,
+        NamedObsGPU_C128,
+        TensorProdObsGPU_C64,
+        TensorProdObsGPU_C128,
+        HamiltonianGPU_C64,
+        HamiltonianGPU_C128,
+        SparseHamiltonianGPU_C64,
+        SparseHamiltonianGPU_C128,
         OpsStructGPU_C128,
         OpsStructGPU_C64,
     )
 
-    from ._serialize import _serialize_obs, _serialize_ops
+    from ._serialize import _serialize_ob, _serialize_observables, _serialize_ops
     from ctypes.util import find_library
     from importlib import util as imp_util
 
@@ -84,6 +91,13 @@ def _gpu_dtype(dtype):
     return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
 
 
+def _H_dtype(dtype):
+    "Utility to choose the appropriate H type based on state-vector precision"
+    if dtype not in [np.complex128, np.complex64]:
+        raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
+    return HamiltonianGPU_C128 if dtype == np.complex128 else HamiltonianGPU_C64
+
+
 class LightningGPU(LightningQubit):
     """PennyLane-Lightning-GPU device.
 
@@ -105,6 +119,8 @@ class LightningGPU(LightningQubit):
         "PauliY",
         "PauliZ",
         "Hadamard",
+        "SparseHamiltonian",
+        "Hamiltonian",
         "Identity",
     }
 
@@ -206,21 +222,29 @@ class LightningGPU(LightningQubit):
         if self._sync:
             self.syncD2H()
 
-    def adjoint_diff_support_check(self, tape):
-        """Check Lightning adjoint differentiation method support for a tape.
-
-        Raise ``QuantumFunctionError`` if ``tape`` contains not supported measurements,
-        observables, or operations by the Lightning adjoint differentiation method.
-
+    @staticmethod
+    def _check_adjdiff_supported_measurements(measurements: List[MeasurementProcess]):
+        """Check whether given list of measurement is supported by adjoint_diff.
         Args:
-            tape (.QuantumTape): quantum tape to differentiate
+            measurements (List[MeasurementProcess]): a list of measurement processes to check.
+        Returns:
+            Expectation or State: a common return type of measurements.
         """
-        for m in tape.measurements:
-            if m.return_type is not Expectation:
-                raise QuantumFunctionError(
-                    "Adjoint differentiation method does not support"
-                    f" measurement {m.return_type.value}"
-                )
+        if len(measurements) == 0:
+            return None
+
+        if len(measurements) == 1 and measurements[0].return_type is State:
+            # return State
+            raise QuantumFunctionError("Not supported")
+
+        # The return_type of measurement processes must be expectation
+        if not all([m.return_type is Expectation for m in measurements]):
+            raise QuantumFunctionError(
+                "Adjoint differentiation method does not support expectation return type "
+                "mixed with other return types"
+            )
+
+        for m in measurements:
             if not isinstance(m.obs, Tensor):
                 if isinstance(m.obs, Projector):
                     raise QuantumFunctionError(
@@ -228,7 +252,7 @@ class LightningGPU(LightningQubit):
                     )
                 if isinstance(m.obs, Hermitian):
                     raise QuantumFunctionError(
-                        "Lightning adjoint differentiation method does not currently support the Hermitian observable"
+                        "LightningGPU adjoint differentiation method does not currently support the Hermitian observable"
                     )
             else:
                 if any([isinstance(o, Projector) for o in m.obs.non_identity_obs]):
@@ -237,10 +261,21 @@ class LightningGPU(LightningQubit):
                     )
                 if any([isinstance(o, Hermitian) for o in m.obs.non_identity_obs]):
                     raise QuantumFunctionError(
-                        "Lightning adjoint differentiation method does not currently support the Hermitian observable"
+                        "LightningGPU adjoint differentiation method does not currently support the Hermitian observable"
                     )
+        return Expectation
 
-        for op in tape.operations:
+    @staticmethod
+    def _check_adjdiff_supported_operations(operations):
+        """Check Lightning adjoint differentiation method support for a tape.
+
+        Raise ``QuantumFunctionError`` if ``tape`` contains not supported measurements,
+        observables, or operations by the Lightning adjoint differentiation method.
+
+        Args:
+            tape (.QuantumTape): quantum tape to differentiate.
+        """
+        for op in operations:
             if op.num_params > 1 and not isinstance(op, Rot):
                 raise QuantumFunctionError(
                     f"The {op.name} operation is not supported using "
@@ -255,11 +290,13 @@ class LightningGPU(LightningQubit):
                 UserWarning,
             )
 
+        tape_return_type = self._check_adjdiff_supported_measurements(tape.measurements)
+
         if len(tape.trainable_params) == 0:
             return np.array(0)
 
         # Check adjoint diff support
-        self.adjoint_diff_support_check(tape)
+        self._check_adjdiff_supported_operations(tape.operations)
 
         # Initialization of state
         if starting_state is not None:
@@ -276,7 +313,7 @@ class LightningGPU(LightningQubit):
         else:
             adj = AdjointJacobianGPU_C128()
 
-        obs_serialized = _serialize_obs(tape, self.wire_map, use_csingle=self.use_csingle)
+        obs_serialized = _serialize_observables(tape, self.wire_map, use_csingle=self.use_csingle)
         ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=self.use_csingle)
 
         ops_serialized = adj.create_ops_list(*ops_serialized)
@@ -304,6 +341,11 @@ class LightningGPU(LightningQubit):
             tp_shift = [i - 1 for i in tp_shift]
 
         if self._dp.getTotalDevices() > 1 and self._batch_obs:
+            if any(isinstance(ob, _H_dtype(self.C_DTYPE)) for ob in obs_serialized):
+                raise NotImplementedError(
+                    "Hamiltonian observables are not currently supported in multi-GPU adjoint batching work-loads. Please set `batch_obs=False`."
+                )
+
             jac = adj.adjoint_jacobian_batched(
                 self._gpu_state,
                 obs_serialized,
@@ -319,6 +361,47 @@ class LightningGPU(LightningQubit):
         jac_r[:, record_tp_rows] = jac
         return jac_r
 
+    def vjp(self, measurements, dy, starting_state=None, use_device_state=False):
+        """Generate the processing function required to compute the vector-Jacobian products of a tape."""
+        if self.shots is not None:
+            warn(
+                "Requested adjoint differentiation to be computed with finite shots."
+                " The derivative is always exact when using the adjoint differentiation method.",
+                UserWarning,
+            )
+
+        tape_return_type = self._check_adjdiff_supported_measurements(measurements)
+
+        if math.allclose(dy, 0) or tape_return_type is None:
+            return lambda tape: math.convert_like(np.zeros(len(tape.trainable_params)), dy)
+
+        if tape_return_type is Expectation:
+            if len(dy) != len(measurements):
+                raise ValueError(
+                    "Number of observables in the tape must be the same as the length of dy in the vjp method"
+                )
+
+            if np.iscomplexobj(dy):
+                raise ValueError(
+                    "The vjp method only works with a real-valued dy when the tape is returning an expectation value"
+                )
+
+            ham = qml.Hamiltonian(dy, [m.obs for m in measurements])
+
+            def processing_fn(tape):
+                nonlocal ham
+                num_params = len(tape.trainable_params)
+
+                if num_params == 0:
+                    return np.array([], dtype=self._state.dtype)
+
+                new_tape = tape.copy()
+                new_tape._measurements = [qml.expval(ham)]
+
+                return self.adjoint_jacobian(new_tape, starting_state, use_device_state).reshape(-1)
+
+            return processing_fn
+
     def sample(self, observable, shot_range=None, bin_size=None, counts=False):
         if observable.name != "PauliZ":
             self.apply_cq(observable.diagonalizing_gates())
@@ -328,8 +411,7 @@ class LightningGPU(LightningQubit):
     def expval(self, observable, shot_range=None, bin_size=None):
         if observable.name in [
             "Projector",
-            "Hamiltonian",
-            "SparseHamiltonian",
+            "Hermitian",
         ]:
             self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
@@ -338,6 +420,21 @@ class LightningGPU(LightningQubit):
             # estimate the expectation value
             samples = self.sample(observable, shot_range=shot_range, bin_size=bin_size)
             return np.squeeze(np.mean(samples, axis=0))
+
+        if observable.name in ["SparseHamiltonian"]:
+            CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
+            return self._gpu_state.ExpectationValue(
+                CSR_SparseHamiltonian.indptr,
+                CSR_SparseHamiltonian.indices,
+                CSR_SparseHamiltonian.data,
+            )
+
+        if observable.name in ["Hamiltonian"]:
+            device_wires = self.map_wires(observable.wires)
+            # Since we currently offload hermitian observables to default.qubit, we can assume the matrix exists
+            return self._gpu_state.ExpectationValue(
+                device_wires, qml.matrix(observable).ravel(order="C")
+            )
 
         par = (
             observable.parameters

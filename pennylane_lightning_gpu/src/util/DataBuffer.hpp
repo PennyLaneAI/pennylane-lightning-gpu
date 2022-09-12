@@ -32,7 +32,10 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
                cudaStream_t stream_id = 0, bool alloc_memory = true)
         : length_{length}, dev_tag_{device_id, stream_id}, gpu_buffer_{
                                                                nullptr} {
-        if (alloc_memory && (length > 0)) {
+        if constexpr (std::is_void<GPUDataT>::value) {
+            dev_tag_.refresh();
+            PL_CUDA_IS_SUCCESS(cudaMalloc(&gpu_buffer_, length));
+        } else if (alloc_memory && (length > 0)) {
             dev_tag_.refresh();
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
@@ -115,6 +118,15 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(cudaFree(gpu_buffer_));
         }
     };
+
+    /**
+     * @brief Zero-initialize the GPU buffer.
+     *
+     */
+    void zeroInit() {
+        PL_CUDA_IS_SUCCESS(
+            cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
+    }
 
     auto getData() -> GPUDataT * { return gpu_buffer_; }
     auto getData() const -> const GPUDataT * { return gpu_buffer_; }

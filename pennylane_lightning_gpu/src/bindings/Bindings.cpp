@@ -63,8 +63,11 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         py::array_t<ParamT, py::array::c_style | py::array::forcecast>;
     using np_arr_c = py::array_t<std::complex<ParamT>,
                                  py::array::c_style | py::array::forcecast>;
-
-    // Enable module name to be based on size of complex datatype
+    using np_arr_sparse_ind = typename std::conditional<
+        std::is_same<ParamT, float>::value,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast>,
+        py::array_t<int64_t, py::array::c_style | py::array::forcecast>>::type;
+    //  Enable module name to be based on size of complex datatype
     const std::string bitsize =
         std::to_string(sizeof(std::complex<PrecisionT>) * 8);
     std::string class_name = "LightningGPU_C" + bitsize;
@@ -428,6 +431,44 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                     .x;
             },
             "Calculate the expectation value of the given observable.")
+
+        .def(
+            "ExpectationValue",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires,
+               const np_arr_c &gate_matrix) {
+                // prefixed # for string
+                const auto m_buffer = gate_matrix.request();
+                std::vector<std::complex<ParamT>> conv_matrix;
+                if (m_buffer.size) {
+                    const auto m_ptr =
+                        static_cast<const std::complex<ParamT> *>(m_buffer.ptr);
+                    conv_matrix = std::vector<std::complex<ParamT>>{
+                        m_ptr, m_ptr + m_buffer.size};
+                }
+                // Return the real component only & ignore params
+                return sv.expval(wires, conv_matrix).x;
+            },
+            "Calculate the expectation value of the Hamiltonian observable "
+            "with custatevecComputeExpectation.")
+        .def(
+            "ExpectationValue",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const np_arr_sparse_ind &csrOffsets,
+               const np_arr_sparse_ind &columns, const np_arr_c values) {
+                using index_type = typename std::conditional<
+                    std::is_same<ParamT, float>::value, int32_t, int64_t>::type;
+                return sv.template getExpectationValueOnSparseSpMV<index_type>(
+                    static_cast<index_type *>(csrOffsets.request().ptr),
+                    static_cast<index_type>(
+                        csrOffsets.request()
+                            .size), // num_rows + 1 or csrOffsets
+                    static_cast<index_type *>(columns.request().ptr), // columns
+                    static_cast<std::complex<PrecisionT> *>(
+                        values.request().ptr),
+                    static_cast<index_type>(values.request().size)); // nnz
+            },
+            "Calculate the expectation value of a sparse Hamiltonian.")
         .def(
             "Probability",
             [](StateVectorCudaManaged<PrecisionT> &sv,
@@ -512,88 +553,158 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     //                              Observable
     //***********************************************************************//
 
-    class_name = "ObsStructGPU_C" + bitsize;
-    using obs_data_var = std::variant<std::monostate, np_arr_r, np_arr_c>;
-    py::class_<ObsDatum<PrecisionT>>(m, class_name.c_str(), py::module_local())
-        .def(py::init([](const std::vector<std::string> &names,
-                         const std::vector<obs_data_var> &params,
-                         const std::vector<std::vector<size_t>> &wires) {
-            std::vector<typename ObsDatum<PrecisionT>::param_var_t> conv_params(
-                params.size());
-            for (size_t p_idx = 0; p_idx < params.size(); p_idx++) {
-                std::visit(
-                    [&](const auto &param) {
-                        using p_t = std::decay_t<decltype(param)>;
-                        if constexpr (std::is_same_v<p_t, np_arr_c>) {
-                            auto buffer = param.request();
-                            auto ptr =
-                                static_cast<std::complex<ParamT> *>(buffer.ptr);
-                            if (buffer.size) {
-                                conv_params[p_idx] =
-                                    std::vector<std::complex<ParamT>>{
-                                        ptr, ptr + buffer.size};
-                            }
-                        } else if constexpr (std::is_same_v<p_t, np_arr_r>) {
-                            auto buffer = param.request();
+    class_name = "ObservableGPU_C" + bitsize;
+    py::class_<ObservableGPU<PrecisionT>,
+               std::shared_ptr<ObservableGPU<PrecisionT>>>(
+        m, class_name.c_str(), py::module_local());
 
-                            auto *ptr = static_cast<ParamT *>(buffer.ptr);
-                            if (buffer.size) {
-                                conv_params[p_idx] =
-                                    std::vector<ParamT>{ptr, ptr + buffer.size};
-                            }
-                        } else {
-                            PL_ABORT(
-                                "Parameter datatype not current supported");
-                        }
-                    },
-                    params[p_idx]);
+    class_name = "NamedObsGPU_C" + bitsize;
+    py::class_<NamedObsGPU<PrecisionT>,
+               std::shared_ptr<NamedObsGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                          py::module_local())
+        .def(py::init(
+            [](const std::string &name, const std::vector<size_t> &wires) {
+                return NamedObsGPU<PrecisionT>(name, wires);
+            }))
+        .def("__repr__", &NamedObsGPU<PrecisionT>::getObsName)
+        .def("get_wires", &NamedObsGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const NamedObsGPU<PrecisionT> &self, py::handle other) -> bool {
+                if (!py::isinstance<NamedObsGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<NamedObsGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "HermitianObsGPU_C" + bitsize;
+    py::class_<HermitianObsGPU<PrecisionT>,
+               std::shared_ptr<HermitianObsGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                          py::module_local())
+        .def(py::init([](const np_arr_c &matrix,
+                         const std::vector<size_t> &wires) {
+            const auto m_buffer = matrix.request();
+            std::vector<std::complex<ParamT>> conv_matrix;
+            if (m_buffer.size) {
+                const auto m_ptr =
+                    static_cast<const std::complex<PrecisionT> *>(m_buffer.ptr);
+                conv_matrix = std::vector<std::complex<PrecisionT>>{
+                    m_ptr, m_ptr + m_buffer.size};
             }
-            return ObsDatum<PrecisionT>(names, conv_params, wires);
+            return HermitianObsGPU<PrecisionT>(conv_matrix, wires);
         }))
-        .def("__repr__",
-             [](const ObsDatum<PrecisionT> &obs) {
-                 using namespace Pennylane::Util;
-                 std::ostringstream obs_stream;
-                 std::string obs_name = obs.getObsName()[0];
-                 for (size_t o = 1; o < obs.getObsName().size(); o++) {
-                     if (o < obs.getObsName().size()) {
-                         obs_name += " @ ";
-                     }
-                     obs_name += obs.getObsName()[o];
-                 }
-                 obs_stream << "'wires' : " << obs.getObsWires();
-                 return "Observable: { 'name' : " + obs_name + ", " +
-                        obs_stream.str() + " }";
-             })
-        .def("get_name",
-             [](const ObsDatum<PrecisionT> &obs) { return obs.getObsName(); })
-        .def("get_wires",
-             [](const ObsDatum<PrecisionT> &obs) { return obs.getObsWires(); })
-        .def("get_params", [](const ObsDatum<PrecisionT> &obs) {
-            py::list params;
-            for (size_t i = 0; i < obs.getObsParams().size(); i++) {
-                std::visit(
-                    [&](const auto &param) {
-                        using p_t = std::decay_t<decltype(param)>;
-                        if constexpr (std::is_same_v<
-                                          p_t,
-                                          std::vector<std::complex<ParamT>>>) {
-                            params.append(py::array_t<std::complex<ParamT>>(
-                                py::cast(param)));
-                        } else if constexpr (std::is_same_v<
-                                                 p_t, std::vector<ParamT>>) {
-                            params.append(py::array_t<ParamT>(py::cast(param)));
-                        } else if constexpr (std::is_same_v<p_t,
-                                                            std::monostate>) {
-                            params.append(py::list{});
-                        } else {
-                            throw("Unsupported data type");
-                        }
-                    },
-                    obs.getObsParams()[i]);
-            }
-            return params;
-        });
+        .def("__repr__", &HermitianObsGPU<PrecisionT>::getObsName)
+        .def("get_wires", &HermitianObsGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const HermitianObsGPU<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<HermitianObsGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<HermitianObsGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "TensorProdObsGPU_C" + bitsize;
+    py::class_<TensorProdObsGPU<PrecisionT>,
+               std::shared_ptr<TensorProdObsGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                          py::module_local())
+        .def(py::init(
+            [](const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
+                   &obs) { return TensorProdObsGPU<PrecisionT>(obs); }))
+        .def("__repr__", &TensorProdObsGPU<PrecisionT>::getObsName)
+        .def("get_wires", &TensorProdObsGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const TensorProdObsGPU<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<TensorProdObsGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<TensorProdObsGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "HamiltonianGPU_C" + bitsize;
+    using ObsPtr = std::shared_ptr<ObservableGPU<PrecisionT>>;
+    py::class_<HamiltonianGPU<PrecisionT>,
+               std::shared_ptr<HamiltonianGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                          py::module_local())
+        .def(py::init(
+            [](const np_arr_r &coeffs, const std::vector<ObsPtr> &obs) {
+                auto buffer = coeffs.request();
+                const auto ptr = static_cast<const ParamT *>(buffer.ptr);
+                return HamiltonianGPU<PrecisionT>{
+                    std::vector(ptr, ptr + buffer.size), obs};
+            }))
+        .def("__repr__", &HamiltonianGPU<PrecisionT>::getObsName)
+        .def("get_wires", &HamiltonianGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const HamiltonianGPU<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<HamiltonianGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<HamiltonianGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "SparseHamiltonianGPU_C" + bitsize;
+    using SpIDX = typename SparseHamiltonianGPU<PrecisionT>::IdxT;
+    py::class_<SparseHamiltonianGPU<PrecisionT>,
+               std::shared_ptr<SparseHamiltonianGPU<PrecisionT>>,
+               ObservableGPU<PrecisionT>>(m, class_name.c_str(),
+                                          py::module_local())
+        .def(py::init([](const np_arr_c &data, const np_arr_sparse_ind &indices,
+                         const np_arr_sparse_ind &offsets,
+                         const std::vector<std::size_t> &wires) {
+            const py::buffer_info buffer_data = data.request();
+            const auto *data_ptr =
+                static_cast<complex<PrecisionT> *>(buffer_data.ptr);
+
+            const py::buffer_info buffer_indices = indices.request();
+            const auto *indices_ptr = static_cast<SpIDX *>(buffer_indices.ptr);
+
+            const py::buffer_info buffer_offsets = offsets.request();
+            const auto *offsets_ptr = static_cast<SpIDX *>(buffer_offsets.ptr);
+
+            return SparseHamiltonianGPU<PrecisionT>{
+                std::vector<complex<PrecisionT>>(
+                    {data_ptr, data_ptr + data.size()}),
+                std::vector<SpIDX>({indices_ptr, indices_ptr + indices.size()}),
+                std::vector<SpIDX>({offsets_ptr, offsets_ptr + offsets.size()}),
+                wires};
+        }))
+        .def("__repr__", &SparseHamiltonianGPU<PrecisionT>::getObsName)
+        .def("get_wires", &SparseHamiltonianGPU<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const SparseHamiltonianGPU<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<SparseHamiltonianGPU<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast =
+                    other.cast<SparseHamiltonianGPU<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
 
     //***********************************************************************//
     //                              Operations
@@ -668,7 +779,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def("adjoint_jacobian",
              [](AdjointJacobianGPU<PrecisionT> &adj,
                 const StateVectorCudaManaged<PrecisionT> &sv,
-                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
+                const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
                     &observables,
                 const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
                 const std::vector<size_t> &trainableParams) {
@@ -684,7 +795,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def("adjoint_jacobian_batched",
              [](AdjointJacobianGPU<PrecisionT> &adj,
                 const StateVectorCudaManaged<PrecisionT> &sv,
-                const std::vector<Pennylane::Algorithms::ObsDatum<PrecisionT>>
+                const std::vector<std::shared_ptr<ObservableGPU<PrecisionT>>>
                     &observables,
                 const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
                 const std::vector<size_t> &trainableParams) {
