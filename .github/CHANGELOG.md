@@ -1,13 +1,10 @@
-# Release 0.26.0-dev
+# Release 0.26.0
 
 ### New features since last release
 
 * Added native support for expval(H) in adjoint method. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
+
 * Added cuSparse SpMV in expval(H) calculations. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
-
-### Breaking changes
-
-### Improvements
 
 ### Documentation
 
