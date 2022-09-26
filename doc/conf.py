@@ -183,6 +183,7 @@ html_theme = "pennylane"
 html_theme_path = ["."]
 
 html_theme_options = {
+    "navbar_name": "Lightning GPU",
     "extra_copyrights": [
         "TensorFlow, the TensorFlow logo, and any related marks are trademarks "
         "of Google Inc."

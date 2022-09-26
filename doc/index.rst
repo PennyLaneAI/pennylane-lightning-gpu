@@ -24,7 +24,6 @@ PennyLane-Lightning-GPU provides the following device:
 
 .. toctree::
    :maxdepth: 2
-   :caption: PennyLane-Lightning-GPU
    :titlesonly:
    :hidden:
 
