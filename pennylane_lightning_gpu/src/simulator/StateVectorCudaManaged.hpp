@@ -53,6 +53,18 @@ class CSVHandle {
     custatevecHandle_t handle;
 };
 
+class CublasHandle {
+  public:
+    CublasHandle() { PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle)); }
+    ~CublasHandle() { PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle)); }
+
+    const cublasHandle_t &ref() const { return handle; }
+    cublasHandle_t &ref() { return handle; }
+
+  private:
+    cublasHandle_t handle;
+};
+
 } // namespace
 /// @endcond
 
@@ -859,7 +871,7 @@ class StateVectorCudaManaged
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle))
 
         expect = innerProdC_CUDA(BaseType::getData(), d_tmp.getData(),
-                                 BaseType::getLength(), device_id, stream_id)
+                                 BaseType::getLength(), device_id, stream_id, getCublasHandle())
                      .x;
 
         return expect;
@@ -1004,6 +1016,8 @@ class StateVectorCudaManaged
         return samples;
     }
 
+    auto getCublasHandle() const -> cublasHandle_t { return cublashandle.ref(); }
+
   private:
     GateCache<Precision> gate_cache_;
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
@@ -1137,6 +1151,7 @@ class StateVectorCudaManaged
                        std::forward<decltype(params)>(params));
          }}};
     CSVHandle handle;
+    CublasHandle cublashandle;
 
     const std::unordered_map<std::string, custatevecPauli_t> native_gates_{
         {"RX", CUSTATEVEC_PAULI_X},       {"RY", CUSTATEVEC_PAULI_Y},

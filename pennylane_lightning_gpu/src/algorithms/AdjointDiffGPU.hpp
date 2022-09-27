@@ -471,7 +471,7 @@ template <typename T> class HamiltonianGPU final : public ObservableGPU<T> {
             scaleAndAddC_CUDA(std::complex<T>{coeffs_[term_idx], 0.0},
                               tmp.getData(), buffer.getData(), tmp.getLength(),
                               tmp.getDataBuffer().getDevTag().getDeviceID(),
-                              tmp.getDataBuffer().getDevTag().getStreamID());
+                              tmp.getDataBuffer().getDevTag().getStreamID(), tmp.getCublasHandle());
         }
         sv.CopyGpuDataToGpuIn(buffer.getData(), buffer.getLength());
     }
@@ -815,7 +815,7 @@ template <class T = double> class AdjointJacobianGPU {
             -2 * scaling_coeff *
             innerProdC_CUDA(sv1.getData(), sv2.getData(), sv1.getLength(),
                             sv1.getDataBuffer().getDevTag().getDeviceID(),
-                            sv1.getDataBuffer().getDevTag().getStreamID())
+                            sv1.getDataBuffer().getDevTag().getStreamID(), sv1.getCublasHandle())
                 .y;
     }
 

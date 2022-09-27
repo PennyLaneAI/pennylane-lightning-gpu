@@ -15,9 +15,6 @@
 
 #include "Error.hpp"
 #include "Util.hpp"
-#include <DevTag.hpp>
-
-namespace Pennylane::CUDA::Util {
 
 #ifndef CUDA_UNSAFE
 
@@ -55,6 +52,7 @@ namespace Pennylane::CUDA::Util {
     { static_cast<void>(err); }
 #endif
 
+namespace Pennylane::CUDA::Util {
 static const std::string GetCuBlasErrorString(const cublasStatus_t &err) {
     std::string result;
     switch (err) {
@@ -381,11 +379,9 @@ template <class CFP_t> inline static constexpr auto INVSQRT2() -> CFP_t {
  */
 template <class T = cuDoubleComplex, class DevTypeID = int>
 inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
-                            int dev_id, cudaStream_t stream_id) -> T {
+                            int dev_id, cudaStream_t stream_id, cublasHandle_t handle) -> T {
     T result{0.0, 0.0}; // Host result
-    cublasHandle_t handle;
     PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
-    PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));
     PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream_id));
 
     if constexpr (std::is_same_v<T, cuFloatComplex>) {
@@ -395,7 +391,6 @@ inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
         PL_CUBLAS_IS_SUCCESS(
             cublasZdotc(handle, data_size, v1, 1, v2, 1, &result));
     }
-    PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
     return result;
 }
 
@@ -413,10 +408,9 @@ template <class CFP_t = std::complex<double>, class T = cuDoubleComplex,
           class DevTypeID = int>
 inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
                               const int data_size, DevTypeID dev_id,
-                              cudaStream_t stream_id) {
-    cublasHandle_t handle;
+                              cudaStream_t stream_id,
+                              cublasHandle_t handle) {
     PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
-    PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));
     PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream_id));
 
     if constexpr (std::is_same_v<T, cuComplex>) {
@@ -428,7 +422,6 @@ inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
         PL_CUBLAS_IS_SUCCESS(
             cublasZaxpy(handle, data_size, &alpha, v1, 1, v2, 1));
     }
-    PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
 }
 
 /**
