@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <memory>
 
 #include <cuComplex.h> // cuDoubleComplex
 #include <cuda.h>
@@ -38,32 +39,32 @@ namespace cuUtil = Pennylane::CUDA::Util;
 using namespace Pennylane::CUDA;
 using namespace Pennylane::Util;
 
-/**
- * @brief RAII wrapper class for custatevec handles.
- */
-class CSVHandle {
-  public:
-    CSVHandle() { PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(&handle)); }
-    ~CSVHandle() { PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(handle)); }
-
-    const custatevecHandle_t &ref() const { return handle; }
-    custatevecHandle_t &ref() { return handle; }
-
-  private:
-    custatevecHandle_t handle;
+struct HandleDeleter
+{
+    void operator()(cublasHandle_t handle) const {
+        PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
+    }
+    void operator()(custatevecHandle_t handle) const {
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(handle));
+    }
 };
 
-class CublasHandle {
-  public:
-    CublasHandle() { PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle)); }
-    ~CublasHandle() { PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle)); }
+using SharedCublasHandle = std::shared_ptr<std::remove_pointer<cublasHandle_t>::type>;
+using SharedCusvHandle   = std::shared_ptr<std::remove_pointer<custatevecHandle_t>::type>;
 
-    const cublasHandle_t &ref() const { return handle; }
-    cublasHandle_t &ref() { return handle; }
+SharedCublasHandle make_shared_cublas_handle()
+{
+    cublasHandle_t h;
+    PL_CUBLAS_IS_SUCCESS(cublasCreate(&h));
+    return {h, HandleDeleter()};
+}
 
-  private:
-    cublasHandle_t handle;
-};
+SharedCusvHandle make_shared_cusv_handle()
+{
+    custatevecHandle_t h;
+    PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(&h));
+    return {h, HandleDeleter()};
+}
 
 } // namespace
 /// @endcond
@@ -91,13 +92,14 @@ class StateVectorCudaManaged
     StateVectorCudaManaged() = delete;
     StateVectorCudaManaged(size_t num_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
-              num_qubits),
-          gate_cache_(true){};
+              num_qubits), handle(make_shared_cusv_handle()), cublashandle(make_shared_cublas_handle()),
+          gate_cache_(true){
+          };
 
     StateVectorCudaManaged(size_t num_qubits, const DevTag<int> &dev_tag,
                            bool alloc = true)
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
-              num_qubits, dev_tag, alloc),
+              num_qubits, dev_tag, alloc), handle(make_shared_cusv_handle()), cublashandle(make_shared_cublas_handle()),
           gate_cache_(true, dev_tag) {
         BaseType::initSV();
     };
@@ -120,8 +122,10 @@ class StateVectorCudaManaged
     }
 
     StateVectorCudaManaged(const StateVectorCudaManaged &other)
-        : StateVectorCudaManaged(other.getNumQubits(),
-                                 other.getDataBuffer().getDevTag()) {
+        : BaseType(other.getNumQubits(), other.getDataBuffer().getDevTag()),
+          handle(other.handle),
+          cublashandle(other.cublashandle),
+          gate_cache_(true, other.getDataBuffer().getDevTag()) {
         BaseType::CopyGpuDataToGpuIn(other);
     }
 
@@ -911,7 +915,7 @@ class StateVectorCudaManaged
             });
 
         PL_CUSTATEVEC_IS_SUCCESS(custatevecAbs2SumArray(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* const void* */ BaseType::getData(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ BaseType::getNumQubits(),
@@ -969,7 +973,7 @@ class StateVectorCudaManaged
         size_t extraWorkspaceSizeInBytes = 0;
         // create sampler and check the size of external workspace
         PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerCreate(
-            handle.ref(), BaseType::getData(), data_type, num_qubits, &sampler,
+            handle.get(), BaseType::getData(), data_type, num_qubits, &sampler,
             num_samples, &extraWorkspaceSizeInBytes));
 
         // allocate external workspace if necessary
@@ -979,11 +983,11 @@ class StateVectorCudaManaged
 
         // sample preprocess
         PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerPreprocess(
-            handle.ref(), sampler, extraWorkspace, extraWorkspaceSizeInBytes));
+            handle.get(), sampler, extraWorkspace, extraWorkspaceSizeInBytes));
 
         // sample bit strings
         PL_CUSTATEVEC_IS_SUCCESS(custatevecSamplerSample(
-            handle.ref(), sampler, bitStrings.data(), bitOrdering.data(),
+            handle.get(), sampler, bitStrings.data(), bitOrdering.data(),
             bitStringLen, rand_nums.data(), num_samples,
             CUSTATEVEC_SAMPLER_OUTPUT_ASCENDING_ORDER));
 
@@ -1016,9 +1020,11 @@ class StateVectorCudaManaged
         return samples;
     }
 
-    auto getCublasHandle() const -> cublasHandle_t { return cublashandle.ref(); }
+    auto getCublasHandle() const -> cublasHandle_t { return cublashandle.get(); }
 
   private:
+    SharedCusvHandle   handle;
+    SharedCublasHandle cublashandle;
     GateCache<Precision> gate_cache_;
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
                                        const std::vector<Precision> &)>;
@@ -1150,8 +1156,6 @@ class StateVectorCudaManaged
                        std::forward<decltype(adjoint)>(adjoint),
                        std::forward<decltype(params)>(params));
          }}};
-    CSVHandle handle;
-    CublasHandle cublashandle;
 
     const std::unordered_map<std::string, custatevecPauli_t> native_gates_{
         {"RX", CUSTATEVEC_PAULI_X},       {"RY", CUSTATEVEC_PAULI_Y},
@@ -1221,7 +1225,7 @@ class StateVectorCudaManaged
         const auto local_angle = (use_adjoint) ? param / 2 : -param / 2;
 
         PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyPauliRotation(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* void* */ BaseType::getData(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
@@ -1280,7 +1284,7 @@ class StateVectorCudaManaged
 
         // check the size of external workspace
         PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrixGetWorkspaceSize(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
             /* const void* */ matrix,
@@ -1300,7 +1304,7 @@ class StateVectorCudaManaged
 
         // apply gate
         PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrix(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* void* */ BaseType::getData(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
@@ -1364,7 +1368,7 @@ class StateVectorCudaManaged
 
         // check the size of external workspace
         PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrixGetWorkspaceSize(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
             /* const void* */ matrix.data(),
@@ -1384,7 +1388,7 @@ class StateVectorCudaManaged
 
         // apply gate
         PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrix(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* void* */ BaseType::getData(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
@@ -1449,7 +1453,7 @@ class StateVectorCudaManaged
 
         // check the size of external workspace
         PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationGetWorkspaceSize(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
             /* const void* */ matrix.data(),
@@ -1468,7 +1472,7 @@ class StateVectorCudaManaged
 
         // compute expectation
         PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectation(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* void* */ BaseType::getData(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
@@ -1521,7 +1525,7 @@ class StateVectorCudaManaged
 
         // check the size of external workspace
         PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationGetWorkspaceSize(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
             /* const void* */ matrix,
@@ -1540,7 +1544,7 @@ class StateVectorCudaManaged
 
         // compute expectation
         PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectation(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* void* */ BaseType::getData(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
