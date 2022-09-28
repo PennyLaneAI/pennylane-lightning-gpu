@@ -7,4 +7,4 @@ pybind11
 cmake
 ninja
 pennylane
-xanadu-sphinx-theme==0.1.0
+pennylane-sphinx-theme
