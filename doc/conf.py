@@ -178,7 +178,7 @@ html_favicon = "_static/favicon.ico"
 html_static_path = ["_static"]
 
 
-# -- Xanadu theme ---------------------------------------------------------
+# -- html theme ---------------------------------------------------------
 html_theme = "pennylane"
 html_theme_path = ["."]
 
