@@ -626,13 +626,11 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
         }
 
         // CUSPARSE APIs
-        cusparseHandle_t handle = nullptr;
+        cusparseHandle_t handle = sv.getCusparseHandle();
         cusparseSpMatDescr_t mat;
         cusparseDnVecDescr_t vecX, vecY;
 
         size_t bufferSize = 0;
-
-        PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&handle))
 
         // Create sparse matrix A in CSR format
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
@@ -696,7 +694,6 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecX))
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY))
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle))
     }
 
     [[nodiscard]] auto getObsName() const -> std::string override {
@@ -1176,7 +1173,10 @@ template <class T = double> class AdjointJacobianGPU {
         DevTag<int> dt_local(std::move(dev_tag));
         dt_local.refresh();
         // Create $U_{1:p}\vert \lambda \rangle$
-        StateVectorCudaManaged<T> lambda(ref_data, length, dt_local);
+        SharedCusvHandle   cusvhandle       = make_shared_cusv_handle();
+        SharedCublasHandle cublashandle     = make_shared_cublas_handle();
+        SharedCusparseHandle cusparsehandle = make_shared_cusparse_handle();
+        StateVectorCudaManaged<T> lambda(ref_data, length, dt_local, cusvhandle, cublashandle, cusparsehandle);
 
         // Apply given operations to statevector if requested
         if (apply_operations) {
@@ -1186,11 +1186,11 @@ template <class T = double> class AdjointJacobianGPU {
         // Create observable-applied state-vectors
         std::vector<StateVectorCudaManaged<T>> H_lambda;
         for (size_t n = 0; n < num_observables; n++) {
-            H_lambda.emplace_back(lambda.getNumQubits(), dt_local);
+            H_lambda.emplace_back(lambda.getNumQubits(), dt_local, true, cusvhandle, cublashandle, cusparsehandle);
         }
         applyObservables(H_lambda, lambda, obs);
 
-        StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local);
+        StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local, true, cusvhandle, cublashandle, cusparsehandle);
 
         for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
              op_idx--) {
