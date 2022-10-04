@@ -547,7 +547,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
              "Get the GPU index for the statevector data.")
         .def("numQubits", &StateVectorCudaManaged<PrecisionT>::getNumQubits)
         .def("dataLength", &StateVectorCudaManaged<PrecisionT>::getLength)
-        .def("resetGPU", &StateVectorCudaManaged<PrecisionT>::initSV);
+        .def("resetGPU", &StateVectorCudaManaged<PrecisionT>::initSV)
+        .def("syncOps", &StateVectorCudaManaged<PrecisionT>::syncOps);
 
     //***********************************************************************//
     //                              Observable

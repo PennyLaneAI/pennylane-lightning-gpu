@@ -220,6 +220,23 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
         }
     }
 
+    /**
+     * @brief Synchronize operations in the provided CUDA stream. Blocks until
+     * complete.
+     *
+     * @param stream_id Stream identifier to synchonize on.
+     */
+    static void syncOps(cudaStream_t stream_id) {
+        PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(stream_id));
+    }
+
+    /**
+     * @brief Synchronize operations in the buffer-associated CUDA stream.
+     * Blocks until complete.
+     *
+     */
+    void syncOps() { PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(getStream())); }
+
   private:
     std::size_t length_;
     DevTag<DevTagT> dev_tag_;

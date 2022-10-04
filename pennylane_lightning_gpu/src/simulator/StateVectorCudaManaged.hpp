@@ -1004,6 +1004,8 @@ class StateVectorCudaManaged
         return samples;
     }
 
+    void syncOps() { BaseType::syncOps(); }
+
   private:
     GateCache<Precision> gate_cache_;
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
