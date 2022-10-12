@@ -15,6 +15,7 @@ r"""
 This module contains the :class:`~.LightningGPU` class, a PennyLane simulator device that
 interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enabled calculations.
 """
+import itertools
 from typing import List
 from warnings import warn
 
@@ -314,6 +315,10 @@ class LightningGPU(LightningQubit):
             adj = AdjointJacobianGPU_C128()
 
         obs_serialized = _serialize_observables(tape, self.wire_map, use_csingle=self.use_csingle)
+
+        if isinstance(obs_serialized[0], list):  # Flatten nested lists
+            obs_serialized = list(itertools.chain(*obs_serialized))
+
         ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=self.use_csingle)
 
         ops_serialized = adj.create_ops_list(*ops_serialized)
@@ -432,9 +437,19 @@ class LightningGPU(LightningQubit):
         if observable.name in ["Hamiltonian"]:
             device_wires = self.map_wires(observable.wires)
             # Since we currently offload hermitian observables to default.qubit, we can assume the matrix exists
-            return self._gpu_state.ExpectationValue(
-                device_wires, qml.matrix(observable).ravel(order="C")
-            )
+            # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
+            if len(device_wires) > 13:
+                Hmat = qml.utils.sparse_hamiltonian(observable, wires=device_wires)
+
+                return self._gpu_state.ExpectationValue(
+                    Hmat.indptr,
+                    Hmat.indices,
+                    Hmat.data,
+                )
+            else:
+                return self._gpu_state.ExpectationValue(
+                    device_wires, qml.matrix(observable).ravel(order="C")
+                )
 
         par = (
             observable.parameters
