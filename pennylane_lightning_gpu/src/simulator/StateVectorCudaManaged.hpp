@@ -1004,6 +1004,93 @@ class StateVectorCudaManaged
         return samples;
     }
 
+    /**
+     * @brief Get expectation value for a sum of Pauli words.
+     *
+     * @param pauli_words Vector of Pauli-words to evaluate expectation value.
+     * @param tgts Coupled qubit index to apply each Pauli term.
+     * @param coeffs Numpy array buffer of size |pauli_words|
+     * @return auto Expectation value.
+     */
+    auto getExpectationValuePauliWords(
+        const std::vector<std::string> &pauli_words,
+        const std::vector<std::vector<std::size_t>> &tgts,
+        const std::complex<Precision> *coeffs) {
+
+        uint32_t nIndexBits = static_cast<uint32_t>(BaseType::getNumQubits());
+        cudaDataType_t data_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+        } else {
+            data_type = CUDA_C_32F;
+        }
+
+        // Note: due to API design, cuStateVec assumes this is always a double.
+        // Push NVIDIA to move this to behind API for future releases, and
+        // support 32/64 bits.
+        std::vector<double> expect(pauli_words.size());
+
+        std::vector<std::vector<custatevecPauli_t>> pauliOps;
+
+        std::vector<custatevecPauli_t *> pauliOps_ptr;
+
+        for (auto &p_word : pauli_words) {
+            pauliOps.push_back(cuUtil::pauliStringToEnum(p_word));
+            pauliOps_ptr.push_back((*pauliOps.rbegin()).data());
+        }
+
+        std::vector<std::vector<int32_t>> basisBits;
+        std::vector<int32_t *> basisBits_ptr;
+        std::vector<uint32_t> n_basisBits;
+
+        for (auto &wires : tgts) {
+            std::vector<int32_t> wiresInt(wires.size());
+            std::transform(wires.begin(), wires.end(), wiresInt.begin(),
+                           [&](std::size_t x) {
+                               return static_cast<int>(
+                                   BaseType::getNumQubits() - 1 - x);
+                           });
+            basisBits.push_back(wiresInt);
+            basisBits_ptr.push_back((*basisBits.rbegin()).data());
+            n_basisBits.push_back(wiresInt.size());
+        }
+
+        // compute expectation
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationsOnPauliBasis(
+            /* custatevecHandle_t */ handle.ref(),
+            /* void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* double* */ expect.data(),
+            /* const custatevecPauli_t ** */
+            const_cast<const custatevecPauli_t **>(pauliOps_ptr.data()),
+            /* const uint32_t */ static_cast<uint32_t>(pauliOps.size()),
+            /* const int32_t ** */
+            const_cast<const int32_t **>(basisBits_ptr.data()),
+            /* const uint32_t */ n_basisBits.data()));
+
+        std::complex<Precision> result{0, 0};
+
+        if constexpr (std::is_same_v<Precision, double>) {
+            for (std::size_t idx = 0; idx < expect.size(); idx++) {
+                result += expect[idx] * coeffs[idx];
+            }
+            return std::real(result);
+        } else {
+            std::vector<Precision> expect_cast(expect.size());
+            std::transform(expect.begin(), expect.end(), expect_cast.begin(),
+                           [](double x) { return static_cast<float>(x); });
+
+            for (std::size_t idx = 0; idx < expect_cast.size(); idx++) {
+                result += expect_cast[idx] * expect_cast[idx];
+            }
+
+            return std::real(result);
+        }
+    }
+
   private:
     GateCache<Precision> gate_cache_;
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,
@@ -1544,84 +1631,6 @@ class StateVectorCudaManaged
         if (extraWorkspaceSizeInBytes)
             PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
         return expect;
-    }
-
-    /**
-     * @brief Get expectation of a given host or device defined array.
-     *
-     * @param pauli_words Vector of Pauli-words to evaluate expectation value.
-     * @param tgts Coupled qubit index to apply each Pauli term.
-     * @return auto Expectation value.
-     */
-    auto getExpectationValuePauliString(
-        const std::vector<std::string> &pauli_words,
-        const std::vector<std::vector<std::size_t>> &tgts,
-        const std::vector<CFP_t> &coeffs) {
-
-        size_t nIndexBits = BaseType::getNumQubits();
-        cudaDataType_t data_type;
-        custatevecComputeType_t compute_type;
-
-        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
-                      std::is_same_v<CFP_t, double2>) {
-            data_type = CUDA_C_64F;
-            compute_type = CUSTATEVEC_COMPUTE_64F;
-        } else {
-            data_type = CUDA_C_32F;
-            compute_type = CUSTATEVEC_COMPUTE_32F;
-        }
-
-        // Note: due to API design, cuStateVec assumes this is always a double.
-        // Push NVIDIA to move this to behind API for future releases, and
-        // support 32/64 bits.
-        std::vector<double> expect(pauli_words.size());
-
-        std::vector<std::vector<custatevecPauli_t>> pauliOps;
-        std::vector<custatevecPauli_t *> pauliOps_ptr;
-
-        for (const auto &p_word : pauli_words) {
-            pauliOps.push_back(cuUtil::pauliStringToEnum(p_word));
-            pauliOps_ptr.push_back((*pauliOps.rbegin()).data());
-        }
-
-        std::vector<std::vector<int32_t>> basisBits;
-        std::vector<int32_t *> basisBits_ptr;
-        std::vector<uint32_t> n_basisBits;
-
-        for (const auto &wires : tgts) {
-            std::vector<int32_t> wiresInt(wires.size());
-            std::transform(wires.begin(), wires.end(), wiresInt.begin(),
-                           [&](std::size_t x) {
-                               return static_cast<int>(
-                                   BaseType::getNumQubits() - 1 - x);
-                           });
-            basisBits.push_back(wiresInt);
-            basisBits_ptr.push_back((*basisBits.rbegin()).data());
-            n_basisBits.push_back(wiresInt.size());
-        }
-
-        // compute expectation
-        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationsOnPauliBasis(
-            /* custatevecHandle_t */ handle.ref(),
-            /* void* */ BaseType::getData(),
-            /* cudaDataType_t */ data_type,
-            /* const uint32_t */ nIndexBits,
-            /* double* */ expect.data(),
-            /* const custatevecPauli_t ** */ pauliOps.data(),
-            /* const uint32_t */ static_cast<uint32_t>(pauliOps.size()),
-            /* const int32_t ** */ basisBits_ptr.data(),
-            /* const uint32_t */ n_basisBits.data()));
-
-        return expect;
-
-        if constexpr (std::is_same_v<Precision, double>) {
-            return expect;
-        } else {
-            std::vector<Precision> expect_cast(expect.size());
-            std::transform(expect.begin(), expect.end(), expect_cast.begin(),
-                           [](double x) { return static_cast<float>(x); });
-            return expect_cast;
-        }
     }
 };
 }; // namespace Pennylane
