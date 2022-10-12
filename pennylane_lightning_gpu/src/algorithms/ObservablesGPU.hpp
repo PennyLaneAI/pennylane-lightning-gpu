@@ -123,6 +123,7 @@ template <typename T> class HermitianObsGPU final : public ObservableGPU<T> {
   private:
     std::vector<std::complex<T>> matrix_;
     std::vector<size_t> wires_;
+    inline static const MatrixHasher mh;
 
     [[nodiscard]] bool isEqual(const ObservableGPU<T> &other) const override {
         const auto &other_cast = static_cast<const HermitianObsGPU<T> &>(other);
@@ -150,12 +151,16 @@ template <typename T> class HermitianObsGPU final : public ObservableGPU<T> {
     }
 
     [[nodiscard]] auto getObsName() const -> std::string override {
-        return "Hermitian";
+        // To avoid collisions on cached GPU data, use matrix elements to
+        // uniquely identify Hermitian
+        // TODO: Replace with a performant hash function
+        std::ostringstream obs_stream;
+        obs_stream << "Hermitian" << mh(matrix_);
+        return obs_stream.str();
     }
 
     void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
-        std::string obs_name_ = "Hermitian";
-        sv.applyOperation_std(obs_name_, wires_, false, {}, matrix_);
+        sv.applyOperation_std(getObsName(), wires_, false, {}, matrix_);
     }
 };
 

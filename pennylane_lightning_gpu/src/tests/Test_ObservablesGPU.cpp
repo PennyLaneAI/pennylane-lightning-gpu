@@ -35,6 +35,10 @@ TEMPLATE_TEST_CASE("ObservablesGPU::NamedObsGPU", "[ObservablesGPU]", float,
     NamedObsGPU<TestType> obs2{"RX", {1}, {0.245}};
     NamedObsGPU<TestType> obs3{"UnsupportedObs", {2, 3}, {0.876, 1.5623}};
 
+    SECTION("NamedObsGPU<TestType> binary ops") {
+        CHECK(obs1 == NamedObsGPU<TestType>{"PauliX", {3}, {}});
+        CHECK(obs1 != obs2);
+    }
     SECTION("NamedObsGPU<TestType>::getWires") {
         CHECK(obs1.getWires() == std::vector<size_t>{3});
         CHECK(obs2.getWires() == std::vector<size_t>{1});
@@ -84,6 +88,73 @@ TEMPLATE_TEST_CASE("ObservablesGPU::HermitianObsGPU", "[ObservablesGPU]", float,
         REQUIRE(std::is_constructible<HermitianObsGPU<TestType>,
                                       std::vector<std::complex<TestType>>,
                                       std::vector<size_t>>::value);
+    }
+
+    std::vector<std::complex<TestType>> hermitian_h{{0.7071067811865475, 0},
+                                                    {0.7071067811865475, 0},
+                                                    {0.7071067811865475, 0},
+                                                    {-0.7071067811865475, 0}};
+    std::vector<std::complex<TestType>> hermitian_ry{{std::cos(0.1234), 0},
+                                                     {-std::sin(0.1234), 0},
+                                                     {std::sin(0.1234), 0},
+                                                     {std::cos(0.1234), 0}};
+
+    HermitianObsGPU<TestType> obs1{hermitian_h, {0}};
+    HermitianObsGPU<TestType> obs2{hermitian_ry, {2}};
+
+    SECTION("NamedObsGPU<TestType> binary ops") {
+        CHECK(obs1 == HermitianObsGPU<TestType>{hermitian_h, {0}});
+        CHECK(obs1 != obs2);
+    }
+    SECTION("NamedObsGPU<TestType>::getWires") {
+        CHECK(obs1.getWires() == std::vector<size_t>{0});
+        CHECK(obs2.getWires() == std::vector<size_t>{2});
+    }
+
+    SECTION("NamedObsGPU<TestType>::applyInPlace") {
+        StateVectorCudaManaged<TestType> sv(4);
+        sv.initSV();
+
+        std::vector<std::complex<TestType>> host_array(16, {0, 0});
+        std::vector<std::complex<TestType>> res1 = {{0.7071067811865475, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0.7071067811865475, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0},
+                                                    {0, 0}};
+        std::vector<std::complex<TestType>> res2 = {
+            {0.30734708, 0}, {0, 0}, {0.39438277, 0}, {0, 0},
+            {0.30734708, 0}, {0, 0}, {0.39438277, 0}, {0, 0},
+            {0.30734708, 0}, {0, 0}, {0.39438277, 0}, {0, 0},
+            {0.30734708, 0}, {0, 0}, {0.39438277, 0}, {0, 0}};
+
+        obs1.applyInPlace(sv);
+        sv.getDataBuffer().CopyGpuDataToHost(host_array.data(),
+                                             host_array.size());
+        for (std::size_t i = 0; i < host_array.size(); i++) {
+            CHECK(host_array[i].real() == Approx(res1[i].real()));
+            CHECK(host_array[i].imag() == Approx(res1[i].imag()));
+        }
+        sv.applyHadamard({1}, false);
+        sv.applyHadamard({2}, false);
+        obs2.applyInPlace(sv);
+
+        sv.getDataBuffer().CopyGpuDataToHost(host_array.data(),
+                                             host_array.size());
+        for (std::size_t i = 0; i < host_array.size(); i++) {
+            CHECK(host_array[i].real() == Approx(res2[i].real()));
+            CHECK(host_array[i].imag() == Approx(res2[i].imag()));
+        }
     }
 }
 
