@@ -99,6 +99,9 @@ def _H_dtype(dtype):
     return HamiltonianGPU_C128 if dtype == np.complex128 else HamiltonianGPU_C64
 
 
+_name_map = {"PauliX": "X", "PauliY": "Y", "PauliZ": "Z", "Identity": "I"}
+
+
 class LightningGPU(LightningQubit):
     """PennyLane-Lightning-GPU device.
 
@@ -439,13 +442,31 @@ class LightningGPU(LightningQubit):
             # Since we currently offload hermitian observables to default.qubit, we can assume the matrix exists
             # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
             if len(device_wires) > 13:
-                Hmat = qml.utils.sparse_hamiltonian(observable, wires=device_wires)
+                # Hmat = qml.utils.sparse_hamiltonian(observable, wires=device_wires)
+                # from IPython import embed
 
-                return self._gpu_state.ExpectationValue(
-                    Hmat.indptr,
-                    Hmat.indices,
-                    Hmat.data,
-                )
+                # embed()
+
+                coeffs = observable.coeffs
+                pauli_words = []
+                word_wires = []
+                for word in observable.terms()[1]:
+                    compressed_word = []
+                    if isinstance(word.name, list):
+                        for char in word.name:
+                            compressed_word.append(_name_map[char])
+                    else:
+                        compressed_word.append(_name_map[word.name])
+                    word_wires.append(word.wires.tolist())
+                    pauli_words.append("".join(compressed_word))
+
+                return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
+
+                # return self._gpu_state.ExpectationValue(
+                #    Hmat.indptr,
+                #    Hmat.indices,
+                #    Hmat.data,
+                # )
             else:
                 return self._gpu_state.ExpectationValue(
                     device_wires, qml.matrix(observable).ravel(order="C")
