@@ -108,7 +108,7 @@ def _serialize_hamiltonian(ob, wires_map: dict, use_csingle: bool):
 
     coeffs = np.array(ob.coeffs).astype(rtype)
     terms = [_serialize_ob(t, wires_map, use_csingle) for t in ob.ops]
-    return hamiltonian_obs(coeffs, terms)
+    return [hamiltonian_obs([c], [t]) for (c, t) in zip(coeffs, terms)]
 
 
 def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool):
