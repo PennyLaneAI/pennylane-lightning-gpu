@@ -35,12 +35,14 @@ if(ENABLE_OPENMP)
 endif()
 target_link_libraries(runner_gpu PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
 
-target_sources(runner_gpu PRIVATE Test_StateVectorCudaManaged_NonParam.cpp 
-                              Test_StateVectorCudaManaged_Param.cpp 
-                              Test_AdjointDiffGPU.cpp 
-                              Test_GateCache.cpp 
-                              Test_DataBuffer.cpp 
-                              TestHelpers.hpp 
+target_sources(runner_gpu PRIVATE Test_StateVectorCudaManaged_NonParam.cpp
+                              Test_StateVectorCudaManaged_NonParam.cpp
+                              Test_StateVectorCudaManaged_Param.cpp
+                              Test_AdjointDiffGPU.cpp
+                              Test_ObservablesGPU.cpp
+                              Test_GateCache.cpp
+                              Test_DataBuffer.cpp
+                              TestHelpers.hpp
 )
 
 target_compile_options(runner_gpu PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")
