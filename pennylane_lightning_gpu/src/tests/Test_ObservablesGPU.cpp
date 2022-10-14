@@ -259,4 +259,94 @@ TEMPLATE_TEST_CASE("ObservablesGPU::HamiltonianGPU", "[ObservablesGPU]", float,
                 HamiltonianGPU<TestType>, std::vector<TestType>,
                 std::vector<std::shared_ptr<ObservableGPU<TestType>>>>::value);
     }
+
+    std::vector<std::complex<TestType>> hermitian_h{{0.7071067811865475, 0},
+                                                    {0.7071067811865475, 0},
+                                                    {0.7071067811865475, 0},
+                                                    {-0.7071067811865475, 0}};
+
+    std::shared_ptr<HermitianObsGPU<TestType>> obs1(
+        new HermitianObsGPU<TestType>(hermitian_h, {0}));
+    std::shared_ptr<NamedObsGPU<TestType>> obs2(
+        new NamedObsGPU<TestType>("PauliX", {2}, {}));
+    std::shared_ptr<NamedObsGPU<TestType>> obs3(
+        new NamedObsGPU<TestType>("PauliX", {3}, {}));
+
+    std::shared_ptr<TensorProdObsGPU<TestType>> tp_obs1(
+        new TensorProdObsGPU<TestType>(obs1, obs2));
+    std::shared_ptr<TensorProdObsGPU<TestType>> tp_obs2(
+        new TensorProdObsGPU<TestType>(obs2, obs3));
+
+    HamiltonianGPU<TestType> ham_1{
+        std::vector<TestType>{0.165, 0.13, 0.5423},
+        std::vector<std::shared_ptr<ObservableGPU<TestType>>>{obs1, obs2,
+                                                              obs2}};
+    HamiltonianGPU<TestType> ham_2{
+        std::vector<TestType>{0.8545, 0.3222},
+        std::vector<std::shared_ptr<ObservableGPU<TestType>>>{tp_obs1,
+                                                              tp_obs2}};
+
+    SECTION("HamiltonianGPU<TestType> binary ops") {
+        CHECK(ham_1 ==
+              HamiltonianGPU<TestType>{
+                  std::vector<TestType>{0.165, 0.13, 0.5423},
+                  std::vector<std::shared_ptr<ObservableGPU<TestType>>>{
+                      obs1, obs2, obs2}});
+        CHECK(ham_1 != ham_2);
+    }
+    SECTION("HamiltonianGPU<TestType>::getWires") {
+        CHECK(ham_1.getWires() == std::vector<size_t>{0, 2});
+        CHECK(ham_2.getWires() == std::vector<size_t>{0, 2, 3});
+    }
+    SECTION("HamiltonianGPU<TestType>::obsName") {
+        std::ostringstream res1, res2;
+        res1 << "Hamiltonian: { 'coeffs' : [0.165, 0.13, 0.5423], "
+                "'observables' : [Hermitian"
+             << MatrixHasher()(hermitian_h) << ", PauliX[2], PauliX[2]]}";
+        res2 << "Hamiltonian: { 'coeffs' : [0.8545, 0.3222], 'observables' : "
+                "[Hermitian"
+             << MatrixHasher()(hermitian_h)
+             << " @ PauliX[2], PauliX[2] @ PauliX[3]]}";
+
+        CHECK(ham_1.getObsName() == res1.str());
+        CHECK(ham_2.getObsName() == res2.str());
+    }
+
+    SECTION("HamiltonianGPU<TestType>::applyInPlace") {
+        StateVectorCudaManaged<TestType> sv(4);
+        sv.initSV();
+        sv.applyHadamard({0}, false);
+        sv.applyHadamard({1}, false);
+        sv.applyHadamard({2}, false);
+
+        std::vector<std::complex<TestType>> host_array(16, {0, 0});
+        std::vector<std::complex<TestType>> res1 = {
+            {0.32019394, 0}, {0, 0}, {0.32019394, 0}, {0, 0},
+            {0.32019394, 0}, {0, 0}, {0.32019394, 0}, {0, 0},
+            {0.23769394, 0}, {0, 0}, {0.23769394, 0}, {0, 0},
+            {0.23769394, 0}, {0, 0}, {0.23769394, 0}, {0, 0}};
+
+        ham_1.applyInPlace(sv);
+        sv.getDataBuffer().CopyGpuDataToHost(host_array.data(),
+                                             host_array.size());
+        for (std::size_t i = 0; i < host_array.size(); i++) {
+            CHECK(host_array[i].real() == Approx(res1[i].real()));
+            CHECK(host_array[i].imag() == Approx(res1[i].imag()));
+        }
+
+        std::vector<std::complex<TestType>> res2 = {
+            {0.33708855, 0}, {0.10316649, 0}, {0.33708855, 0}, {0.10316649, 0},
+            {0.33708855, 0}, {0.10316649, 0}, {0.33708855, 0}, {0.10316649, 0},
+
+            {0.04984838, 0}, {0.07658499, 0}, {0.04984838, 0}, {0.07658499, 0},
+            {0.04984838, 0}, {0.07658499, 0}, {0.04984838, 0}, {0.07658499, 0}};
+
+        ham_2.applyInPlace(sv);
+        sv.getDataBuffer().CopyGpuDataToHost(host_array.data(),
+                                             host_array.size());
+        for (std::size_t i = 0; i < host_array.size(); i++) {
+            CHECK(host_array[i].real() == Approx(res2[i].real()));
+            CHECK(host_array[i].imag() == Approx(res2[i].imag()));
+        }
+    }
 }
