@@ -764,9 +764,6 @@ def test_integration_custom_wires(returns):
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
 
-@pytest.mark.skipif(
-    DevPool.getTotalDevices() < 2, reason="Insufficient GPUs to test observable batching"
-)
 @pytest.mark.parametrize(
     "returns",
     [
@@ -810,9 +807,6 @@ def test_integration_custom_wires_batching(returns):
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
 
-@pytest.mark.skipif(
-    DevPool.getTotalDevices() < 2, reason="Insufficient GPUs to test observable batching"
-)
 @pytest.mark.parametrize(
     "returns",
     [
@@ -839,11 +833,12 @@ def test_integration_custom_wires_batching(returns):
         ),
     ],
 )
-def test_fail_batching_H(returns):
+def test_batching_H(returns):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations and when using custom wire labels"""
 
     dev_gpu = qml.device("lightning.gpu", wires=custom_wires, batch_obs=True)
+    dev_gpu_default = qml.device("lightning.gpu", wires=custom_wires, batch_obs=False)
 
     def circuit(params):
         circuit_ansatz(params, wires=custom_wires)
@@ -854,12 +849,12 @@ def test_fail_batching_H(returns):
     params = np.random.rand(n_params)
 
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
+    qnode_gpu_default = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
 
-    with pytest.raises(
-        NotImplementedError,
-        match="Hamiltonian observables are not currently supported in multi-GPU",
-    ):
-        j_gpu = qml.jacobian(qnode_gpu)(params)
+    j_gpu = qml.jacobian(qnode_gpu)(params)
+    j_gpu_default = qml.jacobian(qnode_gpu)(params)
+
+    assert np.allclose(j_gpu, j_gpu_default)
 
 
 @pytest.mark.parametrize(
