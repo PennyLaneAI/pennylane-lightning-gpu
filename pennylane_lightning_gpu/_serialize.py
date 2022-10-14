@@ -173,8 +173,14 @@ def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool
     Returns:
         list(ObservableGPU_C64 or ObservableGPU_C128): A list of observable objects compatible with the C++ backend
     """
-
-    return [_serialize_ob(ob, wires_map, use_csingle) for ob in tape.observables]
+    output = []
+    for ob in tape.observables:
+        ser_ob = _serialize_ob(ob, wires_map, use_csingle)
+        if isinstance(ser_ob, list):
+            output.extend(ser_ob)
+        else:
+            output.append(ser_ob)
+    return output
 
 
 def _serialize_ops(
