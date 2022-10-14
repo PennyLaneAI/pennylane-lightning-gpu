@@ -128,7 +128,15 @@ class LightningGPU(LightningQubit):
         "Identity",
     }
 
-    def __init__(self, wires, *, sync=True, c_dtype=np.complex128, shots=None, batch_obs: Union[bool, int]=False):
+    def __init__(
+        self,
+        wires,
+        *,
+        sync=True,
+        c_dtype=np.complex128,
+        shots=None,
+        batch_obs: Union[bool, int] = False,
+    ):
         super().__init__(wires, c_dtype=c_dtype, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._sync = sync
@@ -318,12 +326,7 @@ class LightningGPU(LightningQubit):
             adj = AdjointJacobianGPU_C128()
 
         obs_serialized = _serialize_observables(tape, self.wire_map, use_csingle=self.use_csingle)
-
-        if isinstance(obs_serialized[0], list):  # Flatten nested lists
-            obs_serialized = list(itertools.chain(*obs_serialized))
-
         ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=self.use_csingle)
-
         ops_serialized = adj.create_ops_list(*ops_serialized)
 
         trainable_params = sorted(tape.trainable_params)
@@ -348,13 +351,24 @@ class LightningGPU(LightningQubit):
             # whether there must be only one state preparation...
             tp_shift = [i - 1 for i in tp_shift]
 
+        """
+        This path enables controlled batching over the requested observables, be they explicit, or part of a Hamiltonian.
+        The traditional path will assume there exists enough free memory to preallocate all arrays and run through each observable iteratively.
+        However, for larger system, this becomes impossible, and we hit memory issues very quickly. the batching support here enables several functionalities:
+        - Pre-allocate memory for all observables on the primary GPU (`batch_obs=False`, default behaviour): This is the simplest path, and works best for few observables, and moderate qubit sizes. All memory is preallocated for each observable, and run through iteratively on a single GPU.
+        - Evenly distribute the observables over all available GPUs (`batch_obs=True`): This will evenly split the data into ceil(num_obs/num_gpus) chunks, and allocate enough space on each GPU up-front before running through them concurrently. This relies on C++ threads to handle the orchestration.
+        - Allocate at most `n` observables per GPU (`batch_obs=n`): Providing an integer value restricts each available GPU to at most `n` copies of the statevector, and hence `n` given observables for a given batch. This will iterate over the data in chnuks of size `n*num_gpus`.
+        """
         if self._batch_obs:
             num_obs = len(obs_serialized)
-            batch_size = num_obs if isinstance(self._batch_obs, bool) else self._batch_obs * self._dp.getTotalDevices()
+            batch_size = (
+                num_obs
+                if isinstance(self._batch_obs, bool)
+                else self._batch_obs * self._dp.getTotalDevices()
+            )
             jac = []
             for chunk in range(0, num_obs, batch_size):
-                obs_chunk = obs_serialized[chunk:chunk+batch_size]
-                print(f"Processing chunk: {chunk} to {chunk+batch_size} of {num_obs} with size {len(obs_chunk)}")
+                obs_chunk = obs_serialized[chunk : chunk + batch_size]
                 jac_chunk = adj.adjoint_jacobian_batched(
                     self._gpu_state,
                     obs_chunk,
