@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <vector>
 
 #include "StateVectorCudaManaged.hpp"
@@ -208,7 +209,7 @@ template <typename T> class TensorProdObsGPU final : public ObservableGPU<T> {
             }
         }
         all_wires_ = std::vector<size_t>(wires.begin(), wires.end());
-        std::sort(all_wires_.begin(), all_wires_.end());
+        std::sort(all_wires_.begin(), all_wires_.end(), std::less{});
     }
 
     /**
@@ -353,7 +354,7 @@ template <typename T> class HamiltonianGPU final : public ObservableGPU<T> {
             wires.insert(ob_wires.begin(), ob_wires.end());
         }
         auto all_wires = std::vector<size_t>(wires.begin(), wires.end());
-        std::sort(all_wires.begin(), all_wires.end());
+        std::sort(all_wires.begin(), all_wires.end(), std::less{});
         return all_wires;
     }
 
