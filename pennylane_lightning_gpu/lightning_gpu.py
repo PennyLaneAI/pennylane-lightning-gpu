@@ -16,7 +16,7 @@ This module contains the :class:`~.LightningGPU` class, a PennyLane simulator de
 interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enabled calculations.
 """
 import itertools
-from typing import List
+from typing import List, Union
 from warnings import warn
 
 import numpy as np
@@ -128,7 +128,7 @@ class LightningGPU(LightningQubit):
         "Identity",
     }
 
-    def __init__(self, wires, *, sync=True, c_dtype=np.complex128, shots=None, batch_obs=False):
+    def __init__(self, wires, *, sync=True, c_dtype=np.complex128, shots=None, batch_obs: Union[bool, int]=False):
         super().__init__(wires, c_dtype=c_dtype, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._sync = sync
@@ -348,18 +348,20 @@ class LightningGPU(LightningQubit):
             # whether there must be only one state preparation...
             tp_shift = [i - 1 for i in tp_shift]
 
-        if self._dp.getTotalDevices() > 1 and self._batch_obs:
-            if any(isinstance(ob, _H_dtype(self.C_DTYPE)) for ob in obs_serialized):
-                raise NotImplementedError(
-                    "Hamiltonian observables are not currently supported in multi-GPU adjoint batching work-loads. Please set `batch_obs=False`."
+        if self._batch_obs:
+            num_obs = len(obs_serialized)
+            batch_size = num_obs if isinstance(self._batch_obs, bool) else self._batch_obs * self._dp.getTotalDevices()
+            jac = []
+            for chunk in range(0, num_obs, batch_size):
+                obs_chunk = obs_serialized[chunk:chunk+batch_size]
+                print(f"Processing chunk: {chunk} to {chunk+batch_size} of {num_obs} with size {len(obs_chunk)}")
+                jac_chunk = adj.adjoint_jacobian_batched(
+                    self._gpu_state,
+                    obs_chunk,
+                    ops_serialized,
+                    tp_shift,
                 )
-
-            jac = adj.adjoint_jacobian_batched(
-                self._gpu_state,
-                obs_serialized,
-                ops_serialized,
-                tp_shift,
-            )
+                jac.extend(jac_chunk)
         else:
             jac = adj.adjoint_jacobian(self._gpu_state, obs_serialized, ops_serialized, tp_shift)
 
@@ -443,14 +445,10 @@ class LightningGPU(LightningQubit):
             # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
             if len(device_wires) > 13:
                 # Hmat = qml.utils.sparse_hamiltonian(observable, wires=device_wires)
-                # from IPython import embed
-
-                # embed()
-
                 coeffs = observable.coeffs
                 pauli_words = []
                 word_wires = []
-                for word in observable.terms()[1]:
+                for word in observable.ops:
                     compressed_word = []
                     if isinstance(word.name, list):
                         for char in word.name:
