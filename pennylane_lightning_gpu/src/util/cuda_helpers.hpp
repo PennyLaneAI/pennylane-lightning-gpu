@@ -583,6 +583,47 @@ auto chunkData(const Container<T> &data, std::size_t num_chunks)
     return chunkDataSize(data, div);
 }
 
+inline static auto pauliStringToEnum(const std::string &pauli_word)
+    -> std::vector<custatevecPauli_t> {
+    // Map string rep to Pauli enums
+    const std::unordered_map<std::string, custatevecPauli_t> pauli_map{
+        std::pair<const std::string, custatevecPauli_t>{std::string("X"),
+                                                        CUSTATEVEC_PAULI_X},
+        std::pair<const std::string, custatevecPauli_t>{std::string("Y"),
+                                                        CUSTATEVEC_PAULI_Y},
+        std::pair<const std::string, custatevecPauli_t>{std::string("Z"),
+                                                        CUSTATEVEC_PAULI_Z},
+        std::pair<const std::string, custatevecPauli_t>{std::string("I"),
+                                                        CUSTATEVEC_PAULI_I}};
+
+    static constexpr std::size_t num_char = 1;
+
+    std::vector<custatevecPauli_t> output;
+    output.reserve(pauli_word.size());
+
+    for (const auto ch : pauli_word) {
+        auto out = pauli_map.at(std::string(num_char, ch));
+        output.push_back(out);
+    }
+    return output;
+}
+
+/**
+ * Utility hash function for complex vectors representing matrices.
+ */
+struct MatrixHasher {
+    template <class Precision = double>
+    std::size_t
+    operator()(const std::vector<std::complex<Precision>> &matrix) const {
+        std::size_t hash_val = matrix.size();
+        for (const auto &c_val : matrix) {
+            hash_val ^= std::hash<Precision>()(c_val.real()) ^
+                        std::hash<Precision>()(c_val.imag());
+        }
+        return hash_val;
+    }
+};
+
 /** @brief `%CudaScopedDevice` uses RAII to select a CUDA device context.
  *
  * @see https://taskflow.github.io/taskflow/classtf_1_1cudaScopedDevice.html
