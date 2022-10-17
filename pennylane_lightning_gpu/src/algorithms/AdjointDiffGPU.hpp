@@ -494,7 +494,6 @@ template <class T = double> class AdjointJacobianGPU {
                     std::size_t offset_first, std::size_t offset_last) {
                     // Ensure No OpenMP threads spawned;
                     // to be resolved with streams in future releases
-                    // omp_set_num_threads(offset_last - offset_first +1);
                     omp_set_num_threads(1);
 
                     // Grab a GPU index, and set a device tag
@@ -524,7 +523,7 @@ template <class T = double> class AdjointJacobianGPU {
             threads.emplace_back(adj_lambda, std::move(jac_subset_promise),
                                  first, last);
         }
-        /// Keep going here; ensure the new local jacs are inserted and
+        /// Ensure the new local jacs are inserted and
         /// overwrite the 0 jacs values before returning
         for (std::size_t i = 0; i < futures.size(); i++) {
             const auto first = static_cast<std::size_t>(

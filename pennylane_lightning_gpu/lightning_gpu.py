@@ -15,7 +15,6 @@ r"""
 This module contains the :class:`~.LightningGPU` class, a PennyLane simulator device that
 interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enabled calculations.
 """
-import itertools
 from typing import List, Union
 from warnings import warn
 
@@ -458,7 +457,6 @@ class LightningGPU(LightningQubit):
             # Since we currently offload hermitian observables to default.qubit, we can assume the matrix exists
             # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
             if len(device_wires) > 13:
-                # Hmat = qml.utils.sparse_hamiltonian(observable, wires=device_wires)
                 coeffs = observable.coeffs
                 pauli_words = []
                 word_wires = []
@@ -474,11 +472,6 @@ class LightningGPU(LightningQubit):
 
                 return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
 
-                # return self._gpu_state.ExpectationValue(
-                #    Hmat.indptr,
-                #    Hmat.indices,
-                #    Hmat.data,
-                # )
             else:
                 return self._gpu_state.ExpectationValue(
                     device_wires, qml.matrix(observable).ravel(order="C")

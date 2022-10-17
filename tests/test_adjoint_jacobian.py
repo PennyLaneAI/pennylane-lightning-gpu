@@ -849,10 +849,10 @@ def test_batching_H(returns):
     params = np.random.rand(n_params)
 
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
-    qnode_gpu_default = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
+    qnode_gpu_default = qml.QNode(circuit, dev_gpu_default, diff_method="adjoint")
 
     j_gpu = qml.jacobian(qnode_gpu)(params)
-    j_gpu_default = qml.jacobian(qnode_gpu)(params)
+    j_gpu_default = qml.jacobian(qnode_gpu_default)(params)
 
     assert np.allclose(j_gpu, j_gpu_default)
 

@@ -596,11 +596,13 @@ inline static auto pauliStringToEnum(const std::string &pauli_word)
         std::pair<const std::string, custatevecPauli_t>{std::string("I"),
                                                         CUSTATEVEC_PAULI_I}};
 
+    static constexpr std::size_t num_char = 1;
+
     std::vector<custatevecPauli_t> output;
     output.reserve(pauli_word.size());
 
     for (const auto ch : pauli_word) {
-        auto out = pauli_map.at(std::string(1, ch));
+        auto out = pauli_map.at(std::string(num_char, ch));
         output.push_back(out);
     }
     return output;

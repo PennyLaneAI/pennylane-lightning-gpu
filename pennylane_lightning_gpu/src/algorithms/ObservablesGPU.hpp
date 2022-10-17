@@ -88,9 +88,9 @@ template <typename T> class NamedObsGPU final : public ObservableGPU<T> {
     /**
      * @brief Construct a NamedObsGPU object, representing a given observable.
      *
-     * @param arg1 Name of the observable.
-     * @param arg2 Argument to construct wires.
-     * @param arg3 Argument to construct parameters
+     * @param obs_name Name of the observable.
+     * @param wires Argument to construct wires.
+     * @param params Argument to construct parameters
      */
     NamedObsGPU(std::string obs_name, std::vector<size_t> wires,
                 std::vector<T> params = {})
@@ -166,7 +166,7 @@ template <typename T> class HermitianObsGPU final : public ObservableGPU<T> {
 };
 
 /**
- * @brief  * @brief Class models Tensor product observables
+ * @brief Class models Tensor product observables
  */
 template <typename T> class TensorProdObsGPU final : public ObservableGPU<T> {
   private:
