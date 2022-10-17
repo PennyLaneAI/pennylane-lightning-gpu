@@ -13,11 +13,24 @@
 ### Contributors
 
 ---
+# Release 0.26.1
+
+### Bug fixes
+
+* Ensure `qml.Hamiltonian` is auto-decomposed for the adjoint differentiation pipeline to avoid OOM errors.
+[(#62)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/62)
+
+### Contributors
+
+Lee J. O'Riordan
+
+---
 # Release 0.26.0
 
 ### New features since last release
 
 * Added native support for expval(H) in adjoint method. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
+
 * Added cuSparse SpMV in expval(H) calculations. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
 
 ### Breaking changes
