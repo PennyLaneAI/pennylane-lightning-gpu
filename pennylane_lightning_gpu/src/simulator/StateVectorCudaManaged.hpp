@@ -139,7 +139,7 @@ class StateVectorCudaManaged
         const std::vector<std::size_t> tgts{wires.begin() + ctrl_offset,
                                             wires.end()};
         if (opName == "Identity") {
-            // No op
+            return;
         } else if (native_gates_.find(opName) != native_gates_.end()) {
             applyParametricPauliGate({opName}, ctrls, tgts, params.front(),
                                      adjoint);
