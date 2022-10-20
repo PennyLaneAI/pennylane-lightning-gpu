@@ -324,7 +324,9 @@ class LightningGPU(LightningQubit):
         else:
             adj = AdjointJacobianGPU_C128()
 
-        obs_serialized = _serialize_observables(tape, self.wire_map, use_csingle=self.use_csingle)
+        obs_serialized, obs_offsets = _serialize_observables(
+            tape, self.wire_map, use_csingle=self.use_csingle
+        )
         ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=self.use_csingle)
         ops_serialized = adj.create_ops_list(*ops_serialized)
 
@@ -358,6 +360,7 @@ class LightningGPU(LightningQubit):
         - Evenly distribute the observables over all available GPUs (`batch_obs=True`): This will evenly split the data into ceil(num_obs/num_gpus) chunks, and allocate enough space on each GPU up-front before running through them concurrently. This relies on C++ threads to handle the orchestration.
         - Allocate at most `n` observables per GPU (`batch_obs=n`): Providing an integer value restricts each available GPU to at most `n` copies of the statevector, and hence `n` given observables for a given batch. This will iterate over the data in chnuks of size `n*num_gpus`.
         """
+
         if self._batch_obs:
             num_obs = len(obs_serialized)
             batch_size = (
@@ -380,8 +383,15 @@ class LightningGPU(LightningQubit):
 
         jac = np.array(jac)  # only for parameters differentiable with the adjoint method
         jac = jac.reshape(-1, len(tp_shift))
-        jac_r = np.zeros((jac.shape[0], all_params))
-        jac_r[:, record_tp_rows] = jac
+        jac_r = np.zeros((len(tape.observables), all_params))
+
+        # Reduce over decomposed expval(H), if required.
+        for idx in range(len(obs_offsets[0:-1])):
+            if (obs_offsets[idx + 1] - obs_offsets[idx]) > 1:
+                jac_r[idx, :] = np.sum(jac[obs_offsets[idx] : obs_offsets[idx + 1], :], axis=0)
+            else:
+                jac_r[idx, :] = jac[obs_offsets[idx] : obs_offsets[idx + 1], :]
+
         return jac_r
 
     def vjp(self, measurements, dy, starting_state=None, use_device_state=False):
@@ -454,7 +464,6 @@ class LightningGPU(LightningQubit):
 
         if observable.name in ["Hamiltonian"]:
             device_wires = self.map_wires(observable.wires)
-            # Since we currently offload hermitian observables to default.qubit, we can assume the matrix exists
             # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
             if len(device_wires) > 13:
                 coeffs = observable.coeffs
@@ -469,7 +478,6 @@ class LightningGPU(LightningQubit):
                         compressed_word.append(_name_map[word.name])
                     word_wires.append(word.wires.tolist())
                     pauli_words.append("".join(compressed_word))
-
                 return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
 
             else:

@@ -12,6 +12,19 @@
 
 ### Contributors
 
+
+---
+# Release 0.26.2
+
+### Bug fixes
+
+* Fix reduction over batched & decomposed Hamiltonians in adjoint pipeline
+[(#64)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/64)
+
+### Contributors
+
+Lee J. O'Riordan
+
 ---
 # Release 0.26.1
 
