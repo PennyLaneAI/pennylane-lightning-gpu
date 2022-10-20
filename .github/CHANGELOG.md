@@ -1,19 +1,3 @@
-# Release 0.27.0-dev
-
-### New features since last release
-
-### Breaking changes
-
-### Improvements
-
-### Documentation
-
-### Bug fixes
-
-### Contributors
-
-
----
 # Release 0.26.2
 
 ### Bug fixes
