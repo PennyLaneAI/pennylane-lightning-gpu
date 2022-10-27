@@ -137,7 +137,9 @@ class LightningGPU(LightningQubit):
         batch_obs: Union[bool, int] = False,
     ):
         super().__init__(wires, c_dtype=c_dtype, shots=shots)
-        self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
+        # self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
+        self._gpu_state = _gpu_dtype(self._state.dtype)(wires)
+        self._create_basis_state(0)
         self._sync = sync
         self._dp = DevPool()
         self._batch_obs = batch_obs
@@ -154,6 +156,9 @@ class LightningGPU(LightningQubit):
         """Explicitly synchronize GPU data to CPU"""
         self._gpu_state.DeviceToHost(self._state.ravel(order="C"), use_async)
         self._pre_rotated_state = self._state
+
+    def _create_basis_state(self, index, use_async):
+        self._gpu_state.setBasisState(index, use_async)
 
     @classmethod
     def capabilities(cls):

@@ -216,10 +216,13 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      *
      */
     void initSV(bool async = false) {
-        std::vector<std::complex<Precision>> data(BaseType::getLength(),
-                                                  {0, 0});
-        data[0] = {1, 0};
-        CopyHostDataToGpu(data.data(), data.size(), async);
+        // std::vector<std::complex<Precision>> data(BaseType::getLength(),
+        //                                           {0, 0});
+        // data[0] = {1, 0};
+        // CopyHostDataToGpu(data.data(), data.size(), async);
+        size_t index = 0;
+        CFP_t value = {1, 0};
+        data_buffer_->setIthElement(value, index, async);
     }
 
   protected:

@@ -115,6 +115,11 @@ class StateVectorCudaManaged
 
     ~StateVectorCudaManaged() = default;
 
+    void setState(const std::complex<Precision> &value, const size_t &index,
+                  const bool async = false) {
+        BaseType::getDataBuffer().setIthElement(value, index, async);
+    }
+
     /**
      * @brief Apply a single gate to the state-vector. Offloads to custatevec
      * specific API calls if available. If unable, attempts to use prior cached

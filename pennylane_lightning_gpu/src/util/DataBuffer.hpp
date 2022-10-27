@@ -40,6 +40,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
+            PL_CUDA_IS_SUCCESS(
+                cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
         }
     }
 
@@ -51,6 +53,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
+            PL_CUDA_IS_SUCCESS(
+                cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
         }
     }
 
@@ -62,6 +66,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
+            PL_CUDA_IS_SUCCESS(
+                cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
         }
     }
 
@@ -126,6 +132,28 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     void zeroInit() {
         PL_CUDA_IS_SUCCESS(
             cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
+    }
+
+    /**
+     * @brief Set value to ith element
+     *
+     * @params index
+     * @params value
+     *
+     */
+    template <class HostDataT = GPUDataT>
+    void setIthElement(const HostDataT &value, const size_t index,
+                       bool async = false) {
+
+        if (!async) {
+            PL_CUDA_IS_SUCCESS(cudaMemcpy(&gpu_buffer_[index], &value,
+                                          sizeof(GPUDataT),
+                                          cudaMemcpyHostToDevice));
+        } else {
+            PL_CUDA_IS_SUCCESS(cudaMemcpyAsync(
+                &gpu_buffer_[index], &value, sizeof(GPUDataT) * getLength(),
+                cudaMemcpyHostToDevice, getStream()));
+        }
     }
 
     auto getData() -> GPUDataT * { return gpu_buffer_; }
