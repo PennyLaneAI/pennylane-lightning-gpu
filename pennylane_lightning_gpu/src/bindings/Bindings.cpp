@@ -93,9 +93,43 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             [](StateVectorCudaManaged<PrecisionT> &sv, const size_t index,
                const bool use_async) {
                 std::complex<PrecisionT> value = {1, 0};
-                return sv.setState(value, index, use_async);
+                sv.setState(value, index, use_async);
             },
             "Create basis state on GPU.")
+        .def(
+            "SetStateVector",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const np_arr_sparse_ind &indices, const np_arr_c &state,
+               const bool use_async) {
+                using index_type = typename std::conditional<
+                    std::is_same<ParamT, float>::value, int32_t, int64_t>::type;
+
+                const auto state_buffer = state.request();
+                std::vector<std::complex<PrecisionT>> state_;
+                if (state_buffer.size) {
+                    const auto state_ptr =
+                        static_cast<const std::complex<PrecisionT> *>(
+                            state_buffer.ptr);
+                    state_ = std::vector<std::complex<PrecisionT>>{
+                        state_ptr, state_ptr + state_buffer.size};
+                }
+
+                const auto indices_buffer = indices.request();
+                std::vector<index_type> indices_;
+                if (indices_buffer.size) {
+                    const auto indices_ptr =
+                        static_cast<const index_type *>(indices_buffer.ptr);
+                    indices_ = std::vector<index_type>{
+                        indices_ptr, indices_ptr + indices_buffer.size};
+                }
+
+                for (size_t i = 0; i < state_.size(); i++) {
+                    auto value = state_[i];
+                    size_t index = indices_[i];
+                    sv.setState(value, index, use_async);
+                }
+            },
+            "Set State Vector on GPU")
         .def(
             "Identity",
             [](StateVectorCudaManaged<PrecisionT> &sv,

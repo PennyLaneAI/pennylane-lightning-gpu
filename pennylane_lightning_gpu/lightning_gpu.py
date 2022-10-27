@@ -139,7 +139,7 @@ class LightningGPU(LightningQubit):
         super().__init__(wires, c_dtype=c_dtype, shots=shots)
         # self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._gpu_state = _gpu_dtype(self._state.dtype)(wires)
-        self._create_basis_state(0)
+        self.create_basis_state(0)
         self._sync = sync
         self._dp = DevPool()
         self._batch_obs = batch_obs
@@ -157,10 +157,52 @@ class LightningGPU(LightningQubit):
         self._gpu_state.DeviceToHost(self._state.ravel(order="C"), use_async)
         self._pre_rotated_state = self._state
 
-    def _create_basis_state(self, index, use_async):
+    def create_basis_state(self, index, use_async):
         self._gpu_state.setBasisState(index, use_async)
 
-    def _apply_basis_state(self, state, wires):
+    def apply_state_vector(self, state, device_wires):
+        """Initialize the internal state vector in a specified state.
+        Args:
+            state (array[complex]): normalized input state of length ``2**len(wires)``
+                or broadcasted state of shape ``(batch_size, 2**len(wires))``
+            device_wires (Wires): wires that get initialized in the state
+        """
+
+        # translate to wire labels used by device
+        device_wires = self.map_wires(device_wires)
+
+        state = self._asarray(state, dtype=self.C_DTYPE)
+        output_shape = [2] * self.num_wires
+
+        if not qml.math.is_abstract(state):
+            norm = qml.math.linalg.norm(state, axis=-1, ord=2)
+            if not qml.math.allclose(norm, 1.0, atol=tolerance):
+                raise ValueError("Sum of amplitudes-squared does not equal one.")
+
+        if len(device_wires) == self.num_wires and Wires(sorted(device_wires)) == device_wires:
+            # Initialize the entire device state with the input state
+            self._state = self._reshape(state, output_shape)
+            self.syncH2D()
+            return
+
+        # generate basis states on subset of qubits via the cartesian product
+        basis_states = np.array(list(product([0, 1], repeat=len(device_wires))))
+
+        # get basis states to alter on full set of qubits
+        unravelled_indices = np.zeros((2 ** len(device_wires), self.num_wires), dtype=int)
+        unravelled_indices[:, device_wires] = basis_states
+
+        # get indices for which the state is changed to input state vector elements
+        ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
+
+        state = self._scatter(ravelled_indices, state, [2**self.num_wires])
+        self._gpu_state.setStateVector(ravelled_indices, state, use_async)
+        self.syncH2D()
+
+        # state = self._reshape(state, output_shape)
+        # self._state = self._asarray(state, dtype=self.C_DTYPE)
+
+    def apply_basis_state(self, state, wires):
         """Initialize the state vector in a specified computational basis state.
         Args:
             state (array[int]): computational basis state of shape ``(wires,)``
@@ -185,8 +227,7 @@ class LightningGPU(LightningQubit):
         basis_states = qml.math.convert_like(basis_states, state)
         num = int(qml.math.dot(state, basis_states))
 
-        self._state = self._create_basis_state(num)
-
+        self.create_basis_state(num)
 
     @classmethod
     def capabilities(cls):
@@ -247,13 +288,13 @@ class LightningGPU(LightningQubit):
         # State preparation is currently done in Python
         if operations:  # make sure operations[0] exists
             if isinstance(operations[0], QubitStateVector):
-                self._apply_state_vector(operations[0].parameters[0].copy(), operations[0].wires)
+                self.apply_state_vector(operations[0].parameters[0].copy(), operations[0].wires)
                 del operations[0]
-                self.syncH2D()
+                # self.syncH2D()
             elif isinstance(operations[0], BasisState):
-                self._apply_basis_state(operations[0].parameters[0], operations[0].wires)
+                self.apply_basis_state(operations[0].parameters[0], operations[0].wires)
                 del operations[0]
-                #self.syncH2D()
+                # self.syncH2D()
 
         for operation in operations:
             if isinstance(operation, (QubitStateVector, BasisState)):
