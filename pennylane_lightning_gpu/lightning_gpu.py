@@ -160,6 +160,34 @@ class LightningGPU(LightningQubit):
     def _create_basis_state(self, index, use_async):
         self._gpu_state.setBasisState(index, use_async)
 
+    def _apply_basis_state(self, state, wires):
+        """Initialize the state vector in a specified computational basis state.
+        Args:
+            state (array[int]): computational basis state of shape ``(wires,)``
+                consisting of 0s and 1s.
+            wires (Wires): wires that the provided computational state should be initialized on
+        Note: This function does not support broadcasted inputs yet.
+        """
+        # translate to wire labels used by device
+        device_wires = self.map_wires(wires)
+
+        # length of basis state parameter
+        n_basis_state = len(state)
+
+        if not set(state.tolist()).issubset({0, 1}):
+            raise ValueError("BasisState parameter must consist of 0 or 1 integers.")
+
+        if n_basis_state != len(device_wires):
+            raise ValueError("BasisState parameter and wires must be of equal length.")
+
+        # get computational basis state number
+        basis_states = 2 ** (self.num_wires - 1 - np.array(device_wires))
+        basis_states = qml.math.convert_like(basis_states, state)
+        num = int(qml.math.dot(state, basis_states))
+
+        self._state = self._create_basis_state(num)
+
+
     @classmethod
     def capabilities(cls):
         capabilities = super().capabilities().copy()
@@ -225,7 +253,7 @@ class LightningGPU(LightningQubit):
             elif isinstance(operations[0], BasisState):
                 self._apply_basis_state(operations[0].parameters[0], operations[0].wires)
                 del operations[0]
-                self.syncH2D()
+                #self.syncH2D()
 
         for operation in operations:
             if isinstance(operation, (QubitStateVector, BasisState)):
