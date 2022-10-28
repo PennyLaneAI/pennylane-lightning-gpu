@@ -930,3 +930,68 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval_cuSparse",
         CHECK(expected == Approx(results).epsilon(1e-7));
     }
 }
+
+TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStates",
+                   "[StateVectorCudaManaged_Nonparam]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const std::size_t num_qubits = 3;
+
+    SECTION("SetStates") {
+        std::vector<cp_t> init_state{{0.0, 0.0}, {0.0, 0.1}, {0.1, 0.1},
+                                     {0.1, 0.2}, {0.2, 0.2}, {0.3, 0.3},
+                                     {0.3, 0.4}, {0.4, 0.5}};
+        std::vector<cp_t> expected_state{{2.0, 0.0},  {0.0, 0.1}, {4.0, 0.0},
+                                         {0.1, 0.2},  {8.0, 0.0}, {0.3, 0.3},
+                                         {12.0, 0.0}, {0.4, 0.5}};
+        std::vector<cp_t> out_data(Pennylane::Util::exp2(num_qubits));
+
+        SVDataGPU<TestType> svdat{num_qubits};
+        svdat.cuda_sv.CopyHostDataToGpu(init_state.data(), init_state.size());
+
+        using index_type =
+            typename std::conditional<std::is_same<TestType, float>::value,
+                                      int32_t, int64_t>::type;
+
+        std::vector<index_type> indices = {0, 2, 4, 6};
+        std::vector<std::complex<TestType>> values = {
+            {2.0, 0.0}, {4.0, 0.0}, {8.0, 0.0}, {12.0, 0.0}};
+
+        svdat.cuda_sv.template setState<index_type>(values, indices, false);
+
+        svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
+
+        CHECK(expected_state == Pennylane::approx(svdat.sv.getDataVector()));
+    }
+}
+
+TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetIthStates",
+                   "[StateVectorCudaManaged_Nonparam]", float, double) {
+    using cp_t = std::complex<TestType>;
+    const std::size_t num_qubits = 3;
+
+    SECTION("SetIthStates") {
+        std::vector<cp_t> init_state{{0.0, 0.0}, {0.0, 0.1}, {0.1, 0.1},
+                                     {0.1, 0.2}, {0.2, 0.2}, {0.3, 0.3},
+                                     {0.3, 0.4}, {0.4, 0.5}};
+        std::vector<cp_t> expected_state{{0.0, 0.0}, {0.0, 0.1}, {2.0, 0.0},
+                                         {0.1, 0.2}, {0.2, 0.2}, {0.3, 0.3},
+                                         {0.3, 0.4}, {0.4, 0.5}};
+        std::vector<cp_t> out_data(Pennylane::Util::exp2(num_qubits));
+
+        SVDataGPU<TestType> svdat{num_qubits};
+        svdat.cuda_sv.CopyHostDataToGpu(init_state.data(), init_state.size());
+
+        using index_type =
+            typename std::conditional<std::is_same<TestType, float>::value,
+                                      int32_t, int64_t>::type;
+
+        index_type indices = 2;
+        std::complex<TestType> values = {2.0, 0.0};
+
+        svdat.cuda_sv.setState(values, indices, false);
+
+        svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
+
+        CHECK(expected_state == Pennylane::approx(svdat.sv.getDataVector()));
+    }
+}

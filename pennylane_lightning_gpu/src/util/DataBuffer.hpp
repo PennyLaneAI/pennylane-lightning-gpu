@@ -137,8 +137,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     /**
      * @brief Set value to ith element
      *
-     * @params index
-     * @params value
+     * @params index Index of the element to be set.
+     * @params value The value passed to the target element.
      *
      */
     template <class HostDataT = GPUDataT>
@@ -150,9 +150,9 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
                                           sizeof(GPUDataT),
                                           cudaMemcpyHostToDevice));
         } else {
-            PL_CUDA_IS_SUCCESS(cudaMemcpyAsync(
-                &gpu_buffer_[index], &value, sizeof(GPUDataT) * getLength(),
-                cudaMemcpyHostToDevice, getStream()));
+            PL_CUDA_IS_SUCCESS(
+                cudaMemcpyAsync(&gpu_buffer_[index], &value, sizeof(GPUDataT),
+                                cudaMemcpyHostToDevice, getStream()));
         }
     }
 

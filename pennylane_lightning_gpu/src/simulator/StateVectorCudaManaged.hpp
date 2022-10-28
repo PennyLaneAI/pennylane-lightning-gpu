@@ -120,6 +120,19 @@ class StateVectorCudaManaged
         BaseType::getDataBuffer().setIthElement(value, index, async);
     }
 
+    template <class index_type>
+    void setState(const std::vector<std::complex<Precision>> &values,
+                  const std::vector<index_type> &indices,
+                  const bool async = false) {
+
+        index_type num_indices = indices.size();
+
+        for (index_type i = 0; i < num_indices; i++) {
+            BaseType::getDataBuffer().setIthElement(values[i], indices[i],
+                                                    async);
+        }
+    }
+
     /**
      * @brief Apply a single gate to the state-vector. Offloads to custatevec
      * specific API calls if available. If unable, attempts to use prior cached
