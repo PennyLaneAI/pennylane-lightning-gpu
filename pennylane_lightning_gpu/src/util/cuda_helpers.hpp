@@ -423,7 +423,7 @@ class CublasCaller {
  * @tparam T Complex data-type. Accepts cuFloatComplex and cuDoubleComplex
  * @param v1 Device data pointer 1
  * @param v2 Device data pointer 2
- * @param data_size Lengtyh of device data.
+ * @param data_size Length of device data.
  * @return T Device data pointer to store inner-product result
  */
 template <class T = cuDoubleComplex, class DevTypeID = int>

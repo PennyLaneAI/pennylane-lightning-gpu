@@ -1240,10 +1240,10 @@ template <class T = double> class AdjointJacobianGPU {
                         updateJacobian(H_lambda[obs_idx], mu, 
                                 &(d_jac_single_param.getData()[obs_idx]));
                     }
-                    d_jac_single_param.CopyGPUDataToHost(jac_single_param.data(), jac_single_param.size(), false); 
+                    d_jac_single_param.CopyGpuDataToHost(jac_single_param.data(), jac_single_param.size(), false); 
                     for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++){
-                        jac[obs_index][trainableParamNumber] = -2*scaling_coeff * 
-                            jac_single_param[obs_index].y;
+                        jac[obs_idx][trainableParamNumber] = -2*scalingFactor * 
+                            jac_single_param[obs_idx].y;
                     }
                     trainableParamNumber--;
                     ++tp_it;
