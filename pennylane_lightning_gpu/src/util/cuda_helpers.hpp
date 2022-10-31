@@ -1,7 +1,7 @@
 // Adapted from JET: https://github.com/XanaduAI/jet.git
 // and from Lightning: https://github.com/PennylaneAI/pennylane-lightning.git
 
-// Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved
+// Contributions to this file by NVIDIA are Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES and licenced under the following licence
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
