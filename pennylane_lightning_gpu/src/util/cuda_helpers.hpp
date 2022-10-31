@@ -429,7 +429,6 @@ class CublasCaller {
 template <class T = cuDoubleComplex, class DevTypeID = int>
 inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
                             int dev_id, cudaStream_t stream_id, const CublasCaller& cublas) -> T {
-    static std::mutex mtx;
     T result{0.0, 0.0}; // Host result
 
     if constexpr (std::is_same_v<T, cuFloatComplex>) {
