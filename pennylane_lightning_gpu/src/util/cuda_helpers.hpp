@@ -15,7 +15,7 @@
 
 #include "Error.hpp"
 #include "Util.hpp"
-#include <DevTag.hpp>
+#include "DevTag.hpp"
 
 namespace Pennylane::CUDA::Util {
 

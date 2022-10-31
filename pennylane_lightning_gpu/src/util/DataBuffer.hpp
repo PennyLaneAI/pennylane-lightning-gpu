@@ -156,6 +156,10 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
         }
     }
 
+    template <class DeviceDataT, class index_type>
+    void setElements( index_type &num_indices,
+		    DeviceDataT *value, index_type *indices, bool async);
+
     auto getData() -> GPUDataT * { return gpu_buffer_; }
     auto getData() const -> const GPUDataT * { return gpu_buffer_; }
     auto getLength() const { return length_; }
