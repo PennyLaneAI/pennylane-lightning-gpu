@@ -819,19 +819,14 @@ template <class T = double> class AdjointJacobianGPU {
      */
     inline void updateJacobian(const StateVectorCudaManaged<T> &sv1,
                                const StateVectorCudaManaged<T> &sv2,
-                               std::vector<std::vector<T>> &jac,
-                               T scaling_coeff, size_t obs_index,
-                               size_t param_index) {
+                               decltype(cuUtil::getCudaType(T{})) *jac) {
         PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
                             sv2.getDataBuffer().getDevTag().getDeviceID(),
                         "Data exists on different GPUs. Aborting.");
 
-        jac[obs_index][param_index] =
-            -2 * scaling_coeff *
-            innerProdC_CUDA(sv1.getData(), sv2.getData(), sv1.getLength(),
+            innerProdC_CUDA_device(sv1.getData(), sv2.getData(), sv1.getLength(),
                             sv1.getDataBuffer().getDevTag().getDeviceID(),
-                            sv1.getDataBuffer().getDevTag().getStreamID(), sv1.getCublasHandle())
-                .y;
+                            sv1.getDataBuffer().getDevTag().getStreamID(), sv1.getCublasHandle(), jac);
     }
 
     /**
@@ -1210,6 +1205,13 @@ template <class T = double> class AdjointJacobianGPU {
 
         StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local, true, cusvhandle, cublashandle, cusparsehandle);
 
+        typedef decltype(cuUtil::getCudaType(T{})) cuPrecisionComplex;
+        auto device_id = mu.getDataBuffer().getDevTag().getDeviceID();
+        auto stream_id = mu.getDataBuffer().getDevTag().getStreamID();
+        DataBuffer<cuPrecisionComplex, int> d_jac_single_param{
+        static_cast<std::size_t>(num_observables), device_id, stream_id, true};
+        std::vector<cuPrecisionComplex> jac_single_param(num_observables);
+
         for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
              op_idx--) {
             PL_ABORT_IF(ops.getOpsParams()[op_idx].size() > 1,
@@ -1235,9 +1237,13 @@ template <class T = double> class AdjointJacobianGPU {
 
                     for (size_t obs_idx = 0; obs_idx < num_observables;
                          obs_idx++) {
-                        updateJacobian(H_lambda[obs_idx], mu, jac,
-                                       scalingFactor, obs_idx,
-                                       trainableParamNumber);
+                        updateJacobian(H_lambda[obs_idx], mu, 
+                                &(d_jac_single_param.getData()[obs_idx]));
+                    }
+                    d_jac_single_param.CopyGPUDataToHost(jac_single_param.data(), jac_single_param.size(), false); 
+                    for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++){
+                        jac[obs_index][trainableParamNumber] = -2*scaling_coeff * 
+                            jac_single_param[obs_index].y;
                     }
                     trainableParamNumber--;
                     ++tp_it;

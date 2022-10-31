@@ -424,6 +424,26 @@ class CublasCaller {
  * @param v1 Device data pointer 1
  * @param v2 Device data pointer 2
  * @param data_size Lengtyh of device data.
+ * @return T Device data pointer to store inner-product result
+ */
+template <class T = cuDoubleComplex, class DevTypeID = int>
+inline auto innerProdC_CUDA_device(const T *v1, const T *v2, const int data_size,
+                            int dev_id, cudaStream_t stream_id, const CublasCaller& cublas, T *d_result) {
+
+    if constexpr (std::is_same_v<T, cuFloatComplex>) {
+        cublas.call( cublasCdotc, dev_id, stream_id, data_size, v1, 1, v2, 1, d_result);
+    } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
+        cublas.call(cublasZdotc, dev_id, stream_id, data_size, v1, 1, v2, 1, d_result);
+    }
+}
+
+/**
+ * @brief cuBLAS backed inner product for GPU data.
+ *
+ * @tparam T Complex data-type. Accepts cuFloatComplex and cuDoubleComplex
+ * @param v1 Device data pointer 1
+ * @param v2 Device data pointer 2
+ * @param data_size Lengtyh of device data.
  * @return T Inner-product result
  */
 template <class T = cuDoubleComplex, class DevTypeID = int>
