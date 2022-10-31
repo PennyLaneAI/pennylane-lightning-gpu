@@ -1233,16 +1233,6 @@ template <class T = double> class AdjointJacobianGPU {
                                        !ops.getOpsInverses()[op_idx]) *
                         (ops.getOpsInverses()[op_idx] ? -1 : 1);
 
-                    // clang-format off
-
-                    #if defined(_OPENMP)
-                        #pragma omp parallel for default(none)   \
-                        shared(H_lambda, jac, mu, scalingFactor, \
-                            trainableParamNumber, tp_it,         \
-                            num_observables)
-                    #endif
-
-                    // clang-format on
                     for (size_t obs_idx = 0; obs_idx < num_observables;
                          obs_idx++) {
                         updateJacobian(H_lambda[obs_idx], mu, jac,
