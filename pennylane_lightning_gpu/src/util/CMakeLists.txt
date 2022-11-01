@@ -34,7 +34,6 @@ target_include_directories(lightning_gpu_utils PUBLIC ${CUDA_INCLUDE_DIRS} ${CUS
 target_link_libraries(lightning_gpu_utils PUBLIC ${CUDA_SHARED_RT} ${CUSTATEVEC_LIB})
 target_link_libraries(lightning_gpu_utils INTERFACE CUDA::cublas CUDA::cusparse)
 target_link_libraries(lightning_gpu_utils PUBLIC lightning_utils)
-set_target_properties(lightning_gpu_utils PROPERTIES LINKER_LANGUAGE CXX)
 
 set_property(TARGET lightning_utils PROPERTY POSITION_INDEPENDENT_CODE ON)
 

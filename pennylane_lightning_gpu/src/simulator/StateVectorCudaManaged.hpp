@@ -135,22 +135,23 @@ class StateVectorCudaManaged
 
     template <class index_type>
     void setStates(const std::vector<std::complex<Precision>> &values,
-                  const std::vector<index_type> &indices,
-                  const bool async = false) {
-	 auto device_id = BaseType::getDataBuffer().getDevTag().getDeviceID();
-         auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
+                   const std::vector<index_type> &indices,
+                   const bool async = false) {
+        auto device_id = BaseType::getDataBuffer().getDevTag().getDeviceID();
+        auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
 
-	 index_type num_elements = indices.size();
-	 DataBuffer<index_type, int> d_indices{static_cast<std::size_t>(num_elements),
-                                              device_id, stream_id, true};
-         DataBuffer<CFP_t, int> d_values{static_cast<std::size_t>(num_elements),
+        index_type num_elements = indices.size();
+        DataBuffer<index_type, int> d_indices{
+            static_cast<std::size_t>(num_elements), device_id, stream_id, true};
+        DataBuffer<CFP_t, int> d_values{static_cast<std::size_t>(num_elements),
                                         device_id, stream_id, true};
 
-	 d_indices.CopyHostDataToGpu(indices.data(), d_indices.getLength(), false);
-	 d_values.CopyHostDataToGpu(values.data(), d_values.getLength(), false);
+        d_indices.CopyHostDataToGpu(indices.data(), d_indices.getLength(),
+                                    false);
+        d_values.CopyHostDataToGpu(values.data(), d_values.getLength(), false);
 
-	 BaseType::getDataBuffer().template setElements<CFP_t,index_type>(num_elements, d_values.getData(), d_indices.getData(), async);
-
+        BaseType::getDataBuffer().template setElements<CFP_t, index_type>(
+            num_elements, d_values.getData(), d_indices.getData(), async);
     }
 
     /**
