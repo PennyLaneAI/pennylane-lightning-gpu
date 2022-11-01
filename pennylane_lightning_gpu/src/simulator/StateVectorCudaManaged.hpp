@@ -853,7 +853,7 @@ class StateVectorCudaManaged
             /* void* */
             reinterpret_cast<void *>(
                 dBuffer.getData()))); // Can also use
-                                     // CUSPARSE_MV_ALG_DEFAULT
+                                      // CUSPARSE_MV_ALG_DEFAULT
 
         // destroy matrix/vector descriptors
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))
