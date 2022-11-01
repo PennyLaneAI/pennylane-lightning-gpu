@@ -258,4 +258,13 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     GPUDataT *gpu_buffer_;
 };
 
+extern template void DataBuffer<float2, int>::setElements(int &num_indices,
+                                                          float2 *value,
+                                                          int *indices,
+                                                          bool async);
+extern template void DataBuffer<double2, int>::setElements(long &num_indices,
+                                                           double2 *value,
+                                                           long *indices,
+                                                           bool async);
+
 } // namespace Pennylane::CUDA
