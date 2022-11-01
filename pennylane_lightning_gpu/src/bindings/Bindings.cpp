@@ -104,25 +104,12 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 using index_type = typename std::conditional<
                     std::is_same<ParamT, float>::value, int32_t, int64_t>::type;
 
-                const auto state_buffer = state.request();
-                std::vector<std::complex<PrecisionT>> state_;
-                if (state_buffer.size) {
-                    const auto state_ptr =
-                        static_cast<const std::complex<PrecisionT> *>(
-                            state_buffer.ptr);
-                    state_ = std::vector<std::complex<PrecisionT>>{
-                        state_ptr, state_ptr + state_buffer.size};
-                }
-
-                const auto indices_buffer = indices.request();
-                std::vector<index_type> indices_;
-                if (indices_buffer.size) {
-                    const auto indices_ptr =
-                        static_cast<const index_type *>(indices_buffer.ptr);
-                    indices_ = std::vector<index_type>{
-                        indices_ptr, indices_ptr + indices_buffer.size};
-                }
-                sv.template setStates<index_type>(state_, indices_, use_async);
+                sv.template setStates<index_type>(
+                    static_cast<index_type>(indices.request().size),
+                    static_cast<std::complex<PrecisionT> *>(
+                        state.request().ptr),
+                    static_cast<index_type *>(indices.request().ptr),
+                    use_async);
             },
             "Set State Vector on GPU")
         .def(

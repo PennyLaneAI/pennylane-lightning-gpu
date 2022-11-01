@@ -40,8 +40,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
-            PL_CUDA_IS_SUCCESS(
-                cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
+            zeroInit();
         }
     }
 
@@ -53,8 +52,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
-            PL_CUDA_IS_SUCCESS(
-                cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
+            zeroInit();
         }
     }
 
@@ -66,8 +64,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
-            PL_CUDA_IS_SUCCESS(
-                cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
+            zeroInit();
         }
     }
 
@@ -156,9 +153,17 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
         }
     }
 
+    /**
+     * @brief Set value to ith element
+     *
+     * @params num_indices Number of elements to be set.
+     * @params value The value pointer passed to the target elements.
+     * @params indices The indices of the target elements.
+     *
+     */
     template <class DeviceDataT, class index_type>
     void setElements(index_type &num_indices, DeviceDataT *value,
-                     index_type *indices, bool async);
+                     index_type *indices);
 
     auto getData() -> GPUDataT * { return gpu_buffer_; }
     auto getData() const -> const GPUDataT * { return gpu_buffer_; }
@@ -258,13 +263,9 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     GPUDataT *gpu_buffer_;
 };
 
-extern template void DataBuffer<float2, int>::setElements(int &num_indices,
-                                                          float2 *value,
-                                                          int *indices,
-                                                          bool async);
-extern template void DataBuffer<double2, int>::setElements(long &num_indices,
-                                                           double2 *value,
-                                                           long *indices,
-                                                           bool async);
-
+extern template void DataBuffer<cuComplex, int>::setElements(int &num_indices,
+                                                             cuComplex *value,
+                                                             int *indices);
+extern template void DataBuffer<cuDoubleComplex, int>::setElements(
+    long &num_indices, cuDoubleComplex *value, long *indices);
 } // namespace Pennylane::CUDA
