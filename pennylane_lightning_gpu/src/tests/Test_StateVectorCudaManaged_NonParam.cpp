@@ -956,14 +956,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStates",
         std::vector<std::complex<TestType>> values = {
             {2.0, 0.0}, {4.0, 0.0}, {8.0, 0.0}, {12.0, 0.0}};
 
-        //------------
-        // using CFP_t =
-        // decltype(Pennylane::CUDA::Util::getCudaType(TestType{}));
-
         svdat.cuda_sv.template setStates<index_type>(values, indices, false);
-        //------------
-        // svdat.cuda_sv.template setState<index_type>(values, indices, false);
-
         svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
 
         CHECK(expected_state == Pennylane::approx(svdat.sv.getDataVector()));

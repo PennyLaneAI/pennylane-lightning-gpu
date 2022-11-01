@@ -122,7 +122,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                     indices_ = std::vector<index_type>{
                         indices_ptr, indices_ptr + indices_buffer.size};
                 }
-                sv.template setState<index_type>(state_, indices_, use_async);
+                sv.template setStates<index_type>(state_, indices_, use_async);
             },
             "Set State Vector on GPU")
         .def(

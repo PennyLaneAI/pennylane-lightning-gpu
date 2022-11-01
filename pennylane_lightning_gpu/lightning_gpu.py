@@ -195,9 +195,9 @@ class LightningGPU(LightningQubit):
         # get indices for which the state is changed to input state vector elements
         ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
 
-        state = self._scatter(ravelled_indices, state, [2**self.num_wires])
+        # state = self._scatter(ravelled_indices, state, [2**self.num_wires])
         self._gpu_state.setStateVector(ravelled_indices, state, use_async)
-        self.syncH2D()
+        # self.syncH2D()
 
         # state = self._reshape(state, output_shape)
         # self._state = self._asarray(state, dtype=self.C_DTYPE)

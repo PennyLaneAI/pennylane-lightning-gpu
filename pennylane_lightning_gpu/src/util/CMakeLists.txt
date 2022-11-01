@@ -35,5 +35,5 @@ target_link_libraries(lightning_gpu_utils PUBLIC ${CUDA_SHARED_RT} ${CUSTATEVEC_
 target_link_libraries(lightning_gpu_utils INTERFACE CUDA::cublas CUDA::cusparse)
 target_link_libraries(lightning_gpu_utils PUBLIC lightning_utils)
 
-set_property(TARGET lightning_utils PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET lightning_gpu_utils PROPERTY POSITION_INDEPENDENT_CODE ON)
 
