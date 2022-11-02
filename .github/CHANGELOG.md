@@ -2,7 +2,7 @@
 
 ### New features since last release
 
-* Enable building of wheels for python 3.11 and upgrade python on CI/CD workflows to 3.8.
+* Enable building of python 3.11 wheels and upgrade python on CI/CD workflows to 3.8.
 [(#71)](https://github.com/PennyLaneAI/pennylane-lightning/pull/71)
 
 ### Breaking changes
@@ -16,6 +16,7 @@
 ### Contributors
 
 Amintor Dusko
+
 ---
 # Release 0.26.2
 
