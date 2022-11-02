@@ -116,7 +116,7 @@ if CPP_BINARY_AVAILABLE:
 
         name = "PennyLane plugin for GPU-backed Lightning device using NVIDIA cuQuantum SDK"
         short_name = "lightning.gpu"
-        pennylane_requires = ">=0.22"
+        pennylane_requires = ">=0.26"
         version = __version__
         author = "Xanadu Inc."
         _CPP_BINARY_AVAILABLE = True
