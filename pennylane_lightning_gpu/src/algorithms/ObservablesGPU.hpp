@@ -546,7 +546,8 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
             CUSPARSE_SPMV_CSR_ALG1, // Can also use CUSPARSE_MV_ALG_DEFAULT
             /* size_t* */ &bufferSize))
 
-        DataBuffer<void, int> dBuffer{bufferSize, device_id, stream_id, true};
+        DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
+                                                stream_id, true};
 
         // execute SpMV
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
@@ -560,7 +561,7 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
             /* cudaDataType */ data_type,
             /* cusparseSpMVAlg_t */
             CUSPARSE_SPMV_CSR_ALG1, // Can also use CUSPARSE_MV_ALG_DEFAULT
-            /* void* */ dBuffer.getData()))
+            /* void* */ reinterpret_cast<void *>(dBuffer.getData())));
 
         // destroy matrix/vector descriptors
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))
