@@ -141,7 +141,6 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     template <class HostDataT = GPUDataT>
     void setIthElement(const HostDataT &value, const size_t index,
                        bool async = false) {
-
         if (!async) {
             PL_CUDA_IS_SUCCESS(cudaMemcpy(&gpu_buffer_[index], &value,
                                           sizeof(GPUDataT),
