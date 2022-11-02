@@ -836,7 +836,8 @@ class StateVectorCudaManaged
             /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_CSR_ALG1,
             /* size_t* */ &bufferSize)) // Can also use CUSPARSE_MV_ALG_DEFAULT
 
-        DataBuffer<void, int> dBuffer{bufferSize, device_id, stream_id, true};
+        DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
+                                                stream_id, true};
 
         // execute SpMV
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
@@ -849,8 +850,10 @@ class StateVectorCudaManaged
             /* cusparseDnVecDescr_t */ vecY,
             /* cudaDataType */ data_type,
             /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_CSR_ALG1,
-            /* void* */ dBuffer.getData())) // Can also use
-                                            // CUSPARSE_MV_ALG_DEFAULT
+            /* void* */
+            reinterpret_cast<void *>(
+                dBuffer.getData()))); // Can also use
+                                      // CUSPARSE_MV_ALG_DEFAULT
 
         // destroy matrix/vector descriptors
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))

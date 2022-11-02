@@ -13,9 +13,12 @@
 
 ### Bug fixes
 
+* Fix void data type used in SparseSpMV
+[(#69)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/69)
+
 ### Contributors
 
-Amintor Dusko
+Amintor Dusko, Shuli Shu
 
 ---
 # Release 0.26.2
