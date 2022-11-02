@@ -23,7 +23,7 @@ set_target_properties( lightning_gpu_utils
 set_target_properties( lightning_gpu_utils
                        PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
-set_target_properties(lightning_gpu_utils PROPERTIES CUDA_ARCHITECTURES "80;86")
+set_target_properties(lightning_gpu_utils PROPERTIES CUDA_ARCHITECTURES native)
 
 target_include_directories(lightning_gpu_utils INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 
