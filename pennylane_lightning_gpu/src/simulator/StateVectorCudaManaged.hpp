@@ -1056,7 +1056,7 @@ class StateVectorCudaManaged
 
         // compute expectation
         PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationsOnPauliBasis(
-            /* custatevecHandle_t */ handle.ref(),
+            /* custatevecHandle_t */ handle.get(),
             /* void* */ BaseType::getData(),
             /* cudaDataType_t */ data_type,
             /* const uint32_t */ nIndexBits,
