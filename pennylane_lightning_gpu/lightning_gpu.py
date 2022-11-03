@@ -17,6 +17,7 @@ interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enable
 """
 from typing import List, Union
 from warnings import warn
+from itertools import islice, product
 
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +25,7 @@ import concurrent.futures
 
 from pennylane import (
     math,
+    QubitDevice,
     BasisState,
     QubitStateVector,
     DeviceError,
@@ -37,6 +39,9 @@ from pennylane_lightning import LightningQubit
 from pennylane.operation import Tensor, Operation
 from pennylane.measurements import Expectation, MeasurementProcess, State
 from pennylane.wires import Wires
+
+# tolerance for numerical errors
+tolerance = 1e-6
 
 # Remove after the next release of PL
 # Add from pennylane import matrix
@@ -100,8 +105,68 @@ def _H_dtype(dtype):
 
 _name_map = {"PauliX": "X", "PauliY": "Y", "PauliZ": "Z", "Identity": "I"}
 
+allowed_operations = {
+    "Identity",
+    "BasisState",
+    "QubitStateVector",
+    "QubitUnitary",
+    "ControlledQubitUnitary",
+    "MultiControlledX",
+    "DiagonalQubitUnitary",
+    "PauliX",
+    "PauliY",
+    "PauliZ",
+    "MultiRZ",
+    "Hadamard",
+    "S",
+    "Adjoint(S)",
+    "T",
+    "Adjoint(T)",
+    "SX",
+    "Adjoint(SX)",
+    "CNOT",
+    "SWAP",
+    "ISWAP",
+    "PSWAP",
+    "Adjoint(ISWAP)",
+    "SISWAP",
+    "Adjoint(SISWAP)",
+    "SQISW",
+    "CSWAP",
+    "Toffoli",
+    "CY",
+    "CZ",
+    "PhaseShift",
+    "ControlledPhaseShift",
+    "CPhase",
+    "RX",
+    "RY",
+    "RZ",
+    "Rot",
+    "CRX",
+    "CRY",
+    "CRZ",
+    "CRot",
+    "IsingXX",
+    "IsingYY",
+    "IsingZZ",
+    "IsingXY",
+    "SingleExcitation",
+    "SingleExcitationPlus",
+    "SingleExcitationMinus",
+    "DoubleExcitation",
+    "DoubleExcitationPlus",
+    "DoubleExcitationMinus",
+    "QubitCarry",
+    "QubitSum",
+    "OrbitalRotation",
+    "QFT",
+    "ECR",
+}
 
-class LightningGPU(LightningQubit):
+
+# class LightningGPU(LightningQubit):
+class LightningGPU(QubitDevice):
     """PennyLane-Lightning-GPU device.
 
     Args:
@@ -117,6 +182,7 @@ class LightningGPU(LightningQubit):
     author = "Xanadu Inc."
     _CPP_BINARY_AVAILABLE = True
 
+    operations = allowed_operations
     observables = {
         "PauliX",
         "PauliY",
@@ -135,17 +201,33 @@ class LightningGPU(LightningQubit):
         c_dtype=np.complex128,
         shots=None,
         batch_obs: Union[bool, int] = False,
+        analytic=None,
     ):
-        super().__init__(wires, c_dtype=c_dtype, shots=shots)
+        if c_dtype is np.complex64:
+            r_dtype = np.float32
+            self.use_csingle = True
+        elif c_dtype is np.complex128:
+            r_dtype = np.float64
+            self.use_csingle = False
+        else:
+            raise TypeError(f"Unsupported complex Type: {c_dtype}")
+        super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype, analytic=analytic)
+        # self._gpu_state = _gpu_dtype(c_dtype)(self._state)
         # self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
-        self._gpu_state = _gpu_dtype(self._state.dtype)(wires)
-        self.create_basis_state(0)
+        self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
+        self._create_basis_state_GPU(0)
         self._sync = sync
         self._dp = DevPool()
         self._batch_obs = batch_obs
 
+        self._state = self._create_basis_state_default(0)
+        self._pre_rotated_state = self._state
+
     def reset(self):
         super().reset()
+        # init the state vector to |00..0>
+        self._state = self._create_basis_state_default(0)
+        self._pre_rotated_state = self._state
         self._gpu_state.resetGPU(False)  # Sync reset
 
     def syncH2D(self, use_async=False):
@@ -154,25 +236,157 @@ class LightningGPU(LightningQubit):
 
     def syncD2H(self, use_async=False):
         """Explicitly synchronize GPU data to CPU"""
+        if len(self._state) != 2**self.num_wires:
+            state = np.zeros(2**self.num_wires, dtype=np.complex128)
+            state = self._asarray(state, dtype=self.C_DTYPE)
+            self._state = self._reshape(state, [2] * self.num_wires)
+
         self._gpu_state.DeviceToHost(self._state.ravel(order="C"), use_async)
         self._pre_rotated_state = self._state
 
-    def create_basis_state(self, index, use_async):
+    @property
+    def state(self):
+        # Flattening the state.
+        shape = (1 << self.num_wires,)
+        self.syncD2H()
+        return self._reshape(self._pre_rotated_state, shape)
+
+        # pylint: disable=arguments-differ
+
+    def _get_batch_size(self, tensor, expected_shape, expected_size):
+        """Determine whether a tensor has an additional batch dimension for broadcasting,
+        compared to an expected_shape."""
+        size = self._size(tensor)
+        if self._ndim(tensor) > len(expected_shape) or size > expected_size:
+            return size // expected_size
+
+        return None
+
+    def _apply_diagonal_unitary(self, state, phases, wires):
+        r"""Apply multiplication of a phase vector to subsystems of the quantum state.
+
+        This represents the multiplication with diagonal gates in a more efficient manner.
+
+        Args:
+            state (array[complex]): input state
+            phases (array): vector to multiply
+            wires (Wires): target wires
+
+        Returns:
+            array[complex]: output state
+        """
+        # translate to wire labels used by device
+        device_wires = self.map_wires(wires)
+        dim = 2 ** len(device_wires)
+        batch_size = self._get_batch_size(phases, (dim,), dim)
+
+        # reshape vectors
+        shape = [2] * len(device_wires)
+        if batch_size is not None:
+            shape.insert(0, batch_size)
+        phases = self._cast(self._reshape(phases, shape), dtype=self.C_DTYPE)
+
+        state_indices = ABC[: self.num_wires]
+        affected_indices = "".join(ABC_ARRAY[list(device_wires)].tolist())
+
+        einsum_indices = f"...{affected_indices},...{state_indices}->...{state_indices}"
+        return self._einsum(einsum_indices, phases, state)
+
+    def _apply_unitary_einsum(self, state, mat, wires):
+        r"""Apply multiplication of a matrix to subsystems of the quantum state.
+
+        This function uses einsum instead of tensordot. This approach is only
+        faster for single- and two-qubit gates.
+
+        Args:
+            state (array[complex]): input state
+            mat (array): matrix to multiply
+            wires (Wires): target wires
+
+        Returns:
+            array[complex]: output state
+        """
+        # translate to wire labels used by device
+        device_wires = self.map_wires(wires)
+
+        dim = 2 ** len(device_wires)
+        batch_size = self._get_batch_size(mat, (dim, dim), dim**2)
+
+        # If the matrix is broadcasted, it is reshaped to have leading axis of size mat_batch_size
+        shape = [2] * (len(device_wires) * 2)
+        if batch_size is not None:
+            shape.insert(0, batch_size)
+        mat = self._cast(self._reshape(mat, shape), dtype=self.C_DTYPE)
+
+        # Tensor indices of the quantum state
+        state_indices = ABC[: self.num_wires]
+
+        # Indices of the quantum state affected by this operation
+        affected_indices = "".join(ABC_ARRAY[list(device_wires)].tolist())
+
+        # All affected indices will be summed over, so we need the same number of new indices
+        new_indices = ABC[self.num_wires : self.num_wires + len(device_wires)]
+
+        # The new indices of the state are given by the old ones with the affected indices
+        # replaced by the new_indices
+        new_state_indices = functools.reduce(
+            lambda old_string, idx_pair: old_string.replace(idx_pair[0], idx_pair[1]),
+            zip(affected_indices, new_indices),
+            state_indices,
+        )
+
+        # We now put together the indices in the notation numpy's einsum requires
+        # This notation allows for the state, the matrix, or both to be broadcasted
+        einsum_indices = (
+            f"...{new_indices}{affected_indices},...{state_indices}->...{new_state_indices}"
+        )
+
+        return self._einsum(einsum_indices, mat, state)
+
+    def _create_basis_state_default(self, index):
+        """Return a computational basis state over all wires.
+        Args:
+            index (int): integer representing the computational basis state
+        Returns:
+            array[complex]: complex array of shape ``[2]*self.num_wires``
+            representing the statevector of the basis state
+        Note: This function does not support broadcasted inputs yet.
+        """
+        """
+        state = np.zeros(2, dtype=np.complex128)
+        state[index] = 1
+        state = self._asarray(state, dtype=self.C_DTYPE)
+        return self._reshape(state, [2] )
+        """
+        state = np.zeros(2**self.num_wires, dtype=np.complex128)
+        state[index] = 1
+        state = self._asarray(state, dtype=self.C_DTYPE)
+        self._state = self._reshape(state, [2] * self.num_wires)
+        return self._reshape(state, [2] * self.num_wires)
+
+    def _create_basis_state_GPU(self, index, use_async=False):
         self._gpu_state.setBasisState(index, use_async)
 
-    def apply_state_vector(self, state, device_wires):
-        """Initialize the internal state vector in a specified state.
-        Args:
-            state (array[complex]): normalized input state of length ``2**len(wires)``
-                or broadcasted state of shape ``(batch_size, 2**len(wires))``
-            device_wires (Wires): wires that get initialized in the state
-        """
+    def _apply_state_vector_GPU(self, state, device_wires, use_async=False):
+        # Initialize the internal state vector in a specified state.
+        # Args:
+        #    state (array[complex]): normalized input state of length ``2**len(wires)``
+        #        or broadcasted state of shape ``(batch_size, 2**len(wires))``
+        #    device_wires (Wires): wires that get initialized in the state
 
         # translate to wire labels used by device
         device_wires = self.map_wires(device_wires)
+        dim = 2 ** len(device_wires)
 
         state = self._asarray(state, dtype=self.C_DTYPE)
+        batch_size = self._get_batch_size(state, (dim,), dim)
         output_shape = [2] * self.num_wires
+
+        if batch_size is not None:
+            output_shape.insert(0, batch_size)
+
+        if not (state.shape in [(dim,), (batch_size, dim)]):
+            raise ValueError("State vector must have shape (2**wires,) or (batch_size, 2**wires).")
 
         if not qml.math.is_abstract(state):
             norm = qml.math.linalg.norm(state, axis=-1, ord=2)
@@ -197,19 +411,21 @@ class LightningGPU(LightningQubit):
 
         # state = self._scatter(ravelled_indices, state, [2**self.num_wires])
         self._gpu_state.setStateVector(ravelled_indices, state, use_async)
+
         # self.syncH2D()
+        state = self._scatter(ravelled_indices, state, [2**self.num_wires])
 
-        # state = self._reshape(state, output_shape)
-        # self._state = self._asarray(state, dtype=self.C_DTYPE)
+        state = self._reshape(state, output_shape)
+        self._state = self._asarray(state, dtype=self.C_DTYPE)
 
-    def apply_basis_state(self, state, wires):
-        """Initialize the state vector in a specified computational basis state.
-        Args:
-            state (array[int]): computational basis state of shape ``(wires,)``
-                consisting of 0s and 1s.
-            wires (Wires): wires that the provided computational state should be initialized on
-        Note: This function does not support broadcasted inputs yet.
-        """
+    def _apply_basis_state_GPU(self, state, wires):
+        # Initialize the state vector in a specified computational basis state.
+        # Args:
+        #    state (array[int]): computational basis state of shape ``(wires,)``
+        #        consisting of 0s and 1s.
+        #    wires (Wires): wires that the provided computational state should be initialized on
+        # Note: This function does not support broadcasted inputs yet.
+
         # translate to wire labels used by device
         device_wires = self.map_wires(wires)
 
@@ -227,7 +443,17 @@ class LightningGPU(LightningQubit):
         basis_states = qml.math.convert_like(basis_states, state)
         num = int(qml.math.dot(state, basis_states))
 
-        self.create_basis_state(num)
+        self._gpu_state.setZeroState(0, False)
+        self._create_basis_state_GPU(num)
+
+    # To be able to validate the adjoint method [_validate_adjoint_method(device)],
+    #  the qnode requires the definition of:
+    # ["_apply_operation", "_apply_unitary", "adjoint_jacobian"]
+    def _apply_operation():
+        pass
+
+    def _apply_unitary():
+        pass
 
     @classmethod
     def capabilities(cls):
@@ -288,11 +514,13 @@ class LightningGPU(LightningQubit):
         # State preparation is currently done in Python
         if operations:  # make sure operations[0] exists
             if isinstance(operations[0], QubitStateVector):
-                self.apply_state_vector(operations[0].parameters[0].copy(), operations[0].wires)
+                self._apply_state_vector_GPU(
+                    operations[0].parameters[0].copy(), operations[0].wires
+                )
                 del operations[0]
                 # self.syncH2D()
             elif isinstance(operations[0], BasisState):
-                self.apply_basis_state(operations[0].parameters[0], operations[0].wires)
+                self._apply_basis_state_GPU(operations[0].parameters[0], operations[0].wires)
                 del operations[0]
                 # self.syncH2D()
 
@@ -384,19 +612,26 @@ class LightningGPU(LightningQubit):
         self._check_adjdiff_supported_operations(tape.operations)
 
         # Initialization of state
+        
         if starting_state is not None:
             ket = np.ravel(starting_state, order="C")
         else:
             if not use_device_state:
                 self.reset()
-                self.execute(tape)
+                #self.execute(tape)
+                self.apply(tape.operations)
             ket = np.ravel(self._pre_rotated_state, order="C")
-
+            #self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
+            #self._create_basis_state_GPU(0)
+        
         if self.use_csingle:
             adj = AdjointJacobianGPU_C64()
             ket = ket.astype(np.complex64)
         else:
             adj = AdjointJacobianGPU_C128()
+
+        #state_vector =  _gpu_dtype(self._state.dtype)(ket) 
+        self._gpu_state = _gpu_dtype(self._state.dtype)(ket)
 
         obs_serialized, obs_offsets = _serialize_observables(
             tape, self.wire_map, use_csingle=self.use_csingle
@@ -447,13 +682,17 @@ class LightningGPU(LightningQubit):
                 obs_chunk = obs_serialized[chunk : chunk + batch_size]
                 jac_chunk = adj.adjoint_jacobian_batched(
                     self._gpu_state,
+                    #state_vector,
                     obs_chunk,
                     ops_serialized,
                     tp_shift,
                 )
                 jac.extend(jac_chunk)
         else:
-            jac = adj.adjoint_jacobian(self._gpu_state, obs_serialized, ops_serialized, tp_shift)
+            jac = adj.adjoint_jacobian(
+                    self._gpu_state,
+                    #state_vector,
+                    obs_serialized, ops_serialized, tp_shift)
 
         jac = np.array(jac)  # only for parameters differentiable with the adjoint method
         jac = jac.reshape(-1, len(tp_shift))

@@ -216,6 +216,7 @@ class TestAdjointJacobian:
 
     @pytest.mark.parametrize("par", [1, -2, 1.623, -0.051, 0])  # integers, floats, zero
     def test_ry_gradient(self, par, tol, dev_gpu):
+    #def test_ry_gradient(self, par, tol):
         """Test that the gradient of the RY gate matches the exact analytic formula."""
 
         with qml.tape.QuantumTape() as tape:
@@ -597,8 +598,9 @@ class TestAdjointJacobianQNode:
         assert np.allclose(grad_adjoint, grad_ps, atol=1e-7)
 
 
+"""
 def test_qchem_expvalcost_correct():
-    """EvpvalCost with qchem Hamiltonian work corectly"""
+    #EvpvalCost with qchem Hamiltonian work corectly
     from pennylane import qchem
 
     symbols = ["Li", "H"]
@@ -630,6 +632,7 @@ def test_qchem_expvalcost_correct():
     grads_def = circuit_gradient_def(params)
 
     assert np.allclose(grads_lig, grads_def)
+"""
 
 
 def circuit_ansatz(params, wires):

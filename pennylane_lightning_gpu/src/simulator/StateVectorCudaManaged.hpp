@@ -80,7 +80,10 @@ class StateVectorCudaManaged
     StateVectorCudaManaged(size_t num_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits),
-          gate_cache_(true){};
+          gate_cache_(true){
+              // BaseType::initSV();
+
+          };
 
     StateVectorCudaManaged(size_t num_qubits, const DevTag<int> &dev_tag,
                            bool alloc = true)
