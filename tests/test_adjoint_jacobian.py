@@ -14,6 +14,7 @@
 """
 Tests for the ``adjoint_jacobian`` method of LightningGPU.
 """
+import itertools as it
 import math
 import pytest
 
@@ -764,9 +765,6 @@ def test_integration_custom_wires(returns):
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
 
-@pytest.mark.skipif(
-    DevPool.getTotalDevices() < 2, reason="Insufficient GPUs to test observable batching"
-)
 @pytest.mark.parametrize(
     "returns",
     [
@@ -810,9 +808,6 @@ def test_integration_custom_wires_batching(returns):
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
 
-@pytest.mark.skipif(
-    DevPool.getTotalDevices() < 2, reason="Insufficient GPUs to test observable batching"
-)
 @pytest.mark.parametrize(
     "returns",
     [
@@ -837,13 +832,20 @@ def test_integration_custom_wires_batching(returns):
             qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]),
             0.5 * qml.PauliZ(custom_wires[1]),
         ),
+        (
+            0.0 * qml.PauliZ(custom_wires[0]) @ qml.PauliZ(custom_wires[1]),
+            1.0 * qml.Identity(10),
+            1.2 * qml.PauliZ(custom_wires[2]) @ qml.PauliZ(custom_wires[3]),
+        ),
     ],
 )
-def test_fail_batching_H(returns):
+def test_batching_H(returns):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations and when using custom wire labels"""
 
-    dev_gpu = qml.device("lightning.gpu", wires=custom_wires, batch_obs=True)
+    dev_cpu = qml.device("lightning.qubit", wires=custom_wires + [10, 72])
+    dev_gpu = qml.device("lightning.gpu", wires=custom_wires + [10, 72], batch_obs=True)
+    dev_gpu_default = qml.device("lightning.gpu", wires=custom_wires + [10, 72], batch_obs=False)
 
     def circuit(params):
         circuit_ansatz(params, wires=custom_wires)
@@ -853,13 +855,82 @@ def test_fail_batching_H(returns):
     np.random.seed(1337)
     params = np.random.rand(n_params)
 
+    qnode_cpu = qml.QNode(circuit, dev_cpu, diff_method="parameter-shift")
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
+    qnode_gpu_default = qml.QNode(circuit, dev_gpu_default, diff_method="adjoint")
 
-    with pytest.raises(
-        NotImplementedError,
-        match="Hamiltonian observables are not currently supported in multi-GPU",
-    ):
-        j_gpu = qml.jacobian(qnode_gpu)(params)
+    j_cpu = qml.jacobian(qnode_cpu)(params)
+    j_gpu = qml.jacobian(qnode_gpu)(params)
+    j_gpu_default = qml.jacobian(qnode_gpu_default)(params)
+
+    assert np.allclose(j_cpu, j_gpu)
+    assert np.allclose(j_gpu, j_gpu_default)
+
+
+@pytest.fixture(scope="session")
+def create_xyz_file(tmp_path_factory):
+    directory = tmp_path_factory.mktemp("tmp")
+    file = directory / "h2.xyz"
+    file.write_text("""2\nH2, Unoptimized\nH  1.0 0.0 0.0\nH -1.0 0.0 0.0""")
+    yield file
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "dev_compare, batches",
+    list(it.product(["default.qubit", "lightning.qubit"], [False, True, 1, 2, 3, 4])),
+)
+def test_integration_H2_Hamiltonian(create_xyz_file, dev_compare, batches):
+    n_electrons = 2
+    np.random.seed(1337)
+
+    str_path = create_xyz_file
+    symbols, coordinates = qml.qchem.read_structure(str(str_path), outpath=str(str_path.parent))
+
+    H, qubits = qml.qchem.molecular_hamiltonian(
+        symbols,
+        coordinates,
+        method="pyscf",
+        active_electrons=n_electrons,
+        name="h2",
+        outpath=str(str_path.parent),
+    )
+    hf_state = qml.qchem.hf_state(n_electrons, qubits)
+    singles, doubles = qml.qchem.excitations(n_electrons, qubits)
+
+    # Choose different batching supports here
+    dev = qml.device("lightning.gpu", wires=qubits, batch_obs=batches)
+    dev_comp = qml.device(dev_compare, wires=qubits)
+
+    @qml.qnode(dev, diff_method="adjoint")
+    def circuit(params, excitations):
+        qml.BasisState(hf_state, wires=H.wires)
+        for i, excitation in enumerate(excitations):
+            if len(excitation) == 4:
+                qml.DoubleExcitation(params[i], wires=excitation)
+            else:
+                qml.SingleExcitation(params[i], wires=excitation)
+        return qml.expval(H)
+
+    @qml.qnode(dev_comp, diff_method="parameter-shift")
+    def circuit_compare(params, excitations):
+        qml.BasisState(hf_state, wires=H.wires)
+
+        for i, excitation in enumerate(excitations):
+            if len(excitation) == 4:
+                qml.DoubleExcitation(params[i], wires=excitation)
+            else:
+                qml.SingleExcitation(params[i], wires=excitation)
+        return qml.expval(H)
+
+    jac_func = qml.jacobian(circuit)
+    jac_func_comp = qml.jacobian(circuit_compare)
+
+    params = qml.numpy.array([0.0] * len(doubles), requires_grad=True)
+    jacs = jac_func(params, excitations=doubles)
+    jacs_comp = jac_func_comp(params, excitations=doubles)
+
+    assert np.allclose(jacs, jacs_comp)
 
 
 @pytest.mark.parametrize(

@@ -108,7 +108,7 @@ def _serialize_hamiltonian(ob, wires_map: dict, use_csingle: bool):
 
     coeffs = np.array(ob.coeffs).astype(rtype)
     terms = [_serialize_ob(t, wires_map, use_csingle) for t in ob.ops]
-    return hamiltonian_obs(coeffs, terms)
+    return [hamiltonian_obs([c], [t]) for (c, t) in zip(coeffs, terms)]
 
 
 def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool):
@@ -173,8 +173,18 @@ def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool
     Returns:
         list(ObservableGPU_C64 or ObservableGPU_C128): A list of observable objects compatible with the C++ backend
     """
+    output = []
+    offsets = [0]
 
-    return [_serialize_ob(ob, wires_map, use_csingle) for ob in tape.observables]
+    for ob in tape.observables:
+        ser_ob = _serialize_ob(ob, wires_map, use_csingle)
+        if isinstance(ser_ob, list):
+            output.extend(ser_ob)
+            offsets.append(offsets[-1] + len(ser_ob))
+        else:
+            output.append(ser_ob)
+            offsets.append(offsets[-1] + 1)
+    return output, offsets
 
 
 def _serialize_ops(

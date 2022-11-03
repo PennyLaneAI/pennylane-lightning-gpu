@@ -1,8 +1,53 @@
-# Release 0.26.0-dev
+# Release 0.27.0-dev
+
+### New features since last release
+
+### Breaking changes
+
+### Improvements
+
+### Documentation
+
+### Bug fixes
+
+* Fix void data type used in SparseSpMV
+[(#69)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/69)
+
+### Contributors
+
+Shuli Shu
+
+---
+# Release 0.26.2
+
+### Bug fixes
+
+* Fix reduction over batched & decomposed Hamiltonians in adjoint pipeline
+[(#64)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/64)
+
+### Contributors
+
+Lee J. O'Riordan
+
+---
+# Release 0.26.1
+
+### Bug fixes
+
+* Ensure `qml.Hamiltonian` is auto-decomposed for the adjoint differentiation pipeline to avoid OOM errors.
+[(#62)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/62)
+
+### Contributors
+
+Lee J. O'Riordan
+
+---
+# Release 0.26.0
 
 ### New features since last release
 
 * Added native support for expval(H) in adjoint method. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
+
 * Added cuSparse SpMV in expval(H) calculations. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
 
 ### Breaking changes

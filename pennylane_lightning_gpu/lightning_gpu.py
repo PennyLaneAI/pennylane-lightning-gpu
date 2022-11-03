@@ -15,7 +15,7 @@ r"""
 This module contains the :class:`~.LightningGPU` class, a PennyLane simulator device that
 interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enabled calculations.
 """
-from typing import List
+from typing import List, Union
 from warnings import warn
 
 import numpy as np
@@ -98,6 +98,9 @@ def _H_dtype(dtype):
     return HamiltonianGPU_C128 if dtype == np.complex128 else HamiltonianGPU_C64
 
 
+_name_map = {"PauliX": "X", "PauliY": "Y", "PauliZ": "Z", "Identity": "I"}
+
+
 class LightningGPU(LightningQubit):
     """PennyLane-Lightning-GPU device.
 
@@ -124,7 +127,15 @@ class LightningGPU(LightningQubit):
         "Identity",
     }
 
-    def __init__(self, wires, *, sync=True, c_dtype=np.complex128, shots=None, batch_obs=False):
+    def __init__(
+        self,
+        wires,
+        *,
+        sync=True,
+        c_dtype=np.complex128,
+        shots=None,
+        batch_obs: Union[bool, int] = False,
+    ):
         super().__init__(wires, c_dtype=c_dtype, shots=shots)
         self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._sync = sync
@@ -313,9 +324,10 @@ class LightningGPU(LightningQubit):
         else:
             adj = AdjointJacobianGPU_C128()
 
-        obs_serialized = _serialize_observables(tape, self.wire_map, use_csingle=self.use_csingle)
+        obs_serialized, obs_offsets = _serialize_observables(
+            tape, self.wire_map, use_csingle=self.use_csingle
+        )
         ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=self.use_csingle)
-
         ops_serialized = adj.create_ops_list(*ops_serialized)
 
         trainable_params = sorted(tape.trainable_params)
@@ -340,25 +352,46 @@ class LightningGPU(LightningQubit):
             # whether there must be only one state preparation...
             tp_shift = [i - 1 for i in tp_shift]
 
-        if self._dp.getTotalDevices() > 1 and self._batch_obs:
-            if any(isinstance(ob, _H_dtype(self.C_DTYPE)) for ob in obs_serialized):
-                raise NotImplementedError(
-                    "Hamiltonian observables are not currently supported in multi-GPU adjoint batching work-loads. Please set `batch_obs=False`."
-                )
+        """
+        This path enables controlled batching over the requested observables, be they explicit, or part of a Hamiltonian.
+        The traditional path will assume there exists enough free memory to preallocate all arrays and run through each observable iteratively.
+        However, for larger system, this becomes impossible, and we hit memory issues very quickly. the batching support here enables several functionalities:
+        - Pre-allocate memory for all observables on the primary GPU (`batch_obs=False`, default behaviour): This is the simplest path, and works best for few observables, and moderate qubit sizes. All memory is preallocated for each observable, and run through iteratively on a single GPU.
+        - Evenly distribute the observables over all available GPUs (`batch_obs=True`): This will evenly split the data into ceil(num_obs/num_gpus) chunks, and allocate enough space on each GPU up-front before running through them concurrently. This relies on C++ threads to handle the orchestration.
+        - Allocate at most `n` observables per GPU (`batch_obs=n`): Providing an integer value restricts each available GPU to at most `n` copies of the statevector, and hence `n` given observables for a given batch. This will iterate over the data in chnuks of size `n*num_gpus`.
+        """
 
-            jac = adj.adjoint_jacobian_batched(
-                self._gpu_state,
-                obs_serialized,
-                ops_serialized,
-                tp_shift,
+        if self._batch_obs:
+            num_obs = len(obs_serialized)
+            batch_size = (
+                num_obs
+                if isinstance(self._batch_obs, bool)
+                else self._batch_obs * self._dp.getTotalDevices()
             )
+            jac = []
+            for chunk in range(0, num_obs, batch_size):
+                obs_chunk = obs_serialized[chunk : chunk + batch_size]
+                jac_chunk = adj.adjoint_jacobian_batched(
+                    self._gpu_state,
+                    obs_chunk,
+                    ops_serialized,
+                    tp_shift,
+                )
+                jac.extend(jac_chunk)
         else:
             jac = adj.adjoint_jacobian(self._gpu_state, obs_serialized, ops_serialized, tp_shift)
 
         jac = np.array(jac)  # only for parameters differentiable with the adjoint method
         jac = jac.reshape(-1, len(tp_shift))
-        jac_r = np.zeros((jac.shape[0], all_params))
-        jac_r[:, record_tp_rows] = jac
+        jac_r = np.zeros((len(tape.observables), all_params))
+
+        # Reduce over decomposed expval(H), if required.
+        for idx in range(len(obs_offsets[0:-1])):
+            if (obs_offsets[idx + 1] - obs_offsets[idx]) > 1:
+                jac_r[idx, :] = np.sum(jac[obs_offsets[idx] : obs_offsets[idx + 1], :], axis=0)
+            else:
+                jac_r[idx, :] = jac[obs_offsets[idx] : obs_offsets[idx + 1], :]
+
         return jac_r
 
     def vjp(self, measurements, dy, starting_state=None, use_device_state=False):
@@ -431,10 +464,26 @@ class LightningGPU(LightningQubit):
 
         if observable.name in ["Hamiltonian"]:
             device_wires = self.map_wires(observable.wires)
-            # Since we currently offload hermitian observables to default.qubit, we can assume the matrix exists
-            return self._gpu_state.ExpectationValue(
-                device_wires, qml.matrix(observable).ravel(order="C")
-            )
+            # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
+            if len(device_wires) > 13:
+                coeffs = observable.coeffs
+                pauli_words = []
+                word_wires = []
+                for word in observable.ops:
+                    compressed_word = []
+                    if isinstance(word.name, list):
+                        for char in word.name:
+                            compressed_word.append(_name_map[char])
+                    else:
+                        compressed_word.append(_name_map[word.name])
+                    word_wires.append(word.wires.tolist())
+                    pauli_words.append("".join(compressed_word))
+                return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
+
+            else:
+                return self._gpu_state.ExpectationValue(
+                    device_wires, qml.matrix(observable).ravel(order="C")
+                )
 
         par = (
             observable.parameters

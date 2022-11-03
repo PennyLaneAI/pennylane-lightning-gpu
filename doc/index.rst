@@ -12,7 +12,7 @@ Devices
 
 PennyLane-Lightning-GPU provides the following device:
 
-.. devicegalleryitem::
+.. title-card::
     :name: 'lightning.gpu'
     :description: A GPU-supported state-vector simulator with NVIDIA cuQuantum SDK library support.
     :link: devices.html
@@ -24,7 +24,6 @@ PennyLane-Lightning-GPU provides the following device:
 
 .. toctree::
    :maxdepth: 2
-   :caption: PennyLane-Lightning-GPU
    :titlesonly:
    :hidden:
 
