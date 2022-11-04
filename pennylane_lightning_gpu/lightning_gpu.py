@@ -165,7 +165,6 @@ allowed_operations = {
 }
 
 
-# class LightningGPU(LightningQubit):
 class LightningGPU(QubitDevice):
     """PennyLane-Lightning-GPU device.
 

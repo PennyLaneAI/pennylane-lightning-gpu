@@ -599,7 +599,7 @@ class TestAdjointJacobianQNode:
 
 
 def test_qchem_expvalcost_correct():
-    #EvpvalCost with qchem Hamiltonian work corectly
+    """EvpvalCost with qchem Hamiltonian work corectly"""
     from pennylane import qchem
 
     symbols = ["Li", "H"]
