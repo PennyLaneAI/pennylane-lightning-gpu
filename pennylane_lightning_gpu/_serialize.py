@@ -151,9 +151,7 @@ def _serialize_ob(ob, wires_map, use_csingle):
     elif ob.name == "Hamiltonian":
         return _serialize_hamiltonian(ob, wires_map, use_csingle)
     elif ob.name == "SparseHamiltonian":
-        raise TypeError(
-            f"SparseHamiltonian observables are not currently supported for adjoint differentiation. Please use `qml.Hamiltonian`."
-        )
+        return _serialize_sparsehamiltonian(ob, wires_map, use_csingle)
     elif ob.name == "Hermitian":
         raise TypeError(
             f"Hermitian observables are not currently supported for adjoint differentiation. Please use Pauli-words only."

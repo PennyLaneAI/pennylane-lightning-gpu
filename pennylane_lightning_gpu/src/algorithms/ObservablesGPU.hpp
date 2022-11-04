@@ -196,7 +196,7 @@ template <typename T> class TensorProdObsGPU final : public ObservableGPU<T> {
      * @param arg Arguments perfect forwarded to vector of observables.
      */
     template <typename... Ts>
-    explicit TensorProdObsGPU(Ts &&... arg) : obs_{std::forward<Ts>(arg)...} {
+    explicit TensorProdObsGPU(Ts &&...arg) : obs_{std::forward<Ts>(arg)...} {
         std::unordered_set<size_t> wires;
 
         for (const auto &ob : obs_) {
