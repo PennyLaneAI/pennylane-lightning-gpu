@@ -2,9 +2,15 @@
 
 ### New features since last release
 
+* Add customized CUDA kernels to cpp layer 
+[(#70)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/70)
+
 ### Breaking changes
 
 ### Improvements
+
+* `lightning.gpu` is decoupled from Numpy layer during initialization and execution
+[(#70)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/70)
 
 ### Documentation
 
