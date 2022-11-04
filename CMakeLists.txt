@@ -89,7 +89,7 @@ include(FetchContent)
 FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11.git
-    GIT_TAG        v2.9.1
+    GIT_TAG        v2.10.1
 )
 FetchContent_MakeAvailable(pybind11)
 
@@ -190,7 +190,7 @@ if(DISABLE_CUDA_SAFETY)
 endif()
 
 if(ENABLE_WARNINGS)
-    target_compile_options(pennylane_lightning_gpu INTERFACE 
+    target_compile_options(pennylane_lightning_gpu INTERFACE
         $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Werror>
     )
 endif()
