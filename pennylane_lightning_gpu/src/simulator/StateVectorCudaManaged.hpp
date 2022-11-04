@@ -115,11 +115,28 @@ class StateVectorCudaManaged
 
     ~StateVectorCudaManaged() = default;
 
+    /**
+     * @brief Set value for a single element of the state-vector. This method
+     * is implemented by cudaMemcpy.
+     *
+     * @param value Value to be set for the target element.
+     * @param index Index of the target element.
+     * @param async Is asynchronous memory copy.
+     */
     void setState(const std::complex<Precision> &value, const size_t &index,
                   const bool async = false) {
         BaseType::getDataBuffer().setIthElement(value, index, async);
     }
 
+    /**
+     * @brief Set values for a batch of elements of the state-vector. This
+     * method is implemented by the customized CUDA kernel defined in the
+     * DataBuffer class.
+     *
+     * @param value Pointer to values to be set for the target elements.
+     * @param index Pointer to indices of the target elements.
+     * @param async Is asynchronous memory copy.
+     */
     template <class index_type>
     void setStates(const index_type num_indices,
                    const std::complex<Precision> *values,

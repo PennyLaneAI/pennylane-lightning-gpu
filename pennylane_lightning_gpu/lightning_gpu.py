@@ -338,38 +338,36 @@ class LightningGPU(QubitDevice):
 
         return self._einsum(einsum_indices, mat, state)
 
-    def _create_basis_state_default(self, index):
-        """Return a computational basis state over all wires.
+    def _create_basis_state_default(self, index=0):
+        """Return a default state to construct the self._state with a size of [2] on the host.
+        [2] is chose to reduce the overhead of memory allocation on the host. Once all of data of
+        self._state is needed, self._state will be copied from the GPU and memory allocation of
+        full scale for self._state will be conducted in the method 'syncD2H()'.
         Args:
             index (int): integer representing the computational basis state
         Returns:
-            array[complex]: complex array of shape ``[2]*self.num_wires``
-            representing the statevector of the basis state
-        Note: This function does not support broadcasted inputs yet.
+            array[complex]: complex array of shape ``[2]``
         """
 
         state = np.zeros(2, dtype=np.complex128)
         state[index] = 1
         state = self._asarray(state, dtype=self.C_DTYPE)
         return self._reshape(state, [2])
-        """
-        state = np.zeros(2**self.num_wires, dtype=np.complex128)
-        state[index] = 1
-        state = self._asarray(state, dtype=self.C_DTYPE)
-        self._state = self._reshape(state, [2] * self.num_wires)
-        return self._reshape(state, [2] * self.num_wires)
-        """
 
     def _create_basis_state_GPU(self, index, use_async=False):
+        """Direct set the 'index'th element on GPU
+        Args:
+            index (int): The index of element of statevector to be set.
+        """
         self._gpu_state.setBasisState(index, use_async)
 
     def _apply_state_vector_GPU(self, state, device_wires, use_async=False):
-        # Initialize the internal state vector in a specified state.
-        # Args:
-        #    state (array[complex]): normalized input state of length ``2**len(wires)``
-        #        or broadcasted state of shape ``(batch_size, 2**len(wires))``
-        #    device_wires (Wires): wires that get initialized in the state
-
+        """Initialize the internal state vector in a specified state on GPU.
+        Args:
+           state (array[complex]): normalized input state of length ``2**len(wires)``
+                or broadcasted state of shape ``(batch_size, 2**len(wires))``
+           device_wires (Wires): wires that get initialized in the state
+        """
         # translate to wire labels used by device
         device_wires = self.map_wires(device_wires)
         dim = 2 ** len(device_wires)
@@ -405,11 +403,11 @@ class LightningGPU(QubitDevice):
         # get indices for which the state is changed to input state vector elements
         ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
 
-        # state = self._scatter(ravelled_indices, state, [2**self.num_wires])
+        # set the state vector on GPU with the unravelled_indices and their corresponding values
         self._gpu_state.setStateVector(ravelled_indices, state, use_async)
 
     def _apply_basis_state_GPU(self, state, wires):
-        # Initialize the state vector in a specified computational basis state.
+        # Initialize the state vector in a specified computational basis state on GPU directly.
         # Args:
         #    state (array[int]): computational basis state of shape ``(wires,)``
         #        consisting of 0s and 1s.

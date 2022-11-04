@@ -1,7 +1,7 @@
 #include "DataBuffer.hpp"
 
 namespace Pennylane::CUDA {
-
+// Explicit instantiation
 template void DataBuffer<cuComplex, int>::setElements(int &num_indices,
                                                       cuComplex *value,
                                                       int *indices);
