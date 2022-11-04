@@ -2,6 +2,9 @@
 
 ### New features since last release
 
+* Enable building of python 3.11 wheels and upgrade python on CI/CD workflows to 3.8.
+[(#71)](https://github.com/PennyLaneAI/pennylane-lightning/pull/71)
+
 ### Breaking changes
 
 ### Improvements
@@ -15,7 +18,7 @@
 
 ### Contributors
 
-Shuli Shu
+Amintor Dusko, Shuli Shu
 
 ---
 # Release 0.26.2
@@ -46,9 +49,9 @@ Lee J. O'Riordan
 
 ### New features since last release
 
-* Added native support for expval(H) in adjoint method. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
+* Added native support for expval(H) in adjoint method. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52)
 
-* Added cuSparse SpMV in expval(H) calculations. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52) 
+* Added cuSparse SpMV in expval(H) calculations. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52)
 
 ### Breaking changes
 
@@ -227,7 +230,7 @@ def circuit(weights):
     StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
     return [qml.expval(qml.PauliZ(i)) for i in range(n_wires)]
 
-params = np.random.random(StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires)) 
+params = np.random.random(StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
 result = circuit(params)
 ```
 
