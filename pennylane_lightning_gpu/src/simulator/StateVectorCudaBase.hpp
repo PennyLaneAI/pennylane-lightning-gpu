@@ -218,6 +218,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
     void initSV(bool async = false) {
         size_t index = 0;
         CFP_t value = {1, 0};
+        data_buffer_->zeroInit();
         data_buffer_->setIthElement(value, index, async);
     }
 

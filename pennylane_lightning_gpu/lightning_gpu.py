@@ -212,8 +212,6 @@ class LightningGPU(QubitDevice):
         else:
             raise TypeError(f"Unsupported complex Type: {c_dtype}")
         super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype, analytic=analytic)
-        # self._gpu_state = _gpu_dtype(c_dtype)(self._state)
-        # self._gpu_state = _gpu_dtype(self._state.dtype)(self._state)
         self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
         self._create_basis_state_GPU(0)
         self._sync = sync
@@ -250,8 +248,6 @@ class LightningGPU(QubitDevice):
         shape = (1 << self.num_wires,)
         self.syncD2H()
         return self._reshape(self._pre_rotated_state, shape)
-
-        # pylint: disable=arguments-differ
 
     def _get_batch_size(self, tensor, expected_shape, expected_size):
         """Determine whether a tensor has an additional batch dimension for broadcasting,
@@ -352,17 +348,18 @@ class LightningGPU(QubitDevice):
             representing the statevector of the basis state
         Note: This function does not support broadcasted inputs yet.
         """
-        """
+
         state = np.zeros(2, dtype=np.complex128)
         state[index] = 1
         state = self._asarray(state, dtype=self.C_DTYPE)
-        return self._reshape(state, [2] )
+        return self._reshape(state, [2])
         """
         state = np.zeros(2**self.num_wires, dtype=np.complex128)
         state[index] = 1
         state = self._asarray(state, dtype=self.C_DTYPE)
         self._state = self._reshape(state, [2] * self.num_wires)
         return self._reshape(state, [2] * self.num_wires)
+        """
 
     def _create_basis_state_GPU(self, index, use_async=False):
         self._gpu_state.setBasisState(index, use_async)
@@ -411,12 +408,6 @@ class LightningGPU(QubitDevice):
 
         # state = self._scatter(ravelled_indices, state, [2**self.num_wires])
         self._gpu_state.setStateVector(ravelled_indices, state, use_async)
-
-        # self.syncH2D()
-        state = self._scatter(ravelled_indices, state, [2**self.num_wires])
-
-        state = self._reshape(state, output_shape)
-        self._state = self._asarray(state, dtype=self.C_DTYPE)
 
     def _apply_basis_state_GPU(self, state, wires):
         # Initialize the state vector in a specified computational basis state.
@@ -518,11 +509,9 @@ class LightningGPU(QubitDevice):
                     operations[0].parameters[0].copy(), operations[0].wires
                 )
                 del operations[0]
-                # self.syncH2D()
             elif isinstance(operations[0], BasisState):
                 self._apply_basis_state_GPU(operations[0].parameters[0], operations[0].wires)
                 del operations[0]
-                # self.syncH2D()
 
         for operation in operations:
             if isinstance(operation, (QubitStateVector, BasisState)):
@@ -612,26 +601,19 @@ class LightningGPU(QubitDevice):
         self._check_adjdiff_supported_operations(tape.operations)
 
         # Initialization of state
-        
         if starting_state is not None:
             ket = np.ravel(starting_state, order="C")
         else:
             if not use_device_state:
                 self.reset()
-                #self.execute(tape)
-                self.apply(tape.operations)
+                self.execute(tape)
             ket = np.ravel(self._pre_rotated_state, order="C")
-            #self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
-            #self._create_basis_state_GPU(0)
-        
+
         if self.use_csingle:
             adj = AdjointJacobianGPU_C64()
             ket = ket.astype(np.complex64)
         else:
             adj = AdjointJacobianGPU_C128()
-
-        #state_vector =  _gpu_dtype(self._state.dtype)(ket) 
-        self._gpu_state = _gpu_dtype(self._state.dtype)(ket)
 
         obs_serialized, obs_offsets = _serialize_observables(
             tape, self.wire_map, use_csingle=self.use_csingle
@@ -682,7 +664,6 @@ class LightningGPU(QubitDevice):
                 obs_chunk = obs_serialized[chunk : chunk + batch_size]
                 jac_chunk = adj.adjoint_jacobian_batched(
                     self._gpu_state,
-                    #state_vector,
                     obs_chunk,
                     ops_serialized,
                     tp_shift,
@@ -690,9 +671,11 @@ class LightningGPU(QubitDevice):
                 jac.extend(jac_chunk)
         else:
             jac = adj.adjoint_jacobian(
-                    self._gpu_state,
-                    #state_vector,
-                    obs_serialized, ops_serialized, tp_shift)
+                self._gpu_state,
+                obs_serialized,
+                ops_serialized,
+                tp_shift,
+            )
 
         jac = np.array(jac)  # only for parameters differentiable with the adjoint method
         jac = jac.reshape(-1, len(tp_shift))
