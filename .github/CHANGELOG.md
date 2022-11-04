@@ -10,6 +10,7 @@
 ### Improvements
 
 * `lightning.gpu` is decoupled from Numpy layer during initialization and execution
+and change lightning.gpu to inherit from QubitDevice instead of LightningQubit.
 [(#70)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/70)
 
 ### Documentation
