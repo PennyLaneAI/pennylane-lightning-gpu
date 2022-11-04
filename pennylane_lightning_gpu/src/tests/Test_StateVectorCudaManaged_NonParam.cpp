@@ -938,7 +938,6 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStates",
     std::mt19937 re{1337};
 
     SECTION("SetStates") {
-
         auto init_state = createRandomState<PrecisionT>(re, num_qubits);
         auto expected_state = init_state;
 

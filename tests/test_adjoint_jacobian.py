@@ -216,7 +216,6 @@ class TestAdjointJacobian:
 
     @pytest.mark.parametrize("par", [1, -2, 1.623, -0.051, 0])  # integers, floats, zero
     def test_ry_gradient(self, par, tol, dev_gpu):
-        # def test_ry_gradient(self, par, tol):
         """Test that the gradient of the RY gate matches the exact analytic formula."""
 
         with qml.tape.QuantumTape() as tape:
@@ -617,20 +616,20 @@ def test_qchem_expvalcost_correct():
         qml.RZ(params[0], wires=2)
         qml.Hadamard(wires=1)
 
-        diff_method = "adjoint"
-        dev_lig = qml.device("lightning.gpu", wires=qubits)
-        cost_fn_lig = qml.ExpvalCost(circuit_1, H, dev_lig, optimize=False, diff_method=diff_method)
-        circuit_gradient_lig = qml.grad(cost_fn_lig, argnum=0)
-        params = np.array([0.123], requires_grad=True)
-        grads_lig = circuit_gradient_lig(params)
+    diff_method = "adjoint"
+    dev_lig = qml.device("lightning.gpu", wires=qubits)
+    cost_fn_lig = qml.ExpvalCost(circuit_1, H, dev_lig, optimize=False, diff_method=diff_method)
+    circuit_gradient_lig = qml.grad(cost_fn_lig, argnum=0)
+    params = np.array([0.123], requires_grad=True)
+    grads_lig = circuit_gradient_lig(params)
 
-        dev_def = qml.device("default.qubit", wires=qubits)
-        cost_fn_def = qml.ExpvalCost(circuit_1, H, dev_def, optimize=False, diff_method=diff_method)
-        circuit_gradient_def = qml.grad(cost_fn_def, argnum=0)
-        params = np.array([0.123], requires_grad=True)
-        grads_def = circuit_gradient_def(params)
+    dev_def = qml.device("default.qubit", wires=qubits)
+    cost_fn_def = qml.ExpvalCost(circuit_1, H, dev_def, optimize=False, diff_method=diff_method)
+    circuit_gradient_def = qml.grad(cost_fn_def, argnum=0)
+    params = np.array([0.123], requires_grad=True)
+    grads_def = circuit_gradient_def(params)
 
-        assert np.allclose(grads_lig, grads_def)
+    assert np.allclose(grads_lig, grads_def)
 
 
 def circuit_ansatz(params, wires):

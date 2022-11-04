@@ -80,10 +80,7 @@ class StateVectorCudaManaged
     StateVectorCudaManaged(size_t num_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits),
-          gate_cache_(true){
-              // BaseType::initSV();
-
-          };
+          gate_cache_(true){};
 
     StateVectorCudaManaged(size_t num_qubits, const DevTag<int> &dev_tag,
                            bool alloc = true)
@@ -121,19 +118,6 @@ class StateVectorCudaManaged
     void setState(const std::complex<Precision> &value, const size_t &index,
                   const bool async = false) {
         BaseType::getDataBuffer().setIthElement(value, index, async);
-    }
-
-    template <class index_type>
-    void setState(const std::vector<std::complex<Precision>> &values,
-                  const std::vector<index_type> &indices,
-                  const bool async = false) {
-
-        index_type num_indices = indices.size();
-
-        for (index_type i = 0; i < num_indices; i++) {
-            BaseType::getDataBuffer().setIthElement(values[i], indices[i],
-                                                    async);
-        }
     }
 
     template <class index_type>
