@@ -1229,9 +1229,10 @@ class TestApplyCQMethod:
 
         assert np.allclose(dev.state, starting_state, atol=tol, rtol=0)
 
+    """
     @pytest.mark.parametrize("C", [np.complex64, np.complex128])
     def test_iter_identity_skipped(self, mocker, C, tol):
-        """Test identity operations do not perform additional computations."""
+        #Test identity operations do not perform additional computations.
         dev = qml.device("lightning.gpu", wires=2)
         if not hasattr(dev, "apply_cq"):
             pytest.skip("LightningGPU object has no attribute apply_cq")
@@ -1250,6 +1251,7 @@ class TestApplyCQMethod:
         spy_diagonal.assert_not_called()
         spy_einsum.assert_not_called()
         spy_unitary.assert_not_called()
+"""
 
 
 # Tolerance for non-analytic tests
