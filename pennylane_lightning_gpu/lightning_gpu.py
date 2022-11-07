@@ -217,14 +217,14 @@ class LightningGPU(QubitDevice):
         self._dp = DevPool()
         self._batch_obs = batch_obs
 
-        self._state = self._create_basis_state_default(0)
+        state = np.zeros(1, dtype=np.complex128)
+        self._state = self._asarray(state, dtype=self.C_DTYPE)
+        #self._state = self._create_basis_state_default(0)
         self._pre_rotated_state = self._state
 
     def reset(self):
         super().reset()
         # init the state vector to |00..0>
-        self._state = self._create_basis_state_default(0)
-        self._pre_rotated_state = self._state
         self._gpu_state.resetGPU(False)  # Sync reset
 
     def syncH2D(self, use_async=False):
@@ -248,7 +248,7 @@ class LightningGPU(QubitDevice):
         self.syncD2H()
         return self._reshape(self._pre_rotated_state, shape)
 
-    def _create_basis_state_default(self, index=0):
+    #def _create_basis_state_default(self, index=0):
         """Return a default state to construct the self._state with a size of [2] on the host.
         [2] is chose to reduce the overhead of memory allocation on the host. Once all of data of
         self._state is needed, self._state will be copied from the GPU and memory allocation of
@@ -259,10 +259,10 @@ class LightningGPU(QubitDevice):
             array[complex]: complex array of shape ``[2]``
         """
 
-        state = np.zeros(2, dtype=np.complex128)
-        state[index] = 1
-        state = self._asarray(state, dtype=self.C_DTYPE)
-        return self._reshape(state, [2])
+    #    state = np.zeros(2, dtype=np.complex128)
+    #    state[index] = 1
+    #    state = self._asarray(state, dtype=self.C_DTYPE)
+    #    return self._reshape(state, [2])
 
     def _create_basis_state_GPU(self, index, use_async=False):
         """Direct set the 'index'th element on GPU
