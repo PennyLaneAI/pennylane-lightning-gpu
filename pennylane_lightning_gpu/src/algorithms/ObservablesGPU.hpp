@@ -496,13 +496,11 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
         }
 
         // CUSPARSE APIs
-        cusparseHandle_t handle = nullptr;
+        cusparseHandle_t handle = sv.getCusparseHandle();
         cusparseSpMatDescr_t mat;
         cusparseDnVecDescr_t vecX, vecY;
 
         size_t bufferSize = 0;
-
-        PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&handle))
 
         // Create sparse matrix A in CSR format
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
@@ -567,7 +565,6 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecX))
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY))
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle))
     }
 
     [[nodiscard]] auto getObsName() const -> std::string override {
