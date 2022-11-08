@@ -2,6 +2,41 @@
 
 ### New features since last release
 
+* Explicit support for `qml.SparseHamiltonian` using the adjoint gradient method. 
+  [(#72)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/72)
+
+  This support allows users to explicitly make use of `qml.SparseHamiltonian` in expectation value calculations, and ensures the gradients can be taken efficiently. 
+  A user can now explicitly decide whether to decompose the Hamiltonian into separate Pauli-words, with evaluations happening over multiple GPUs, or convert the Hamiltonian directly to a sparse representation for evaluation on a single GPU. Depending on the Hamiltonian structure, a user may benefit from one method or the other.
+
+  The workflow for decomposing a Hamiltonian is as:
+  ```python
+  obs_per_gpu = 1
+  dev = qml.device("lightning.gpu", wires=num_wires, batch_obs=obs_per_gpu)
+
+  H = sum([0.5*(i+1)*(qml.PauliZ(i)@qml.PauliZ(i+1)) for i in range(0, num_wires-1, 2)])
+
+  @qml.qnode(dev, diff_method="adjoint")
+  def circuit(params):
+      for i in range(num_wires):
+          qml.RX(params[i], i)
+      return qml.expval(H)
+  ```
+
+  For the new `qml.SparseHamiltonian` support, the above script becomes:
+  ```python
+  dev = qml.device("lightning.gpu", wires=num_wires)
+  H = sum([0.5*(i+1)*(qml.PauliZ(i)@qml.PauliZ(i+1)) for i in range(0, num_wires-1, 2)])
+  H_sparse_matrix = qml.utils.sparse_hamiltonian(H, wires=range(num_wires))
+
+  SpH = qml.SparseHamiltonian(H_sparse_matrix, wires=range(num_wires))
+
+  @qml.qnode(dev, diff_method="adjoint")
+  def circuit(params):
+      for i in range(num_wires):
+          qml.RX(params[i], i)
+      return qml.expval(SpH)
+  ```
+
 * Enable building of python 3.11 wheels and upgrade python on CI/CD workflows to 3.8.
 [(#71)](https://github.com/PennyLaneAI/pennylane-lightning/pull/71)
 
