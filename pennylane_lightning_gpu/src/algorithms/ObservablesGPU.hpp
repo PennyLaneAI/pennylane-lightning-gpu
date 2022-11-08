@@ -452,6 +452,8 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
      *
      */
     void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
+        PL_ABORT_IF_NOT(wires_.size() == sv.getNumQubits(),
+                        "SparseH wire count does not match state-vector size");
         using CFP_t = typename StateVectorCudaManaged<T>::CFP_t;
 
         const std::size_t nIndexBits = sv.getNumQubits();

@@ -833,8 +833,8 @@ class StateVectorCudaManaged
             /* const void* */ &beta,
             /* cusparseDnVecDescr_t */ vecY,
             /* cudaDataType */ data_type,
-            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_CSR_ALG1,
-            /* size_t* */ &bufferSize)); // Can also use CUSPARSE_MV_ALG_DEFAULT
+            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+            /* size_t* */ &bufferSize));
 
         DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
                                                 stream_id, true};
@@ -849,11 +849,9 @@ class StateVectorCudaManaged
             /* const void* */ &beta,
             /* cusparseDnVecDescr_t */ vecY,
             /* cudaDataType */ data_type,
-            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_CSR_ALG1,
+            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
             /* void* */
-            reinterpret_cast<void *>(
-                dBuffer.getData()))); // Can also use
-                                      // CUSPARSE_MV_ALG_DEFAULT
+            reinterpret_cast<void *>(dBuffer.getData())));
 
         // destroy matrix/vector descriptors
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat));
