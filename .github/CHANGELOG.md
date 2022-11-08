@@ -22,7 +22,7 @@
       return qml.expval(H)
   ```
 
-  For the new `qml.SparseHamiltonian` the above script becomes:
+  For the new `qml.SparseHamiltonian` support, the above script becomes:
   ```python
   dev = qml.device("lightning.gpu", wires=num_wires)
   H = sum([0.5*(i+1)*(qml.PauliZ(i)@qml.PauliZ(i+1)) for i in range(0, num_wires-1, 2)])
