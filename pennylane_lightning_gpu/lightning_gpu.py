@@ -196,7 +196,8 @@ class LightningGPU(QubitDevice):
         self,
         wires,
         *,
-        sync=True,
+        sync=False,
+        # sync=True,
         c_dtype=np.complex128,
         shots=None,
         batch_obs: Union[bool, int] = False,
@@ -219,7 +220,7 @@ class LightningGPU(QubitDevice):
 
         state = np.zeros(1, dtype=np.complex128)
         self._state = self._asarray(state, dtype=self.C_DTYPE)
-        #self._state = self._create_basis_state_default(0)
+        # self._state = self._create_basis_state_default(0)
         self._pre_rotated_state = self._state
 
     def reset(self):
@@ -248,7 +249,7 @@ class LightningGPU(QubitDevice):
         self.syncD2H()
         return self._reshape(self._pre_rotated_state, shape)
 
-    #def _create_basis_state_default(self, index=0):
+        # def _create_basis_state_default(self, index=0):
         """Return a default state to construct the self._state with a size of [2] on the host.
         [2] is chose to reduce the overhead of memory allocation on the host. Once all of data of
         self._state is needed, self._state will be copied from the GPU and memory allocation of
