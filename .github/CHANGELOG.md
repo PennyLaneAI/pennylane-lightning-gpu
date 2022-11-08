@@ -8,7 +8,7 @@
   This support allows users to explicitly make use of `qml.SparseHamiltonian` in expectation value calculations, and ensures the gradients can be taken efficiently. 
   A user can now explicitly decide whether to decompose the Hamiltonian into separate Pauli-words, with evaluations happening over multiple GPUs, or convert the Hamiltonian directly to a sparse representation for evaluation on a single GPU. Depending on the Hamiltonian structure, a user may benefit from one method or the other.
 
-  The work-flow for decomposing a Hamiltonian is as:
+  The workflow for decomposing a Hamiltonian is as:
   ```python
   obs_per_gpu = 1
   dev = qml.device("lightning.gpu", wires=num_wires, batch_obs=obs_per_gpu)
