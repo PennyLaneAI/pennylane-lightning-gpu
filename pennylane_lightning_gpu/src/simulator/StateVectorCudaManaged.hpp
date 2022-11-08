@@ -793,7 +793,7 @@ class StateVectorCudaManaged
 
         size_t bufferSize = 0;
 
-        PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&handle))
+        PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&handle));
 
         // Create sparse matrix A in CSR format
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
@@ -807,21 +807,21 @@ class StateVectorCudaManaged
             /* cusparseIndexType_t */ compute_type,
             /* cusparseIndexType_t */ compute_type,
             /* cusparseIndexBase_t */ CUSPARSE_INDEX_BASE_ZERO,
-            /* cudaDataType */ data_type))
+            /* cudaDataType */ data_type));
 
         // Create dense vector X
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
             /* cusparseDnVecDescr_t* */ &vecX,
             /* int64_t */ num_cols,
             /* void* */ BaseType::getData(),
-            /* cudaDataType */ data_type))
+            /* cudaDataType */ data_type));
 
         // Create dense vector y
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
             /* cusparseDnVecDescr_t* */ &vecY,
             /* int64_t */ num_rows,
             /* void* */ d_tmp.getData(),
-            /* cudaDataType */ data_type))
+            /* cudaDataType */ data_type));
 
         // allocate an external buffer if needed
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
@@ -833,8 +833,8 @@ class StateVectorCudaManaged
             /* const void* */ &beta,
             /* cusparseDnVecDescr_t */ vecY,
             /* cudaDataType */ data_type,
-            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_CSR_ALG1,
-            /* size_t* */ &bufferSize)) // Can also use CUSPARSE_MV_ALG_DEFAULT
+            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+            /* size_t* */ &bufferSize));
 
         DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
                                                 stream_id, true};
@@ -849,17 +849,15 @@ class StateVectorCudaManaged
             /* const void* */ &beta,
             /* cusparseDnVecDescr_t */ vecY,
             /* cudaDataType */ data_type,
-            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_CSR_ALG1,
+            /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
             /* void* */
-            reinterpret_cast<void *>(
-                dBuffer.getData()))); // Can also use
-                                      // CUSPARSE_MV_ALG_DEFAULT
+            reinterpret_cast<void *>(dBuffer.getData())));
 
         // destroy matrix/vector descriptors
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecX))
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY))
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle))
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat));
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecX));
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY));
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle));
 
         expect = innerProdC_CUDA(BaseType::getData(), d_tmp.getData(),
                                  BaseType::getLength(), device_id, stream_id)
