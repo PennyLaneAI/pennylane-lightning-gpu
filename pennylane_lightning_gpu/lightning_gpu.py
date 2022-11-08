@@ -218,32 +218,18 @@ class LightningGPU(QubitDevice):
         self._dp = DevPool()
         self._batch_obs = batch_obs
 
-        self._state = np.array([], dtype=self.C_DTYPE)
-
     def reset(self):
         super().reset()
         # init the state vector to |00..0>
         self._gpu_state.resetGPU(False)  # Sync reset
 
-    def syncH2D(self, use_async=False):
-        """Explicitly synchronize CPU data to GPU"""
-        self._gpu_state.HostToDevice(self._state.ravel(order="C"), use_async)
-
-    def syncD2H(self, use_async=False):
+    def syncD2H(self, state_vector, use_async=False):
         """Explicitly synchronize GPU data to CPU"""
-        if len(self._state) != 2**self.num_wires:
-            state = np.zeros(2**self.num_wires, dtype=np.complex128)
-            state = self._asarray(state, dtype=self.C_DTYPE)
-            self._state = self._reshape(state, [2] * self.num_wires)
+        self._gpu_state.DeviceToHost(state_vector.ravel(order="C"), use_async)
 
-        self._gpu_state.DeviceToHost(self._state.ravel(order="C"), use_async)
-
-    @property
-    def state(self):
-        # Flattening the state.
-        shape = (1 << self.num_wires,)
-        self.syncD2H()
-        return self._reshape(self._state, shape)
+    def syncH2D(self, state_vector, use_async=False):
+        """Explicitly synchronize CPU data to GPU"""
+        self._gpu_state.HostToDevice(state_vector.ravel(order="C"), use_async)
 
     def _create_basis_state_GPU(self, index, use_async=False):
         """Direct set the 'index'th element on GPU
@@ -280,8 +266,7 @@ class LightningGPU(QubitDevice):
 
         if len(device_wires) == self.num_wires and Wires(sorted(device_wires)) == device_wires:
             # Initialize the entire device state with the input state
-            self._state = self._reshape(state, output_shape)
-            self.syncH2D()
+            self.syncH2D(self._reshape(state, output_shape))
             return
 
         # generate basis states on subset of qubits via the cartesian product
@@ -349,8 +334,8 @@ class LightningGPU(QubitDevice):
 
     def statistics(self, observables, shot_range=None, bin_size=None, circuit=None):
         ## Ensure D2H sync before calculating non-GPU supported operations
-        if self._sync:
-            self.syncD2H()
+        # if self._sync:
+        #    self.syncD2H()
         return super().statistics(observables, shot_range, bin_size, circuit)
 
     def apply_cq(self, operations, **kwargs):
@@ -409,8 +394,6 @@ class LightningGPU(QubitDevice):
                 )
 
         self.apply_cq(operations)
-        if self._sync:
-            self.syncD2H()
 
     @staticmethod
     def _check_adjdiff_supported_measurements(measurements: List[MeasurementProcess]):
@@ -630,7 +613,7 @@ class LightningGPU(QubitDevice):
             "Projector",
             "Hermitian",
         ]:
-            self.syncD2H()
+            # self.syncD2H()
             return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
 
         if self.shots is not None:

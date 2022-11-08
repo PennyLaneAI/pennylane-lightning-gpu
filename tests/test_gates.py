@@ -125,17 +125,17 @@ def test_gate_unitary_correct(op, op_name):
     def output(input):
         qml.BasisState(input, wires=range(wires))
         op(*p, wires=range(wires))
-        return qml.state()
+        return qml.probs(range(wires))
 
-    unitary = np.zeros((2**wires, 2**wires), dtype=np.complex128)
+    unitary = np.zeros((2**wires, 2**wires), dtype=np.float64)
 
     for i, input in enumerate(itertools.product([0, 1], repeat=wires)):
         out = output(input)
         unitary[:, i] = out
 
-    unitary_expected = qml.matrix(op(*p, wires=range(wires)))
+    unitary_expected = np.abs(qml.matrix(op(*p, wires=range(wires))))
 
-    assert np.allclose(unitary, unitary_expected)
+    assert np.allclose(unitary, np.square(unitary_expected))
 
 
 @pytest.mark.parametrize("op_name", LightningGPU.operations)
@@ -170,17 +170,17 @@ def test_inverse_unitary_correct(op, op_name):
     def output(input):
         qml.BasisState(input, wires=range(wires))
         op(*p, wires=range(wires)).inv()
-        return qml.state()
+        return qml.probs(range(wires))
 
-    unitary = np.zeros((2**wires, 2**wires), dtype=np.complex128)
+    unitary = np.zeros((2**wires, 2**wires), dtype=np.float64)
 
     for i, input in enumerate(itertools.product([0, 1], repeat=wires)):
         out = output(input)
         unitary[:, i] = out
 
-    unitary_expected = qml.matrix(op(*p, wires=range(wires)).inv())
+    unitary_expected = np.abs(qml.matrix(op(*p, wires=range(wires)).inv()))
 
-    assert np.allclose(unitary, unitary_expected)
+    assert np.allclose(unitary, np.square(unitary_expected))
 
 
 random_unitary = np.array(
@@ -223,15 +223,17 @@ def test_arbitrary_unitary_correct():
     def output(input):
         qml.BasisState(input, wires=range(wires))
         qml.QubitUnitary(random_unitary, wires=range(2))
-        return qml.state()
+        return qml.probs(range(wires))
 
-    unitary = np.zeros((2**wires, 2**wires), dtype=np.complex128)
+    unitary = np.zeros((2**wires, 2**wires), dtype=np.float64)
 
     for i, input in enumerate(itertools.product([0, 1], repeat=wires)):
         out = output(input)
         unitary[:, i] = out
 
-    assert np.allclose(unitary, random_unitary)
+    unitary_expected = np.abs(random_unitary)
+
+    assert np.allclose(unitary, np.square(unitary_expected))
 
 
 def test_arbitrary_inv_unitary_correct():
@@ -244,13 +246,16 @@ def test_arbitrary_inv_unitary_correct():
     def output(input):
         qml.BasisState(input, wires=range(wires))
         qml.QubitUnitary(random_unitary, wires=range(2)).inv()
-        return qml.state()
+        return qml.probs(range(wires))
 
-    unitary = np.zeros((2**wires, 2**wires), dtype=np.complex128)
+    unitary = np.zeros((2**wires, 2**wires), dtype=np.float64)
 
     for i, input in enumerate(itertools.product([0, 1], repeat=wires)):
         out = output(input)
         unitary[:, i] = out
 
     random_unitary_inv = random_unitary.conj().T
-    assert np.allclose(unitary, random_unitary_inv)
+
+    unitary_expected = np.abs(random_unitary_inv)
+
+    assert np.allclose(unitary, np.square(unitary_expected))
