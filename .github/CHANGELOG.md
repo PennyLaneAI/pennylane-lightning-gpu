@@ -48,6 +48,9 @@
 
 ### Bug fixes
 
+* Ensure device fallback successfully carries through for 0 devices
+[(#67)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/67)
+
 * Fix void data type used in SparseSpMV
 [(#69)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/69)
 
