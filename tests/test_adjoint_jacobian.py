@@ -370,7 +370,7 @@ class TestAdjointJacobian:
         dM1 = dev_gpu.adjoint_jacobian(tape)
 
         qml.execute([tape], dev_gpu, None)
-        dM2 = dev_gpu.adjoint_jacobian(tape, starting_state=dev_gpu._pre_rotated_state)
+        dM2 = dev_gpu.adjoint_jacobian(tape, starting_state=dev_gpu._state)
 
         assert np.allclose(dM1, dM2, atol=tol, rtol=0)
 

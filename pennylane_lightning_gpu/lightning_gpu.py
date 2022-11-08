@@ -218,10 +218,7 @@ class LightningGPU(QubitDevice):
         self._dp = DevPool()
         self._batch_obs = batch_obs
 
-        state = np.zeros(1, dtype=np.complex128)
-        self._state = self._asarray(state, dtype=self.C_DTYPE)
-        # self._state = self._create_basis_state_default(0)
-        self._pre_rotated_state = self._state
+        self._state = np.array([], dtype=self.C_DTYPE)
 
     def reset(self):
         super().reset()
@@ -240,30 +237,13 @@ class LightningGPU(QubitDevice):
             self._state = self._reshape(state, [2] * self.num_wires)
 
         self._gpu_state.DeviceToHost(self._state.ravel(order="C"), use_async)
-        self._pre_rotated_state = self._state
 
     @property
     def state(self):
         # Flattening the state.
         shape = (1 << self.num_wires,)
         self.syncD2H()
-        return self._reshape(self._pre_rotated_state, shape)
-
-        # def _create_basis_state_default(self, index=0):
-        """Return a default state to construct the self._state with a size of [2] on the host.
-        [2] is chose to reduce the overhead of memory allocation on the host. Once all of data of
-        self._state is needed, self._state will be copied from the GPU and memory allocation of
-        full scale for self._state will be conducted in the method 'syncD2H()'.
-        Args:
-            index (int): integer representing the computational basis state
-        Returns:
-            array[complex]: complex array of shape ``[2]``
-        """
-
-    #    state = np.zeros(2, dtype=np.complex128)
-    #    state[index] = 1
-    #    state = self._asarray(state, dtype=self.C_DTYPE)
-    #    return self._reshape(state, [2])
+        return self._reshape(self._state, shape)
 
     def _create_basis_state_GPU(self, index, use_async=False):
         """Direct set the 'index'th element on GPU
@@ -515,7 +495,7 @@ class LightningGPU(QubitDevice):
             if not use_device_state:
                 self.reset()
                 self.execute(tape)
-            ket = np.ravel(self._pre_rotated_state, order="C")
+            # ket = np.ravel(self._pre_rotated_state, order="C")
 
         if self.use_csingle:
             adj = AdjointJacobianGPU_C64()
@@ -630,7 +610,7 @@ class LightningGPU(QubitDevice):
                 num_params = len(tape.trainable_params)
 
                 if num_params == 0:
-                    return np.array([], dtype=self._state.dtype)
+                    return np.array([], dtype=c_dtype)
 
                 new_tape = tape.copy()
                 new_tape._measurements = [qml.expval(ham)]
