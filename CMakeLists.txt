@@ -98,7 +98,7 @@ set(ENABLE_OPENMP ON)
 FetchContent_Declare(
     pennylane_lightning
     GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
-    GIT_TAG       latest_release
+    #GIT_TAG       latest_release
 )
 FetchContent_MakeAvailable(pennylane_lightning)
 

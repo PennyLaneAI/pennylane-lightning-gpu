@@ -216,6 +216,15 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
     }
 
     /**
+     * @brief Move and replace DataBuffer for statevector.
+     *
+     * @param other Source data to copy from.
+     */
+    void updateData(std::unique_ptr<CUDA::DataBuffer<CFP_t>> &&other) {
+        data_buffer_ = std::move(other);
+    }
+
+    /**
      * @brief Initialize the statevector data to the |0...0> state
      *
      */

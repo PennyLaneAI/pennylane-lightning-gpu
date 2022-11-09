@@ -446,12 +446,18 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
                                         std::move(arg3), std::move(arg4)});
     }
 
-    // to work with
+    /**
+     * @brief Updates the statevector SV:->SV', where SV' = a*H*SV, and where H
+     * is a sparse Hamiltonian.
+     *
+     */
     void applyInPlace(StateVectorCudaManaged<T> &sv) const override {
+        PL_ABORT_IF_NOT(wires_.size() == sv.getNumQubits(),
+                        "SparseH wire count does not match state-vector size");
         using CFP_t = typename StateVectorCudaManaged<T>::CFP_t;
 
-        const auto nIndexBits = sv.getNumQubits();
-        const auto length = 1 << nIndexBits;
+        const std::size_t nIndexBits = sv.getNumQubits();
+        const std::size_t length = 1 << nIndexBits;
         const int64_t num_rows = static_cast<int64_t>(
             offsets_.size() -
             1); // int64_t is required for num_rows by cusparseCreateCsr
@@ -466,22 +472,18 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
         auto device_id = sv.getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = sv.getDataBuffer().getDevTag().getStreamID();
 
-        DataBuffer<IdxT, int> d_csrOffsets{
-            static_cast<std::size_t>(offsets_.size()), device_id, stream_id,
-            true};
-        DataBuffer<IdxT, int> d_columns{
-            static_cast<std::size_t>(indices_.size()), device_id, stream_id,
-            true};
-        DataBuffer<CFP_t, int> d_values{static_cast<std::size_t>(data_.size()),
-                                        device_id, stream_id, true};
-        DataBuffer<CFP_t, int> d_tmp{static_cast<std::size_t>(length),
-                                     device_id, stream_id, true};
+        // clang-format off
+        DataBuffer<IdxT> H_csrOffsets  { offsets_.size(), device_id, stream_id, true};
+        DataBuffer<IdxT> H_columns     { indices_.size(), device_id, stream_id, true};
+        DataBuffer<CFP_t> H_values     { data_.size(),    device_id, stream_id, true};
 
-        d_csrOffsets.CopyHostDataToGpu(offsets_.data(),
-                                       d_csrOffsets.getLength(), false);
-        d_columns.CopyHostDataToGpu(indices_.data(), d_columns.getLength(),
-                                    false);
-        d_values.CopyHostDataToGpu(data_.data(), d_values.getLength(), false);
+        // Transfer ownership after state update to StateVectorCudaManaged
+        std::unique_ptr<DataBuffer<CFP_t>> d_sv_prime = std::make_unique<DataBuffer<CFP_t>>(length, device_id, stream_id, true);
+
+        H_csrOffsets.CopyHostDataToGpu( offsets_.data(), H_csrOffsets.getLength(), false);
+        H_columns.CopyHostDataToGpu(    indices_.data(), H_columns.getLength(),    false);
+        H_values.CopyHostDataToGpu(     data_.data(),    H_values.getLength(),     false);
+        // clang-format on
 
         cudaDataType_t data_type;
         cusparseIndexType_t compute_type;
@@ -497,74 +499,76 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
 
         // CUSPARSE APIs
         cusparseHandle_t handle = sv.getCusparseHandle();
-        cusparseSpMatDescr_t mat;
-        cusparseDnVecDescr_t vecX, vecY;
+        cusparseSpMatDescr_t sparseH_descriptor;
+        cusparseDnVecDescr_t sv_descriptor, sv_prime_descriptor;
 
         size_t bufferSize = 0;
 
-        // Create sparse matrix A in CSR format
+        // Create sparse matrix descriptor for H in CSR format
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
-            /* cusparseSpMatDescr_t* */ &mat,
+            /* cusparseSpMatDescr_t* */ &sparseH_descriptor,
             /* int64_t */ num_rows,
             /* int64_t */ num_cols,
             /* int64_t */ nnz,
-            /* void* */ d_csrOffsets.getData(),
-            /* void* */ d_columns.getData(),
-            /* void* */ d_values.getData(),
+            /* void* */ H_csrOffsets.getData(),
+            /* void* */ H_columns.getData(),
+            /* void* */ H_values.getData(),
             /* cusparseIndexType_t */ compute_type,
             /* cusparseIndexType_t */ compute_type,
             /* cusparseIndexBase_t */ CUSPARSE_INDEX_BASE_ZERO,
-            /* cudaDataType */ data_type))
+            /* cudaDataType */ data_type));
 
-        // Create dense vector X
+        // Create dense statevector descriptor
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
-            /* cusparseDnVecDescr_t* */ &vecX,
+            /* cusparseDnVecDescr_t* */ &sv_descriptor,
             /* int64_t */ num_cols,
             /* void* */ sv.getData(),
-            /* cudaDataType */ data_type))
+            /* cudaDataType */ data_type));
 
-        // Create dense vector y
+        // Create dense statevector prime descriptor
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
-            /* cusparseDnVecDescr_t* */ &vecY,
+            /* cusparseDnVecDescr_t* */ &sv_prime_descriptor,
             /* int64_t */ num_rows,
-            /* void* */ sv.getData(),
-            /* cudaDataType */ data_type))
+            /* void* */ d_sv_prime->getData(),
+            /* cudaDataType */ data_type));
 
         // allocate an external buffer if needed
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
             /* cusparseHandle_t */ handle,
             /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
             /* const void* */ &alpha,
-            /* cusparseSpMatDescr_t */ mat,
-            /* cusparseDnVecDescr_t */ vecX,
+            /* cusparseSpMatDescr_t */ sparseH_descriptor,
+            /* cusparseDnVecDescr_t */ sv_descriptor,
             /* const void* */ &beta,
-            /* cusparseDnVecDescr_t */ vecY,
+            /* cusparseDnVecDescr_t */ sv_prime_descriptor,
             /* cudaDataType */ data_type,
             /* cusparseSpMVAlg_t */
             CUSPARSE_SPMV_CSR_ALG1, // Can also use CUSPARSE_MV_ALG_DEFAULT
-            /* size_t* */ &bufferSize))
+            /* size_t* */ &bufferSize));
 
-        DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
-                                                stream_id, true};
+        DataBuffer<cudaDataType_t> dBuffer{bufferSize, device_id, stream_id,
+                                           true};
 
         // execute SpMV
         PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
             /* cusparseHandle_t */ handle,
             /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
             /* const void* */ &alpha,
-            /* cusparseSpMatDescr_t */ mat,
-            /* cusparseDnVecDescr_t */ vecX,
+            /* cusparseSpMatDescr_t */ sparseH_descriptor,
+            /* cusparseDnVecDescr_t */ sv_descriptor,
             /* const void* */ &beta,
-            /* cusparseDnVecDescr_t */ vecY,
+            /* cusparseDnVecDescr_t */ sv_prime_descriptor,
             /* cudaDataType */ data_type,
             /* cusparseSpMVAlg_t */
-            CUSPARSE_SPMV_CSR_ALG1, // Can also use CUSPARSE_MV_ALG_DEFAULT
+            CUSPARSE_MV_ALG_DEFAULT,
             /* void* */ reinterpret_cast<void *>(dBuffer.getData())));
 
         // destroy matrix/vector descriptors
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat))
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecX))
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY))
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(sparseH_descriptor));
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(sv_descriptor));
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(sv_prime_descriptor));
+
+        sv.updateData(std::move(d_sv_prime));
     }
 
     [[nodiscard]] auto getObsName() const -> std::string override {
