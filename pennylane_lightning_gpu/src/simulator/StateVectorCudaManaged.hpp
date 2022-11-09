@@ -66,17 +66,20 @@ class StateVectorCudaManaged
     StateVectorCudaManaged() = delete;
     StateVectorCudaManaged(size_t num_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
-              num_qubits), handle(make_shared_cusv_handle()), cublashandle(make_shared_cublas_handle()),
-          gate_cache_(true){
-          };
+              num_qubits),
+          handle(make_shared_cusv_handle()),
+          cublashandle(make_shared_cublas_handle()), gate_cache_(true){};
 
-    StateVectorCudaManaged(size_t num_qubits, const DevTag<int> &dev_tag,
-                           bool alloc = true,
-                           SharedCusvHandle cusvhandle_in = make_shared_cusv_handle(),
-                           SharedCublasHandle cublashandle_in = make_shared_cublas_handle(),
-                           SharedCusparseHandle cusparsehandle_in = make_shared_cusparse_handle())
+    StateVectorCudaManaged(
+        size_t num_qubits, const DevTag<int> &dev_tag, bool alloc = true,
+        SharedCusvHandle cusvhandle_in = make_shared_cusv_handle(),
+        SharedCublasHandle cublashandle_in = make_shared_cublas_handle(),
+        SharedCusparseHandle cusparsehandle_in = make_shared_cusparse_handle())
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
-              num_qubits, dev_tag, alloc), handle(std::move(cusvhandle_in)), cublashandle(std::move(cublashandle_in)), cusparsehandle(std::move(cusparsehandle_in)),
+              num_qubits, dev_tag, alloc),
+          handle(std::move(cusvhandle_in)),
+          cublashandle(std::move(cublashandle_in)),
+          cusparsehandle(std::move(cusparsehandle_in)),
           gate_cache_(true, dev_tag) {
         BaseType::initSV();
     };
@@ -86,12 +89,14 @@ class StateVectorCudaManaged
         BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
     }
 
-    StateVectorCudaManaged(const CFP_t *gpu_data, size_t length,
-                           DevTag<int> dev_tag,
-                           SharedCusvHandle handle_in = make_shared_cusv_handle(),
-                           SharedCublasHandle cublashandle_in = make_shared_cublas_handle(),
-                           SharedCusparseHandle cusparsehandle_in = make_shared_cusparse_handle())
-        : StateVectorCudaManaged(Util::log2(length), dev_tag, true, std::move(handle_in), std::move(cublashandle_in), std::move(cusparsehandle_in)) {
+    StateVectorCudaManaged(
+        const CFP_t *gpu_data, size_t length, DevTag<int> dev_tag,
+        SharedCusvHandle handle_in = make_shared_cusv_handle(),
+        SharedCublasHandle cublashandle_in = make_shared_cublas_handle(),
+        SharedCusparseHandle cusparsehandle_in = make_shared_cusparse_handle())
+        : StateVectorCudaManaged(
+              Util::log2(length), dev_tag, true, std::move(handle_in),
+              std::move(cublashandle_in), std::move(cusparsehandle_in)) {
         BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
     }
 
@@ -103,8 +108,7 @@ class StateVectorCudaManaged
 
     StateVectorCudaManaged(const StateVectorCudaManaged &other)
         : BaseType(other.getNumQubits(), other.getDataBuffer().getDevTag()),
-          handle(other.handle),
-          cublashandle(other.cublashandle),
+          handle(other.handle), cublashandle(other.cublashandle),
           cusparsehandle(other.cusparsehandle),
           gate_cache_(true, other.getDataBuffer().getDevTag()) {
         BaseType::CopyGpuDataToGpuIn(other);
@@ -854,7 +858,8 @@ class StateVectorCudaManaged
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY))
 
         expect = innerProdC_CUDA(BaseType::getData(), d_tmp.getData(),
-                                 BaseType::getLength(), device_id, stream_id, getCublasHandle())
+                                 BaseType::getLength(), device_id, stream_id,
+                                 getCublasHandle())
                      .x;
 
         return expect;
@@ -1086,12 +1091,18 @@ class StateVectorCudaManaged
         }
     }
 
-    auto getCublasHandle() const -> const CublasCaller& { return *cublashandle; }
-    auto getCusparseHandle() const -> cusparseHandle_t { if(!cusparsehandle) cusparsehandle = make_shared_cusparse_handle(); return cusparsehandle.get(); }
+    auto getCublasHandle() const -> const CublasCaller & {
+        return *cublashandle;
+    }
+    auto getCusparseHandle() const -> cusparseHandle_t {
+        if (!cusparsehandle)
+            cusparsehandle = make_shared_cusparse_handle();
+        return cusparsehandle.get();
+    }
 
   private:
-    SharedCusvHandle     handle;
-    SharedCublasHandle   cublashandle;
+    SharedCusvHandle handle;
+    SharedCublasHandle cublashandle;
     mutable SharedCusparseHandle cusparsehandle;
     GateCache<Precision> gate_cache_;
     using ParFunc = std::function<void(const std::vector<size_t> &, bool,

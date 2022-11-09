@@ -1,4 +1,5 @@
-// Contributions to this file by NVIDIA are Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES and licenced under the following licence
+// Contributions to this file by NVIDIA are Copyright (c) 2022, NVIDIA
+// CORPORATION & AFFILIATES and licenced under the following licence
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +15,6 @@
 /**
  * @file AdjointDiffGPU.hpp
  */
-
 
 #pragma once
 
@@ -240,9 +240,10 @@ template <class T = double> class AdjointJacobianGPU {
                             sv2.getDataBuffer().getDevTag().getDeviceID(),
                         "Data exists on different GPUs. Aborting.");
 
-            innerProdC_CUDA_device(sv1.getData(), sv2.getData(), sv1.getLength(),
-                            sv1.getDataBuffer().getDevTag().getDeviceID(),
-                            sv1.getDataBuffer().getDevTag().getStreamID(), sv1.getCublasHandle(), jac);
+        innerProdC_CUDA_device(sv1.getData(), sv2.getData(), sv1.getLength(),
+                               sv1.getDataBuffer().getDevTag().getDeviceID(),
+                               sv1.getDataBuffer().getDevTag().getStreamID(),
+                               sv1.getCublasHandle(), jac);
     }
 
     /**
@@ -603,10 +604,11 @@ template <class T = double> class AdjointJacobianGPU {
         DevTag<int> dt_local(std::move(dev_tag));
         dt_local.refresh();
         // Create $U_{1:p}\vert \lambda \rangle$
-        SharedCusvHandle   cusvhandle       = make_shared_cusv_handle();
-        SharedCublasHandle cublashandle     = make_shared_cublas_handle();
+        SharedCusvHandle cusvhandle = make_shared_cusv_handle();
+        SharedCublasHandle cublashandle = make_shared_cublas_handle();
         SharedCusparseHandle cusparsehandle = make_shared_cusparse_handle();
-        StateVectorCudaManaged<T> lambda(ref_data, length, dt_local, cusvhandle, cublashandle, cusparsehandle);
+        StateVectorCudaManaged<T> lambda(ref_data, length, dt_local, cusvhandle,
+                                         cublashandle, cusparsehandle);
 
         // Apply given operations to statevector if requested
         if (apply_operations) {
@@ -616,17 +618,20 @@ template <class T = double> class AdjointJacobianGPU {
         // Create observable-applied state-vectors
         std::vector<StateVectorCudaManaged<T>> H_lambda;
         for (size_t n = 0; n < num_observables; n++) {
-            H_lambda.emplace_back(lambda.getNumQubits(), dt_local, true, cusvhandle, cublashandle, cusparsehandle);
+            H_lambda.emplace_back(lambda.getNumQubits(), dt_local, true,
+                                  cusvhandle, cublashandle, cusparsehandle);
         }
         applyObservables(H_lambda, lambda, obs);
 
-        StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local, true, cusvhandle, cublashandle, cusparsehandle);
+        StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local, true,
+                                     cusvhandle, cublashandle, cusparsehandle);
 
         typedef decltype(cuUtil::getCudaType(T{})) cuPrecisionComplex;
         auto device_id = mu.getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = mu.getDataBuffer().getDevTag().getStreamID();
         DataBuffer<cuPrecisionComplex, int> d_jac_single_param{
-        static_cast<std::size_t>(num_observables), device_id, stream_id, true};
+            static_cast<std::size_t>(num_observables), device_id, stream_id,
+            true};
         std::vector<cuPrecisionComplex> jac_single_param(num_observables);
 
         for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
@@ -654,13 +659,17 @@ template <class T = double> class AdjointJacobianGPU {
 
                     for (size_t obs_idx = 0; obs_idx < num_observables;
                          obs_idx++) {
-                        updateJacobian(H_lambda[obs_idx], mu, 
-                                &(d_jac_single_param.getData()[obs_idx]));
+                        updateJacobian(
+                            H_lambda[obs_idx], mu,
+                            &(d_jac_single_param.getData()[obs_idx]));
                     }
-                    d_jac_single_param.CopyGpuDataToHost(jac_single_param.data(), jac_single_param.size(), false); 
-                    for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++){
-                        jac[obs_idx][trainableParamNumber] = -2*scalingFactor * 
-                            jac_single_param[obs_idx].y;
+                    d_jac_single_param.CopyGpuDataToHost(
+                        jac_single_param.data(), jac_single_param.size(),
+                        false);
+                    for (size_t obs_idx = 0; obs_idx < num_observables;
+                         obs_idx++) {
+                        jac[obs_idx][trainableParamNumber] =
+                            -2 * scalingFactor * jac_single_param[obs_idx].y;
                     }
                     trainableParamNumber--;
                     ++tp_it;

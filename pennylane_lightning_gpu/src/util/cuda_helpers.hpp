@@ -1,7 +1,8 @@
 // Adapted from JET: https://github.com/XanaduAI/jet.git
 // and from Lightning: https://github.com/PennylaneAI/pennylane-lightning.git
 
-// Contributions to this file by NVIDIA are Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES and licenced under the following licence
+// Contributions to this file by NVIDIA are Copyright (c) 2022, NVIDIA
+// CORPORATION & AFFILIATES and licenced under the following licence
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,10 @@
 
 #pragma once
 #include <algorithm>
+#include <memory>
 #include <numeric>
 #include <type_traits>
 #include <vector>
-#include <memory>
 
 #include <cuComplex.h>
 #include <cublas_v2.h>
@@ -390,26 +391,22 @@ template <class CFP_t> inline static constexpr auto INVSQRT2() -> CFP_t {
 
 class CublasCaller {
   public:
-    CublasCaller() {
-        PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));
-    }
+    CublasCaller() { PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle)); }
 
-    ~CublasCaller() {
-        PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
-    }
+    ~CublasCaller() { PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle)); }
 
-    CublasCaller(CublasCaller const&) = delete;
-    CublasCaller(CublasCaller&&) = delete;
-    CublasCaller& operator=(CublasCaller const&) = delete;
-    CublasCaller& operator=(CublasCaller&&) = delete;
+    CublasCaller(CublasCaller const &) = delete;
+    CublasCaller(CublasCaller &&) = delete;
+    CublasCaller &operator=(CublasCaller const &) = delete;
+    CublasCaller &operator=(CublasCaller &&) = delete;
 
     template <typename F, typename... Args>
-    void call(F&& func, int dev_id, cudaStream_t stream, Args&&... args) const
-    {
+    void call(F &&func, int dev_id, cudaStream_t stream, Args &&...args) const {
         std::lock_guard lk(mtx);
         PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
         PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream));
-        PL_CUBLAS_IS_SUCCESS(std::invoke(std::forward<F>(func), handle, std::forward<Args>(args)...));
+        PL_CUBLAS_IS_SUCCESS(std::invoke(std::forward<F>(func), handle,
+                                         std::forward<Args>(args)...));
     }
 
   private:
@@ -427,13 +424,17 @@ class CublasCaller {
  * @return T Device data pointer to store inner-product result
  */
 template <class T = cuDoubleComplex, class DevTypeID = int>
-inline auto innerProdC_CUDA_device(const T *v1, const T *v2, const int data_size,
-                            int dev_id, cudaStream_t stream_id, const CublasCaller& cublas, T *d_result) {
+inline auto innerProdC_CUDA_device(const T *v1, const T *v2,
+                                   const int data_size, int dev_id,
+                                   cudaStream_t stream_id,
+                                   const CublasCaller &cublas, T *d_result) {
 
     if constexpr (std::is_same_v<T, cuFloatComplex>) {
-        cublas.call( cublasCdotc, dev_id, stream_id, data_size, v1, 1, v2, 1, d_result);
+        cublas.call(cublasCdotc, dev_id, stream_id, data_size, v1, 1, v2, 1,
+                    d_result);
     } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
-        cublas.call(cublasZdotc, dev_id, stream_id, data_size, v1, 1, v2, 1, d_result);
+        cublas.call(cublasZdotc, dev_id, stream_id, data_size, v1, 1, v2, 1,
+                    d_result);
     }
 }
 
@@ -448,13 +449,16 @@ inline auto innerProdC_CUDA_device(const T *v1, const T *v2, const int data_size
  */
 template <class T = cuDoubleComplex, class DevTypeID = int>
 inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
-                            int dev_id, cudaStream_t stream_id, const CublasCaller& cublas) -> T {
+                            int dev_id, cudaStream_t stream_id,
+                            const CublasCaller &cublas) -> T {
     T result{0.0, 0.0}; // Host result
 
     if constexpr (std::is_same_v<T, cuFloatComplex>) {
-        cublas.call( cublasCdotc, dev_id, stream_id, data_size, v1, 1, v2, 1, &result);
+        cublas.call(cublasCdotc, dev_id, stream_id, data_size, v1, 1, v2, 1,
+                    &result);
     } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
-        cublas.call(cublasZdotc, dev_id, stream_id, data_size, v1, 1, v2, 1, &result);
+        cublas.call(cublasZdotc, dev_id, stream_id, data_size, v1, 1, v2, 1,
+                    &result);
     }
     return result;
 }
@@ -474,14 +478,16 @@ template <class CFP_t = std::complex<double>, class T = cuDoubleComplex,
 inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
                               const int data_size, DevTypeID dev_id,
                               cudaStream_t stream_id,
-                              const CublasCaller& cublas) {
+                              const CublasCaller &cublas) {
 
     if constexpr (std::is_same_v<T, cuComplex>) {
         const cuComplex alpha{a.real(), a.imag()};
-        cublas.call( cublasCaxpy, dev_id, stream_id, data_size, &alpha, v1, 1, v2, 1);
+        cublas.call(cublasCaxpy, dev_id, stream_id, data_size, &alpha, v1, 1,
+                    v2, 1);
     } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
         const cuDoubleComplex alpha{a.real(), a.imag()};
-        cublas.call( cublasZaxpy, dev_id, stream_id, data_size, &alpha, v1, 1, v2, 1);
+        cublas.call(cublasZaxpy, dev_id, stream_id, data_size, &alpha, v1, 1,
+                    v2, 1);
     }
 }
 
@@ -497,7 +503,8 @@ inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
 template <class CFP_t = std::complex<double>, class T = cuDoubleComplex,
           class DevTypeID = int>
 inline auto scaleC_CUDA(const CFP_t a, T *v1, const int data_size,
-                        DevTypeID dev_id, cudaStream_t stream_id, const CublasCaller& cublas) {
+                        DevTypeID dev_id, cudaStream_t stream_id,
+                        const CublasCaller &cublas) {
 
     cudaDataType_t data_type;
 
@@ -508,9 +515,9 @@ inline auto scaleC_CUDA(const CFP_t a, T *v1, const int data_size,
         data_type = CUDA_C_32F;
     }
 
-    cublas.call( cublasScalEx, dev_id, stream_id, data_size,
-                                      reinterpret_cast<const void *>(&a),
-                                      data_type, v1, data_type, 1, data_type);
+    cublas.call(cublasScalEx, dev_id, stream_id, data_size,
+                reinterpret_cast<const void *>(&a), data_type, v1, data_type, 1,
+                data_type);
 }
 
 /**
@@ -718,8 +725,7 @@ class CudaScopedDevice {
     int prev_device_;
 };
 
-struct HandleDeleter
-{
+struct HandleDeleter {
     void operator()(cublasHandle_t handle) const {
         PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
     }
@@ -731,26 +737,23 @@ struct HandleDeleter
     }
 };
 
+using SharedCublasHandle = std::shared_ptr<CublasCaller>;
+using SharedCusvHandle =
+    std::shared_ptr<std::remove_pointer<custatevecHandle_t>::type>;
+using SharedCusparseHandle =
+    std::shared_ptr<std::remove_pointer<cusparseHandle_t>::type>;
 
-
-using SharedCublasHandle   = std::shared_ptr<CublasCaller>;
-using SharedCusvHandle     = std::shared_ptr<std::remove_pointer<custatevecHandle_t>::type>;
-using SharedCusparseHandle = std::shared_ptr<std::remove_pointer<cusparseHandle_t>::type>;
-
-inline SharedCublasHandle make_shared_cublas_handle()
-{
+inline SharedCublasHandle make_shared_cublas_handle() {
     return std::make_shared<CublasCaller>();
 }
 
-inline SharedCusvHandle make_shared_cusv_handle()
-{
+inline SharedCusvHandle make_shared_cusv_handle() {
     custatevecHandle_t h;
     PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(&h));
     return {h, HandleDeleter()};
 }
 
-inline SharedCusparseHandle make_shared_cusparse_handle()
-{
+inline SharedCusparseHandle make_shared_cusparse_handle() {
     cusparseHandle_t h;
     PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&h));
     return {h, HandleDeleter()};

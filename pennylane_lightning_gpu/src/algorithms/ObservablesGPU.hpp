@@ -341,7 +341,8 @@ template <typename T> class HamiltonianGPU final : public ObservableGPU<T> {
             scaleAndAddC_CUDA(std::complex<T>{coeffs_[term_idx], 0.0},
                               tmp.getData(), buffer.getData(), tmp.getLength(),
                               tmp.getDataBuffer().getDevTag().getDeviceID(),
-                              tmp.getDataBuffer().getDevTag().getStreamID(), tmp.getCublasHandle());
+                              tmp.getDataBuffer().getDevTag().getStreamID(),
+                              tmp.getCublasHandle());
         }
         sv.CopyGpuDataToGpuIn(buffer.getData(), buffer.getLength());
     }

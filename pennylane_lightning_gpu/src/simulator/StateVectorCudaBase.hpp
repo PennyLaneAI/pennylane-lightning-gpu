@@ -40,8 +40,8 @@ namespace cuUtil = Pennylane::CUDA::Util;
 
 namespace Pennylane {
 
-void initialize_sv(cuComplex* x, int64_t n, cudaStream_t stream);
-void initialize_sv(cuDoubleComplex* x, int64_t n, cudaStream_t stream);
+void initialize_sv(cuComplex *x, int64_t n, cudaStream_t stream);
+void initialize_sv(cuDoubleComplex *x, int64_t n, cudaStream_t stream);
 /**
  * @brief CRTP-enabled base class for CUDA-capable state-vector simulators.
  *
@@ -229,10 +229,11 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      *
      */
     void initSV(bool async = false) {
-        initialize_sv(data_buffer_->getData(), data_buffer_->getLength(), data_buffer_->getStream());
-        if(!async)
-        {
-            PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(data_buffer_->getStream()));
+        initialize_sv(data_buffer_->getData(), data_buffer_->getLength(),
+                      data_buffer_->getStream());
+        if (!async) {
+            PL_CUDA_IS_SUCCESS(
+                cudaStreamSynchronize(data_buffer_->getStream()));
         }
     }
 
