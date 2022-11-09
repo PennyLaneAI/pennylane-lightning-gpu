@@ -2,6 +2,8 @@
 
 ### New features since last release
 
+* Optimisation updates to custatevector integration including initialisation of state vectors on GPU, creation of fewer cublas, cusparse and custatevec handles and fewer calls to small data transfers between host and device. [(#73)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/73) 
+
 * Explicit support for `qml.SparseHamiltonian` using the adjoint gradient method. 
   [(#72)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/72)
 
