@@ -545,8 +545,12 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                      strides /* strides for each axis     */
                      ));
              })
-        .def("DeviceToDevice", &StateVectorCudaManaged<PrecisionT>::updateData,
-             "Synchronize data from another GPU device to current device.")
+        .def(
+            "DeviceToDevice",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const StateVectorCudaManaged<PrecisionT> &other,
+               bool async) { sv.updateData(other, async); },
+            "Synchronize data from another GPU device to current device.")
         .def("DeviceToHost",
              py::overload_cast<StateVectorManagedCPU<PrecisionT> &, bool>(
                  &StateVectorCudaManaged<PrecisionT>::CopyGpuDataToHost,

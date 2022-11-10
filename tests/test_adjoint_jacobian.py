@@ -1006,29 +1006,33 @@ def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns):
     [
         qml.SparseHamiltonian(
             qml.utils.sparse_hamiltonian(
-                0.1 * qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[1])
+                0.1 * qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[1]),
+                wires=custom_wires,
             ),
             wires=custom_wires,
         ),
         qml.SparseHamiltonian(
             qml.utils.sparse_hamiltonian(
-                2 * qml.PauliX(wires=custom_wires[2]) @ qml.PauliZ(wires=custom_wires[0])
+                2 * qml.PauliX(wires=custom_wires[2]) @ qml.PauliZ(wires=custom_wires[0]),
+                wires=custom_wires,
             ),
             wires=custom_wires,
         ),
         qml.SparseHamiltonian(
             qml.utils.sparse_hamiltonian(
-                1.1 * qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[2])
+                1.1 * qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[2]),
+                wires=custom_wires,
             ),
             wires=custom_wires,
         ),
     ],
 )
-def test_fail_adjoint_SparseHamiltonian(returns):
+def test_adjoint_SparseHamiltonian(returns):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations and when using custom wire labels"""
 
     dev_gpu = qml.device("lightning.gpu", wires=custom_wires)
+    dev_cpu = qml.device("default.qubit", wires=custom_wires)
 
     def circuit(params):
         circuit_ansatz(params, wires=custom_wires)
@@ -1039,9 +1043,9 @@ def test_fail_adjoint_SparseHamiltonian(returns):
     params = np.random.rand(n_params)
 
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
+    qnode_cpu = qml.QNode(circuit, dev_cpu, diff_method="parameter-shift")
 
-    with pytest.raises(
-        TypeError,
-        match="SparseHamiltonian observables are not currently supported",
-    ):
-        j_gpu = qml.jacobian(qnode_gpu)(params)
+    j_gpu = qml.jacobian(qnode_gpu)(params)
+    j_cpu = qml.jacobian(qnode_cpu)(params)
+
+    assert np.allclose(j_cpu, j_gpu)
