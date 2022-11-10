@@ -168,6 +168,7 @@ allowed_operations = {
 }
 
 if CPP_BINARY_AVAILABLE:
+
     class LightningGPU(QubitDevice):
         """PennyLane-Lightning-GPU device.
         Args:
@@ -212,7 +213,9 @@ if CPP_BINARY_AVAILABLE:
                 self.use_csingle = False
             else:
                 raise TypeError(f"Unsupported complex Type: {c_dtype}")
-            super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype, analytic=analytic)
+            super().__init__(
+                wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype, analytic=analytic
+            )
             self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
             self._create_basis_state_GPU(0)
             self._sync = sync
@@ -258,7 +261,9 @@ if CPP_BINARY_AVAILABLE:
                 output_shape.insert(0, batch_size)
 
             if not (state.shape in [(dim,), (batch_size, dim)]):
-                raise ValueError("State vector must have shape (2**wires,) or (batch_size, 2**wires).")
+                raise ValueError(
+                    "State vector must have shape (2**wires,) or (batch_size, 2**wires)."
+                )
 
             if not qml.math.is_abstract(state):
                 norm = qml.math.linalg.norm(state, axis=-1, ord=2)
@@ -490,7 +495,9 @@ if CPP_BINARY_AVAILABLE:
             obs_serialized, obs_offsets = _serialize_observables(
                 tape, self.wire_map, use_csingle=self.use_csingle
             )
-            ops_serialized, use_sp = _serialize_ops(tape, self.wire_map, use_csingle=self.use_csingle)
+            ops_serialized, use_sp = _serialize_ops(
+                tape, self.wire_map, use_csingle=self.use_csingle
+            )
             ops_serialized = adj.create_ops_list(*ops_serialized)
 
             trainable_params = sorted(tape.trainable_params)
@@ -599,7 +606,9 @@ if CPP_BINARY_AVAILABLE:
                     new_tape = tape.copy()
                     new_tape._measurements = [qml.expval(ham)]
 
-                    return self.adjoint_jacobian(new_tape, starting_state, use_device_state).reshape(-1)
+                    return self.adjoint_jacobian(
+                        new_tape, starting_state, use_device_state
+                    ).reshape(-1)
 
                 return processing_fn
 
@@ -607,7 +616,9 @@ if CPP_BINARY_AVAILABLE:
             if observable.name != "PauliZ":
                 self.apply_cq(observable.diagonalizing_gates())
                 self._samples = self.generate_samples()
-            return super().sample(observable, shot_range=shot_range, bin_size=bin_size, counts=counts)
+            return super().sample(
+                observable, shot_range=shot_range, bin_size=bin_size, counts=counts
+            )
 
         def expval(self, observable, shot_range=None, bin_size=None):
             if observable.name in [
@@ -656,7 +667,8 @@ if CPP_BINARY_AVAILABLE:
             par = (
                 observable.parameters
                 if (
-                    len(observable.parameters) > 0 and isinstance(observable.parameters[0], np.floating)
+                    len(observable.parameters) > 0
+                    and isinstance(observable.parameters[0], np.floating)
                 )
                 else []
             )
@@ -669,7 +681,9 @@ if CPP_BINARY_AVAILABLE:
 
         def probability(self, wires=None, shot_range=None, bin_size=None):
             if self.shots is not None:
-                return self.estimate_probability(wires=wires, shot_range=shot_range, bin_size=bin_size)
+                return self.estimate_probability(
+                    wires=wires, shot_range=shot_range, bin_size=bin_size
+                )
 
             wires = wires or self.wires
             wires = Wires(wires)
@@ -718,7 +732,6 @@ if CPP_BINARY_AVAILABLE:
 
             return squared_mean - (mean**2)
 
-
 else:  # CPP_BINARY_AVAILABLE:
 
     class LightningGPU(LightningQubit):
@@ -743,4 +756,3 @@ else:  # CPP_BINARY_AVAILABLE:
                 RuntimeWarning,
             )
             super().__init__(wires, c_dtype=c_dtype, **kwargs)
-
