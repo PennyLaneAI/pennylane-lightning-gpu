@@ -159,7 +159,8 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
      */
     template <class DeviceDataT, class index_type>
     void setElements(index_type &num_indices, DeviceDataT *value,
-                     index_type *indices);
+                     index_type *indices, size_t thread_per_block,
+                     cudaStream_t stream_id);
 
     auto getData() -> GPUDataT * { return gpu_buffer_; }
     auto getData() const -> const GPUDataT * { return gpu_buffer_; }
@@ -259,9 +260,11 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     GPUDataT *gpu_buffer_;
 };
 
-extern template void DataBuffer<cuComplex, int>::setElements(int &num_indices,
-                                                             cuComplex *value,
-                                                             int *indices);
+extern template void
+DataBuffer<cuComplex, int>::setElements(int &num_indices, cuComplex *value,
+                                        int *indices, size_t thread_per_block,
+                                        cudaStream_t stream_id);
 extern template void DataBuffer<cuDoubleComplex, int>::setElements(
-    long &num_indices, cuDoubleComplex *value, long *indices);
+    long &num_indices, cuDoubleComplex *value, long *indices,
+    size_t thread_per_block, cudaStream_t stream_id);
 } // namespace Pennylane::CUDA

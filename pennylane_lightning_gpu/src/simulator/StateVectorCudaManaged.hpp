@@ -137,7 +137,7 @@ class StateVectorCudaManaged
      * @param index Pointer to indices of the target elements.
      * @param async Is asynchronous memory copy.
      */
-    template <class index_type>
+    template <class index_type, size_t thread_per_block = 256>
     void setStates(const index_type num_indices,
                    const std::complex<Precision> *values,
                    const index_type *indices, const bool async = false) {
@@ -154,7 +154,8 @@ class StateVectorCudaManaged
         d_values.CopyHostDataToGpu(values, d_values.getLength(), async);
 
         BaseType::getDataBuffer().template setElements<CFP_t, index_type>(
-            num_elements, d_values.getData(), d_indices.getData());
+            num_elements, d_values.getData(), d_indices.getData(),
+            thread_per_block, stream_id);
     }
 
     /**
