@@ -144,7 +144,7 @@ class TestApply:
         gpu_ctor = plg.lightning_gpu._gpu_dtype(dev.C_DTYPE)
         dev._gpu_state = gpu_ctor(np.array(input).astype(dev.C_DTYPE))
         dev.apply([operation(wires=[0])])
-        
+
         state_vector = np.zeros(2**dev.num_wires).astype(dev.C_DTYPE)
         dev.syncD2H(state_vector)
         assert np.allclose(state_vector, np.array(expected_output), atol=tol, rtol=0)
