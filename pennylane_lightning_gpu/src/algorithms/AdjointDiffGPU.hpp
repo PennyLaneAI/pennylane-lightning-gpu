@@ -523,6 +523,7 @@ template <class T = double> class AdjointJacobianGPU {
             threads.emplace_back(adj_lambda, std::move(jac_subset_promise),
                                  first, last);
         }
+
         /// Ensure the new local jacs are inserted and
         /// overwrite the 0 jacs values before returning
         for (std::size_t i = 0; i < futures.size(); i++) {

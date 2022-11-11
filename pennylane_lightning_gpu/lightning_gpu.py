@@ -172,6 +172,21 @@ if CPP_BINARY_AVAILABLE:
             capabilities.pop("passthru_devices", None)
             return capabilities
 
+        @property
+        def stopping_condition(self):
+            def accepts_obj(obj):
+                if obj.name == "QFT" and len(obj.wires) >= 6:
+                    return False
+                if obj.name == "GroverOperator" and len(obj.wires) >= 13:
+                    return False
+                if getattr(obj, "has_matrix", False):
+                    # pow operations dont work with backprop or adjoint without decomposition
+                    # use class name string so we don't need to use isinstance check
+                    return not (obj.__class__.__name__ == "Pow" and qml.operation.is_trainable(obj))
+                return obj.name in self.observables.union(self.operations)
+
+            return qml.BooleanFn(accepts_obj)
+
         def statistics(self, observables, shot_range=None, bin_size=None, circuit=None):
             ## Ensure D2H sync before calculating non-GPU supported operations
             if self._sync:
@@ -182,11 +197,17 @@ if CPP_BINARY_AVAILABLE:
             # Skip over identity operations instead of performing
             # matrix multiplication with the identity.
             skipped_ops = ["Identity"]
+            invert_param = False
 
             for o in operations:
                 if o.base_name in skipped_ops:
                     continue
-                name = o.name.split(".")[0]  # The split is because inverse gates have .inv appended
+                name = o.name.split(".")[
+                    0
+                ]  # The split is because inverse gates have .inv appended. To be updated with upcoming deprecation.
+                if "Adjoint" in name:
+                    name = name.split("(")[1].split(")")[0]
+                    invert_param = True
                 method = getattr(self._gpu_state, name, None)
 
                 wires = self.wires.indices(o.wires)
@@ -210,7 +231,7 @@ if CPP_BINARY_AVAILABLE:
                     )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
 
                 else:
-                    inv = o.inverse
+                    inv = o.inverse or invert_param  # Account for Adjoint
                     param = o.parameters
                     method(wires, inv, param)
 
