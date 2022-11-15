@@ -1,11 +1,11 @@
-# Release 0.27.0-dev
+# Release 0.27.0
 
 ### New features since last release
 
-* Explicit support for `qml.SparseHamiltonian` using the adjoint gradient method. 
+* Explicit support for `qml.SparseHamiltonian` using the adjoint gradient method.
   [(#72)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/72)
 
-  This support allows users to explicitly make use of `qml.SparseHamiltonian` in expectation value calculations, and ensures the gradients can be taken efficiently. 
+  This support allows users to explicitly make use of `qml.SparseHamiltonian` in expectation value calculations, and ensures the gradients can be taken efficiently.
   A user can now explicitly decide whether to decompose the Hamiltonian into separate Pauli-words, with evaluations happening over multiple GPUs, or convert the Hamiltonian directly to a sparse representation for evaluation on a single GPU. Depending on the Hamiltonian structure, a user may benefit from one method or the other.
 
   The workflow for decomposing a Hamiltonian is as:
@@ -45,6 +45,8 @@
 ### Improvements
 
 * Optimisation updates to custatevector integration including initialisation of state vectors on GPU, creation of fewer cublas, cusparse and custatevec handles and fewer calls to small data transfers between host and device. [(#73)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/73) 
+* Update `LightningGPU` device following changes in `LightningQubit` inheritance from `DefaultQubit` to `QubitDevice`.
+[(#74)](https://github.com/PennyLaneAI/pennylane-lightning/pull/74)
 
 ### Documentation
 

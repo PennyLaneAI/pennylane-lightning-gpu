@@ -881,6 +881,7 @@ def create_xyz_file(tmp_path_factory):
     list(it.product(["default.qubit", "lightning.qubit"], [False, True, 1, 2, 3, 4])),
 )
 def test_integration_H2_Hamiltonian(create_xyz_file, dev_compare, batches):
+    skipp_condn = pytest.importorskip("openfermionpyscf")
     n_electrons = 2
     np.random.seed(1337)
 

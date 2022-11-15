@@ -185,6 +185,15 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             "Apply the Toffoli gate.")
 
         .def(
+            "CY",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyCY(wires, adjoint);
+            },
+            "Apply the CY gate.")
+
+        .def(
             "CZ",
             [](StateVectorCudaManaged<PrecisionT> &sv,
                const std::vector<std::size_t> &wires, bool adjoint,

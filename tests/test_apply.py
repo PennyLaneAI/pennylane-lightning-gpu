@@ -460,10 +460,7 @@ class TestApply:
         with pytest.raises(ValueError, match="Sum of amplitudes-squared does not equal one."):
             qubit_device_2_wires.apply([qml.QubitStateVector(np.array([1, -1]), wires=[0])])
 
-        with pytest.raises(
-            ValueError,
-            match=r"State vector must have shape \(2\*\*wires,\) or \(batch_size, 2\*\*wires\).",
-        ):
+        with pytest.raises(ValueError, match=r"cannot reshape array of size 5 into shape \(2,2\)"):
             p = np.array([1, 0, 1, 1, 0]) / np.sqrt(3)
             qubit_device_2_wires.apply([qml.QubitStateVector(p, wires=[0, 1])])
 
@@ -1228,28 +1225,6 @@ class TestApplyCQMethod:
         dev.syncD2H()
 
         assert np.allclose(dev.state, starting_state, atol=tol, rtol=0)
-
-    @pytest.mark.parametrize("C", [np.complex64, np.complex128])
-    def test_iter_identity_skipped(self, mocker, C, tol):
-        """Test identity operations do not perform additional computations."""
-        dev = qml.device("lightning.gpu", wires=2)
-        if not hasattr(dev, "apply_cq"):
-            pytest.skip("LightningGPU object has no attribute apply_cq")
-
-        starting_state = np.array([1, 0, 0, 0], dtype=C)
-        op = [qml.Identity(0), qml.Identity(1)]
-
-        spy_diagonal = mocker.spy(dev, "_apply_diagonal_unitary")
-        spy_einsum = mocker.spy(dev, "_apply_unitary_einsum")
-        spy_unitary = mocker.spy(dev, "_apply_unitary")
-
-        dev.apply_cq(op, dtype=C)
-        dev.syncD2H()
-        assert np.allclose(dev.state, starting_state, atol=tol, rtol=0)
-
-        spy_diagonal.assert_not_called()
-        spy_einsum.assert_not_called()
-        spy_unitary.assert_not_called()
 
 
 # Tolerance for non-analytic tests
