@@ -1,4 +1,4 @@
-name: Formatting check
+name: GPU Runner Test
 on:
   push:
     branches:
