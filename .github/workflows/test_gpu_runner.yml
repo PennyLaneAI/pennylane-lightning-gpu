@@ -1,0 +1,16 @@
+name: Formatting check
+on:
+  push:
+    branches:
+      - sc-26846-gpu-runner-test
+
+jobs:
+  test:
+    runs-on:
+      - self-hosted
+      - ubuntu-22.04
+      - gpu
+
+    steps:
+      - run: |
+          nvidia-smi
