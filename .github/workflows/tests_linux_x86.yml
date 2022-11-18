@@ -117,7 +117,7 @@ jobs:
 
       - name: Install required packages
         run: |
-          python -m pip install ninja cmake cuquantum pytest pytest-mock flaky
+          python -m pip install ninja cmake cuquantum pytest pytest-mock flaky pytest-cov
           sudo apt-get update && sudo apt-get -y -q install cmake gcc-$GCC_VERSION g++-$GCC_VERSION gcovr lcov
           # Sync with latest master branches
           python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
