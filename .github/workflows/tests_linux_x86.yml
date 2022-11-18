@@ -46,7 +46,7 @@ jobs:
       - name: Validate GPU existence
         run: |
           nvidia-smi
-          nvcc --version
+          /usr/local/cuda/bin/nvcc --version
 
       - name: Build and run unit tests
         run: |
