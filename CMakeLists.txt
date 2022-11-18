@@ -52,6 +52,7 @@ option(ENABLE_CLANG_TIDY "Enable clang-tidy build checks" OFF)
 option(DISABLE_CUDA_SAFETY "Build without CUDA call safety checks" OFF)
 option(ENABLE_PYTHON "Build Python bindings" ON)
 option(ENABLE_SANITIZER "Enable address sanitizer" OFF)
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
 
 # Build options
 if(NOT CMAKE_BUILD_TYPE)
@@ -200,6 +201,13 @@ if(ENABLE_NATIVE)
     add_compile_options(-march=native)
     target_compile_options(pennylane_lightning_gpu INTERFACE -march=native)
     target_compile_options(lightning_gpu_qubit_ops PRIVATE -march=native)
+endif()
+
+if(ENABLE_COVERAGE)
+    message(STATUS "ENABLE_COVERAGE is ON.")
+    target_compile_options(pennylane_lightning_gpu INTERFACE
+        $<$<COMPILE_LANGUAGE:CXX>:-fprofile-arcs;-ftest-coverage>)
+    target_link_libraries(pennylane_lightning_gpu INTERFACE gcov)
 endif()
 
 if (BUILD_TESTS)
