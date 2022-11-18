@@ -56,7 +56,7 @@ jobs:
               -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" \
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCUDAToolkit_ROOT="/usr/local/cuda" \
-              -DCUDA_ARCHITECTURES="86" \
+              -DCMAKE_CUDA_ARCHITECTURES="86" \
               -G Ninja
             cmake --build ./Build
             cd ./Build
@@ -79,7 +79,7 @@ jobs:
               -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" \
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCUDAToolkit_ROOT="/usr/local/cuda" \
-              -DCUDA_ARCHITECTURES="86" \
+              -DCMAKE_CUDA_ARCHITECTURES="86" \
               -G Ninja
             cmake --build ./BuildCov
             cd ./BuildCov
@@ -126,7 +126,7 @@ jobs:
 
       - name: Build and install package
         run: |
-            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master;CUDAToolkit_ROOT=/usr/local/cuda;CUDA_ARCHITECTURES=86"
+            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master;CUDAToolkit_ROOT=/usr/local/cuda;CMAKE_CUDA_ARCHITECTURES=86"
             python -m pip install -e .
 
       - name: Run PennyLane-Lightning-GPU unit tests
