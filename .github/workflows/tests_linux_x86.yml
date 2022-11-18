@@ -11,12 +11,55 @@ env:
   GCC_VERSION: 11
   OMP_NUM_THREADS: "2"
 
+concurrency:
+  group: gpu-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gpu-tests:
+    runs-on:
+      - self-hosted
+      - ubuntu-22.04
+      - gpu
+
+    if: >-
+      ${{
+        github.event_name == 'push' ||
+        (
+          github.event_name == 'pull_request' &&
+          contains(github.event.pull_request.labels.*.name, 'gpu') &&
+          github.event.pull_request.state == 'open'
+        )
+      }}
+    strategy:
+      max-parallel: 2
+      matrix:
+        python-version:
+          - 3.8
+          - 3.9
+          - '3.10'
+          - '3.11'
+
+
+
+
 jobs:
   cpptests:
     runs-on:
       - self-hosted
       - ubuntu-22.04
       - gpu
+    if: >-
+      ${{
+        github.event_name == 'push' ||
+        (
+          github.event_name == 'pull_request' &&
+          contains(github.event.pull_request.labels.*.name, 'gpu') &&
+          github.event.pull_request.state == 'open'
+        )
+      }}
+    strategy:
+      max-parallel: 1
 
     steps:
       - name: Cancel Previous Runs
@@ -83,6 +126,17 @@ jobs:
       - self-hosted
       - ubuntu-22.04
       - gpu
+    if: >-
+      ${{
+        github.event_name == 'push' ||
+        (
+          github.event_name == 'pull_request' &&
+          contains(github.event.pull_request.labels.*.name, 'gpu') &&
+          github.event.pull_request.state == 'open'
+        )
+      }}
+    strategy:
+      max-parallel: 1
 
     steps:
       - name: Cancel Previous Runs
