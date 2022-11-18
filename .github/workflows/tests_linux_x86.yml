@@ -1,0 +1,109 @@
+name: Tests::Linux::x86_64
+on:
+  release:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  COVERAGE_FLAGS: "--cov=pennylane_lightning_gpu --cov-report=term-missing --cov-report=xml:./coverage.xml --no-flaky-report -p no:warnings --tb=native"
+  GCC_VERSION: 11
+  OMP_NUM_THREADS: "2"
+
+jobs:
+  cpptests:
+    runs-on:
+      - self-hosted
+      - ubuntu-22.04
+      - gpu
+
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.11.0
+        with:
+          access_token: ${{ github.token }}
+
+      - uses: actions/setup-python@v4
+        name: Install Python
+        with:
+          python-version: '3.8'
+
+      - name: Install required packages
+        run: |
+          python -m pip install ninja cmake cuquantum
+
+      - name: Checkout pennyLane-lightning-gpu
+        uses: actions/checkout@v3
+
+      - name: Build and run unit tests
+        run: |
+            cmake . -BBuild -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTS=ON -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" -G Ninja
+            cmake --build ./Build
+            cd ./Build
+            mkdir -p ./tests/results
+            ./tests/runner_gpu --order lex --reporter junit --out ./tests/results/report_${{ github.job }}.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: ubuntu-tests-reports
+          path: ./Build/tests/results/report_${{ github.job }}.xml
+
+      - name: Build and run unit tests for code coverage
+        run: |
+            cmake . -BBuildCov -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" -G Ninja
+            cmake --build ./BuildCov
+            cd ./BuildCov
+            ./tests/runner_gpu
+            lcov --directory . -b ../pennylane_lightning_gpu/src --capture --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+            mv coverage.info coverage-${{ github.job }}.info
+
+      - name: Upload code coverage results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ubuntu-codecov-results-cpp
+          path: ./BuildCov/coverage-${{ github.job }}.info
+
+  pythontests:
+    runs-on:
+      - self-hosted
+      - ubuntu-22.04
+      - gpu
+
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.11.0
+        with:
+          access_token: ${{ github.token }}
+
+      - uses: actions/setup-python@v4
+        name: Install Python
+        with:
+          python-version: '3.8'
+
+      - name: Install required packages
+        run: |
+          python -m pip install ninja cmake cuquantum pytest pytest-mock flaky
+
+      - name: Checkout pennyLane-lightning-gpu
+        uses: actions/checkout@v3
+
+      - name: Build and install package
+        run: |
+            python -m pip install -e . --verbose
+
+      - name: Run PennyLane-Lightning-GPU unit tests
+        run: |
+          cd main/
+          pytest tests/ $COVERAGE_FLAGS
+          pl-device-test --device lightning.gpu --skip-ops --shots=20000 $COVERAGE_FLAGS --cov-append
+          pl-device-test --device lightning.gpu --shots=None --skip-ops $COVERAGE_FLAGS --cov-append
+          mv coverage.xml coverage-${{ github.job }}.xml
+      - name: Upload code coverage results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ubuntu-codecov-results-python
+          path: ./main/coverage-${{ github.job }}.xml
