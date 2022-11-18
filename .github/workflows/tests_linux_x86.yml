@@ -128,7 +128,7 @@ jobs:
 
       - name: Build and install package
         run: |
-            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=86;"
+            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=86"
             python -m pip install -e .
 
       - name: Run PennyLane-Lightning-GPU unit tests
