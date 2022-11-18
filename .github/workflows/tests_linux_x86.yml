@@ -43,6 +43,9 @@ jobs:
       - name: Checkout pennyLane-lightning-gpu
         uses: actions/checkout@v3
 
+      - name: Validate GPU existence
+        run: nvidia-smi
+
       - name: Build and run unit tests
         run: |
             cmake . -BBuild \
