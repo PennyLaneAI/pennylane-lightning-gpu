@@ -95,11 +95,15 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(pybind11)
 
 # Add PennyLane-Lightning
+if (NOT DEFINED LIGHTNING_RELEASE_TAG)
+  set(LIGHTNING_RELEASE_TAG "latest_release")
+endif()
+
 set(ENABLE_OPENMP ON)
 FetchContent_Declare(
     pennylane_lightning
     GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
-    GIT_TAG       latest_release
+    GIT_TAG       "${LIGHTNING_RELEASE_TAG}"
 )
 FetchContent_MakeAvailable(pennylane_lightning)
 
