@@ -7,8 +7,7 @@ on:
   pull_request:
 
 env:
-  COVERAGE_FLAGS: "--cov=pennylane_lightning_gpu --cov-report=term-missing --cov-report=xml:./coverage.xml --no-flaky-report -p no:warnings --tb=native"
-  GCC_VERSION: 11
+  COVERAGE_FLAGS: "--cov=pennylane_lightning_gpu --cov-report=term-missing --cov-report=xml:./coverage.xml --no-flaky-report -p no:warnings --tb=native"  GCC_VERSION: 11
   OMP_NUM_THREADS: "2"
 
 concurrency:
@@ -38,6 +37,7 @@ jobs:
 
       - name: Install required packages
         run: |
+          sudo apt-get update && sudo apt-get -y -q install cmake gcc-$GCC_VERSION g++-$GCC_VERSION gcovr lcov
           python -m pip install ninja cmake cuquantum
 
       - name: Checkout pennyLane-lightning-gpu
@@ -55,6 +55,7 @@ jobs:
               -DBUILD_TESTS=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" \
               -DLIGHTNING_RELEASE_TAG="master" \
+              -DENABLE_KOKKOS=off \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -G Ninja
@@ -78,6 +79,7 @@ jobs:
               -DENABLE_COVERAGE=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" \
               -DLIGHTNING_RELEASE_TAG="master" \
+              -DENABLE_KOKKOS=off \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -G Ninja
@@ -117,6 +119,7 @@ jobs:
       - name: Install required packages
         run: |
           python -m pip install ninja cmake cuquantum pytest pytest-mock flaky
+          sudo apt-get update && sudo apt-get -y -q install cmake gcc-$GCC_VERSION g++-$GCC_VERSION gcovr lcov
           # Sync with latest master branches
           python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre
@@ -126,13 +129,11 @@ jobs:
 
       - name: Build and install package
         run: |
-            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=86"
+            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=86;ENABLE_KOKKOS=off"
             python -m pip install -e .
 
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
-          mkdir -p py_cov
-          cd py_cov
           pytest ../tests/ $COVERAGE_FLAGS
           pl-device-test --device lightning.gpu --skip-ops --shots=20000 $COVERAGE_FLAGS --cov-append
           pl-device-test --device lightning.gpu --shots=None --skip-ops $COVERAGE_FLAGS --cov-append
@@ -142,4 +143,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ubuntu-codecov-results-python
-          path: ./py_cov/coverage-${{ github.job }}.xml
+          path: ./coverage-${{ github.job }}.xml
