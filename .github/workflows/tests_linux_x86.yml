@@ -133,7 +133,7 @@ jobs:
 
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
-          pytest ../tests/ $COVERAGE_FLAGS
+          pytest ./tests/ $COVERAGE_FLAGS
           pl-device-test --device lightning.gpu --skip-ops --shots=20000 $COVERAGE_FLAGS --cov-append
           pl-device-test --device lightning.gpu --shots=None --skip-ops $COVERAGE_FLAGS --cov-append
           mv coverage.xml coverage-${{ github.job }}.xml
