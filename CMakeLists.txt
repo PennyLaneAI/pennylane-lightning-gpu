@@ -113,9 +113,6 @@ FetchContent_MakeAvailable(pennylane_lightning)
 
 find_package(CUDA REQUIRED)
 find_package(CUDAToolkit REQUIRED)
-if(ENABLE_OPENMP)
-    find_package(OpenMP REQUIRED)
-endif()
 
 find_package (Python COMPONENTS Interpreter Development)
 
@@ -192,6 +189,7 @@ target_link_libraries(pennylane_lightning_gpu INTERFACE CUDA::cudart)
 set_target_properties(pennylane_lightning_gpu PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
 
 if(PLLGPU_ENABLE_OPENMP)
+    find_package(OpenMP REQUIRED)
 	target_link_libraries(pennylane_lightning_gpu INTERFACE OpenMP::OpenMP_CXX)
 endif()
 if(PLLGPU_DISABLE_CUDA_SAFETY)
