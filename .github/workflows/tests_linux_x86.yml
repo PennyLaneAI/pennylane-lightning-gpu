@@ -53,10 +53,9 @@ jobs:
         run: |
             cmake . -BBuild \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-              -DBUILD_TESTS=ON \
+              -DPLLGPU_BUILD_TESTS=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" \
               -DLIGHTNING_RELEASE_TAG="master" \
-              -DENABLE_KOKKOS=off \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -G Ninja
@@ -76,11 +75,10 @@ jobs:
         run: |
             cmake . -BBuildCov \
               -DCMAKE_BUILD_TYPE=Debug \
-              -DBUILD_TESTS=ON \
-              -DENABLE_COVERAGE=ON \
+              -DPLLGPU_BUILD_TESTS=ON \
+              -DPLLGPU_ENABLE_COVERAGE=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" \
               -DLIGHTNING_RELEASE_TAG="master" \
-              -DENABLE_KOKKOS=off \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -G Ninja
@@ -130,7 +128,7 @@ jobs:
 
       - name: Build and install package
         run: |
-            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=86;ENABLE_KOKKOS=off"
+            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=86;"
             python -m pip install -e .
 
       - name: Run PennyLane-Lightning-GPU unit tests
