@@ -61,7 +61,7 @@ jobs:
             cmake --build ./Build
             cd ./Build
             mkdir -p ./tests/results
-            ./tests/runner_gpu --order lex --reporter junit --out ./tests/results/report_${{ github.job }}.xml
+            ./src/tests/runner_gpu --order lex --reporter junit --out ./tests/results/report_${{ github.job }}.xml
 
       - name: Upload test results
         uses: actions/upload-artifact@v3
@@ -83,7 +83,7 @@ jobs:
               -G Ninja
             cmake --build ./BuildCov
             cd ./BuildCov
-            ./tests/runner_gpu
+            ./src/tests/runner_gpu
             lcov --directory . -b ../pennylane_lightning_gpu/src --capture --output-file coverage.info
             lcov --remove coverage.info '/usr/*' --output-file coverage.info
             mv coverage.info coverage-${{ github.job }}.info
@@ -131,13 +131,15 @@ jobs:
 
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
-          cd main/
-          pytest tests/ $COVERAGE_FLAGS
+          mkdir -p py_cov
+          cd py_cov
+          pytest ../tests/ $COVERAGE_FLAGS
           pl-device-test --device lightning.gpu --skip-ops --shots=20000 $COVERAGE_FLAGS --cov-append
           pl-device-test --device lightning.gpu --shots=None --skip-ops $COVERAGE_FLAGS --cov-append
           mv coverage.xml coverage-${{ github.job }}.xml
+
       - name: Upload code coverage results
         uses: actions/upload-artifact@v3
         with:
           name: ubuntu-codecov-results-python
-          path: ./main/coverage-${{ github.job }}.xml
+          path: ./py_cov/coverage-${{ github.job }}.xml
