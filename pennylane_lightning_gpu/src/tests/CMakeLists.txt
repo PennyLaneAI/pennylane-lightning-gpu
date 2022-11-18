@@ -31,7 +31,7 @@ include(Catch)
 add_executable(runner_gpu runner_main.cpp)
 if(PLLGPU_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
-	target_link_libraries(runner INTERFACE OpenMP::OpenMP_CXX)
+	target_link_libraries(runner_gpu INTERFACE OpenMP::OpenMP_CXX)
 endif()
 target_link_libraries(runner_gpu PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
 
