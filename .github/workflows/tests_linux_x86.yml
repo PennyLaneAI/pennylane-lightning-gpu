@@ -43,7 +43,7 @@ jobs:
       - name: Checkout pennyLane-lightning-gpu
         uses: actions/checkout@v3
 
-      - name: Validate GPU existence
+      - name: Validate GPU version and installed compiler
         run: |
           nvidia-smi
           /usr/local/cuda/bin/nvcc --version
@@ -55,6 +55,7 @@ jobs:
               -DBUILD_TESTS=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" \
               -DLIGHTNING_RELEASE_TAG="master" \
+              -DCUDAToolkit_ROOT="/usr/local/cuda" \
               -G Ninja
             cmake --build ./Build
             cd ./Build
@@ -76,6 +77,7 @@ jobs:
               -DENABLE_COVERAGE=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-$GCC_VERSION)" \
               -DLIGHTNING_RELEASE_TAG="master" \
+              -DCUDAToolkit_ROOT="/usr/local/cuda" \
               -G Ninja
             cmake --build ./BuildCov
             cd ./BuildCov
@@ -122,7 +124,7 @@ jobs:
 
       - name: Build and install package
         run: |
-            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master"
+            python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-$GCC_VERSION);LIGHTNING_RELEASE_TAG=master;CUDAToolkit_ROOT=/usr/local/cuda"
             python -m pip install -e .
 
       - name: Run PennyLane-Lightning-GPU unit tests
