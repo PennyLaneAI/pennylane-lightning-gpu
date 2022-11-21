@@ -37,6 +37,9 @@ jobs:
         with:
           python-version: '3.8'
 
+      - name: Remove Ubuntu unattended upgrades
+        run: sudo apt-get remove unattended-upgrades
+
       - name: Install required packages
         run: |
           sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov
@@ -96,6 +99,16 @@ jobs:
           name: ubuntu-codecov-results-cpp
           path: ./BuildCov/coverage-${{ github.job }}.info
 
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf ${{ steps.setup_venv.outputs.venv_name }}
+          rm -rf *
+          rm -rf .git
+          rm -rf .gitignore
+          rm -rf .github
+
+
   pythontests:
     runs-on:
       - self-hosted
@@ -144,3 +157,12 @@ jobs:
         with:
           name: ubuntu-codecov-results-python
           path: ./coverage-${{ github.job }}.xml
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf ${{ steps.setup_venv.outputs.venv_name }}
+          rm -rf *
+          rm -rf .git
+          rm -rf .gitignore
+          rm -rf .github
