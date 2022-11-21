@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-option(ENABLE_NATIVE "Enable native CPU build tuning" OFF)
+option(PLLGPU_ENABLE_NATIVE "Enable native CPU build tuning" OFF)
 
 Include(FetchContent)
 
@@ -29,9 +29,9 @@ include(CTest)
 include(Catch)
 
 add_executable(runner_gpu runner_main.cpp)
-if(ENABLE_OPENMP)
+if(PLLGPU_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
-	  target_link_libraries(runner INTERFACE OpenMP::OpenMP_CXX)
+	target_link_libraries(runner_gpu INTERFACE OpenMP::OpenMP_CXX)
 endif()
 target_link_libraries(runner_gpu PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
 
@@ -47,7 +47,7 @@ target_sources(runner_gpu PRIVATE Test_StateVectorCudaManaged_NonParam.cpp
 
 target_compile_options(runner_gpu PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")
 
-if(ENABLE_NATIVE)
+if(PLLGPU_ENABLE_NATIVE)
     message(STATUS "ENABLE_NATIVE is ON. Use -march=native for cpptests.")
     target_compile_options(runner_gpu PRIVATE -march=native)
 endif()
