@@ -27,11 +27,6 @@ jobs:
       max-parallel: 1
 
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.11.0
-        with:
-          access_token: ${{ github.token }}
-
       - uses: actions/setup-python@v4
         name: Install Python
         with:
@@ -102,7 +97,6 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          rm -rf ${{ steps.setup_venv.outputs.venv_name }}
           rm -rf *
           rm -rf .git
           rm -rf .gitignore
@@ -119,11 +113,6 @@ jobs:
       max-parallel: 1
 
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.11.0
-        with:
-          access_token: ${{ github.token }}
-
       - uses: actions/setup-python@v4
         name: Install Python
         with:
@@ -161,7 +150,6 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          rm -rf ${{ steps.setup_venv.outputs.venv_name }}
           rm -rf *
           rm -rf .git
           rm -rf .gitignore
