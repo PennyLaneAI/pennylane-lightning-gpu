@@ -7,8 +7,11 @@
 - Deprecate Python 3.7 wheels.
 [(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
 
-
 ### Improvements
+
+- Add support for CI checks.
+[(#76)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/76)
+
 
 ### Documentation
 
