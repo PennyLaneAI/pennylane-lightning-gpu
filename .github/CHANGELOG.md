@@ -4,16 +4,24 @@
 
 ### Breaking changes
 
+- Deprecate Python 3.7 wheels.
+[(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
+
+
 ### Improvements
 
 ### Documentation
 
 ### Bug fixes
 
+- Pin CMake to 3.24.x in wheel-builder to avoid PYthon not found error in CMake 3.25.
+[(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
+
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
 
+Lee J. O'Riordan.
 
 ---
 # Release 0.27.0
