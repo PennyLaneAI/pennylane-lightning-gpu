@@ -938,7 +938,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStates",
     std::mt19937 re{1337};
 
     //`values[i]` on the host will be copy the `indices[i]`th element of the
-    //state vector on the device.
+    // state vector on the device.
     SECTION("Set state vector with values and their corresponding indices on "
             "the host") {
         auto init_state = createRandomState<PrecisionT>(re, num_qubits);

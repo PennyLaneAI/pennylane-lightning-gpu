@@ -137,8 +137,8 @@ jobs:
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
           pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
-          pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
-          pl-device-test --device lightning.gpu --shots=None --skip-ops ${{ env.COVERAGE_FLAGS }} --cov-append
+          pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append -k 'not test_returns_state and not test_supports_broadcasting'
+          pl-device-test --device lightning.gpu --shots=None --skip-ops ${{ env.COVERAGE_FLAGS }} --cov-append -k 'not test_returns_state and not test_supports_broadcasting'
           mv coverage.xml coverage-${{ github.job }}.xml
 
       - name: Upload code coverage results
