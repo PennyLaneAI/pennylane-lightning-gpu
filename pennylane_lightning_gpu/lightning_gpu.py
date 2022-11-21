@@ -313,7 +313,7 @@ if CPP_BINARY_AVAILABLE:
             basis_states = qml.math.convert_like(basis_states, state)
             num = int(qml.math.dot(state, basis_states))
 
-            # self._gpu_state.setZeroState(0, False)
+            self._gpu_state.setZeroState(0, False)
             self._create_basis_state_GPU(num)
 
         # To be able to validate the adjoint method [_validate_adjoint_method(device)],
