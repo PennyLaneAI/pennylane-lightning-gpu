@@ -17,7 +17,7 @@ interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enable
 """
 from typing import List, Union
 from warnings import warn
-from itertools import islice, product
+from itertools import product
 
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
@@ -289,13 +289,13 @@ if CPP_BINARY_AVAILABLE:
             self._gpu_state.setStateVector(ravelled_indices, state, use_async)
 
         def _apply_basis_state_GPU(self, state, wires):
-            # Initialize the state vector in a specified computational basis state on GPU directly.
-            # Args:
-            #    state (array[int]): computational basis state of shape ``(wires,)``
-            #        consisting of 0s and 1s.
-            #    wires (Wires): wires that the provided computational state should be initialized on
-            # Note: This function does not support broadcasted inputs yet.
-
+            """Initialize the state vector in a specified computational basis state on GPU directly.
+             Args:
+                state (array[int]): computational basis state of shape ``(wires,)``
+                    consisting of 0s and 1s.
+                wires (Wires): wires that the provided computational state should be initialized on
+            Note: This function does not support broadcasted inputs yet.
+            """
             # translate to wire labels used by device
             device_wires = self.map_wires(wires)
 
@@ -340,8 +340,6 @@ if CPP_BINARY_AVAILABLE:
 
         def statistics(self, observables, shot_range=None, bin_size=None, circuit=None):
             ## Ensure D2H sync before calculating non-GPU supported operations
-            # if self._sync:
-            #    self.syncD2H()
             return super().statistics(observables, shot_range, bin_size, circuit)
 
         def apply_cq(self, operations, **kwargs):
@@ -484,7 +482,6 @@ if CPP_BINARY_AVAILABLE:
                 if not use_device_state:
                     self.reset()
                     self.execute(tape)
-                # ket = np.ravel(self._pre_rotated_state, order="C")
 
             if self.use_csingle:
                 adj = AdjointJacobianGPU_C64()
@@ -625,7 +622,6 @@ if CPP_BINARY_AVAILABLE:
                 "Projector",
                 "Hermitian",
             ]:
-                # self.syncD2H()
                 return super().expval(observable, shot_range=shot_range, bin_size=bin_size)
 
             if self.shots is not None:

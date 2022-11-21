@@ -29,7 +29,6 @@ void DataBuffer<GPUDataT, DevTagT>::setElements(index_type &num_indices,
                                                 index_type *indices,
                                                 size_t thread_per_block,
                                                 cudaStream_t stream_id) {
-    // const size_t thread_per_block = 256;
     const size_t num_blocks = num_indices / thread_per_block + 1;
     dim3 blockSize(thread_per_block, 1, 1);
     dim3 gridSize(num_blocks, 1);

@@ -121,7 +121,7 @@ class StateVectorCudaManaged
      *
      * @param value Value to be set for the target element.
      * @param index Index of the target element.
-     * @param async Is asynchronous memory copy.
+     * @param async Use an asynchronous memory copy.
      */
     void setState(const std::complex<Precision> &value, const size_t &index,
                   const bool async = false) {
@@ -133,9 +133,10 @@ class StateVectorCudaManaged
      * method is implemented by the customized CUDA kernel defined in the
      * DataBuffer class.
      *
-     * @param value Pointer to values to be set for the target elements.
-     * @param index Pointer to indices of the target elements.
-     * @param async Is asynchronous memory copy.
+     * @param num_indices Number of elements to be passed to the state vector.
+     * @param values Pointer to values to be set for the target elements.
+     * @param indices Pointer to indices of the target elements.
+     * @param async Use an asynchronous memory copy.
      */
     template <class index_type, size_t thread_per_block = 256>
     void setStates(const index_type num_indices,

@@ -111,7 +111,13 @@ void scaleVector(std::vector<std::complex<Data_t>> &data,
 }
 
 /**
- * @brief create a random state
+ * @brief create a random state vector on the host with a random number engine
+ * and number of qubits.
+ *
+ * @param re The random number engine.
+ * @param num_qubits Number of qubits.
+ *
+ * @return res A state vector on the host.
  */
 template <typename PrecisionT, class RandomEngine>
 auto createRandomState(RandomEngine &re, size_t num_qubits)
