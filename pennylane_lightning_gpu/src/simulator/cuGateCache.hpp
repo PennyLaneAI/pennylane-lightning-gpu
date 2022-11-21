@@ -132,6 +132,13 @@ template <class fp_t> class GateCache {
 
         host_gates_.emplace(
             std::piecewise_construct,
+            std::forward_as_tuple(std::make_pair(std::string{"CY"}, 0.0)),
+            std::forward_as_tuple(std::vector<CFP_t>{
+                cuUtil::ZERO<CFP_t>(), -cuUtil::IMAG<CFP_t>(),
+                cuUtil::IMAG<CFP_t>(), cuUtil::ZERO<CFP_t>()}));
+
+        host_gates_.emplace(
+            std::piecewise_construct,
             std::forward_as_tuple(std::make_pair(std::string{"CZ"}, 0.0)),
             std::forward_as_tuple(std::vector<CFP_t>{
                 cuUtil::ONE<CFP_t>(), cuUtil::ZERO<CFP_t>(),
