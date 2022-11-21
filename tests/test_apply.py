@@ -479,7 +479,10 @@ class TestApply:
         with pytest.raises(ValueError, match="Sum of amplitudes-squared does not equal one."):
             qubit_device_2_wires.apply([qml.QubitStateVector(np.array([1, -1]), wires=[0])])
 
-        with pytest.raises(ValueError, match=r"cannot reshape array of size 5 into shape \(2,2\)"):
+        with pytest.raises(
+            ValueError,
+            match=r"State vector must have shape \(2\*\*wires,\) or \(batch_size, 2\*\*wires\).",
+        ):
             p = np.array([1, 0, 1, 1, 0]) / np.sqrt(3)
             qubit_device_2_wires.apply([qml.QubitStateVector(p, wires=[0, 1])])
 

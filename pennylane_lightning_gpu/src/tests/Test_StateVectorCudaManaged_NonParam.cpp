@@ -937,7 +937,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStates",
     const std::size_t num_qubits = 3;
     std::mt19937 re{1337};
 
-    SECTION("SetStates") {
+    //`values[i]` on the host will be copy the `indices[i]`th element of the
+    //state vector on the device.
+    SECTION("Set state vector with values and their corresponding indices on "
+            "the host") {
         auto init_state = createRandomState<PrecisionT>(re, num_qubits);
         auto expected_state = init_state;
 
@@ -951,7 +954,11 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStates",
         using index_type =
             typename std::conditional<std::is_same<PrecisionT, float>::value,
                                       int32_t, int64_t>::type;
-
+        // The setStates will shuffle the state vector values on the device with
+        // the following indices and values setting on host. For example, the
+        // values[i] is used to set the indices[i] th element of state vector on
+        // the device. For example, values[2] (init_state[5]) will be copied to
+        // indices[2]th or (4th) element of the state vector.
         std::vector<index_type> indices = {0, 2, 4, 6, 1, 3, 5, 7};
 
         std::vector<std::complex<PrecisionT>> values = {
@@ -973,7 +980,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStateswith_thread_setting",
     const std::size_t num_qubits = 3;
     std::mt19937 re{1337};
 
-    SECTION("SetStates") {
+    SECTION("SetStates with a non-default thread setting") {
         auto init_state = createRandomState<PrecisionT>(re, num_qubits);
         auto expected_state = init_state;
 
@@ -1011,11 +1018,12 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetIthStates",
     const std::size_t num_qubits = 3;
     std::mt19937 re{1337};
 
-    SECTION("SetIthStates") {
+    SECTION(
+        "Set Ith element of the state state on device with data on the host") {
         auto init_state = createRandomState<PrecisionT>(re, num_qubits);
         auto expected_state = init_state;
 
-        std::swap(expected_state[0], expected_state[1]);
+        expected_state[0] = expected_state[1];
 
         SVDataGPU<PrecisionT> svdat{num_qubits};
         svdat.cuda_sv.CopyHostDataToGpu(init_state.data(), init_state.size());
@@ -1026,10 +1034,6 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetIthStates",
 
         index_type indices = 0;
         std::complex<PrecisionT> values = init_state[1];
-        svdat.cuda_sv.setState(values, indices, false);
-
-        indices = 1;
-        values = init_state[0];
         svdat.cuda_sv.setState(values, indices, false);
 
         svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
