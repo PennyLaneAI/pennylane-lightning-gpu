@@ -445,7 +445,7 @@ if CPP_BINARY_AVAILABLE:
                 elif isinstance(operations[0], BasisState):
                     self._apply_basis_state_GPU(operations[0].parameters[0], operations[0].wires)
                     del operations[0]
-                elif not isinstance(operation[0], (QubitStateVector, BasisState)):
+                elif not isinstance(operations[0], (QubitStateVector, BasisState)):
                     self._create_basis_state_GPU(0)
 
             for operation in operations:
