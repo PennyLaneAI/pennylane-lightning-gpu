@@ -980,7 +980,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStateswith_thread_setting",
     const std::size_t num_qubits = 3;
     std::mt19937 re{1337};
 
-    SECTION("SetStates with a non-default thread setting") {
+    SECTION("SetStates with a non-default GPU thread setting") {
         auto init_state = createRandomState<PrecisionT>(re, num_qubits);
         auto expected_state = init_state;
 
@@ -1001,6 +1001,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStateswith_thread_setting",
             init_state[1], init_state[3], init_state[5], init_state[7],
             init_state[0], init_state[2], init_state[4], init_state[6]};
 
+        // default setting of the number of threads in a block is 256.
         const size_t threads_per_block = 1024;
 
         svdat.cuda_sv.template setStates<index_type, threads_per_block>(

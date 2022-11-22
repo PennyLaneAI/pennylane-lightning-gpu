@@ -203,7 +203,7 @@ if CPP_BINARY_AVAILABLE:
             c_dtype=np.complex128,
             shots=None,
             batch_obs: Union[bool, int] = False,
-            analytic=None,
+            # analytic=None,
         ):
             if c_dtype is np.complex64:
                 r_dtype = np.float32
@@ -214,7 +214,10 @@ if CPP_BINARY_AVAILABLE:
             else:
                 raise TypeError(f"Unsupported complex Type: {c_dtype}")
             super().__init__(
-                wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype, analytic=analytic
+                wires,
+                shots=shots,
+                r_dtype=r_dtype,
+                c_dtype=c_dtype,  # analytic=analytic
             )
             self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
             self._create_basis_state_GPU(0)
@@ -228,33 +231,68 @@ if CPP_BINARY_AVAILABLE:
             self._gpu_state.resetGPU(False)  # Sync reset
 
         def syncD2H(self, state_vector, use_async=False):
-            """Explicitly synchronize GPU data to CPU"""
+            """Copy the state vector data on device to a state vector on the host provided by the user
+            Args:
+                state_vector(array[complex]): the state vector array on host
+                use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
+                Note: This function only supports synchrized memory copy.
+
+            **Example**
+            >>> dev = qml.device('lightning.gpu', wires=1)
+            >>> dev.apply(qml.PauliX(wires=[0]))
+            >>> state_vector = np.zeros(2**dev.num_wires).astype(dev.C_DTYPE)
+            >>> dev.syncD2H(state_vector)
+            >>> print(state_vector)
+            [0.+0.j 1.+0.j]
+            """
             self._gpu_state.DeviceToHost(state_vector.ravel(order="C"), use_async)
 
         def syncH2D(self, state_vector, use_async=False):
-            """Explicitly synchronize CPU data to GPU"""
+            """Copy the state vector data on host provided by the user to the state vector on the device
+            Args:
+                state_vector(array[complex]): the state vector array on host
+                use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
+                Note: This function only supports synchrized memory copy.
+
+            **Example**
+            >>> dev = qml.device('lightning.gpu', wires=3)
+            >>> obs = qml.Identity(0) @ qml.PauliX(1) @ qml.PauliY(2)
+            >>> obs1 = qml.Identity(1)
+            >>> H = qml.Hamiltonian([1.0, 1.0], [obs1, obs])
+            >>> state_vector = np.array([0.0 + 0.0j, 0.0 + 0.1j, 0.1 + 0.1j, 0.1 + 0.2j,
+                0.2 + 0.2j, 0.3 + 0.3j, 0.3 + 0.4j, 0.4 + 0.5j,], dtype=np.complex64,)
+            >>> dev.syncH2D(state_vector)
+            >>> res = dev.expval(H)
+            >>> print(res)
+            1.0
+            """
             self._gpu_state.HostToDevice(state_vector.ravel(order="C"), use_async)
 
         def _create_basis_state_GPU(self, index, use_async=False):
-            """Direct set the 'index'th element on GPU
+            """Return a computational basis state over all wires.
             Args:
-                index (int): The index of element of statevector to be set.
+                index (int): integer representing the computational basis state
+                use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
+                Note: This function only supports synchrized memory copy.
             """
             self._gpu_state.setBasisState(index, use_async)
 
         def _apply_state_vector_GPU(self, state, device_wires, use_async=False):
-            """Initialize the internal state vector in a specified state on GPU.
+            """Initialize the state vector on GPU with a specified state on host.
+            Note that any use of this method will introduce host-overheads.
             Args:
-            state (array[complex]): normalized input state of length ``2**len(wires)``
+            state (array[complex]): normalized input state (on host) of length ``2**len(wires)``
                  or broadcasted state of shape ``(batch_size, 2**len(wires))``
             device_wires (Wires): wires that get initialized in the state
+            use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
+            Note: This function only supports synchrized memory copy.
             """
             # translate to wire labels used by device
             device_wires = self.map_wires(device_wires)
             dim = 2 ** len(device_wires)
 
-            state = self._asarray(state, dtype=self.C_DTYPE)
-            batch_size = self._get_batch_size(state, (dim,), dim)
+            state = self._asarray(state, dtype=self.C_DTYPE)  # this operation on host
+            batch_size = self._get_batch_size(state, (dim,), dim)  # this operation on host
             output_shape = [2] * self.num_wires
 
             if batch_size is not None:
@@ -286,12 +324,14 @@ if CPP_BINARY_AVAILABLE:
             ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
 
             # set the state vector on GPU with the unravelled_indices and their corresponding values
-            self._gpu_state.setStateVector(ravelled_indices, state, use_async)
+            self._gpu_state.setStateVector(
+                ravelled_indices, state, use_async
+            )  # this operation on device
 
         def _apply_basis_state_GPU(self, state, wires):
             """Initialize the state vector in a specified computational basis state on GPU directly.
              Args:
-                state (array[int]): computational basis state of shape ``(wires,)``
+                state (array[int]): computational basis state (on host) of shape ``(wires,)``
                     consisting of 0s and 1s.
                 wires (Wires): wires that the provided computational state should be initialized on
             Note: This function does not support broadcasted inputs yet.

@@ -75,9 +75,6 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     py::class_<StateVectorCudaManaged<PrecisionT>>(m, class_name.c_str())
         .def(py::init<std::size_t>())              // qubits, device
         .def(py::init<std::size_t, DevTag<int>>()) // qubits, dev-tag
-        //.def(py::init([](std::size_t num_qubits) {
-        //    return new StateVectorCudaManaged<PrecisionT>(num_qubits);
-        //})) // qubits
         .def(
             py::init<const StateVectorCudaManaged<PrecisionT> &>()) // copy ctor
         .def(py::init([](const np_arr_c &arr) {
@@ -95,7 +92,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 std::complex<PrecisionT> value(0, 0);
                 sv.setState(value, index, use_async);
             },
-            "Create basis state on GPU.")
+            "Set the init state vector to zeros.")
         .def(
             "setBasisState",
             [](StateVectorCudaManaged<PrecisionT> &sv, const size_t index,

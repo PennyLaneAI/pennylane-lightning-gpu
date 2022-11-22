@@ -149,6 +149,17 @@ class TestApply:
         dev.syncD2H(state_vector)
         assert np.allclose(state_vector, np.array(expected_output), atol=tol, rtol=0)
 
+    # docstring tests
+    def test_apply_operation_docstring(self, tol):
+        """Tests that applying an operation yields the expected output state for two wire
+        operations that have no parameters."""
+
+        dev = qml.device("lightning.gpu", wires=1)
+        dev.apply(qml.PauliX(wires=[0]))
+        state_vector = np.zeros(2**dev.num_wires).astype(dev.C_DTYPE)
+        dev.syncD2H(state_vector)
+        assert np.allclose(state_vector, np.array([0, 1]), atol=tol, rtol=0)
+
     test_data_two_wires_no_parameters = [
         (qml.CNOT, [1, 0, 0, 0], [1, 0, 0, 0]),
         (qml.CNOT, [0, 0, 1, 0], [0, 0, 0, 1]),
