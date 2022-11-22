@@ -116,8 +116,8 @@ class StateVectorCudaManaged
     ~StateVectorCudaManaged() = default;
 
     /**
-     * @brief Set value for a single element of the state-vector. This method
-     * is implemented by cudaMemcpy.
+     * @brief Set value for a single element of the state-vector on device. This
+     * method is implemented by cudaMemcpy.
      *
      * @param value Value to be set for the target element.
      * @param index Index of the target element.

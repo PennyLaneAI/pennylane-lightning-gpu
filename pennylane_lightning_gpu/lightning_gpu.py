@@ -203,6 +203,7 @@ if CPP_BINARY_AVAILABLE:
             c_dtype=np.complex128,
             shots=None,
             batch_obs: Union[bool, int] = False,
+            # init_sv=True
         ):
             if c_dtype is np.complex64:
                 r_dtype = np.float32
@@ -212,14 +213,9 @@ if CPP_BINARY_AVAILABLE:
                 self.use_csingle = False
             else:
                 raise TypeError(f"Unsupported complex Type: {c_dtype}")
-            super().__init__(
-                wires,
-                shots=shots,
-                r_dtype=r_dtype,
-                c_dtype=c_dtype
-            )
+            super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
             self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
-            self._create_basis_state_GPU(0)
+            # self._create_basis_state_GPU(0)
             self._sync = sync
             self._dp = DevPool()
             self._batch_obs = batch_obs
@@ -352,7 +348,7 @@ if CPP_BINARY_AVAILABLE:
             basis_states = qml.math.convert_like(basis_states, state)
             num = int(qml.math.dot(state, basis_states))
 
-            self._gpu_state.setZeroState(0, False)
+            # self._gpu_state.setZeroState(0, False)
             self._create_basis_state_GPU(num)
 
         # To be able to validate the adjoint method [_validate_adjoint_method(device)],
@@ -449,6 +445,8 @@ if CPP_BINARY_AVAILABLE:
                 elif isinstance(operations[0], BasisState):
                     self._apply_basis_state_GPU(operations[0].parameters[0], operations[0].wires)
                     del operations[0]
+                elif not isinstance(operation[0], (QubitStateVector, BasisState)):
+                    self._create_basis_state_GPU(0)
 
             for operation in operations:
                 if isinstance(operation, (QubitStateVector, BasisState)):
