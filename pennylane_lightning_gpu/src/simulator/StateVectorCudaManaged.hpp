@@ -125,6 +125,7 @@ class StateVectorCudaManaged
      */
     void setState(const std::complex<Precision> &value, const size_t &index,
                   const bool async = false) {
+        BaseType::getDataBuffer()->zeroInit();
         BaseType::getDataBuffer().setIthElement(value, index, async);
     }
 
@@ -142,6 +143,8 @@ class StateVectorCudaManaged
     void setStates(const index_type num_indices,
                    const std::complex<Precision> *values,
                    const index_type *indices, const bool async = false) {
+        BaseType::getDataBuffer()->zeroInit();
+
         auto device_id = BaseType::getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
 
