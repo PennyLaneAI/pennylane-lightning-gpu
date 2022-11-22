@@ -203,7 +203,6 @@ if CPP_BINARY_AVAILABLE:
             c_dtype=np.complex128,
             shots=None,
             batch_obs: Union[bool, int] = False,
-            # analytic=None,
         ):
             if c_dtype is np.complex64:
                 r_dtype = np.float32
@@ -217,7 +216,7 @@ if CPP_BINARY_AVAILABLE:
                 wires,
                 shots=shots,
                 r_dtype=r_dtype,
-                c_dtype=c_dtype,  # analytic=analytic
+                c_dtype=c_dtype
             )
             self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
             self._create_basis_state_GPU(0)
@@ -235,7 +234,7 @@ if CPP_BINARY_AVAILABLE:
             Args:
                 state_vector(array[complex]): the state vector array on host
                 use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
-                Note: This function only supports synchrized memory copy.
+                Note: This function only supports synchronized memory copy.
 
             **Example**
             >>> dev = qml.device('lightning.gpu', wires=1)
@@ -250,9 +249,9 @@ if CPP_BINARY_AVAILABLE:
         def syncH2D(self, state_vector, use_async=False):
             """Copy the state vector data on host provided by the user to the state vector on the device
             Args:
-                state_vector(array[complex]): the state vector array on host
+                state_vector(array[complex]): the state vector array on host.
                 use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
-                Note: This function only supports synchrized memory copy.
+                Note: This function only supports synchronized memory copy.
 
             **Example**
             >>> dev = qml.device('lightning.gpu', wires=3)
@@ -271,9 +270,9 @@ if CPP_BINARY_AVAILABLE:
         def _create_basis_state_GPU(self, index, use_async=False):
             """Return a computational basis state over all wires.
             Args:
-                index (int): integer representing the computational basis state
+                index (int): integer representing the computational basis state.
                 use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
-                Note: This function only supports synchrized memory copy.
+                Note: This function only supports synchronized memory copy.
             """
             self._gpu_state.setBasisState(index, use_async)
 
@@ -285,7 +284,7 @@ if CPP_BINARY_AVAILABLE:
                  or broadcasted state of shape ``(batch_size, 2**len(wires))``
             device_wires (Wires): wires that get initialized in the state
             use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
-            Note: This function only supports synchrized memory copy.
+            Note: This function only supports synchronized memory copy from host to device.
             """
             # translate to wire labels used by device
             device_wires = self.map_wires(device_wires)

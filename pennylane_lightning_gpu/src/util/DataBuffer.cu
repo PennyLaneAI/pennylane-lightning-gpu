@@ -36,5 +36,6 @@ void DataBuffer<GPUDataT, DevTagT>::setElements(index_type &num_indices,
     cuda_element_set<DeviceDataT, index_type>
         <<<gridSize, blockSize, 0, stream_id>>>(num_indices, value, indices,
                                                 gpu_buffer_);
+    PL_CUDA_IS_SUCCESS(cudaGetLastError());
 }
 } // namespace Pennylane::CUDA
