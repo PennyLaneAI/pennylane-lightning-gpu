@@ -85,22 +85,14 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             return new StateVectorCudaManaged<PrecisionT>(
                 data_ptr, static_cast<std::size_t>(arr.size()));
         }))
-        /*.def(
-            "setZeroState",
-            [](StateVectorCudaManaged<PrecisionT> &sv, const size_t index,
-               const bool use_async) {
-                std::complex<PrecisionT> value(0, 0);
-                sv.setState(value, index, use_async);
-            },
-            "Set the init state vector to zeros.")*/
         .def(
             "setBasisState",
             [](StateVectorCudaManaged<PrecisionT> &sv, const size_t index,
                const bool is_cotr, const bool use_async) {
                 std::complex<PrecisionT> value(1, 0);
-                sv.setBasisState(value, index, is_cotr, use_async);
+                sv.setBasisState<index>(value, is_cotr, use_async);
             },
-            "Create basis state on GPU.")
+            "Create Basis State on GPU.")
         .def(
             "setStateVector",
             [](StateVectorCudaManaged<PrecisionT> &sv,

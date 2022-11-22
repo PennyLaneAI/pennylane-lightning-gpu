@@ -348,7 +348,6 @@ if CPP_BINARY_AVAILABLE:
             basis_states = qml.math.convert_like(basis_states, state)
             num = int(qml.math.dot(state, basis_states))
 
-            # self._gpu_state.setZeroState(0, False)
             is_cotr = False
             self._create_basis_state_GPU(num, is_cotr)
 

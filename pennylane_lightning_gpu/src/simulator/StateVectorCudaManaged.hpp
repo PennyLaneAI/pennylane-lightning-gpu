@@ -58,6 +58,21 @@ class CSVHandle {
 
 namespace Pennylane {
 
+extern template void setStateVector_CUDA(cuComplex *sv, int &num_indices,
+                                         cuComplex *value, int *indices,
+                                         size_t thread_per_block,
+                                         cudaStream_t stream_id);
+extern template void setStateVector_CUDA(cuDoubleComplex *sv, long &num_indices,
+                                         cuDoubleComplex *value, long *indices,
+                                         size_t thread_per_block,
+                                         cudaStream_t stream_id);
+extern template void setBasisState_CUDA(cuComplex *sv, cuComplex &value,
+                                        size_t &index, bool async,
+                                        cudaStream_t stream_id);
+extern template void setBasisState_CUDA(cuDoubleComplex *sv,
+                                        cuDoubleComplex &value, size_t &index,
+                                        bool async, cudaStream_t stream_id);
+
 /**
  * @brief Managed memory CUDA state-vector class using custateVec backed
  * gate-calls.
@@ -123,13 +138,17 @@ class StateVectorCudaManaged
      * @param index Index of the target element.
      * @param async Use an asynchronous memory copy.
      */
-    void setBasisState(const std::complex<Precision> &value,
-                       const size_t &index, const bool is_cotr,
+    template <size_t index = 0>
+    void setBasisState(const std::complex<Precision> &value, const bool is_cotr,
+                       // const size_t &index, const bool is_cotr,
                        const bool async = false) {
         if (!is_cotr) {
             BaseType::getDataBuffer().zeroInit();
         }
-        BaseType::getDataBuffer().setIthElement(value, index, async);
+        // BaseType::getDataBuffer().setIthElement(value, index, async);
+        auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
+        setBasisState_CUDA<CFP_t>(BaseType::getDataBuffer(), value, index,
+                                  async, stream_id);
     }
 
     /**
@@ -160,9 +179,12 @@ class StateVectorCudaManaged
         d_indices.CopyHostDataToGpu(indices, d_indices.getLength(), async);
         d_values.CopyHostDataToGpu(values, d_values.getLength(), async);
 
-        BaseType::getDataBuffer().template setElements<CFP_t, index_type>(
-            num_elements, d_values.getData(), d_indices.getData(),
-            thread_per_block, stream_id);
+        // BaseType::getDataBuffer().template setElements<CFP_t, index_type>(
+        //     num_elements, d_values.getData(), d_indices.getData(),
+        //     thread_per_block, stream_id);
+        setStateVector_CUDA<CFP_t>(BaseType::getDataBuffer(), num_elements,
+                                   d_values.getData(), d_indices.getData(),
+                                   thread_per_block, stream_id);
     }
 
     /**
