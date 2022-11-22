@@ -931,7 +931,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::Hamiltonian_expval_cuSparse",
     }
 }
 
-TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStates",
+TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStateVector",
                    "[StateVectorCudaManaged_Nonparam]", float, double) {
     using PrecisionT = TestType;
     const std::size_t num_qubits = 3;
@@ -965,7 +965,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStates",
             init_state[1], init_state[3], init_state[5], init_state[7],
             init_state[0], init_state[2], init_state[4], init_state[6]};
 
-        svdat.cuda_sv.template setStates<index_type>(
+        svdat.cuda_sv.template setStateVector<index_type>(
             values.size(), values.data(), indices.data(), false);
 
         svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
@@ -974,7 +974,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStates",
     }
 }
 
-TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStateswith_thread_setting",
+TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStateVectorwith_thread_setting",
                    "[StateVectorCudaManaged_Nonparam]", float, double) {
     using PrecisionT = TestType;
     const std::size_t num_qubits = 3;
@@ -1004,7 +1004,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetStateswith_thread_setting",
         // default setting of the number of threads in a block is 256.
         const size_t threads_per_block = 1024;
 
-        svdat.cuda_sv.template setStates<index_type, threads_per_block>(
+        svdat.cuda_sv.template setStateVector<index_type, threads_per_block>(
             values.size(), values.data(), indices.data(), false);
 
         svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
@@ -1026,6 +1026,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetIthStates",
 
         expected_state[0] = expected_state[1];
 
+        for (size_t i = 1; i < Pennylane::Util::exp2(num_qubits); i++) {
+            expected_state[i] = {0, 0};
+        }
+
         SVDataGPU<PrecisionT> svdat{num_qubits};
         svdat.cuda_sv.CopyHostDataToGpu(init_state.data(), init_state.size());
 
@@ -1035,7 +1039,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetIthStates",
 
         index_type indices = 0;
         std::complex<PrecisionT> values = init_state[1];
-        svdat.cuda_sv.setState(values, indices, false);
+        bool is_ctor = false;
+        svdat.cuda_sv.setBasisState(values, indices, is_ctor, false);
 
         svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
 

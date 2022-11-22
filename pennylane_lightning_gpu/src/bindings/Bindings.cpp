@@ -96,9 +96,9 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "setBasisState",
             [](StateVectorCudaManaged<PrecisionT> &sv, const size_t index,
-               const bool use_async) {
+               const bool is_cotr, const bool use_async) {
                 std::complex<PrecisionT> value(1, 0);
-                sv.setState(value, index, use_async);
+                sv.setBasisState(value, index, is_cotr, use_async);
             },
             "Create basis state on GPU.")
         .def(
@@ -109,7 +109,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                 using index_type = typename std::conditional<
                     std::is_same<ParamT, float>::value, int32_t, int64_t>::type;
 
-                sv.template setStates<index_type>(
+                sv.template setStateVector<index_type>(
                     static_cast<index_type>(indices.request().size),
                     static_cast<std::complex<PrecisionT> *>(
                         state.request().ptr),

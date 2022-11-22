@@ -123,9 +123,12 @@ class StateVectorCudaManaged
      * @param index Index of the target element.
      * @param async Use an asynchronous memory copy.
      */
-    void setState(const std::complex<Precision> &value, const size_t &index,
-                  const bool async = false) {
-        BaseType::getDataBuffer().zeroInit();
+    void setBasisState(const std::complex<Precision> &value,
+                       const size_t &index,
+                       const bool is_cotr const bool async = false) {
+        if (!is_cotr) {
+            BaseType::getDataBuffer().zeroInit();
+        }
         BaseType::getDataBuffer().setIthElement(value, index, async);
     }
 
@@ -140,9 +143,9 @@ class StateVectorCudaManaged
      * @param async Use an asynchronous memory copy.
      */
     template <class index_type, size_t thread_per_block = 256>
-    void setStates(const index_type num_indices,
-                   const std::complex<Precision> *values,
-                   const index_type *indices, const bool async = false) {
+    void setStateVector(const index_type num_indices,
+                        const std::complex<Precision> *values,
+                        const index_type *indices, const bool async = false) {
         BaseType::getDataBuffer().zeroInit();
 
         auto device_id = BaseType::getDataBuffer().getDevTag().getDeviceID();
