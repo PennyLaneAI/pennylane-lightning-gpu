@@ -58,20 +58,20 @@ class CSVHandle {
 
 namespace Pennylane {
 
-extern template void setStateVector_CUDA<cuComplex, int>(
+extern template void setStateVector_CUDA(
     cuComplex *sv, int &num_indices, cuComplex *value, int *indices,
     size_t thread_per_block, cudaStream_t stream_id);
-extern template void setStateVector_CUDA<cuDoubleComplex, long>(
+extern template void setStateVector_CUDA(
     cuDoubleComplex *sv, long &num_indices, cuDoubleComplex *value,
     long *indices, size_t thread_per_block, cudaStream_t stream_id);
 
-extern template void setBasisState_CUDA<cuComplex>(cuComplex *sv,
+extern template void setBasisState_CUDA(cuComplex *sv,
                                                    cuComplex &value,
                                                    const size_t index,
                                                    bool async,
                                                    cudaStream_t stream_id);
 extern template void
-setBasisState_CUDA<cuDoubleComplex>(cuDoubleComplex *sv, cuDoubleComplex &value,
+setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                                     const size_t index, bool async,
                                     cudaStream_t stream_id);
 
