@@ -88,9 +88,9 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
         .def(
             "setBasisState",
             [](StateVectorCudaManaged<PrecisionT> &sv, const size_t index,
-               const bool is_cotr, const bool use_async) {
+               const bool use_async) {
                 const std::complex<PrecisionT> value(1, 0);
-                sv.setBasisState(value, index, is_cotr, use_async);
+                sv.setBasisState(value, index, use_async);
             },
             "Create Basis State on GPU.")
         .def(

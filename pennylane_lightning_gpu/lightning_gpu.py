@@ -214,8 +214,7 @@ if CPP_BINARY_AVAILABLE:
                 raise TypeError(f"Unsupported complex Type: {c_dtype}")
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
             self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
-            is_cotr = True
-            self._create_basis_state_GPU(0, is_cotr)
+            self._create_basis_state_GPU(0)
             self._sync = sync
             self._dp = DevPool()
             self._batch_obs = batch_obs
@@ -263,14 +262,14 @@ if CPP_BINARY_AVAILABLE:
             """
             self._gpu_state.HostToDevice(state_vector.ravel(order="C"), use_async)
 
-        def _create_basis_state_GPU(self, index, is_cotr, use_async=False):
+        def _create_basis_state_GPU(self, index, use_async=False):
             """Return a computational basis state over all wires.
             Args:
                 index (int): integer representing the computational basis state.
                 use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
                 Note: This function only supports synchronized memory copy.
             """
-            self._gpu_state.setBasisState(index, is_cotr, use_async)
+            self._gpu_state.setBasisState(index, use_async)
 
         def _apply_state_vector_GPU(self, state, device_wires, use_async=False):
             """Initialize the state vector on GPU with a specified state on host.
@@ -348,8 +347,7 @@ if CPP_BINARY_AVAILABLE:
             basis_states = qml.math.convert_like(basis_states, state)
             num = int(qml.math.dot(state, basis_states))
 
-            is_cotr = False
-            self._create_basis_state_GPU(num, is_cotr)
+            self._create_basis_state_GPU(num)
 
         # To be able to validate the adjoint method [_validate_adjoint_method(device)],
         #  the qnode requires the definition of:
@@ -445,8 +443,6 @@ if CPP_BINARY_AVAILABLE:
                 elif isinstance(operations[0], BasisState):
                     self._apply_basis_state_GPU(operations[0].parameters[0], operations[0].wires)
                     del operations[0]
-                # elif not isinstance(operations[0], (QubitStateVector, BasisState)):
-                #    self._create_basis_state_GPU(0)
 
             for operation in operations:
                 if isinstance(operation, (QubitStateVector, BasisState)):

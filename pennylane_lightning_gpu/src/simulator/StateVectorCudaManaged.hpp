@@ -140,10 +140,10 @@ class StateVectorCudaManaged
      * @param async Use an asynchronous memory copy.
      */
     void setBasisState(const std::complex<Precision> &value, const size_t index,
-                       const bool is_cotr, const bool async = false) {
-        if (!is_cotr) {
-            BaseType::getDataBuffer().zeroInit();
-        }
+                       const bool async = false) {
+
+        BaseType::getDataBuffer().zeroInit();
+
         // BaseType::getDataBuffer().setIthElement(value, index, async);
         CFP_t value_cu = cuUtil::complexToCu<std::complex<Precision>>(value);
         auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();

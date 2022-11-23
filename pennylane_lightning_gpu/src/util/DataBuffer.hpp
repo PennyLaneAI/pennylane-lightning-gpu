@@ -37,7 +37,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
-            zeroInit();
+            // zeroInit();
         }
     }
 
@@ -49,7 +49,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
-            zeroInit();
+            // zeroInit();
         }
     }
 
@@ -61,7 +61,7 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_),
                            sizeof(GPUDataT) * length));
-            zeroInit();
+            // zeroInit();
         }
     }
 
