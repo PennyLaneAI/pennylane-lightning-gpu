@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integration tests for the ``execute`` method of LightningQubit.
+Integration tests for the ``execute`` method of LightningGPU.
 """
 import pytest
 
