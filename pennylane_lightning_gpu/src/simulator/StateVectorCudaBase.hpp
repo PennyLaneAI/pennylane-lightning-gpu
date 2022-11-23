@@ -37,20 +37,17 @@ namespace cuUtil = Pennylane::CUDA::Util;
 /// @endcond
 
 namespace Pennylane {
-void setStateVector_CUDA(cuComplex *sv, int &num_indices,
-                                  cuComplex *value, int *indices,
-                                  size_t thread_per_block,
-                                  cudaStream_t stream_id);
+void setStateVector_CUDA(cuComplex *sv, int &num_indices, cuComplex *value,
+                         int *indices, size_t thread_per_block,
+                         cudaStream_t stream_id);
 void setStateVector_CUDA(cuDoubleComplex *sv, long &num_indices,
-                                  cuDoubleComplex *value, long *indices,
-                                  size_t thread_per_block,
-                                  cudaStream_t stream_id);
+                         cuDoubleComplex *value, long *indices,
+                         size_t thread_per_block, cudaStream_t stream_id);
 
 void setBasisState_CUDA(cuComplex *sv, cuComplex &value, size_t &index,
-                                 bool async, cudaStream_t stream_id);
+                        bool async, cudaStream_t stream_id);
 void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
-                                 size_t &index, bool async,
-                                 cudaStream_t stream_id);
+                        size_t &index, bool async, cudaStream_t stream_id);
 /**
  * @brief CRTP-enabled base class for CUDA-capable state-vector simulators.
  *
@@ -242,8 +239,8 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         CFP_t value = {1, 0};
         data_buffer_->zeroInit();
         // data_buffer_->setIthElement(value, index, async);
-        setBasisState_CUDA<CFP_t>(data_buffer_->getData(), value, index, async,
-                                  data_buffer_->getStream());
+        setBasisState_CUDA(data_buffer_->getData(), value, index, async,
+                           data_buffer_->getStream());
     }
 
   protected:
