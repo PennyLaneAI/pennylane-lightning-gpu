@@ -30,6 +30,7 @@ except (ImportError, ModuleNotFoundError):
         allow_module_level=True,
     )
 
+
 @pytest.mark.parametrize("diff_method", ("param_shift", "finite_diff"))
 class TestQChem:
     """Test tapes returning the expectation values of a Hamiltonian, with a qchem workflow."""
