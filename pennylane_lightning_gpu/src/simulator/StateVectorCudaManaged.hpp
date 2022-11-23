@@ -141,10 +141,8 @@ class StateVectorCudaManaged
      */
     void setBasisState(const std::complex<Precision> &value, const size_t index,
                        const bool async = false) {
-
         BaseType::getDataBuffer().zeroInit();
 
-        // BaseType::getDataBuffer().setIthElement(value, index, async);
         CFP_t value_cu = cuUtil::complexToCu<std::complex<Precision>>(value);
         auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
         setBasisState_CUDA(BaseType::getData(), value_cu, index, async,
@@ -179,9 +177,6 @@ class StateVectorCudaManaged
         d_indices.CopyHostDataToGpu(indices, d_indices.getLength(), async);
         d_values.CopyHostDataToGpu(values, d_values.getLength(), async);
 
-        // BaseType::getDataBuffer().template setElements<CFP_t, index_type>(
-        //     num_elements, d_values.getData(), d_indices.getData(),
-        //     thread_per_block, stream_id);
         setStateVector_CUDA(BaseType::getData(), num_elements,
                             d_values.getData(), d_indices.getData(),
                             thread_per_block, stream_id);

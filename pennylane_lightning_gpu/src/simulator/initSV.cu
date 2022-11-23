@@ -51,10 +51,6 @@ void setBasisState_CUDA_call(GPUDataT *sv, GPUDataT &value, const size_t index,
     }
 }
 
-//} // namespace
-//
-// namespace Pennylane {
-
 void setStateVector_CUDA(cuComplex *sv, int &num_indices, cuComplex *value,
                          int *indices, size_t thread_per_block,
                          cudaStream_t stream_id) {
