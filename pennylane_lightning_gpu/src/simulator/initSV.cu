@@ -1,7 +1,7 @@
 #include "cuda_helpers.hpp"
 #include <cuComplex.h>
 
-namespace {
+namespace Pennylane {
 template <class GPUDataT, class index_type>
 __global__ void setStateVectorkernel(GPUDataT *sv, index_type num_indices,
                                      GPUDataT *value, index_type *indices) {
@@ -38,19 +38,23 @@ void setBasisState_CUDA(GPUDataT *sv, GPUDataT &value, const size_t index,
     }
 }
 
-} // namespace
+//} // namespace
+//
+// namespace Pennylane {
+template void setStateVector_CUDA<cuComplex, int>(
+    cuComplex *sv, int &num_indices, cuComplex *value, int *indices,
+    size_t thread_per_block, cudaStream_t stream_id);
+template void setStateVector_CUDA<cuDoubleComplex, long>(
+    cuDoubleComplex *sv, long &num_indices, cuDoubleComplex *value,
+    long *indices, size_t thread_per_block, cudaStream_t stream_id);
 
-namespace Pennylane {
-void setStateVector_CUDA(cuComplex *sv, int &num_indices, cuComplex *value,
-                         int *indices, size_t thread_per_block,
-                         cudaStream_t stream_id);
-void setStateVector_CUDA(cuDoubleComplex *sv, long &num_indices,
-                         cuDoubleComplex *value, long *indices,
-                         size_t thread_per_block, cudaStream_t stream_id);
-
-void setBasisState_CUDA(cuComplex *sv, cuComplex &value, const size_t index,
-                        bool async, cudaStream_t stream_id);
-void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
-                        const size_t index, bool async, cudaStream_t stream_id);
+template void setBasisState_CUDA<cuComplex>(cuComplex *sv, cuComplex &value,
+                                            const size_t index, bool async,
+                                            cudaStream_t stream_id);
+template void setBasisState_CUDA<cuDoubleComplex>(cuDoubleComplex *sv,
+                                                  cuDoubleComplex &value,
+                                                  const size_t index,
+                                                  bool async,
+                                                  cudaStream_t stream_id);
 
 } // namespace Pennylane

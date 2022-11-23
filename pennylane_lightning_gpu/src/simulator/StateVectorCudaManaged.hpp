@@ -58,17 +58,22 @@ class CSVHandle {
 
 namespace Pennylane {
 
-void setStateVector_CUDA(cuComplex *sv, int &num_indices, cuComplex *value,
-                         int *indices, size_t thread_per_block,
-                         cudaStream_t stream_id);
-void setStateVector_CUDA(cuDoubleComplex *sv, long &num_indices,
-                         cuDoubleComplex *value, long *indices,
-                         size_t thread_per_block, cudaStream_t stream_id);
+extern template void setStateVector_CUDA<cuComplex, int>(
+    cuComplex *sv, int &num_indices, cuComplex *value, int *indices,
+    size_t thread_per_block, cudaStream_t stream_id);
+extern template void setStateVector_CUDA<cuDoubleComplex, long>(
+    cuDoubleComplex *sv, long &num_indices, cuDoubleComplex *value,
+    long *indices, size_t thread_per_block, cudaStream_t stream_id);
 
-void setBasisState_CUDA(cuComplex *sv, cuComplex &value, const size_t index,
-                        bool async, cudaStream_t stream_id);
-void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
-                        const size_t index, bool async, cudaStream_t stream_id);
+extern template void setBasisState_CUDA<cuComplex>(cuComplex *sv,
+                                                   cuComplex &value,
+                                                   const size_t index,
+                                                   bool async,
+                                                   cudaStream_t stream_id);
+extern template void
+setBasisState_CUDA<cuDoubleComplex>(cuDoubleComplex *sv, cuDoubleComplex &value,
+                                    const size_t index, bool async,
+                                    cudaStream_t stream_id);
 
 /**
  * @brief Managed memory CUDA state-vector class using custateVec backed
@@ -143,8 +148,8 @@ class StateVectorCudaManaged
         // BaseType::getDataBuffer().setIthElement(value, index, async);
         CFP_t value_cu = cuUtil::complexToCu<std::complex<Precision>>(value);
         auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
-        setBasisState_CUDA(BaseType::getData(), value_cu, index, async,
-                           stream_id);
+        setBasisState_CUDA<CFP_t>(BaseType::getData(), value_cu, index, async,
+                                  stream_id);
     }
 
     /**
@@ -178,9 +183,9 @@ class StateVectorCudaManaged
         // BaseType::getDataBuffer().template setElements<CFP_t, index_type>(
         //     num_elements, d_values.getData(), d_indices.getData(),
         //     thread_per_block, stream_id);
-        setStateVector_CUDA(BaseType::getData(), num_elements,
-                            d_values.getData(), d_indices.getData(),
-                            thread_per_block, stream_id);
+        setStateVector_CUDA<CFP_t, index_type>(
+            BaseType::getData(), num_elements, d_values.getData(),
+            d_indices.getData(), thread_per_block, stream_id);
     }
 
     /**
