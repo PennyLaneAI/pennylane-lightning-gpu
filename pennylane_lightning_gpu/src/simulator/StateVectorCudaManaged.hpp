@@ -65,10 +65,10 @@ void setStateVector_CUDA(cuDoubleComplex *sv, long &num_indices,
                          cuDoubleComplex *value, long *indices,
                          size_t thread_per_block, cudaStream_t stream_id);
 
-void setBasisState_CUDA(cuComplex *sv, cuComplex &value, size_t &index,
+void setBasisState_CUDA(cuComplex *sv, cuComplex &value, const size_t index,
                         bool async, cudaStream_t stream_id);
 void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
-                        size_t &index, bool async, cudaStream_t stream_id);
+                        const size_t index, bool async, cudaStream_t stream_id);
 
 /**
  * @brief Managed memory CUDA state-vector class using custateVec backed
@@ -136,7 +136,7 @@ class StateVectorCudaManaged
      * @param async Use an asynchronous memory copy.
      */
     void setBasisState(const std::complex<Precision> &value,
-                       const size_t &index, const bool is_cotr,
+                       const size_t index, const bool is_cotr,
                        const bool async = false) {
         if (!is_cotr) {
             BaseType::getDataBuffer().zeroInit();
