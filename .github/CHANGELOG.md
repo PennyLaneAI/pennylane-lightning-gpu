@@ -12,19 +12,21 @@
 - Add support for CI checks.
 [(#76)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/76)
 
+- Implement improved `stopping_condition` method, and make Linux wheel builds more performant.
+[(#77)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/77)
 
 ### Documentation
 
 ### Bug fixes
 
-- Pin CMake to 3.24.x in wheel-builder to avoid PYthon not found error in CMake 3.25.
+- Pin CMake to 3.24.x in wheel-builder to avoid Python not found error in CMake 3.25.
 [(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
 
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
 
-Lee J. O'Riordan.
+Amintor Dusko, Lee J. O'Riordan.
 
 ---
 # Release 0.27.0
