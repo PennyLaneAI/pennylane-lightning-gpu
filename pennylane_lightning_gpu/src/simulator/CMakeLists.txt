@@ -4,8 +4,20 @@ set(CMAKE_CUDA_STANDARD 17)
 
 enable_language(CXX CUDA)
 
+find_package(CUDAToolkit REQUIRED)
+
 set(SIMULATOR_FILES StateVectorCudaBase.hpp StateVectorCudaManaged.hpp cuGateCache.hpp cuGates_host.hpp initSV.cu CACHE INTERNAL "" FORCE)
 add_library(lightning_gpu_simulator STATIC ${SIMULATOR_FILES})
+
+add_library(lightning_gpu_simulator STATIC ${DATA_BUFFER_FILES})
+
+set_target_properties( lightning_gpu_simulator
+                       PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+set_target_properties( lightning_gpu_simulator
+                       PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+
+set_target_properties(lightning_gpu_simulator PROPERTIES CUDA_ARCHITECTURES "70;72;75;80;86;87")
 
 get_filename_component(CUSTATEVEC_INC_DIR ${CUSTATEVEC_INC} DIRECTORY)
 target_include_directories(lightning_gpu_simulator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CUDA_INCLUDE_DIRS} ${CUSTATEVEC_INC_DIR})
