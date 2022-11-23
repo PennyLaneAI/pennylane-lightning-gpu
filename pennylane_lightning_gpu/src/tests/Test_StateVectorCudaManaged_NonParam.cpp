@@ -1040,7 +1040,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaManaged::SetIthStates",
         size_t index = 0;
         std::complex<PrecisionT> values = init_state[1];
         bool is_ctor = false;
-        svdat.cuda_sv.setBasisState<index>(values, is_ctor, false);
+        svdat.cuda_sv.setBasisState(values, index, is_ctor, false);
 
         svdat.cuda_sv.CopyGpuDataToHost(svdat.sv);
 

@@ -138,9 +138,7 @@ class StateVectorCudaManaged
      * @param index Index of the target element.
      * @param async Use an asynchronous memory copy.
      */
-    template <size_t index = 0>
-    void setBasisState(const std::complex<Precision> &value, const bool is_cotr,
-                       // const size_t &index, const bool is_cotr,
+    void setBasisState(const std::complex<Precision> &value, const size_t &index, const bool is_cotr,
                        const bool async = false) {
         if (!is_cotr) {
             BaseType::getDataBuffer().zeroInit();
