@@ -58,20 +58,20 @@ class CSVHandle {
 
 namespace Pennylane {
 
-extern template void setStateVector_CUDA(cuComplex *sv, int &num_indices,
-                                         cuComplex *value, int *indices,
-                                         size_t thread_per_block,
-                                         cudaStream_t stream_id);
-extern template void setStateVector_CUDA(cuDoubleComplex *sv, long &num_indices,
-                                         cuDoubleComplex *value, long *indices,
-                                         size_t thread_per_block,
-                                         cudaStream_t stream_id);
-extern template void setBasisState_CUDA(cuComplex *sv, cuComplex &value,
-                                        size_t &index, bool async,
-                                        cudaStream_t stream_id);
-extern template void setBasisState_CUDA(cuDoubleComplex *sv,
-                                        cuDoubleComplex &value, size_t &index,
-                                        bool async, cudaStream_t stream_id);
+template void setStateVector_CUDA<cuComplex, int>(cuComplex *sv, int &num_indices,
+                                  cuComplex *value, int *indices,
+                                  size_t thread_per_block,
+                                  cudaStream_t stream_id);
+template void setStateVector_CUDA<cuDoubleComplex, long>(cuDoubleComplex *sv, long &num_indices,
+                                  cuDoubleComplex *value, long *indices,
+                                  size_t thread_per_block,
+                                  cudaStream_t stream_id);
+
+template void setBasisState_CUDA<cuComplex>(cuComplex *sv, cuComplex &value, size_t &index,
+                                 bool async, cudaStream_t stream_id);
+template void setBasisState_CUDA<cuDoubleComplex>(cuDoubleComplex *sv, cuDoubleComplex &value,
+                                 size_t &index, bool async,
+                                 cudaStream_t stream_id);
 
 /**
  * @brief Managed memory CUDA state-vector class using custateVec backed
@@ -182,7 +182,7 @@ class StateVectorCudaManaged
         // BaseType::getDataBuffer().template setElements<CFP_t, index_type>(
         //     num_elements, d_values.getData(), d_indices.getData(),
         //     thread_per_block, stream_id);
-        setStateVector_CUDA<CFP_t>(BaseType::getDataBuffer(), num_elements,
+        setStateVector_CUDA<CFP_t, index_type>(BaseType::getDataBuffer(), num_elements,
                                    d_values.getData(), d_indices.getData(),
                                    thread_per_block, stream_id);
     }
