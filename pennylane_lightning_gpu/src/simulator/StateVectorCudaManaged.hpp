@@ -144,8 +144,9 @@ class StateVectorCudaManaged
             BaseType::getDataBuffer().zeroInit();
         }
         // BaseType::getDataBuffer().setIthElement(value, index, async);
+        CFP_t value_cu = cuUtil::complexToCu<std::complex<Precision>>(value);
         auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
-        setBasisState_CUDA<CFP_t>(BaseType::getDataBuffer(), value, index,
+        setBasisState_CUDA<CFP_t>(BaseType::getData(), value_cu, index,
                                   async, stream_id);
     }
 
@@ -180,7 +181,7 @@ class StateVectorCudaManaged
         // BaseType::getDataBuffer().template setElements<CFP_t, index_type>(
         //     num_elements, d_values.getData(), d_indices.getData(),
         //     thread_per_block, stream_id);
-        setStateVector_CUDA<CFP_t, index_type>(BaseType::getDataBuffer(), num_elements,
+        setStateVector_CUDA<CFP_t, index_type>(BaseType::getData(), num_elements,
                                    d_values.getData(), d_indices.getData(),
                                    thread_per_block, stream_id);
     }
