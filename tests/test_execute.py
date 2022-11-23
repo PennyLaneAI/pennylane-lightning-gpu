@@ -20,13 +20,13 @@ import pennylane as qml
 from pennylane import numpy as np
 
 try:
-    from pennylane_cuquantum.cuquantum_gpu import CPP_BINARY_AVAILABLE
+    from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
 
     if not CPP_BINARY_AVAILABLE:
-        raise ImportError("PennyLane-cuQuantum is unsupported on this platform")
+        raise ImportError("PennyLane-Lightning-GPU is unsupported on this platform")
 except (ImportError, ModuleNotFoundError):
     pytest.skip(
-        "PennyLane-cuQuantum is unsupported on this platform. Skipping.",
+        "PennyLane-Lightning-GPU is unsupported on this platform. Skipping.",
         allow_module_level=True,
     )
 
