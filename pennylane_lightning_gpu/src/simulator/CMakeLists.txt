@@ -6,7 +6,7 @@ enable_language(CXX CUDA)
 
 find_package(CUDAToolkit REQUIRED)
 
-set(SIMULATOR_FILES StateVectorCudaBase.hpp StateVectorCudaManaged.hpp cuGateCache.hpp cuGates_host.hpp initSV.cu CACHE INTERNAL "" FORCE)
+set( initSV.cu SIMULATOR_FILES StateVectorCudaBase.hpp StateVectorCudaManaged.hpp cuGateCache.hpp cuGates_host.hpp CACHE INTERNAL "" FORCE)
 add_library(lightning_gpu_simulator STATIC ${SIMULATOR_FILES})
 
 set_target_properties( lightning_gpu_simulator
