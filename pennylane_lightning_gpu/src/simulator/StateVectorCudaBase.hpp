@@ -233,7 +233,6 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
         size_t index = 0;
         CFP_t value = {1, 0};
         data_buffer_->zeroInit();
-        // data_buffer_->setIthElement(value, index, async);
         setBasisState_CUDA(data_buffer_->getData(), value, index, async,
                            data_buffer_->getStream());
     }
