@@ -174,16 +174,18 @@ if CPP_BINARY_AVAILABLE:
 
         @property
         def stopping_condition(self):
+            """.BooleanFn: Returns the stopping condition for the device. The returned
+            function accepts a queuable object (including a PennyLane operation
+            and observable) and returns ``True`` if supported by the device."""
+
             def accepts_obj(obj):
-                if obj.name == "QFT" and len(obj.wires) >= 6:
-                    return False
-                if obj.name == "GroverOperator" and len(obj.wires) >= 13:
-                    return False
-                if getattr(obj, "has_matrix", False):
-                    # pow operations dont work with backprop or adjoint without decomposition
-                    # use class name string so we don't need to use isinstance check
-                    return not (obj.__class__.__name__ == "Pow" and qml.operation.is_trainable(obj))
-                return obj.name in self.observables.union(self.operations)
+                if obj.name == "QFT" and len(obj.wires) < 10:
+                    return True
+                if obj.name == "GroverOperator" and len(obj.wires) < 13:
+                    return True
+                return (not isinstance(obj, qml.tape.QuantumTape)) and getattr(
+                    self, "supports_operation", lambda name: False
+                )(obj.name)
 
             return qml.BooleanFn(accepts_obj)
 
