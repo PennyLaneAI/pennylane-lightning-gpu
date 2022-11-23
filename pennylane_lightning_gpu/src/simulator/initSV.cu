@@ -15,7 +15,6 @@ void setBasisState_CUDA(cuComplex *sv, cuComplex &value, const size_t index,
 void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                         const size_t index, bool async, cudaStream_t stream_id);
 
-
 template <class GPUDataT, class index_type>
 __global__ void setStateVectorkernel(GPUDataT *sv, index_type num_indices,
                                      GPUDataT *value, index_type *indices) {
@@ -26,9 +25,9 @@ __global__ void setStateVectorkernel(GPUDataT *sv, index_type num_indices,
 }
 
 template <class GPUDataT, class index_type>
-void setStateVector_CUDA(GPUDataT *sv, index_type &num_indices, GPUDataT *value,
-                         index_type *indices, size_t thread_per_block,
-                         cudaStream_t stream_id) {
+void setStateVector_CUDA_call(GPUDataT *sv, index_type &num_indices,
+                              GPUDataT *value, index_type *indices,
+                              size_t thread_per_block, cudaStream_t stream_id) {
     auto dv = std::div(num_indices, thread_per_block);
     const size_t num_blocks = dv.quot + (dv.rem == 0 ? 0 : 1);
     dim3 blockSize(thread_per_block, 1, 1);
@@ -41,8 +40,8 @@ void setStateVector_CUDA(GPUDataT *sv, index_type &num_indices, GPUDataT *value,
 }
 
 template <class GPUDataT>
-void setBasisState_CUDA(GPUDataT *sv, GPUDataT &value, const size_t index,
-                        bool async, cudaStream_t stream_id) {
+void setBasisState_CUDA_call(GPUDataT *sv, GPUDataT &value, const size_t index,
+                             bool async, cudaStream_t stream_id) {
     if (!async) {
         PL_CUDA_IS_SUCCESS(cudaMemcpy(&sv[index], &value, sizeof(GPUDataT),
                                       cudaMemcpyHostToDevice));
@@ -55,17 +54,28 @@ void setBasisState_CUDA(GPUDataT *sv, GPUDataT &value, const size_t index,
 //} // namespace
 //
 // namespace Pennylane {
-/*
+
 void setStateVector_CUDA(cuComplex *sv, int &num_indices, cuComplex *value,
                          int *indices, size_t thread_per_block,
-                         cudaStream_t stream_id);
+                         cudaStream_t stream_id) {
+    setStateVector_CUDA_call(sv, num_indices, value, indices, thread_per_block,
+                             stream_id);
+}
 void setStateVector_CUDA(cuDoubleComplex *sv, long &num_indices,
                          cuDoubleComplex *value, long *indices,
-                         size_t thread_per_block, cudaStream_t stream_id);
+                         size_t thread_per_block, cudaStream_t stream_id) {
+    setStateVector_CUDA_call(sv, num_indices, value, indices, thread_per_block,
+                             stream_id);
+}
 
 void setBasisState_CUDA(cuComplex *sv, cuComplex &value, const size_t index,
-                        bool async, cudaStream_t stream_id);
+                        bool async, cudaStream_t stream_id) {
+    setBasisState_CUDA_call(sv, value, index, async, stream_id);
+}
 void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
-                        const size_t index, bool async, cudaStream_t stream_id);
-*/
+                        const size_t index, bool async,
+                        cudaStream_t stream_id) {
+    setBasisState_CUDA_call(sv, value, index, async, stream_id);
+}
+
 } // namespace Pennylane
