@@ -1,4 +1,4 @@
-#include "cuda_helper.hpp"
+#include "cuda_helpers.hpp"
 #include <cuComplex.h>
 
 namespace {
