@@ -125,42 +125,6 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
             cudaMemset(gpu_buffer_, 0, length_ * sizeof(GPUDataT)));
     }
 
-    /**
-     * @brief Set value to ith element
-     *
-     * @params index Index of the element to be set.
-     * @params value The value passed to the target element.
-     *
-     */
-    /*
-    template <class HostDataT = GPUDataT>
-    void setIthElement(const HostDataT &value, const size_t index,
-                       bool async = false) {
-        if (!async) {
-            PL_CUDA_IS_SUCCESS(cudaMemcpy(&gpu_buffer_[index], &value,
-                                          sizeof(GPUDataT),
-                                          cudaMemcpyHostToDevice));
-        } else {
-            PL_CUDA_IS_SUCCESS(
-                cudaMemcpyAsync(&gpu_buffer_[index], &value, sizeof(GPUDataT),
-                                cudaMemcpyHostToDevice, getStream()));
-        }
-    }
-    */
-    /**
-     * @brief Set value to ith element
-     *
-     * @params num_indices Number of elements to be set.
-     * @params value The value pointer passed to the target elements.
-     * @params indices The indices of the target elements.
-     *
-     */
-    /*
-    template <class DeviceDataT, class index_type>
-    void setElements(index_type &num_indices, DeviceDataT *value,
-                     index_type *indices, size_t thread_per_block,
-                     cudaStream_t stream_id);
-    */
     auto getData() -> GPUDataT * { return gpu_buffer_; }
     auto getData() const -> const GPUDataT * { return gpu_buffer_; }
     auto getLength() const { return length_; }
@@ -258,13 +222,4 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     DevTag<DevTagT> dev_tag_;
     GPUDataT *gpu_buffer_;
 };
-/*
-extern template void
-DataBuffer<cuComplex, int>::setElements(int &num_indices, cuComplex *value,
-                                        int *indices, size_t thread_per_block,
-                                        cudaStream_t stream_id);
-extern template void DataBuffer<cuDoubleComplex, int>::setElements(
-    long &num_indices, cuDoubleComplex *value, long *indices,
-    size_t thread_per_block, cudaStream_t stream_id);
-*/
 } // namespace Pennylane::CUDA
