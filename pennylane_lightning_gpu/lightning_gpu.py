@@ -224,6 +224,13 @@ if CPP_BINARY_AVAILABLE:
             # init the state vector to |00..0>
             self._gpu_state.resetGPU(False)  # Sync reset
 
+        @property
+        def state(self):
+            state = np.zeros(1 << self.num_wires, dtype=self.C_DTYPE)
+            state = self._asarray(state, dtype=self.C_DTYPE)
+            self.syncH2D(state)
+            return state
+
         def syncD2H(self, state_vector, use_async=False):
             """Copy the state vector data on device to a state vector on the host provided by the user
             Args:

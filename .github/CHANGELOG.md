@@ -7,10 +7,9 @@
 
 ### Breaking changes
 
-* Deprecate `state()` method, `_state` and `_pre_rotated_state` and refactor `syncH2D` and `syncD2H`.
+* Deprecate `_state` and `_pre_rotated_state` and refactor `syncH2D` and `syncD2H`.
 [(#70)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/70)
 
-'test_returns_state' and 'test_supports_broadcasting' are skipped in the unit tests due to the deprecation of `state()`. 
 The refactor on `syncH2D` and `syncD2H` allows users to explicitly access and update statevector data
 on device when needed and could reduce the unnecessary memory allocation on host.
 

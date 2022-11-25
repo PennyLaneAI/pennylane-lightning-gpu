@@ -16,6 +16,18 @@
 
 namespace Pennylane {
 
+/**
+ * @brief Explicitly set state vector data on GPU device from the input values
+ * (on device) and their corresponding indices (on device) information.
+ *
+ * @param sv Complex data pointer of state vector on device.
+ * @param num_indices Number of elements of the value array.
+ * @param value Complex data pointer of input values (on device).
+ * @param indices Integer data pointer of the indices (on device) of sv elements
+ * to be set with corresponding elements in values.
+ * @param thread_per_block Number of threads set per block.
+ * @param stream_id Stream id of CUDA calls
+ */
 void setStateVector_CUDA(cuComplex *sv, int &num_indices, cuComplex *value,
                          int *indices, size_t thread_per_block,
                          cudaStream_t stream_id);
@@ -23,11 +35,32 @@ void setStateVector_CUDA(cuDoubleComplex *sv, long &num_indices,
                          cuDoubleComplex *value, long *indices,
                          size_t thread_per_block, cudaStream_t stream_id);
 
+/**
+ * @brief Explicitly set basis state data on GPU device from the input values
+ * (on device) and their corresponding indices (on device) information.
+ *
+ * @param sv Complex data pointer of state vector on device.
+ * @param value Complex data of the input value.
+ * @param index Integer data of the sv index to be set with the value.
+ * @param async Use an asynchronous memory copy.
+ * @param stream_id Stream id of CUDA calls
+ */
 void setBasisState_CUDA(cuComplex *sv, cuComplex &value, const size_t index,
                         bool async, cudaStream_t stream_id);
 void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                         const size_t index, bool async, cudaStream_t stream_id);
 
+/**
+ * @brief The CUDA kernel that setS state vector data on GPU device from the
+ * input values (on device) and their corresponding indices (on device)
+ * information.
+ *
+ * @param sv Complex data pointer of state vector on device.
+ * @param num_indices Number of elements of the value array.
+ * @param value Complex data pointer of input values (on device).
+ * @param indices Integer data pointer of the sv indices (on device) to be set
+ * with corresponding elements in values.
+ */
 template <class GPUDataT, class index_type>
 __global__ void setStateVectorkernel(GPUDataT *sv, index_type num_indices,
                                      GPUDataT *value, index_type *indices) {
@@ -36,7 +69,17 @@ __global__ void setStateVectorkernel(GPUDataT *sv, index_type num_indices,
         sv[indices[i]] = value[i];
     }
 }
-
+/**
+ * @brief The CUDA kernel call wrapper.
+ *
+ * @param sv Complex data pointer of state vector on device.
+ * @param num_indices Number of elements of the value array.
+ * @param value Complex data pointer of input values (on device).
+ * @param indices Integer data pointer of the sv indices (on device) to be set
+ * by corresponding elements in values.
+ * @param thread_per_block Number of threads set per block.
+ * @param stream_id Stream id of CUDA calls
+ */
 template <class GPUDataT, class index_type>
 void setStateVector_CUDA_call(GPUDataT *sv, index_type &num_indices,
                               GPUDataT *value, index_type *indices,
@@ -51,7 +94,15 @@ void setStateVector_CUDA_call(GPUDataT *sv, index_type &num_indices,
                                                 indices);
     PL_CUDA_IS_SUCCESS(cudaGetLastError());
 }
-
+/**
+ * @brief CUDA runtime API call wrapper.
+ *
+ * @param sv Complex data pointer of state vector on device.
+ * @param value Complex data of the input value.
+ * @param index Integer data of the sv index to be set by value.
+ * @param async Use an asynchronous memory copy.
+ * @param stream_id Stream id of CUDA calls
+ */
 template <class GPUDataT>
 void setBasisState_CUDA_call(GPUDataT *sv, GPUDataT &value, const size_t index,
                              bool async, cudaStream_t stream_id) {
@@ -64,6 +115,7 @@ void setBasisState_CUDA_call(GPUDataT *sv, GPUDataT &value, const size_t index,
     }
 }
 
+// Definitions
 void setStateVector_CUDA(cuComplex *sv, int &num_indices, cuComplex *value,
                          int *indices, size_t thread_per_block,
                          cudaStream_t stream_id) {

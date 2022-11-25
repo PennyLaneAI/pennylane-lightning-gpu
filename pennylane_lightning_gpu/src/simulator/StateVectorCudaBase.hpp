@@ -37,6 +37,7 @@ namespace cuUtil = Pennylane::CUDA::Util;
 /// @endcond
 
 namespace Pennylane {
+// declarations of external functions (defined in initSV.cu).
 extern void setBasisState_CUDA(cuComplex *sv, cuComplex &value,
                                const size_t index, bool async,
                                cudaStream_t stream_id);

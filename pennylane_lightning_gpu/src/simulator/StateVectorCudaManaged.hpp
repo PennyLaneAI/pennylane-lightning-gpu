@@ -58,6 +58,7 @@ class CSVHandle {
 
 namespace Pennylane {
 
+// declarations of external functions (defined in initSV.cu).
 extern void setStateVector_CUDA(cuComplex *sv, int &num_indices,
                                 cuComplex *value, int *indices,
                                 size_t thread_per_block,
