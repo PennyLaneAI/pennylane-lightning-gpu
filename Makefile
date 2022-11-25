@@ -70,8 +70,8 @@ test-builtin:
 	$(PYTHON) -I $(TESTRUNNER)
 
 test-suite:
-	pl-device-test --device lightning.gpu --skip-ops --shots=20000 #-k 'not test_returns_state and not test_supports_broadcasting'
-	pl-device-test --device lightning.gpu --shots=None --skip-ops #-k 'not test_returns_state and not test_supports_broadcasting'
+	pl-device-test --device lightning.gpu --skip-ops --shots=20000
+	pl-device-test --device lightning.gpu --shots=None --skip-ops
 
 test-cpp:
 	rm -rf ./BuildTests
