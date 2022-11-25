@@ -7,6 +7,18 @@
 - Deprecate Python 3.7 wheels.
 [(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
 
+- Change the signature of the `DefaultQubit.signature` method from
+
+  ```python
+  def statistics(self, observables, shot_range=None, bin_size=None, circuit=None):
+  ```
+
+  to
+
+  ```python
+  def statistics(self, circuit: QuantumScript, shot_range=None, bin_size=None):
+  ```
+
 ### Improvements
 
 - Add support for CI checks.
