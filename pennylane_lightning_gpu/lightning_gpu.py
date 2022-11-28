@@ -273,12 +273,12 @@ if CPP_BINARY_AVAILABLE:
             if len(measurements) == 0:
                 return None
 
-            if len(measurements) == 1 and measurements[0].return_type is State:
+            if len(measurements) == 1 and isinstance(measurements[0], State):
                 # return State
                 raise QuantumFunctionError("Not supported")
 
-            # The return_type of measurement processes must be expectation
-            if not all([m.return_type is Expectation for m in measurements]):
+            # The measurement processes must be expectation
+            if not all([isinstance(m, Expectation) for m in measurements]):
                 raise QuantumFunctionError(
                     "Adjoint differentiation method does not support expectation return type "
                     "mixed with other return types"
@@ -330,7 +330,7 @@ if CPP_BINARY_AVAILABLE:
                     UserWarning,
                 )
 
-            tape_return_type = self._check_adjdiff_supported_measurements(tape.measurements)
+            self._check_adjdiff_supported_measurements(tape.measurements)
 
             if len(tape.trainable_params) == 0:
                 return np.array(0)
@@ -436,12 +436,12 @@ if CPP_BINARY_AVAILABLE:
                     UserWarning,
                 )
 
-            tape_return_type = self._check_adjdiff_supported_measurements(measurements)
+            tape_measurement_type = self._check_adjdiff_supported_measurements(measurements)
 
-            if math.allclose(dy, 0) or tape_return_type is None:
+            if math.allclose(dy, 0) or tape_measurement_type is None:
                 return lambda tape: math.convert_like(np.zeros(len(tape.trainable_params)), dy)
 
-            if tape_return_type is Expectation:
+            if tape_measurement_type is Expectation:
                 if len(dy) != len(measurements):
                     raise ValueError(
                         "Number of observables in the tape must be the same as the length of dy in the vjp method"
