@@ -78,8 +78,7 @@ class TestSample:
         # Explicitly resetting is necessary as the internal
         # state is set to None in __init__ and only properly
         # initialized during reset
-        dev._state = dev._asarray(dev._state)
-
+        dev.reset()
         dev.apply([qml.RX(1.5708, wires=[0])])
         dev._wires_measured = {0}
         dev._samples = dev.generate_samples()

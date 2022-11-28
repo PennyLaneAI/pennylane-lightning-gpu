@@ -13,9 +13,9 @@
 #include <cusparse_v2.h>
 #include <custatevec.h>
 
+#include "DevTag.hpp"
 #include "Error.hpp"
 #include "Util.hpp"
-#include <DevTag.hpp>
 
 namespace Pennylane::CUDA::Util {
 

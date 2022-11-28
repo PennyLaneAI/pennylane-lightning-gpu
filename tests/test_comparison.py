@@ -94,8 +94,11 @@ class TestComparison:
         lightning_state = lightning_qubit_dev.state
 
         lightninggpu()
-        lightning_gpu_qubit_dev.syncD2H()  # Copy GPU data to CPU
-        lightninggpu_state = lightning_gpu_qubit_dev.state
+
+        lightninggpu_state = np.zeros(2**lightning_gpu_qubit_dev.num_wires).astype(
+            lightning_gpu_qubit_dev.C_DTYPE
+        )
+        lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
         assert np.allclose(lightning_state, lightninggpu_state)
 
@@ -130,8 +133,10 @@ class TestComparison:
         lightning_state = lightning_qubit_dev.state
 
         lightninggpu()
-        lightning_gpu_qubit_dev.syncD2H()  # Copy GPU data to CPU
-        lightninggpu_state = lightning_gpu_qubit_dev.state
+        lightninggpu_state = np.zeros(2**lightning_gpu_qubit_dev.num_wires).astype(
+            lightning_gpu_qubit_dev.C_DTYPE
+        )
+        lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
         assert np.allclose(lightning_state, lightninggpu_state)
 
@@ -174,8 +179,10 @@ class TestComparison:
         lightning_state = lightning_qubit_dev.state
 
         lightninggpu()
-        lightning_gpu_qubit_dev.syncD2H()  # Copy GPU data to CPU
-        lightninggpu_state = lightning_gpu_qubit_dev.state
+        lightninggpu_state = np.zeros(2**lightning_gpu_qubit_dev.num_wires).astype(
+            lightning_gpu_qubit_dev.C_DTYPE
+        )
+        lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
         assert np.allclose(lightning_state, lightninggpu_state)
 
@@ -223,8 +230,10 @@ class TestComparison:
         lightning_state = lightning_qubit_dev.state
 
         lightninggpu()
-        lightning_gpu_qubit_dev.syncD2H()  # Copy GPU data to CPU
-        lightninggpu_state = lightning_gpu_qubit_dev.state
+        lightninggpu_state = np.zeros(2**lightning_gpu_qubit_dev.num_wires).astype(
+            lightning_gpu_qubit_dev.C_DTYPE
+        )
+        lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
         assert np.allclose(lightning_state, lightninggpu_state)
 
@@ -250,7 +259,9 @@ class TestComparison:
         lightning_state = lightning_qubit_dev.state
 
         lightninggpu()
-        lightning_gpu_qubit_dev.syncD2H()  # Copy GPU data to CPU
-        lightninggpu_state = lightning_gpu_qubit_dev.state
+        lightninggpu_state = np.zeros(2**lightning_gpu_qubit_dev.num_wires).astype(
+            lightning_gpu_qubit_dev.C_DTYPE
+        )
+        lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
         assert np.allclose(lightning_state, lightninggpu_state)
