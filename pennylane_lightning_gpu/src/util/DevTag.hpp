@@ -2,6 +2,7 @@
 
 #include "cuda.h"
 #include "cuda_helpers.hpp"
+#include <iostream>
 #include <type_traits>
 
 namespace Pennylane::CUDA {
