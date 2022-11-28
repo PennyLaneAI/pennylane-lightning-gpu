@@ -396,9 +396,9 @@ if CPP_BINARY_AVAILABLE:
 
             return qml.BooleanFn(accepts_obj)
 
-        def statistics(self, observables, shot_range=None, bin_size=None, circuit=None):
+        def statistics(self, circuit, shot_range=None, bin_size=None):
             ## Ensure D2H sync before calculating non-GPU supported operations
-            return super().statistics(observables, shot_range, bin_size, circuit)
+            return super().statistics(circuit, shot_range, bin_size)
 
         def apply_cq(self, operations, **kwargs):
             # Skip over identity operations instead of performing

@@ -36,6 +36,18 @@ dev.syncD2H(state_vector)
 * Deprecate Python 3.7 wheels.
 [(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
 
+- Change the signature of the `DefaultQubit.signature` method from
+
+  ```python
+  def statistics(self, observables, shot_range=None, bin_size=None, circuit=None):
+  ```
+
+  to
+
+  ```python
+  def statistics(self, circuit: QuantumScript, shot_range=None, bin_size=None):
+  ```
+
 ### Improvements
 
 * `lightning.gpu` is decoupled from Numpy layer during initialization and execution
