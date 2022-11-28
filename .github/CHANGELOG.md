@@ -30,7 +30,7 @@
 
 This release contains contributions from (in alphabetical order):
 
-Amintor Dusko, Lee J. O'Riordan.
+Amintor Dusko, Lee J. O'Riordan, Albert Mitjans-Coma
 
 ---
 # Release 0.27.0
