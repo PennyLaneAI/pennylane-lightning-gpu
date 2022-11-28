@@ -15,6 +15,10 @@
 - Implement improved `stopping_condition` method, and make Linux wheel builds more performant.
 [(#77)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/77)
 
+- With the introduction of custom measurement classes, all the `MeasurementProcess.return_type`
+  checks have been changed by `isinstance` checks.
+  [(#388)](https://github.com/PennyLaneAI/pennylane-lightning/pull/388)
+
 ### Documentation
 
 ### Bug fixes
