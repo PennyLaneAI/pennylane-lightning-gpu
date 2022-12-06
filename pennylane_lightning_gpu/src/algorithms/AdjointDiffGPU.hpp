@@ -235,7 +235,7 @@ template <class T = double> class AdjointJacobianGPU {
      */
     inline void updateJacobian(const StateVectorCudaManaged<T> &sv1,
                                const StateVectorCudaManaged<T> &sv2,
-                               decltype(cuUtil::getCudaType(T{})) *jac) {
+                               CFP_t &jac) {
         PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
                             sv2.getDataBuffer().getDevTag().getDeviceID(),
                         "Data exists on different GPUs. Aborting.");
@@ -243,7 +243,7 @@ template <class T = double> class AdjointJacobianGPU {
         innerProdC_CUDA_device(sv1.getData(), sv2.getData(), sv1.getLength(),
                                sv1.getDataBuffer().getDevTag().getDeviceID(),
                                sv1.getDataBuffer().getDevTag().getStreamID(),
-                               sv1.getCublasHandle(), jac);
+                               sv1.getCublasHandle(), &jac);
     }
 
     /**
@@ -627,13 +627,12 @@ template <class T = double> class AdjointJacobianGPU {
         StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local, true,
                                      cusvhandle, cublashandle, cusparsehandle);
 
-        typedef decltype(cuUtil::getCudaType(T{})) cuPrecisionComplex;
         auto device_id = mu.getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = mu.getDataBuffer().getDevTag().getStreamID();
-        DataBuffer<cuPrecisionComplex, int> d_jac_single_param{
+        DataBuffer<CFP_t, int> d_jac_single_param{
             static_cast<std::size_t>(num_observables), device_id, stream_id,
             true};
-        std::vector<cuPrecisionComplex> jac_single_param(num_observables);
+        std::vector<CFP_t> jac_single_param(num_observables);
 
         for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
              op_idx--) {
@@ -662,7 +661,7 @@ template <class T = double> class AdjointJacobianGPU {
                          obs_idx++) {
                         updateJacobian(
                             H_lambda[obs_idx], mu,
-                            &(d_jac_single_param.getData()[obs_idx]));
+                            d_jac_single_param.getData()[obs_idx]);
                     }
                     d_jac_single_param.CopyGpuDataToHost(
                         jac_single_param.data(), jac_single_param.size(),
