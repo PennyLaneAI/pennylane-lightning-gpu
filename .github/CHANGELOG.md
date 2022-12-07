@@ -14,6 +14,7 @@ The refactor on `syncH2D` and `syncD2H` allows users to explicitly access and up
 on device when needed and could reduce the unnecessary memory allocation on host.
 
 The workflow for `syncH2D` is:
+
 ```python
 dev = qml.device('lightning.gpu', wires=3)
 obs = qml.Identity(0) @ qml.PauliX(1) @ qml.PauliY(2)
@@ -26,6 +27,7 @@ res = dev.expval(H)
 ```
 
 The workflow for `syncD2H` is:
+
 ```python
 dev = qml.device('lightning.gpu', wires=num_wires)
 dev.apply([qml.PauliX(wires=[0])])
@@ -36,7 +38,7 @@ dev.syncD2H(state_vector)
 * Deprecate Python 3.7 wheels.
 [(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
 
-- Change the signature of the `DefaultQubit.signature` method from
+* Change the signature of the `DefaultQubit.signature` method from
 
   ```python
   def statistics(self, observables, shot_range=None, bin_size=None, circuit=None):
@@ -74,6 +76,7 @@ This release contains contributions from (in alphabetical order):
 Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 
 ---
+
 # Release 0.27.0
 
 ### New features since last release
@@ -85,6 +88,7 @@ Amintor Dusko, Lee J. O'Riordan, Shuli Shu
   A user can now explicitly decide whether to decompose the Hamiltonian into separate Pauli-words, with evaluations happening over multiple GPUs, or convert the Hamiltonian directly to a sparse representation for evaluation on a single GPU. Depending on the Hamiltonian structure, a user may benefit from one method or the other.
 
   The workflow for decomposing a Hamiltonian is as:
+
   ```python
   obs_per_gpu = 1
   dev = qml.device("lightning.gpu", wires=num_wires, batch_obs=obs_per_gpu)
@@ -99,6 +103,7 @@ Amintor Dusko, Lee J. O'Riordan, Shuli Shu
   ```
 
   For the new `qml.SparseHamiltonian` support, the above script becomes:
+
   ```python
   dev = qml.device("lightning.gpu", wires=num_wires)
   H = sum([0.5*(i+1)*(qml.PauliZ(i)@qml.PauliZ(i+1)) for i in range(0, num_wires-1, 2)])
@@ -138,6 +143,7 @@ Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 
 ---
+
 # Release 0.26.2
 
 ### Bug fixes
@@ -150,6 +156,7 @@ Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 Lee J. O'Riordan
 
 ---
+
 # Release 0.26.1
 
 ### Bug fixes
@@ -162,6 +169,7 @@ Lee J. O'Riordan
 Lee J. O'Riordan
 
 ---
+
 # Release 0.26.0
 
 ### New features since last release
@@ -194,6 +202,7 @@ This release contains contributions from (in alphabetical order):
 Amintor Dusko, Lee James O'Riordan, Shuli Shu
 
 ---
+
 # Release 0.25.0
 
 ### New features since last release
@@ -211,6 +220,7 @@ Amintor Dusko, Lee James O'Riordan, Shuli Shu
       qml.RX(params[idx], w)
     return [qml.expval(qml.PauliZ(i))  for i in range(dev.num_wires)]
   ```
+
 For comparison, we can re-examine the benchmark script from the [Lightning GPU PennyLane blog post](https://pennylane.ai/blog/2022/07/lightning-fast-simulations-with-pennylane-and-the-nvidia-cuquantum-sdk/). Comparing with and without the multi-GPU supports on a machine with 4 A100 40GB GPUs shows a significant improvement over the single GPU run-times.
 
 ![image](https://user-images.githubusercontent.com/858615/184025758-7adeb433-5f7b-451a-bc72-ee3f7e321c49.png)
@@ -284,6 +294,7 @@ Ali Asadi, Amintor Dusko, Chae-Yeun Park, Lee James O'Riordan, and Trevor Vincen
 # Release 0.23.0
 
 ### Improvements
+
 * Update builder and cuQuantum SDK support [(#10)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/10).
 
 ### Contributors
@@ -294,7 +305,9 @@ Ali Asadi, and Lee James O'Riordan
 ---
 
 # Release 0.22.1
+
 ### Improvements
+
 * Add `Identity` support [(#8)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/8).
 
 ---
@@ -313,7 +326,6 @@ Ali Asadi, and Lee James O'Riordan
 * This release updates the cuQuantum function calls to match the SDK 1.0 release.
 [(#6)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/6)
 
-
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
@@ -323,11 +335,10 @@ Ali Asadi, and Lee James O'Riordan
 
 # Release 0.1.0
 
- * Initial release. The PennyLane-Lightning-GPU device adds support for CUDA-capable GPU simulation through use of the NVIDIA cuQuantum SDK.
+* Initial release. The PennyLane-Lightning-GPU device adds support for CUDA-capable GPU simulation through use of the NVIDIA cuQuantum SDK.
 This release supports all base operations, including the adjoint differentation method for expectation value calculations.
 
 This device can be installed using `pip install pennylane-lightning[gpu]`, and requires both a NVIDIA CUDA installation and the cuQuantum SDK to operate. If the host system does not provide sufficient support, the device will fall-back to CPU-only operation.
-
 
 As an example, the new device may be used as follows to calculate the forward pass of a circuit with 2 strongly-entangling layers and an expectation value per wire:
 
