@@ -67,6 +67,8 @@ and change `lightning.gpu` to inherit from `QubitDevice` instead of `LightningQu
 * Pin CMake to 3.24.x in wheel-builder to avoid Python not found error in CMake 3.25.
 [(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
 
+* Fix data copy method in the state() method.
+[(#82)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/82) 
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
