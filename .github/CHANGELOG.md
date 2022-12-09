@@ -64,6 +64,9 @@ and change `lightning.gpu` to inherit from `QubitDevice` instead of `LightningQu
 
 ### Bug fixes
 
+* Fix wheel-builder to pin CUDA version to 11.8 instead of latest.
+[(#83)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/83)
+
 * Pin CMake to 3.24.x in wheel-builder to avoid Python not found error in CMake 3.25.
 [(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
 
