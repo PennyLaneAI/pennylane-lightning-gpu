@@ -61,7 +61,7 @@ jobs:
             python -m pip install --no-deps cuquantum
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
             yum clean all
-            yum -y install cuda git openssh wget
+            yum -y install cuda-11-8 git openssh wget
 
           # ensure nvcc is available
           CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
