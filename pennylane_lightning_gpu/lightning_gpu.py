@@ -229,7 +229,7 @@ if CPP_BINARY_AVAILABLE:
             """Copy the state vector data from the device to the host. A state vector Numpy array is explicitly allocated on the host to store and return the data."""
             state = np.zeros(1 << self.num_wires, dtype=self.C_DTYPE)
             state = self._asarray(state, dtype=self.C_DTYPE)
-            self.syncH2D(state)
+            self.syncD2H(state)
             return state
 
         def syncD2H(self, state_vector, use_async=False):
