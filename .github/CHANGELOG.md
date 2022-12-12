@@ -8,7 +8,7 @@
 ### Breaking changes
 
 * Deprecate `_state` and `_pre_rotated_state` and refactor `syncH2D` and `syncD2H`.
-[(#70)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/70)
+[(#71)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/70)
 
 The refactor on `syncH2D` and `syncD2H` allows users to explicitly access and update statevector data
 on device when needed and could reduce the unnecessary memory allocation on host.
