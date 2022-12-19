@@ -60,8 +60,6 @@ and change `lightning.gpu` to inherit from `QubitDevice` instead of `LightningQu
 * Implement improved `stopping_condition` method, and make Linux wheel builds more performant.
 [(#77)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/77)
 
-### Documentation
-
 ### Bug fixes
 
 * Fix wheel-builder to pin CUDA version to 11.8 instead of latest.
