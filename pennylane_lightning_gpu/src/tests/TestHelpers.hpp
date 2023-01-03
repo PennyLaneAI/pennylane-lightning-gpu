@@ -111,6 +111,33 @@ void scaleVector(std::vector<std::complex<Data_t>> &data,
 }
 
 /**
+ * @brief create a random state vector on the host with a random number engine
+ * and number of qubits.
+ *
+ * @param re The random number engine.
+ * @param num_qubits Number of qubits.
+ *
+ * @return res A state vector on the host.
+ */
+template <typename PrecisionT, class RandomEngine>
+auto createRandomState(RandomEngine &re, size_t num_qubits)
+    -> std::vector<std::complex<PrecisionT>> {
+    using Pennylane::Util::squaredNorm;
+
+    std::vector<std::complex<PrecisionT>> res(size_t{1U} << num_qubits,
+                                              {0.0, 0.0});
+    std::uniform_real_distribution<PrecisionT> dist;
+    for (size_t idx = 0; idx < (size_t{1U} << num_qubits); idx++) {
+        res[idx] = {dist(re), dist(re)};
+    }
+
+    scaleVector<PrecisionT>(res, std::complex<PrecisionT>{1.0, 0.0} /
+                                     std::sqrt(Pennylane::Util::squaredNorm(
+                                         res.data(), res.size())));
+    return res;
+}
+
+/**
  * @brief Utility data-structure to assist with testing StateVectorCudaManaged
  * class
  *

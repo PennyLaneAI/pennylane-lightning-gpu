@@ -1,3 +1,85 @@
+# Release 0.28.0-dev
+
+### New features since last release
+
+* Add customized CUDA kernels for statevector initialization to cpp layer.
+[(#70)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/70)
+
+### Breaking changes
+
+* Deprecate `_state` and `_pre_rotated_state` and refactor `syncH2D` and `syncD2H`.
+[(#70)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/70)
+
+The refactor on `syncH2D` and `syncD2H` allows users to explicitly access and update statevector data
+on device when needed and could reduce the unnecessary memory allocation on host.
+
+The workflow for `syncH2D` is:
+```python
+dev = qml.device('lightning.gpu', wires=3)
+obs = qml.Identity(0) @ qml.PauliX(1) @ qml.PauliY(2)
+obs1 = qml.Identity(1)
+H = qml.Hamiltonian([1.0, 1.0], [obs1, obs])
+state_vector = np.array([0.0 + 0.0j, 0.0 + 0.1j, 0.1 + 0.1j, 0.1 + 0.2j,
+                0.2 + 0.2j, 0.3 + 0.3j, 0.3 + 0.4j, 0.4 + 0.5j,], dtype=np.complex64,)
+dev.syncH2D(state_vector)
+res = dev.expval(H)
+```
+
+The workflow for `syncD2H` is:
+```python
+dev = qml.device('lightning.gpu', wires=num_wires)
+dev.apply([qml.PauliX(wires=[0])])
+state_vector = np.zeros(2**dev.num_wires).astype(dev.C_DTYPE)
+dev.syncD2H(state_vector)
+```
+
+* Deprecate Python 3.7 wheels.
+[(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
+
+- Change the signature of the `DefaultQubit.signature` method from
+
+  ```python
+  def statistics(self, observables, shot_range=None, bin_size=None, circuit=None):
+  ```
+
+  to
+
+  ```python
+  def statistics(self, circuit: QuantumScript, shot_range=None, bin_size=None):
+  ```
+
+### Improvements
+
+* `lightning.gpu` is decoupled from Numpy layer during initialization and execution
+and change `lightning.gpu` to inherit from `QubitDevice` instead of `LightningQubit`.
+[(#70)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/70)
+
+* Add support for CI checks.
+[(#76)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/76)
+
+* Implement improved `stopping_condition` method, and make Linux wheel builds more performant.
+[(#77)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/77)
+
+### Documentation
+
+### Bug fixes
+
+* Fix wheel-builder to pin CUDA version to 11.8 instead of latest.
+[(#83)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/83)
+
+* Pin CMake to 3.24.x in wheel-builder to avoid Python not found error in CMake 3.25.
+[(#75)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/75)
+
+* Fix data copy method in the state() method.
+[(#82)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/82)
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Amintor Dusko, Lee J. O'Riordan, Shuli Shu
+
+---
 # Release 0.27.0
 
 ### New features since last release

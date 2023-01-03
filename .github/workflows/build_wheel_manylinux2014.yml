@@ -1,38 +1,33 @@
 name: Wheel::Linux::x86_64
+
+# **What it does**: Builds python wheels for Linux (ubuntu-latest) architecture x86_64 and store it as artifacts.
+#                   Python versions: 3.8, 3.9, 3.10, 3.11.
+# **Why we have it**: To build wheels for pennylane-lightning-gpu installation.
+# **Who does it impact**: Wheels to be uploaded to PyPI.
+
 on:
-  release:
+  pull_request:
   push:
     branches:
       - main
-  pull_request:
-
-env:
-  CIBW_BUILD: 'cp37-* cp38-* cp39-* cp310-* cp311-*'
-  CIBW_BUILD_FRONTEND: "pip"
-  CIBW_SKIP: "*-musllinux*"
-
-  # Python build settings
-  CIBW_BEFORE_BUILD: |
-    python -m pip install pybind11 ninja cmake auditwheel && python -m pip install --no-deps cuquantum
-    yum install -y gcc gcc-c++
-    yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
-    yum clean all
-    yum -y install cuda cmake git openssh wget
-
-  # ensure nvcc is available
-  CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
-
-  CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
-  CIBW_REPAIR_WHEEL_COMMAND_LINUX: "./docker/auditwheel repair -w {dest_dir} {wheel}"
+  release:
 
 jobs:
+  set_wheel_build_matrix:
+    name: "Set wheel build matrix"
+    uses: ./.github/workflows/set_wheel_build_matrix.yml
+    with:
+      event_name: ${{ github.event_name }}
+
   linux-wheels-x86-64:
+    needs: [set_wheel_build_matrix]
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
         arch: [x86_64]
-    name: ${{ matrix.os }}
+        cibw_build: ${{ fromJson(needs.set_wheel_build_matrix.outputs.python_version) }}
+    name: ${{ matrix.os }} (Python ${{ fromJson('{"cp38-*":"3.8","cp39-*":"3.9","cp310-*":"3.10","cp311-*":"3.11" }')[matrix.cibw_build] }})
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -41,23 +36,42 @@ jobs:
         with:
           access_token: ${{ github.token }}
 
-      - name: Checkout pennyLane-lightning-gpu
+      - name: Checkout PennyLane-Lightning-GPU
         uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
-        name: Install Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.8'
 
       - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel
+        run: python -m pip install cibuildwheel~=2.11.0
 
       - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_ARCHS_LINUX: ${{matrix.arch}}
 
-      - uses: actions-ecosystem/action-regex-match@v2
+          CIBW_BUILD: ${{ matrix.cibw_build }}
+          CIBW_BUILD_FRONTEND: "pip"
+          CIBW_SKIP: "*-musllinux*"
+
+          # Python build settings
+          CIBW_BEFORE_BUILD: |
+            python -m pip install ninja cmake~=3.24.3 auditwheel
+            python -m pip install custatevec-cu11
+            yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
+            yum clean all
+            yum -y install cuda-11-8 git openssh wget
+
+          # ensure nvcc is available
+          CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
+
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: "./docker/auditwheel repair -w {dest_dir} {wheel}"
+
+        run: python -m cibuildwheel --output-dir wheelhouse
+
+      - uses: actions-ecosystem/action-regex-match@v2.0.2
         id: rc_build
         with:
           text: ${{ github.event.pull_request.head.ref }}

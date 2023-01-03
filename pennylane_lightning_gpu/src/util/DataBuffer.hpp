@@ -222,5 +222,4 @@ template <class GPUDataT, class DevTagT = int> class DataBuffer {
     DevTag<DevTagT> dev_tag_;
     GPUDataT *gpu_buffer_;
 };
-
 } // namespace Pennylane::CUDA

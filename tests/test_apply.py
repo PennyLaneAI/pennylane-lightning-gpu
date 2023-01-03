@@ -145,7 +145,9 @@ class TestApply:
         dev._gpu_state = gpu_ctor(np.array(input).astype(dev.C_DTYPE))
         dev.apply([operation(wires=[0])])
 
-        assert np.allclose(dev._state, np.array(expected_output), atol=tol, rtol=0)
+        state_vector = np.zeros(2**dev.num_wires).astype(dev.C_DTYPE)
+        dev.syncD2H(state_vector)
+        assert np.allclose(state_vector, np.array(expected_output), atol=tol, rtol=0)
 
     test_data_two_wires_no_parameters = [
         (qml.CNOT, [1, 0, 0, 0], [1, 0, 0, 0]),
@@ -183,7 +185,10 @@ class TestApply:
         dev._gpu_state = gpu_ctor(np.array(input).reshape(2 * [2]).astype(dev.C_DTYPE))
         dev.apply([operation(wires=[0, 1])])
 
-        assert np.allclose(dev.state, np.array(expected_output), atol=tol, rtol=0)
+        state_vector = np.zeros(2**dev.num_wires).astype(dev.C_DTYPE)
+        dev.syncD2H(state_vector)
+
+        assert np.allclose(state_vector, np.array(expected_output), atol=tol, rtol=0)
 
     test_data_three_wires_no_parameters = [
         (qml.CSWAP, [1, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0]),
@@ -207,7 +212,10 @@ class TestApply:
         dev._gpu_state = gpu_ctor(np.array(input).reshape(3 * [2]).astype(dev.C_DTYPE))
         dev.apply([operation(wires=[0, 1, 2])])
 
-        assert np.allclose(dev.state, np.array(expected_output), atol=tol, rtol=0)
+        state_vector = np.zeros(2**dev.num_wires).astype(dev.C_DTYPE)
+        dev.syncD2H(state_vector)
+
+        assert np.allclose(state_vector, np.array(expected_output), atol=tol, rtol=0)
 
     @pytest.mark.parametrize(
         "operation,expected_output,par",
@@ -240,7 +248,12 @@ class TestApply:
         qubit_device_2_wires.reset()
         qubit_device_2_wires.apply([operation(par, wires=[0, 1])])
 
-        assert np.allclose(qubit_device_2_wires.state, np.array(expected_output), atol=tol, rtol=0)
+        state_vector = np.zeros(2**qubit_device_2_wires.num_wires).astype(
+            qubit_device_2_wires.C_DTYPE
+        )
+        qubit_device_2_wires.syncD2H(state_vector)
+
+        assert np.allclose(state_vector, np.array(expected_output), atol=tol, rtol=0)
 
     """ operation,input,expected_output,par """
     test_data_single_wire_with_parameters = [
@@ -312,7 +325,10 @@ class TestApply:
         dev._gpu_state = gpu_ctor(np.array(input).astype(dev.C_DTYPE))
         dev.apply([operation(*par, wires=[0])])
 
-        assert np.allclose(dev.state, np.array(expected_output), atol=tol, rtol=0)
+        state_vector = np.zeros(2**dev.num_wires).astype(dev.C_DTYPE)
+        dev.syncD2H(state_vector)
+
+        assert np.allclose(state_vector, np.array(expected_output), atol=tol, rtol=0)
 
     """ operation,input,expected_output,par """
     test_data_two_wires_with_parameters = [
@@ -453,14 +469,20 @@ class TestApply:
         dev._gpu_state = gpu_ctor(np.array(input).reshape(2 * [2]).astype(dev.C_DTYPE))
         dev.apply([operation(*par, wires=[0, 1])])
 
-        assert np.allclose(dev.state, np.array(expected_output), atol=tol, rtol=0)
+        state_vector = np.zeros(2**dev.num_wires).astype(dev.C_DTYPE)
+        dev.syncD2H(state_vector)
+
+        assert np.allclose(state_vector, np.array(expected_output), atol=tol, rtol=0)
 
     def test_apply_errors_qubit_state_vector(self, qubit_device_2_wires):
         """Test that apply fails for incorrect state preparation, and > 2 qubit gates"""
         with pytest.raises(ValueError, match="Sum of amplitudes-squared does not equal one."):
             qubit_device_2_wires.apply([qml.QubitStateVector(np.array([1, -1]), wires=[0])])
 
-        with pytest.raises(ValueError, match=r"cannot reshape array of size 5 into shape \(2,2\)"):
+        with pytest.raises(
+            ValueError,
+            match=r"State vector must have shape \(2\*\*wires,\) or \(batch_size, 2\*\*wires\).",
+        ):
             p = np.array([1, 0, 1, 1, 0]) / np.sqrt(3)
             qubit_device_2_wires.apply([qml.QubitStateVector(p, wires=[0, 1])])
 
@@ -1217,14 +1239,17 @@ class TestApplyCQMethod:
     @pytest.mark.parametrize("C", [np.complex64, np.complex128])
     def test_apply_identity_skipped(self, C, tol):
         """Test identity operation does not perform additional computations."""
-        dev = qml.device("lightning.gpu", wires=1)
+        dev = qml.device("lightning.gpu", wires=1, c_dtype=C)
 
         starting_state = np.array([1, 0], dtype=C)
         op = [qml.Identity(0)]
         dev.apply(op)
-        dev.syncD2H()
 
-        assert np.allclose(dev.state, starting_state, atol=tol, rtol=0)
+        state_vector = np.zeros(2**dev.num_wires).astype(C)
+
+        dev.syncD2H(state_vector)
+
+        assert np.allclose(state_vector, starting_state, atol=tol, rtol=0)
 
 
 # Tolerance for non-analytic tests
