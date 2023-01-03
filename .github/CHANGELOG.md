@@ -221,11 +221,9 @@ For comparison, we can re-examine the benchmark script from the [Lightning GPU P
 
 ![image](https://user-images.githubusercontent.com/858615/184025758-7adeb433-5f7b-451a-bc72-ee3f7e321c49.png)
 
-### Bug fixed
+### Bug fixes
 
 * Fix `test-cpp` Makefile rule to run the correct GPU-compiled executable [(#42)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/42)
-
-### Bug fixes
 
 * Updates to ensure compatibility with cuQuantum 22.0.7. [(#38)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/38)
 
