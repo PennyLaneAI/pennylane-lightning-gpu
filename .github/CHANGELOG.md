@@ -10,14 +10,14 @@
 
 ### Bug fixes
 
-* add header "unordered_map" to util/cuda_helpers.hpp [(#86)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/86)
+* Add header `unordered_map` to `util/cuda_helpers.hpp`.
+ [(#86)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/86)
 
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
 
 Feng Wang
-
 
 ---
 
