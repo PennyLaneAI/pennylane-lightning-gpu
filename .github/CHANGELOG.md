@@ -5,7 +5,6 @@
 * Downgrade CUDA compiler for wheels to avoid compatibility issues with older runtimes.
  [(#87)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/87)
 
-### Contributors
 * Add header `unordered_map` to `util/cuda_helpers.hpp`.
  [(#86)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/86)
 
