@@ -1,15 +1,11 @@
-# Release 0.29.0-dev
-
-### New features since last release
-
-### Breaking changes
-
-### Improvements
-
-### Documentation
+# Release 0.28.1
 
 ### Bug fixes
 
+* Downgrade CUDA compiler for wheels to avoid compatibility issues with older runtimes.
+ [(#87)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/87)
+
+### Contributors
 * Add header `unordered_map` to `util/cuda_helpers.hpp`.
  [(#86)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/86)
 
@@ -17,7 +13,7 @@
 
 This release contains contributions from (in alphabetical order):
 
-Feng Wang
+Lee James O'Riordan, Feng Wang
 
 ---
 
