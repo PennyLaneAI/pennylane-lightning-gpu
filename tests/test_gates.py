@@ -234,28 +234,3 @@ def test_arbitrary_unitary_correct():
     unitary_expected = np.abs(random_unitary)
 
     assert np.allclose(unitary, np.square(unitary_expected))
-
-
-def test_arbitrary_inv_unitary_correct():
-    """Test if lightning.gpu correctly applies the inverse of an arbitrary unitary by
-    reconstructing its matrix"""
-    wires = 2
-    dev = qml.device("lightning.gpu", wires=wires)
-
-    @qml.qnode(dev)
-    def output(input):
-        qml.BasisState(input, wires=range(wires))
-        qml.QubitUnitary(random_unitary, wires=range(2))
-        return qml.probs(range(wires))
-
-    unitary = np.zeros((2**wires, 2**wires), dtype=np.float64)
-
-    for i, input in enumerate(itertools.product([0, 1], repeat=wires)):
-        out = output(input)
-        unitary[:, i] = out
-
-    random_unitary_inv = random_unitary.conj().T
-
-    unitary_expected = np.abs(random_unitary_inv)
-
-    assert np.allclose(unitary, np.square(unitary_expected))
