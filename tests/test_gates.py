@@ -169,7 +169,7 @@ def test_inverse_unitary_correct(op, op_name):
     @qml.qnode(dev)
     def output(input):
         qml.BasisState(input, wires=range(wires))
-        op(*p, wires=range(wires)).inv()
+        op(*p, wires=range(wires))
         return qml.probs(range(wires))
 
     unitary = np.zeros((2**wires, 2**wires), dtype=np.float64)
@@ -178,7 +178,7 @@ def test_inverse_unitary_correct(op, op_name):
         out = output(input)
         unitary[:, i] = out
 
-    unitary_expected = np.abs(qml.matrix(op(*p, wires=range(wires)).inv()))
+    unitary_expected = np.abs(qml.matrix(op(*p, wires=range(wires))))
 
     assert np.allclose(unitary, np.square(unitary_expected))
 
@@ -245,7 +245,7 @@ def test_arbitrary_inv_unitary_correct():
     @qml.qnode(dev)
     def output(input):
         qml.BasisState(input, wires=range(wires))
-        qml.QubitUnitary(random_unitary, wires=range(2)).inv()
+        qml.QubitUnitary(random_unitary, wires=range(2))
         return qml.probs(range(wires))
 
     unitary = np.zeros((2**wires, 2**wires), dtype=np.float64)
