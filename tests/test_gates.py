@@ -145,31 +145,17 @@ def test_inverse_unitary_correct(op, op_name):
 
     if op_name in ("BasisState", "QubitStateVector"):
         pytest.skip("Skipping operation because it is a state preparation")
-    if op_name in (
-        "ControlledQubitUnitary",
-        "QubitUnitary",
-        "MultiControlledX",
-        "DiagonalQubitUnitary",
-    ):
-        pytest.skip("Skipping operation.")  # These are tested in the device test-suite
     if op == None:
         pytest.skip("Skipping operation.")
 
-    wires = op.num_wires
-
-    if wires == -1:  # This occurs for operations that do not have a predefined number of wires
-        wires = 4
+    wires = len(op[2]["wires"])
 
     dev = qml.device("lightning.gpu", wires=wires)
-    num_params = op.num_params
-    p = [0.1] * num_params
-
-    op = getattr(qml, op_name)
 
     @qml.qnode(dev)
     def output(input):
         qml.BasisState(input, wires=range(wires))
-        qml.adjoint(op(*p, wires=range(wires)))
+        qml.adjoint(op[0](*op[1], **op[2]))
         return qml.probs(range(wires))
 
     unitary = np.zeros((2**wires, 2**wires), dtype=np.float64)
@@ -178,7 +164,7 @@ def test_inverse_unitary_correct(op, op_name):
         out = output(input)
         unitary[:, i] = out
 
-    unitary_expected = np.abs(qml.adjoint(qml.matrix(op(*p, wires=range(wires)))))
+    unitary_expected = np.abs(qml.adjoint(op[0](*op[1], **op[2])))
 
     assert np.allclose(unitary, np.square(unitary_expected))
 
