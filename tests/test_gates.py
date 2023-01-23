@@ -138,7 +138,6 @@ def test_gate_unitary_correct(op, op_name):
     assert np.allclose(unitary, np.square(unitary_expected))
 
 
-
 random_unitary = np.array(
     [
         [
