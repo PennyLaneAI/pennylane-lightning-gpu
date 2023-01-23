@@ -298,7 +298,7 @@ class TestAdjointJacobian:
 
             qml.Rot(1.3, -2.3, 0.5, wires=[0])
             qml.RZ(-0.5, wires=0)
-            qml.adjoint(qml.RX(params[2], wires=wires[2]), lazy=False)
+            qml.adjoint(qml.RY(0.5, wires=1), lazy=False)
             qml.CNOT(wires=[0, 1])
 
             qml.expval(obs(wires=0))

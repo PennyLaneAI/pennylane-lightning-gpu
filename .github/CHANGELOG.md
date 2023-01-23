@@ -6,12 +6,12 @@
 
 ### Improvements
 
+* Change `inv()` method to `qml.adjoint()` method in Python unit tests to be aligned with recent change in Pennylane and avoid CI failures.
+ [(#88)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/88)
 ### Documentation
 
 ### Bug fixes
 
-* Remove `inv()` method in Python unit tests to be aligned with recent change in Pennylane and avoid CI failures.
- [(#88)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/88)
 
 ### Contributors
 

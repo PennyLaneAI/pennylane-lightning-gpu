@@ -177,7 +177,7 @@ def test_inverse_unitary_correct(op, op_name):
         out = output(input)	
         unitary[:, i] = out	
 
-    unitary_expected = np.abs(qml.matrix(op(*p, wires=range(wires)).inv()))	
+    unitary_expected = np.abs(qml.adjoint(qml.matrix(op(*p, wires=range(wires)))))	
 
     assert np.allclose(unitary, np.square(unitary_expected))	
 
