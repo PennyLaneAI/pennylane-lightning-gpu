@@ -10,9 +10,14 @@
 
 ### Bug fixes
 
+* Remove `inv()` method in Python unit tests to be aligned with recent change in Pennylane and avoid CI failures.
+ [(#88)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/88)
+
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
+
+Shuli Shu
 
 ---
 
