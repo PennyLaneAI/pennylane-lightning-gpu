@@ -152,7 +152,7 @@ def test_inverse_unitary_correct(op, op_name):
         out = output(input)
         unitary[:, i] = out
 
-    unitary_expected = np.abs(qml.adjoint(op[0](*op[1], **op[2])))
+    unitary_expected = np.abs(qml.matrix(qml.adjoint(op[0](*op[1], **op[2]))))
 
     assert np.allclose(unitary, np.square(unitary_expected))
 
