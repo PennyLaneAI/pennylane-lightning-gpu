@@ -654,7 +654,7 @@ def circuit_ansatz(params, wires):
     qml.IsingXX(params[13], wires=[wires[1], wires[0]])
     qml.IsingYY(params[14], wires=[wires[3], wires[2]])
     qml.IsingZZ(params[15], wires=[wires[2], wires[1]])
-    
+
     qml.adjoint(qml.CRot(params[21], params[22], params[23], wires=[wires[1], wires[2]]))
     qml.SingleExcitation(params[24], wires=[wires[2], wires[0]])
     qml.DoubleExcitation(params[25], wires=[wires[2], wires[0], wires[1], wires[3]])
