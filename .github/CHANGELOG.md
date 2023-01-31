@@ -10,9 +10,14 @@
 
 ### Bug fixes
 
+* Limit Numpy version to avoid conflicts with Autograd.
+[(#89)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/89)
+
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
+
+Amintor Dusko
 
 ---
 
