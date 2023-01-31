@@ -2,7 +2,7 @@ ninja
 cmake
 cuquantum>=22.3.0
 flaky
-numpy
+numpy<1.24
 pennylane>=0.22
 pennylane-lightning>=0.22
 pybind11
