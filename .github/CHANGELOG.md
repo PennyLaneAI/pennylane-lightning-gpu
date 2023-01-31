@@ -6,13 +6,18 @@
 
 ### Improvements
 
+* Update `inv()` to `qml.adjoint()` in Python tests following recent changes in Pennylane.
+ [(#88)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/88)
 ### Documentation
 
 ### Bug fixes
 
+
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
+
+Shuli Shu
 
 ---
 
