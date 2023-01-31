@@ -298,7 +298,7 @@ class TestAdjointJacobian:
 
             qml.Rot(1.3, -2.3, 0.5, wires=[0])
             qml.RZ(-0.5, wires=0)
-            qml.RY(0.5, wires=1).inv()
+            qml.adjoint(qml.RY(0.5, wires=1), lazy=False)
             qml.CNOT(wires=[0, 1])
 
             qml.expval(obs(wires=0))
@@ -639,15 +639,15 @@ def circuit_ansatz(params, wires):
     qml.QubitStateVector(unitary_group.rvs(2**4, random_state=0)[0], wires=wires)
     qml.RX(params[0], wires=wires[0])
     qml.RY(params[1], wires=wires[1])
-    qml.RX(params[2], wires=wires[2]).inv()
+    qml.adjoint(qml.RX(params[2], wires=wires[2]))
     qml.RZ(params[0], wires=wires[3])
     qml.CRX(params[3], wires=[wires[3], wires[0]])
     qml.PhaseShift(params[4], wires=wires[2])
     qml.CRY(params[5], wires=[wires[2], wires[1]])
-    qml.CRZ(params[5], wires=[wires[0], wires[3]]).inv()
-    qml.PhaseShift(params[6], wires=wires[0]).inv()
+    qml.adjoint(qml.CRZ(params[5], wires=[wires[0], wires[3]]))
+    qml.adjoint(qml.PhaseShift(params[6], wires=wires[0]))
     qml.Rot(params[6], params[7], params[8], wires=wires[0])
-    qml.Rot(params[8], params[8], params[9], wires=wires[1]).inv()
+    qml.adjoint(qml.Rot(params[8], params[8], params[9], wires=wires[1]))
     qml.MultiRZ(params[11], wires=[wires[0], wires[1]])
     # #     qml.PauliRot(params[12], "XXYZ", wires=[wires[0], wires[1], wires[2], wires[3]])
     qml.CPhase(params[12], wires=[wires[3], wires[2]])
@@ -655,7 +655,7 @@ def circuit_ansatz(params, wires):
     qml.IsingYY(params[14], wires=[wires[3], wires[2]])
     qml.IsingZZ(params[15], wires=[wires[2], wires[1]])
 
-    qml.CRot(params[21], params[22], params[23], wires=[wires[1], wires[2]]).inv()
+    qml.adjoint(qml.CRot(params[21], params[22], params[23], wires=[wires[1], wires[2]]))
     qml.SingleExcitation(params[24], wires=[wires[2], wires[0]])
     qml.DoubleExcitation(params[25], wires=[wires[2], wires[0], wires[1], wires[3]])
 
