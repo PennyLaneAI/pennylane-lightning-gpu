@@ -35,7 +35,6 @@ except (ImportError, ModuleNotFoundError):
 
 class TestHamiltonianExpval:
     def test_hamiltonian_expectation(self, qubit_device_3_wires, tol):
-
         dev = qubit_device_3_wires
         obs = qml.Identity(0) @ qml.PauliX(1) @ qml.PauliY(2)
 

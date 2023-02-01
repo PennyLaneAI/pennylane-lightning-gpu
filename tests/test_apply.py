@@ -490,7 +490,6 @@ class TestApply:
             DeviceError,
             match="Operation QubitStateVector cannot be used after other Operations have already been applied ",
         ):
-
             qubit_device_2_wires.reset()
             qubit_device_2_wires.apply(
                 [
