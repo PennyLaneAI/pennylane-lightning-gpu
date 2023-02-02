@@ -9,7 +9,7 @@
 * Update `inv()` to `qml.adjoint()` in Python tests following recent changes in Pennylane.
  [(#88)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/88)
 
-* Remove explicit Numpy dependence.
+* Remove explicit Numpy requirement.
 [(#90)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/90)
 
 ### Documentation
