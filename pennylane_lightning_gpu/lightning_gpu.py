@@ -416,9 +416,7 @@ if CPP_BINARY_AVAILABLE:
             for o in operations:
                 if o.base_name in skipped_ops:
                     continue
-                name = o.name.split(".")[
-                    0
-                ]  # The split is because inverse gates have .inv appended. To be updated with upcoming deprecation.
+                name = o.name
                 if isinstance(o, Adjoint):
                     name = o.base.name
                     invert_param = True

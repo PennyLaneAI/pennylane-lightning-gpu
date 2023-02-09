@@ -388,22 +388,18 @@ class TestAdjointJacobianQNode:
         """Tests that a warning is raised when computing the adjoint diff on a device with finite shots"""
 
         dev = qml.device("lightning.gpu", wires=1, shots=1)
+        param = qml.numpy.array(0.1)
+
+        @qml.qnode(dev, diff_method="adjoint")
+        def circ(x):
+            qml.RX(x, wires=0)
+            return qml.expval(qml.PauliZ(0))
 
         with pytest.warns(
             UserWarning,
             match="Requested adjoint differentiation to be computed with finite shots.",
         ):
-
-            @qml.qnode(dev, diff_method="adjoint")
-            def circ(x):
-                qml.RX(x, wires=0)
-                return qml.expval(qml.PauliZ(0))
-
-        with pytest.warns(
-            UserWarning,
-            match="Requested adjoint differentiation to be computed with finite shots.",
-        ):
-            qml.grad(circ)(0.1)
+            qml.grad(circ)(param)
 
     def test_qnode(self, mocker, tol, dev_gpu):
         """Test that specifying diff_method allows the adjoint method to be selected"""
