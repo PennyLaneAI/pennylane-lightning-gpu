@@ -37,6 +37,7 @@ from pennylane import (
 )
 from pennylane_lightning import LightningQubit
 from pennylane.operation import Tensor, Operation
+from pennylane.ops.op_math.adjoint import Adjoint
 from pennylane.measurements import Expectation, MeasurementProcess, State
 from pennylane.wires import Wires
 
@@ -418,8 +419,8 @@ if CPP_BINARY_AVAILABLE:
                 name = o.name.split(".")[
                     0
                 ]  # The split is because inverse gates have .inv appended. To be updated with upcoming deprecation.
-                if "Adjoint" in name:
-                    name = name.split("(")[1].split(")")[0]
+                if isinstance(o, Adjoint):
+                    name = o.base.name
                     invert_param = True
                 method = getattr(self._gpu_state, name, None)
 
@@ -444,9 +445,8 @@ if CPP_BINARY_AVAILABLE:
                     )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
 
                 else:
-                    inv = o.inverse or invert_param  # Account for Adjoint
                     param = o.parameters
-                    method(wires, inv, param)
+                    method(wires, invert_param, param)
 
         def apply(self, operations, **kwargs):
             # State preparation is currently done in Python
