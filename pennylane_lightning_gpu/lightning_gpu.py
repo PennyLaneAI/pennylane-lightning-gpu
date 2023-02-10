@@ -37,7 +37,7 @@ from pennylane import (
 )
 from pennylane_lightning import LightningQubit
 from pennylane.operation import Tensor, Operation
-from pennylane.ops.op_math.adjoint import Adjoint
+from pennylane.ops.op_math import Adjoint
 from pennylane.measurements import Expectation, MeasurementProcess, State
 from pennylane.wires import Wires
 

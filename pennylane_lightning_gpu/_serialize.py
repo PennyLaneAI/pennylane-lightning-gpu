@@ -27,7 +27,7 @@ from pennylane import (
 from pennylane.grouping import is_pauli_word
 from pennylane.operation import Observable, Tensor
 from pennylane.ops.qubit.observables import Hermitian
-from pennylane.ops.op_math.adjoint import Adjoint
+from pennylane.ops.op_math import Adjoint
 from pennylane.tape import QuantumTape
 
 # Remove after the next release of PL
