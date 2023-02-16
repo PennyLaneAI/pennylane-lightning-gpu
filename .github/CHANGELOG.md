@@ -1,4 +1,48 @@
-# Release 0.28.0-dev
+# Release 0.29.0-dev
+
+### New features since last release
+
+### Breaking changes
+
+### Improvements
+
+* Update `inv()` to `qml.adjoint()` in Python tests following recent changes in Pennylane.
+ [(#88)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/88)
+
+* Remove explicit Numpy requirement.
+[(#90)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/90)
+
+### Documentation
+
+### Bug fixes
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Amintor Dusko, Shuli Shu
+
+---
+
+# Release 0.28.1
+
+### Bug fixes
+
+* Downgrade CUDA compiler for wheels to avoid compatibility issues with older runtimes.
+ [(#87)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/87)
+
+* Add header `unordered_map` to `util/cuda_helpers.hpp`.
+ [(#86)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/86)
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Lee James O'Riordan, Feng Wang
+
+---
+
+# Release 0.28.0
 
 ### New features since last release
 
@@ -60,8 +104,6 @@ and change `lightning.gpu` to inherit from `QubitDevice` instead of `LightningQu
 * Implement improved `stopping_condition` method, and make Linux wheel builds more performant.
 [(#77)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/77)
 
-### Documentation
-
 ### Bug fixes
 
 * Fix wheel-builder to pin CUDA version to 11.8 instead of latest.
@@ -80,6 +122,7 @@ This release contains contributions from (in alphabetical order):
 Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 
 ---
+
 # Release 0.27.0
 
 ### New features since last release
@@ -122,15 +165,11 @@ Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 * Enable building of python 3.11 wheels and upgrade python on CI/CD workflows to 3.8.
 [(#71)](https://github.com/PennyLaneAI/pennylane-lightning/pull/71)
 
-### Breaking changes
-
 ### Improvements
 
 * Optimisation updates to custatevector integration including initialisation of state vectors on GPU, creation of fewer cublas, cusparse and custatevec handles and fewer calls to small data transfers between host and device. [(#73)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/73) 
 * Update `LightningGPU` device following changes in `LightningQubit` inheritance from `DefaultQubit` to `QubitDevice`.
 [(#74)](https://github.com/PennyLaneAI/pennylane-lightning/pull/74)
-
-### Documentation
 
 ### Bug fixes
 
@@ -145,6 +184,7 @@ Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 Amintor Dusko, Lee J. O'Riordan, Shuli Shu, Andreas Hehn, Ania Brown
 
 ---
+
 # Release 0.26.2
 
 ### Bug fixes
@@ -157,6 +197,7 @@ Amintor Dusko, Lee J. O'Riordan, Shuli Shu, Andreas Hehn, Ania Brown
 Lee J. O'Riordan
 
 ---
+
 # Release 0.26.1
 
 ### Bug fixes
@@ -169,6 +210,7 @@ Lee J. O'Riordan
 Lee J. O'Riordan
 
 ---
+
 # Release 0.26.0
 
 ### New features since last release
@@ -176,12 +218,6 @@ Lee J. O'Riordan
 * Added native support for expval(H) in adjoint method. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52)
 
 * Added cuSparse SpMV in expval(H) calculations. [(#52)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/52)
-
-### Breaking changes
-
-### Improvements
-
-### Documentation
 
 ### Bug fixes
 
@@ -201,6 +237,7 @@ This release contains contributions from (in alphabetical order):
 Amintor Dusko, Lee James O'Riordan, Shuli Shu
 
 ---
+
 # Release 0.25.0
 
 ### New features since last release
@@ -222,11 +259,9 @@ For comparison, we can re-examine the benchmark script from the [Lightning GPU P
 
 ![image](https://user-images.githubusercontent.com/858615/184025758-7adeb433-5f7b-451a-bc72-ee3f7e321c49.png)
 
-### Bug fixed
+### Bug fixes
 
 * Fix `test-cpp` Makefile rule to run the correct GPU-compiled executable [(#42)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/42)
-
-### Bug fixes
 
 * Updates to ensure compatibility with cuQuantum 22.0.7. [(#38)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/38)
 
@@ -274,8 +309,6 @@ Christina Lee, Lee James O'Riordan
 
 * CPU-only warnings are now more visible. [(#23)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/23)
 
-### Documentation
-
 ### Bug fixes
 
 * Fix jacobian tape with state preparation. [(#32)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/32)
@@ -291,6 +324,7 @@ Ali Asadi, Amintor Dusko, Chae-Yeun Park, Lee James O'Riordan, and Trevor Vincen
 # Release 0.23.0
 
 ### Improvements
+
 * Update builder and cuQuantum SDK support [(#10)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/10).
 
 ### Contributors
@@ -301,8 +335,15 @@ Ali Asadi, and Lee James O'Riordan
 ---
 
 # Release 0.22.1
+
 ### Improvements
+
 * Add `Identity` support [(#8)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/8).
+
+### Contributor
+
+This release contains contributions from (in alphabetical order):
+Lee James O'Riordan
 
 ---
 
@@ -319,7 +360,6 @@ Ali Asadi, and Lee James O'Riordan
 
 * This release updates the cuQuantum function calls to match the SDK 1.0 release.
 [(#6)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/6)
-
 
 ### Contributors
 

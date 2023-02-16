@@ -63,7 +63,6 @@ class TestHamiltonianExpval:
         assert np.allclose(circuit(), res, atol=tol, rtol=0)
 
     def test_hamiltonan_expectation(self, qubit_device_3_wires, tol):
-
         dev = qubit_device_3_wires
 
         obs = qml.PauliX(1) @ qml.PauliY(2)

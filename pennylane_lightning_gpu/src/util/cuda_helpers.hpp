@@ -24,6 +24,7 @@
 #include <memory>
 #include <numeric>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #include <cuComplex.h>
