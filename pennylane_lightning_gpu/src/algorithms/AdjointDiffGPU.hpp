@@ -1,4 +1,5 @@
-// Contributions are Copyright (c) 2022-2023 Pennylane Lightning GPU contributors
+// Contributions are Copyright (c) 2022-2023 Pennylane Lightning GPU
+// contributors
 
 // and are
 // Licensed under the Apache License, Version 2.0 (the "License");
