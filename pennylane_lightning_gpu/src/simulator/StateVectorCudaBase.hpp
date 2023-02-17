@@ -1,7 +1,5 @@
 // Copyright 2022 Xanadu Quantum Technologies Inc.
 
-// Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved
-
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -39,7 +37,6 @@ namespace cuUtil = Pennylane::CUDA::Util;
 /// @endcond
 
 namespace Pennylane {
-
 // declarations of external functions (defined in initSV.cu).
 extern void setBasisState_CUDA(cuComplex *sv, cuComplex &value,
                                const size_t index, bool async,

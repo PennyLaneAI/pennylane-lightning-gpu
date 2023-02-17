@@ -1,6 +1,6 @@
-// Contributions to this file by NVIDIA are Copyright (c) 2022, NVIDIA
-// CORPORATION & AFFILIATES and licenced under the following licence
+// Contributions are Copyright (c) 2022-2023 Pennylane Lightning GPU contributors
 
+// and are
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -235,7 +235,7 @@ template <class T = double> class AdjointJacobianGPU {
      */
     inline void updateJacobian(const StateVectorCudaManaged<T> &sv1,
                                const StateVectorCudaManaged<T> &sv2,
-                               CFP_t &jac) {
+                               CFP_t *jac) {
         PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
                             sv2.getDataBuffer().getDevTag().getDeviceID(),
                         "Data exists on different GPUs. Aborting.");
@@ -243,7 +243,7 @@ template <class T = double> class AdjointJacobianGPU {
         innerProdC_CUDA_device(sv1.getData(), sv2.getData(), sv1.getLength(),
                                sv1.getDataBuffer().getDevTag().getDeviceID(),
                                sv1.getDataBuffer().getDevTag().getStreamID(),
-                               sv1.getCublasHandle(), &jac);
+                               sv1.getCublasCaller(), jac);
     }
 
     /**
@@ -606,10 +606,10 @@ template <class T = double> class AdjointJacobianGPU {
         dt_local.refresh();
         // Create $U_{1:p}\vert \lambda \rangle$
         SharedCusvHandle cusvhandle = make_shared_cusv_handle();
-        SharedCublasHandle cublashandle = make_shared_cublas_handle();
+        SharedCublasCaller cublascaller = make_shared_cublas_caller();
         SharedCusparseHandle cusparsehandle = make_shared_cusparse_handle();
         StateVectorCudaManaged<T> lambda(ref_data, length, dt_local, cusvhandle,
-                                         cublashandle, cusparsehandle);
+                                         cublascaller, cusparsehandle);
 
         // Apply given operations to statevector if requested
         if (apply_operations) {
@@ -620,12 +620,12 @@ template <class T = double> class AdjointJacobianGPU {
         std::vector<StateVectorCudaManaged<T>> H_lambda;
         for (size_t n = 0; n < num_observables; n++) {
             H_lambda.emplace_back(lambda.getNumQubits(), dt_local, true,
-                                  cusvhandle, cublashandle, cusparsehandle);
+                                  cusvhandle, cublascaller, cusparsehandle);
         }
         applyObservables(H_lambda, lambda, obs);
 
         StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local, true,
-                                     cusvhandle, cublashandle, cusparsehandle);
+                                     cusvhandle, cublascaller, cusparsehandle);
 
         auto device_id = mu.getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = mu.getDataBuffer().getDevTag().getStreamID();
@@ -659,9 +659,8 @@ template <class T = double> class AdjointJacobianGPU {
 
                     for (size_t obs_idx = 0; obs_idx < num_observables;
                          obs_idx++) {
-                        updateJacobian(
-                            H_lambda[obs_idx], mu,
-                            d_jac_single_param.getData()[obs_idx]);
+                        updateJacobian(H_lambda[obs_idx], mu,
+                                       d_jac_single_param.getData() + obs_idx);
                     }
                     d_jac_single_param.CopyGpuDataToHost(
                         jac_single_param.data(), jac_single_param.size(),

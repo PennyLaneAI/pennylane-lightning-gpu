@@ -1,3 +1,18 @@
+// Contributions are Copyright (c) 2022-2023 Pennylane Lightning GPU contributors
+
+// and are
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <functional>
@@ -342,7 +357,7 @@ template <typename T> class HamiltonianGPU final : public ObservableGPU<T> {
                               tmp.getData(), buffer.getData(), tmp.getLength(),
                               tmp.getDataBuffer().getDevTag().getDeviceID(),
                               tmp.getDataBuffer().getDevTag().getStreamID(),
-                              tmp.getCublasHandle());
+                              tmp.getCublasCaller());
         }
         sv.CopyGpuDataToGpuIn(buffer.getData(), buffer.getLength());
     }
@@ -561,7 +576,7 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
             /* cusparseDnVecDescr_t */ sv_prime_descriptor,
             /* cudaDataType */ data_type,
             /* cusparseSpMVAlg_t */
-            CUSPARSE_MV_ALG_DEFAULT,
+            CUSPARSE_SPMV_ALG_DEFAULT,
             /* void* */ reinterpret_cast<void *>(dBuffer.getData())));
 
         // destroy matrix/vector descriptors

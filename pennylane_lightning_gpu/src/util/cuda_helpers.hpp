@@ -1,9 +1,9 @@
 // Adapted from JET: https://github.com/XanaduAI/jet.git
 // and from Lightning: https://github.com/PennylaneAI/pennylane-lightning.git
 
-// Contributions to this file by NVIDIA are Copyright (c) 2022, NVIDIA
-// CORPORATION & AFFILIATES and licenced under the following licence
+// Contributions are Copyright (c) 2022-2023, Pennylane Lightning GPU contributors
 
+// and are
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,7 +21,9 @@
 
 #pragma once
 #include <algorithm>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <numeric>
 #include <type_traits>
 #include <unordered_map>
@@ -36,8 +38,6 @@
 #include "DevTag.hpp"
 #include "Error.hpp"
 #include "Util.hpp"
-
-#include <mutex>
 
 #ifndef CUDA_UNSAFE
 
@@ -391,10 +391,23 @@ template <class CFP_t> inline static constexpr auto INVSQRT2() -> CFP_t {
     }
 }
 
+/**
+ * @brief A wrapper for cuBLAS calls. This should be used for all calls to
+ * cuBLAS.
+ *
+ * In most cases you do not want to create objects of this class directly but
+ * use
+ * %
+ * This classes purpose is to manage the cuBLAS handle and avoid data races
+ * between setting the active CUDA device, the current cuBLAS stream and the
+ * call of the cuBLAS function via the call method.
+ * The class creates and destroys a cuBLAS handle on construction/destruction.
+ */
 class CublasCaller {
   public:
+    /** Creates a new CublasCaller with a new cuBLAS handle */
     CublasCaller() { PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle)); }
-
+    /** Destructs the CublasCaller and destroys its cuBLAS handle */
     ~CublasCaller() { PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle)); }
 
     CublasCaller(CublasCaller const &) = delete;
@@ -402,6 +415,21 @@ class CublasCaller {
     CublasCaller &operator=(CublasCaller const &) = delete;
     CublasCaller &operator=(CublasCaller &&) = delete;
 
+    /**
+     * @brief Call a cuBLAS function.
+     *
+     * The call function executes a cuBLAS function on a specified CUDA device
+     * and stream pair. It ensures thread safety for this operation, i.e.,
+     * it prevents other thread from changing the active device and stream
+     * of the cuBLAS handle before the passed cuBLAS call could be queued.
+     *
+     * @param func the cuBLAS function to be called.
+     * @param dev_id the CUDA device id on which the function should be
+     * executed.
+     * @param stream the CUDA stream on which the cuBLAS function should be
+     * queued.
+     * @param args the arguments for the cuBLAS function.
+     */
     template <typename F, typename... Args>
     void call(F &&func, int dev_id, cudaStream_t stream, Args &&...args) const {
         std::lock_guard lk(mtx);
@@ -446,7 +474,10 @@ inline auto innerProdC_CUDA_device(const T *v1, const T *v2,
  * @tparam T Complex data-type. Accepts cuFloatComplex and cuDoubleComplex
  * @param v1 Device data pointer 1
  * @param v2 Device data pointer 2
- * @param data_size Lengtyh of device data.
+ * @param data_size Length of device data.
+ * @param dev_id the device on which the function should be executed.
+ * @param stream_id the CUDA stream on which the operation should be executed.
+ * @param cublas the CublasCaller object that manages the cuBLAS handle.
  * @return T Inner-product result
  */
 template <class T = cuDoubleComplex, class DevTypeID = int>
@@ -474,6 +505,9 @@ inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
  * @param v1 Device data pointer 1 (data to be modified)
  * @param v2 Device data pointer 2 (the result data)
  * @param data_size Length of device data.
+ * @param dev_id the device on which the function should be executed.
+ * @param stream_id the CUDA stream on which the operation should be executed.
+ * @param cublas the CublasCaller object that manages the cuBLAS handle.
  */
 template <class CFP_t = std::complex<double>, class T = cuDoubleComplex,
           class DevTypeID = int>
@@ -501,6 +535,9 @@ inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
  * @param a scaling factor
  * @param v1 Device data pointer
  * @param data_size Length of device data.
+ * @param dev_id the device on which the function should be executed.
+ * @param stream_id the CUDA stream on which the operation should be executed.
+ * @param cublas the CublasCaller object that manages the cuBLAS handle.
  */
 template <class CFP_t = std::complex<double>, class T = cuDoubleComplex,
           class DevTypeID = int>
@@ -727,6 +764,10 @@ class CudaScopedDevice {
     int prev_device_;
 };
 
+/**
+ * Utility function object to tell std::shared_ptr how to
+ * release/destroy various CUDA objects.
+ */
 struct HandleDeleter {
     void operator()(cublasHandle_t handle) const {
         PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
@@ -739,22 +780,31 @@ struct HandleDeleter {
     }
 };
 
-using SharedCublasHandle = std::shared_ptr<CublasCaller>;
+using SharedCublasCaller = std::shared_ptr<CublasCaller>;
 using SharedCusvHandle =
     std::shared_ptr<std::remove_pointer<custatevecHandle_t>::type>;
 using SharedCusparseHandle =
     std::shared_ptr<std::remove_pointer<cusparseHandle_t>::type>;
 
-inline SharedCublasHandle make_shared_cublas_handle() {
+/**
+ * @brief Creates a SharedCublasCaller (a shared pointer to a CublasCaller)
+ */
+inline SharedCublasCaller make_shared_cublas_caller() {
     return std::make_shared<CublasCaller>();
 }
 
+/**
+ * @brief Creates a SharedCusvHandle (a shared pointer to a custatevecHandle)
+ */
 inline SharedCusvHandle make_shared_cusv_handle() {
     custatevecHandle_t h;
     PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(&h));
     return {h, HandleDeleter()};
 }
 
+/**
+ * @brief Creates a SharedCusparseHandle (a shared pointer to a cusparseHandle)
+ */
 inline SharedCusparseHandle make_shared_cusparse_handle() {
     cusparseHandle_t h;
     PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&h));

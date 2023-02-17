@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* Optimisation updates to custatevector integration. E.g., creation of fewer cublas, cusparse and custatevec handles and fewer calls to small data transfers between host and device. [(#73)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/73)
+
 * Update `inv()` to `qml.adjoint()` in Python tests following recent changes in Pennylane.
  [(#88)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/88)
 
@@ -20,7 +22,7 @@
 
 This release contains contributions from (in alphabetical order):
 
-Amintor Dusko, Shuli Shu
+Amintor Dusko, Shuli Shu, Andreas Hehn (NVIDIA), Ania Brown (NVIDIA)
 
 ---
 
@@ -167,7 +169,6 @@ Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 
 ### Improvements
 
-* Optimisation updates to custatevector integration including initialisation of state vectors on GPU, creation of fewer cublas, cusparse and custatevec handles and fewer calls to small data transfers between host and device. [(#73)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/73) 
 * Update `LightningGPU` device following changes in `LightningQubit` inheritance from `DefaultQubit` to `QubitDevice`.
 [(#74)](https://github.com/PennyLaneAI/pennylane-lightning/pull/74)
 
@@ -181,7 +182,7 @@ Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 
 ### Contributors
 
-Amintor Dusko, Lee J. O'Riordan, Shuli Shu, Andreas Hehn, Ania Brown
+Amintor Dusko, Lee J. O'Riordan, Shuli Shu
 
 ---
 
