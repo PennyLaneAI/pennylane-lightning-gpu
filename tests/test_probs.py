@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Unit tests for the generate_samples method of the :mod:`pennylane_lightning_kokkos.LightningKokkos` device.
+Unit tests for the generate_samples method of the :mod:`pennylane_lightning_gpu.LightningGPU` device.
 """
 import pytest
 
