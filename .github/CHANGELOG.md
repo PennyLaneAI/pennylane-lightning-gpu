@@ -16,7 +16,7 @@
 
 ### Bug fixes
 
-* * Ensure early-failure rather than return of incorrect results from out of order probs wires.
+* Ensure early-failure rather than return of incorrect results from out of order probs wires.
 [(#94)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/94)
 
 ### Contributors
