@@ -744,11 +744,6 @@ if CPP_BINARY_AVAILABLE:
             )
 
         def probability(self, wires=None, shot_range=None, bin_size=None):
-            if wires and len(wires) > 1 and (not np.all(list(wires)[:-1] <= list(wires)[1:])):
-                raise RuntimeError(
-                    "Lightning does not currently support out-of-order indices for probabilities"
-                )
-
             if self.shots is not None:
                 return self.estimate_probability(
                     wires=wires, shot_range=shot_range, bin_size=bin_size
@@ -759,6 +754,16 @@ if CPP_BINARY_AVAILABLE:
 
             # translate to wire labels used by device
             device_wires = self.map_wires(wires)
+
+            if (
+                device_wires
+                and len(device_wires) > 1
+                and (not np.all(list(device_wires)[:-1] <= list(device_wires)[1:]))
+            ):
+                raise RuntimeError(
+                    "Lightning does not currently support out-of-order indices for probabilities"
+                )
+
             # Device returns as col-major orderings, so perform transpose on data for bit-index shuffle for now.
             return (
                 self._gpu_state.Probability(device_wires)
