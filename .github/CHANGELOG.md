@@ -18,11 +18,14 @@
 
 ### Bug fixes
 
+* Ensure early-failure rather than return of incorrect results from out of order probs wires.
+[(#94)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/94)
+
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
 
-Amintor Dusko, Shuli Shu, Andreas Hehn (NVIDIA), Ania Brown (NVIDIA)
+Ania Brown (NVIDIA), Amintor Dusko, Andreas Hehn (NVIDIA), Lee James O'Riordan, Shuli Shu
 
 ---
 
