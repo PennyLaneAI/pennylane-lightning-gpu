@@ -53,7 +53,10 @@ jobs:
 
           CIBW_BUILD: ${{ matrix.cibw_build }}
           CIBW_BUILD_FRONTEND: "pip"
+
           CIBW_SKIP: "*-musllinux*"
+
+          CIBW_CONFIG_SETTINGS: "--global-option=build_ext --global-option=--define="CMAKE_CXX_COMPILER=$(which g++-11);CMAKE_C_COMPILER=$(which gcc-11);LIGHTNING_RELEASE_TAG=v0.29.0_rc0""
 
           # Python build settings
           CIBW_BEFORE_BUILD: |
