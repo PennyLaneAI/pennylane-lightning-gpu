@@ -1,8 +1,4 @@
-# Release 0.29.0-dev
-
-### New features since last release
-
-### Breaking changes
+# Release 0.29.0.rc0
 
 ### Improvements
 
@@ -11,8 +7,6 @@
 
 * Remove explicit Numpy requirement.
 [(#90)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/90)
-
-### Documentation
 
 ### Bug fixes
 
