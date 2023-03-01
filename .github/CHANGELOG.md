@@ -1,4 +1,4 @@
-# Release 0.29.0-dev
+# Release 0.30.0-dev
 
 ### New features since last release
 
@@ -8,13 +8,25 @@
 
 * Optimisation updates to custatevector integration. E.g., creation of fewer cublas, cusparse and custatevec handles and fewer calls to small data transfers between host and device. [(#73)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/73)
 
+### Documentation
+
+### Bug fixes
+
+### Contributors
+
+Ania Brown (NVIDIA), Andreas Hehn (NVIDIA)
+
+---
+
+# Release 0.29.0
+
+### Improvements
+
 * Update `inv()` to `qml.adjoint()` in Python tests following recent changes in Pennylane.
  [(#88)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/88)
 
 * Remove explicit Numpy requirement.
 [(#90)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/90)
-
-### Documentation
 
 ### Bug fixes
 
@@ -25,7 +37,7 @@
 
 This release contains contributions from (in alphabetical order):
 
-Ania Brown (NVIDIA), Amintor Dusko, Andreas Hehn (NVIDIA), Lee James O'Riordan, Shuli Shu
+Amintor Dusko, Lee James O'Riordan, Shuli Shu
 
 ---
 
