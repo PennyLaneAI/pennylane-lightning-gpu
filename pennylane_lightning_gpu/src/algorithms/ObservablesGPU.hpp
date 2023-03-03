@@ -1,7 +1,5 @@
-// Contributions are Copyright (c) 2022-2023 Pennylane Lightning GPU
-// contributors
+// Copyright 2022-2023 Xanadu Quantum Technologies Inc. and contributors.
 
-// and are
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
