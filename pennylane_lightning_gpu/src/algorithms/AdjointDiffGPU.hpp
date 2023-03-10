@@ -21,7 +21,6 @@
 #include <future>
 #include <omp.h>
 #include <thread>
-#include <thrust/host_vector.h>
 #include <variant>
 
 #include "DevTag.hpp"
@@ -244,9 +243,9 @@ template <class T = double> class AdjointJacobianGPU {
                    std::vector<std::vector<T>> &jac, T scaling_coeff,
                    size_t num_observables, size_t param_index,
                    DataBuffer<CFP_t, int> &device_buffer_jac_single_param,
-                   thrust::host_vector<CFP_t> &host_buffer_jac_single_param) {
+                   std::vector<CFP_t> &host_buffer_jac_single_param) {
         host_buffer_jac_single_param.clear();
-        for (size_t obs_idx = 0; obs_idx < num_observables; ++obs_idx) {
+        for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++) {
             const StateVectorCudaManaged<T> &sv1 = sv1s[obs_idx];
             PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
                                 sv2.getDataBuffer().getDevTag().getDeviceID(),
@@ -262,7 +261,7 @@ template <class T = double> class AdjointJacobianGPU {
         device_buffer_jac_single_param.CopyGpuDataToHost(
             host_buffer_jac_single_param.data(),
             host_buffer_jac_single_param.size(), false);
-        for (size_t obs_idx = 0; obs_idx < num_observables; ++obs_idx) {
+        for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++) {
             jac[obs_idx][param_index] =
                 -2 * scaling_coeff * host_buffer_jac_single_param[obs_idx].y;
         }
@@ -662,7 +661,7 @@ template <class T = double> class AdjointJacobianGPU {
         DataBuffer<CFP_t, int> device_buffer_jac_single_param{
             static_cast<std::size_t>(num_observables), device_id, stream_id,
             true};
-        thrust::host_vector<CFP_t> host_buffer_jac_single_param;
+        std::vector<CFP_t> host_buffer_jac_single_param;
 
         for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
              op_idx--) {
