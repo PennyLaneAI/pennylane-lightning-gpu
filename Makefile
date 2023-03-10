@@ -24,7 +24,7 @@ help:
 install:
 ifndef CUQUANTUM_SDK
 	@echo "Please ensure the CUQUANTUM variable is assigned to the cuQuantum SDK path"
-	@test $(CUQUANTUM)
+	@test $(CUQUANTUM_SDK)
 endif
 ifndef PYTHON3
 	@echo "To install PennyLane-Lightning-GPU you must have Python 3.7+ installed."
@@ -74,8 +74,12 @@ test-suite:
 	pl-device-test --device lightning.gpu --shots=None --skip-ops
 
 test-cpp:
+ifndef CUQUANTUM_SDK
+	@echo "Please ensure the CUQUANTUM variable is assigned to the cuQuantum SDK path"
+	@test $(CUQUANTUM_SDK)
+endif
 	rm -rf ./BuildTests
-	cmake . -BBuildTests -DBUILD_TESTS=1 -PLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
+	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
 	cmake --build ./BuildTests
 	./BuildTests/pennylane_lightning_gpu/src/tests/runner_gpu
 
