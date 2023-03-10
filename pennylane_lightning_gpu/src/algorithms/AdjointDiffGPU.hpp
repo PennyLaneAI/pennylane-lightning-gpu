@@ -1,3 +1,20 @@
+// Copyright 2022-2023 Xanadu Quantum Technologies Inc. and contributors.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/**
+ * @file AdjointDiffGPU.hpp
+ */
+
 #pragma once
 
 #include <chrono>
@@ -208,28 +225,48 @@ template <class T = double> class AdjointJacobianGPU {
      * @brief Utility method to update the Jacobian at a given index by
      * calculating the overlap between two given states.
      *
-     * @param sv1 Statevector <sv1|. Data will be conjugated.
+     * @param sv1s vector of statevector <sv1| (one for each observable). Data
+     * will be conjugated.
      * @param sv2 Statevector |sv2>
      * @param jac Jacobian receiving the values.
      * @param scaling_coeff Generator coefficient for given gate derivative.
-     * @param obs_index ObservableGPU index position of Jacobian to update.
+     * @param num_observables the number of observables of Jacobian to update.
      * @param param_index Parameter index position of Jacobian to update.
+     * @param device_buffer_jac_single_param a workspace buffer on the device of
+     * size num_observables elements. Data will be ignored and overwritten.
+     * @param host_buffer_jac_single_param a workspace buffer on the host of
+     * size num_observables elements. Data will be ignored and overwritten.
      */
-    inline void updateJacobian(const StateVectorCudaManaged<T> &sv1,
-                               const StateVectorCudaManaged<T> &sv2,
-                               std::vector<std::vector<T>> &jac,
-                               T scaling_coeff, size_t obs_index,
-                               size_t param_index) {
-        PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
-                            sv2.getDataBuffer().getDevTag().getDeviceID(),
-                        "Data exists on different GPUs. Aborting.");
+    inline void
+    updateJacobian(const std::vector<StateVectorCudaManaged<T>> &sv1s,
+                   const StateVectorCudaManaged<T> &sv2,
+                   std::vector<std::vector<T>> &jac, T scaling_coeff,
+                   size_t num_observables, size_t param_index,
+                   DataBuffer<CFP_t, int> &device_buffer_jac_single_param,
+                   std::vector<CFP_t> &host_buffer_jac_single_param) {
+        host_buffer_jac_single_param.clear();
+        for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++) {
+            const StateVectorCudaManaged<T> &sv1 = sv1s[obs_idx];
+            PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
+                                sv2.getDataBuffer().getDevTag().getDeviceID(),
+                            "Data exists on different GPUs. Aborting.");
+            innerProdC_CUDA_device(
+                sv1.getData(), sv2.getData(), sv1.getLength(),
+                sv1.getDataBuffer().getDevTag().getDeviceID(),
+                sv1.getDataBuffer().getDevTag().getStreamID(),
+                sv1.getCublasCaller(),
+                device_buffer_jac_single_param.getData() + obs_idx);
+        }
+        host_buffer_jac_single_param.resize(num_observables);
+        device_buffer_jac_single_param.CopyGpuDataToHost(
+            host_buffer_jac_single_param.data(),
+            host_buffer_jac_single_param.size(), false);
+        for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++) {
+            jac[obs_idx][param_index] =
+                -2 * scaling_coeff * host_buffer_jac_single_param[obs_idx].y;
+        }
 
-        jac[obs_index][param_index] =
-            -2 * scaling_coeff *
-            innerProdC_CUDA(sv1.getData(), sv2.getData(), sv1.getLength(),
-                            sv1.getDataBuffer().getDevTag().getDeviceID(),
-                            sv1.getDataBuffer().getDevTag().getStreamID())
-                .y;
+        host_buffer_jac_single_param.clear();
     }
 
     /**
@@ -591,7 +628,11 @@ template <class T = double> class AdjointJacobianGPU {
         DevTag<int> dt_local(std::move(dev_tag));
         dt_local.refresh();
         // Create $U_{1:p}\vert \lambda \rangle$
-        StateVectorCudaManaged<T> lambda(ref_data, length, dt_local);
+        SharedCusvHandle cusvhandle = make_shared_cusv_handle();
+        SharedCublasCaller cublascaller = make_shared_cublas_caller();
+        SharedCusparseHandle cusparsehandle = make_shared_cusparse_handle();
+        StateVectorCudaManaged<T> lambda(ref_data, length, dt_local, cusvhandle,
+                                         cublascaller, cusparsehandle);
 
         // Apply given operations to statevector if requested
         if (apply_operations) {
@@ -601,11 +642,26 @@ template <class T = double> class AdjointJacobianGPU {
         // Create observable-applied state-vectors
         std::vector<StateVectorCudaManaged<T>> H_lambda;
         for (size_t n = 0; n < num_observables; n++) {
-            H_lambda.emplace_back(lambda.getNumQubits(), dt_local);
+            H_lambda.emplace_back(lambda.getNumQubits(), dt_local, true,
+                                  cusvhandle, cublascaller, cusparsehandle);
         }
         applyObservables(H_lambda, lambda, obs);
 
-        StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local);
+        StateVectorCudaManaged<T> mu(lambda.getNumQubits(), dt_local, true,
+                                     cusvhandle, cublascaller, cusparsehandle);
+
+        auto device_id = mu.getDataBuffer().getDevTag().getDeviceID();
+        auto stream_id = mu.getDataBuffer().getDevTag().getStreamID();
+
+        // The following buffers are only used as temporary workspace
+        // inside updateJacobian and do not carry any state beyond a
+        // single updateJacobian function call.
+        // We create the buffers here instead of inside updateJacobian
+        // to avoid expensive reallocations.
+        DataBuffer<CFP_t, int> device_buffer_jac_single_param{
+            static_cast<std::size_t>(num_observables), device_id, stream_id,
+            true};
+        std::vector<CFP_t> host_buffer_jac_single_param;
 
         for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
              op_idx--) {
@@ -630,22 +686,11 @@ template <class T = double> class AdjointJacobianGPU {
                                        !ops.getOpsInverses()[op_idx]) *
                         (ops.getOpsInverses()[op_idx] ? -1 : 1);
 
-                    // clang-format off
+                    updateJacobian(H_lambda, mu, jac, scalingFactor,
+                                   num_observables, trainableParamNumber,
+                                   device_buffer_jac_single_param,
+                                   host_buffer_jac_single_param);
 
-                    #if defined(_OPENMP)
-                        #pragma omp parallel for default(none)   \
-                        shared(H_lambda, jac, mu, scalingFactor, \
-                            trainableParamNumber, tp_it,         \
-                            num_observables)
-                    #endif
-
-                    // clang-format on
-                    for (size_t obs_idx = 0; obs_idx < num_observables;
-                         obs_idx++) {
-                        updateJacobian(H_lambda[obs_idx], mu, jac,
-                                       scalingFactor, obs_idx,
-                                       trainableParamNumber);
-                    }
                     trainableParamNumber--;
                     ++tp_it;
                 }
