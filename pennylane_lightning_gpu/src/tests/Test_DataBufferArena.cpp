@@ -26,7 +26,7 @@ namespace cuUtil = Pennylane::CUDA::Util;
 } // namespace
 
 /**
- * @brief Tests the constructability of the DataBuffer class.
+ * @brief Tests the constructability of the DataBufferArena class.
  *
  */
 TEMPLATE_TEST_CASE("DataBufferArena::DataBufferArena", "[DataBufferArena]",
@@ -74,9 +74,9 @@ TEMPLATE_TEST_CASE("DataBufferArena::memory allocation", "[DataBufferArena]",
         CHECK(data_buffer1.getDevice() == 0);
     }
 }
-/*
-TEMPLATE_TEST_CASE("Data locality and movement", "[DataBufferArena]", float,
-                   double) {
+
+TEMPLATE_TEST_CASE("DataBufferArena::Data locality and movement",
+                   "[DataBufferArena]", float, double) {
     SECTION("Single gpu movement") {
         DataBufferArena<TestType, int> data_buffer1{{6}, 0, 0, true};
         std::vector<TestType> host_data_in(6, 1);
@@ -97,6 +97,7 @@ TEMPLATE_TEST_CASE("Data locality and movement", "[DataBufferArena]", float,
             DevicePool<int> dev_pool;
             std::vector<int> ids;
             std::vector<DevTag<int>> tags;
+            std::vector<std::size_t> buffer_partitions{6};
             std::vector<std::unique_ptr<DataBufferArena<TestType, int>>>
                 buffers;
             for (std::size_t i = 0; i < dev_pool.getTotalDevices(); i++) {
@@ -104,7 +105,7 @@ TEMPLATE_TEST_CASE("Data locality and movement", "[DataBufferArena]", float,
                 tags.push_back({ids.back(), 0U});
                 buffers.emplace_back(
                     std::make_unique<DataBufferArena<TestType, int>>(
-                        6, tags.back(), true));
+                        buffer_partitions, tags.back(), true));
             }
 
             std::vector<TestType> host_data_in(6, 1);
@@ -122,5 +123,3 @@ TEMPLATE_TEST_CASE("Data locality and movement", "[DataBufferArena]", float,
         }
     }
 }
-
-*/
