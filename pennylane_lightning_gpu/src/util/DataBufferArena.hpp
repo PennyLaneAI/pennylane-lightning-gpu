@@ -9,10 +9,11 @@ namespace Pennylane::CUDA {
 /**
  * @brief GPU arena allocated memory buffer. This object defines a contiguous
  * block of memory, with user-defined partitions that can allow a single
- * allocation step with multiple separate partitions.
+ * allocation step allowing access to several independent memory blocks.
+ * Maintains an associated stream and device ID taken during time of allocation.
  *
- * @tparam GPUDataT
- * @tparam DevTagT
+ * @tparam GPUDataT GPU data type.
+ * @tparam DevTagT Device tag index type.
  */
 template <class GPUDataT, class DevTagT = int> class DataBufferArena {
   public:
