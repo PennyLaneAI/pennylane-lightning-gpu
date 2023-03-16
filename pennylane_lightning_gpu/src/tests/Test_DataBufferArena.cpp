@@ -57,7 +57,7 @@ TEMPLATE_TEST_CASE("DataBufferArena::DataBufferArena", "[DataBufferArena]",
     }
 }
 
-TEMPLATE_TEST_CASE("DataBufferArena::memory allocation", "[DataBufferArena1]",
+TEMPLATE_TEST_CASE("DataBufferArena::memory allocation", "[DataBufferArena]",
                    float, double) {
     SECTION("Allocate buffer memory = true, single partition") {
         DataBufferArena<TestType, int> data_buffer1{{8}, 0, 0, true};
@@ -138,6 +138,124 @@ TEMPLATE_TEST_CASE(
                 buffers[i]->CopyGpuDataToGpu(*buffers[i - 1], false);
             }
             buffers.back()->CopyGpuDataToHost(host_data_out.data(), 6, false);
+            CHECK(host_data_in == host_data_out);
+            for (auto &id : ids) {
+                dev_pool.releaseDevice(id);
+            }
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE(
+    "DataBufferArena::Data locality and movement, multiple partitions",
+    "[DataBufferArena]", float, double) {
+    SECTION("Single gpu movement, entire buffer") {
+        DataBufferArena<TestType, int> data_buffer1{
+            {6, 3, 7, 4, 1}, 0, 0, true};
+        std::vector<TestType> host_data_in(21, 0);
+        std::iota(host_data_in.begin(), host_data_in.end(), 0);
+
+        std::vector<TestType> host_data_out(21, 0);
+        data_buffer1.CopyHostDataToGpu(host_data_in.data(), host_data_in.size(),
+                                       false);
+        DataBufferArena<TestType, int> data_buffer2(
+            data_buffer1.getBufferLengths(), data_buffer1.getDevTag(), true);
+        data_buffer2.CopyGpuDataToGpu(data_buffer1, false);
+        data_buffer2.CopyGpuDataToHost(host_data_out.data(),
+                                       host_data_out.size(), false);
+        CHECK(host_data_in == host_data_out);
+        CHECK(data_buffer1.getLength() == data_buffer2.getLength());
+        CHECK(data_buffer1.getData() !=
+              data_buffer2.getData()); // Ptrs should not refer to same block
+    }
+    SECTION("Single gpu movement, separate buffer partitions") {
+        DataBufferArena<TestType, int> data_buffer1{
+            {6, 3, 7, 4, 1}, 0, 0, true};
+        std::vector<TestType> host_data_in(21, 0);
+        std::iota(host_data_in.begin(), host_data_in.end(), 0);
+
+        std::vector<TestType> host_data_out(21, 0);
+        data_buffer1.CopyHostDataToGpu(host_data_in.data(), host_data_in.size(),
+                                       false);
+
+        const auto &buffer_s = data_buffer1.getBufferLengths();
+
+        DataBufferArena<TestType, int> data_buffer2(
+            buffer_s, data_buffer1.getDevTag(), true);
+
+        for (std::size_t index = 0; index < buffer_s.size(); index++) {
+            data_buffer2.CopyGpuDataToGpu(data_buffer1, false, index, index);
+        }
+        data_buffer2.CopyGpuDataToHost(host_data_out.data(),
+                                       host_data_out.size(), false);
+
+        CHECK(host_data_in == host_data_out);
+        CHECK(data_buffer1.getLength() == data_buffer2.getLength());
+        CHECK(data_buffer1.getData() !=
+              data_buffer2.getData()); // Ptrs should not refer to same block
+    }
+
+    if (DevicePool<int>::getTotalDevices() > 1) {
+        SECTION("Multi-GPU movement, entire buffer") {
+            DevicePool<int> dev_pool;
+            std::vector<int> ids;
+            std::vector<DevTag<int>> tags;
+            std::vector<std::size_t> buffer_partitions{6, 3, 7, 4, 1};
+            std::vector<std::unique_ptr<DataBufferArena<TestType, int>>>
+                buffers;
+            for (std::size_t i = 0; i < dev_pool.getTotalDevices(); i++) {
+                ids.push_back(dev_pool.acquireDevice());
+                tags.push_back({ids.back(), 0U});
+                buffers.emplace_back(
+                    std::make_unique<DataBufferArena<TestType, int>>(
+                        buffer_partitions, tags.back(), true));
+            }
+
+            std::vector<TestType> host_data_in(21, 0);
+            std::iota(host_data_in.begin(), host_data_in.end(), 0);
+
+            std::vector<TestType> host_data_out(21, 0);
+            buffers[0]->CopyHostDataToGpu(host_data_in.data(),
+                                          host_data_in.size(), false);
+            for (std::size_t i = 1; i < dev_pool.getTotalDevices(); i++) {
+                buffers[i]->CopyGpuDataToGpu(*buffers[i - 1], false);
+            }
+            buffers.back()->CopyGpuDataToHost(host_data_out.data(), 6, false);
+            CHECK(host_data_in == host_data_out);
+            for (auto &id : ids) {
+                dev_pool.releaseDevice(id);
+            }
+        }
+        SECTION("Multi-GPU movement, separate buffer partitions") {
+            DevicePool<int> dev_pool;
+            std::vector<int> ids;
+            std::vector<DevTag<int>> tags;
+            std::vector<std::size_t> buffer_partitions{6, 3, 7, 4, 1};
+            std::vector<std::unique_ptr<DataBufferArena<TestType, int>>>
+                buffers;
+            for (std::size_t i = 0; i < dev_pool.getTotalDevices(); i++) {
+                ids.push_back(dev_pool.acquireDevice());
+                tags.push_back({ids.back(), 0U});
+                buffers.emplace_back(
+                    std::make_unique<DataBufferArena<TestType, int>>(
+                        buffer_partitions, tags.back(), true));
+            }
+
+            std::vector<TestType> host_data_in(21, 0);
+            std::iota(host_data_in.begin(), host_data_in.end(), 0);
+
+            std::vector<TestType> host_data_out(21, 0);
+            buffers[0]->CopyHostDataToGpu(host_data_in.data(),
+                                          host_data_in.size(), false);
+
+            for (std::size_t i = 1; i < dev_pool.getTotalDevices(); i++) {
+                for (std::size_t index = 0; index < buffer_partitions.size();
+                     index++) {
+                    buffers[i]->CopyGpuDataToGpu(*buffers[i - 1], false, index,
+                                                 index);
+                }
+            }
+            buffers.back()->CopyGpuDataToHost(host_data_out.data(), 21, false);
             CHECK(host_data_in == host_data_out);
             for (auto &id : ids) {
                 dev_pool.releaseDevice(id);
