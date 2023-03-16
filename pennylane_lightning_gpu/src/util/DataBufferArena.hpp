@@ -6,6 +6,14 @@
 
 namespace Pennylane::CUDA {
 
+/**
+ * @brief GPU arena allocated memory buffer. This object defines a contiguous
+ * block of memory, with user-defined partitions that can allow a single
+ * allocation step with multiple separate partitions.
+ *
+ * @tparam GPUDataT
+ * @tparam DevTagT
+ */
 template <class GPUDataT, class DevTagT = int> class DataBufferArena {
   public:
     using type = GPUDataT;
