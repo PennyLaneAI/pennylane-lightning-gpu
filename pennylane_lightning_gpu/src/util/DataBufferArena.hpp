@@ -13,19 +13,18 @@ template <class GPUDataT, class DevTagT = int> class DataBufferArena {
     DataBufferArena(const std::vector<std::size_t> &buffer_lengths,
                     int device_id = 0, cudaStream_t stream_id = 0,
                     bool alloc_memory = true)
-        : lengths_{buffer_lengths}, dev_tag_{device_id, stream_id},
-          gpu_buffer_begin_{nullptr}, gpu_buffer_end_{nullptr} {
-
-        if (alloc_memory && (buffer_lengths.size() > 0)) {
+        : lengths_{buffer_lengths},
+          gpu_buffer_offsets_(buffer_lengths.size() + 1, 0),
+          dev_tag_{device_id, stream_id}, gpu_buffer_begin_{nullptr},
+          gpu_buffer_end_{nullptr} {
+        // Define the pointer offsets for each buffer
+        std::partial_sum(buffer_lengths.cbegin(), buffer_lengths.cend(),
+                         gpu_buffer_offsets_.begin() + 1);
+        total_length_ = gpu_buffer_offsets_.back();
+        if (alloc_memory && (buffer_lengths.size() > 0) &&
+            (buffer_lengths[0] > 0)) {
             // Ensure we tag the current GPU
             dev_tag_.refresh();
-            // Create enough room for the offset locations
-            gpu_buffer_offsets_.reserve(buffer_lengths.size() + 1);
-            gpu_buffer_offsets_[0] = 0;
-            // Define the pointer offsets for each buffer
-            std::partial_sum(buffer_lengths.cbegin(), buffer_lengths.cend(),
-                             gpu_buffer_offsets_.begin() + 1);
-            total_length_ = gpu_buffer_offsets_.back();
             // Allocate the total buffer size worth of GPU memory
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_begin_),
@@ -37,15 +36,15 @@ template <class GPUDataT, class DevTagT = int> class DataBufferArena {
 
     DataBufferArena(const std::vector<std::size_t> &buffer_lengths,
                     const DevTag<DevTagT> &dev, bool alloc_memory = true)
-        : lengths_{buffer_lengths}, dev_tag_{dev}, gpu_buffer_begin_{nullptr},
-          gpu_buffer_end_{nullptr} {
-        if (alloc_memory && (buffer_lengths.size() > 0)) {
+        : lengths_{buffer_lengths},
+          gpu_buffer_offsets_(buffer_lengths.size() + 1, 0), dev_tag_{dev},
+          gpu_buffer_begin_{nullptr}, gpu_buffer_end_{nullptr} {
+        std::partial_sum(buffer_lengths.cbegin(), buffer_lengths.cend(),
+                         gpu_buffer_offsets_.begin() + 1);
+        total_length_ = gpu_buffer_offsets_.back();
+        if (alloc_memory && (buffer_lengths.size() > 0) &&
+            (buffer_lengths[0] > 0)) {
             dev_tag_.refresh();
-            gpu_buffer_offsets_.reserve(buffer_lengths.size() + 1);
-            gpu_buffer_offsets_[0] = 0;
-            std::partial_sum(buffer_lengths.cbegin(), buffer_lengths.cend(),
-                             gpu_buffer_offsets_.begin() + 1);
-            total_length_ = gpu_buffer_offsets_.back();
 
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_begin_),
@@ -56,15 +55,16 @@ template <class GPUDataT, class DevTagT = int> class DataBufferArena {
 
     DataBufferArena(const std::vector<std::size_t> &buffer_lengths,
                     DevTag<DevTagT> &&dev, bool alloc_memory = true)
-        : lengths_{buffer_lengths}, dev_tag_{std::move(dev)},
+        : lengths_{buffer_lengths},
+          gpu_buffer_offsets_(buffer_lengths.size() + 1, 0), dev_tag_{std::move(
+                                                                 dev)},
           gpu_buffer_begin_{nullptr}, gpu_buffer_end_{nullptr} {
-        if (alloc_memory && (buffer_lengths.size() > 0)) {
+        std::partial_sum(buffer_lengths.cbegin(), buffer_lengths.cend(),
+                         gpu_buffer_offsets_.begin() + 1);
+        total_length_ = gpu_buffer_offsets_.back();
+        if (alloc_memory && (buffer_lengths.size() > 0) &&
+            (buffer_lengths[0] > 0)) {
             dev_tag_.refresh();
-            gpu_buffer_offsets_.reserve(buffer_lengths.size() + 1);
-            gpu_buffer_offsets_[0] = 0;
-            std::partial_sum(buffer_lengths.cbegin(), buffer_lengths.cend(),
-                             gpu_buffer_offsets_.begin() + 1);
-            total_length_ = gpu_buffer_offsets_.back();
 
             PL_CUDA_IS_SUCCESS(
                 cudaMalloc(reinterpret_cast<void **>(&gpu_buffer_begin_),

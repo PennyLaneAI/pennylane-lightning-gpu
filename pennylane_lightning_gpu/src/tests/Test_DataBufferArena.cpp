@@ -57,26 +57,48 @@ TEMPLATE_TEST_CASE("DataBufferArena::DataBufferArena", "[DataBufferArena]",
     }
 }
 
-TEMPLATE_TEST_CASE("DataBufferArena::memory allocation", "[DataBufferArena]",
+TEMPLATE_TEST_CASE("DataBufferArena::memory allocation", "[DataBufferArena1]",
                    float, double) {
-    SECTION("Allocate buffer memory = true") {
+    SECTION("Allocate buffer memory = true, single partition") {
         DataBufferArena<TestType, int> data_buffer1{{8}, 0, 0, true};
         CHECK(data_buffer1.getData() != nullptr);
         CHECK(data_buffer1.getLength() == 8);
         CHECK(data_buffer1.getStream() == 0);
         CHECK(data_buffer1.getDevice() == 0);
     }
-    SECTION("Allocate buffer memory = false") {
+    SECTION("Allocate buffer memory = false, single partition") {
         DataBufferArena<TestType, int> data_buffer1{{7}, 0, 0, false};
         CHECK(data_buffer1.getData() == nullptr);
         CHECK(data_buffer1.getLength() == 7);
         CHECK(data_buffer1.getStream() == 0);
         CHECK(data_buffer1.getDevice() == 0);
     }
+    SECTION("Allocate buffer memory = true, multiple partitions") {
+        DataBufferArena<TestType, int> data_buffer1{{8}, 0, 0, true};
+        CHECK(data_buffer1.getData() != nullptr);
+        CHECK(data_buffer1.getLength() == 8);
+        CHECK(data_buffer1.getStream() == 0);
+        CHECK(data_buffer1.getDevice() == 0);
+    }
+    SECTION("Allocate buffer memory = false, multiple partitions") {
+        std::vector<std::size_t> buffer_sizes{7, 2, 4};
+        DataBufferArena<TestType, int> data_buffer1{buffer_sizes, 0, 0, false};
+        CHECK(data_buffer1.getData() == nullptr);
+        CHECK(data_buffer1.getLength() == 13);
+        CHECK(data_buffer1.getNumBuffers() == buffer_sizes.size());
+        for (std::size_t index = 0; index < data_buffer1.getNumBuffers();
+             index++) {
+            CHECK(data_buffer1.getLength(index) == buffer_sizes[index]);
+        }
+        CHECK(data_buffer1.getBufferLengths() == buffer_sizes);
+        CHECK(data_buffer1.getStream() == 0);
+        CHECK(data_buffer1.getDevice() == 0);
+    }
 }
 
-TEMPLATE_TEST_CASE("DataBufferArena::Data locality and movement",
-                   "[DataBufferArena]", float, double) {
+TEMPLATE_TEST_CASE(
+    "DataBufferArena::Data locality and movement, single partition",
+    "[DataBufferArena]", float, double) {
     SECTION("Single gpu movement") {
         DataBufferArena<TestType, int> data_buffer1{{6}, 0, 0, true};
         std::vector<TestType> host_data_in(6, 1);
