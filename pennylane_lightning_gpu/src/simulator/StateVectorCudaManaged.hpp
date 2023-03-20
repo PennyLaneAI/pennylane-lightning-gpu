@@ -26,6 +26,7 @@
 #include <custatevec.h> // custatevecApplyMatrix
 
 #include "Constant.hpp"
+#include "DataBuffer.hpp"
 #include "Error.hpp"
 #include "StateVectorCudaBase.hpp"
 #include "cuGateCache.hpp"
@@ -37,7 +38,6 @@ namespace {
 namespace cuUtil = Pennylane::CUDA::Util;
 using namespace Pennylane::CUDA;
 using namespace Pennylane::Util;
-
 } // namespace
 /// @endcond
 
@@ -82,6 +82,8 @@ class StateVectorCudaManaged
     StateVectorCudaManaged(size_t num_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits),
+          data_buffer_{std::make_unique<DataBuffer<CFP_t>>(
+              Util::exp2(num_qubits), dev_tag, true)},
           handle_(make_shared_cusv_handle()),
           cublascaller_(make_shared_cublas_caller()), gate_cache_(true){};
 
@@ -92,6 +94,8 @@ class StateVectorCudaManaged
         SharedCusparseHandle cusparsehandle_in = make_shared_cusparse_handle())
         : StateVectorCudaBase<Precision, StateVectorCudaManaged<Precision>>(
               num_qubits, dev_tag, alloc),
+          data_buffer_{std::make_unique<DataBuffer<CFP_t>>(
+              Util::exp2(num_qubits), dev_tag, alloc)},
           handle_(std::move(cusvhandle_in)),
           cublascaller_(std::move(cublascaller_in)),
           cusparsehandle_(std::move(cusparsehandle_in)),
@@ -131,6 +135,9 @@ class StateVectorCudaManaged
 
     ~StateVectorCudaManaged() = default;
 
+    auto getData() -> CFP_t * { return data_buffer_->getData(); }
+    auto getData() const -> const CFP_t * { return data_buffer_->getData(); }
+
     /**
      * @brief Set value for a single element of the state-vector on device. This
      * method is implemented by cudaMemcpy.
@@ -141,11 +148,11 @@ class StateVectorCudaManaged
      */
     void setBasisState(const std::complex<Precision> &value, const size_t index,
                        const bool async = false) {
-        BaseType::getDataBuffer().zeroInit();
+        data_buffer_->zeroInit();
 
         CFP_t value_cu = cuUtil::complexToCu<std::complex<Precision>>(value);
-        auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
-        setBasisState_CUDA(BaseType::getData(), value_cu, index, async,
+        auto stream_id = data_buffer_->getDevTag().getStreamID();
+        setBasisState_CUDA(data_buffer_->getData(), value_cu, index, async,
                            stream_id);
     }
 
@@ -163,10 +170,10 @@ class StateVectorCudaManaged
     void setStateVector(const index_type num_indices,
                         const std::complex<Precision> *values,
                         const index_type *indices, const bool async = false) {
-        BaseType::getDataBuffer().zeroInit();
+        data_buffer_->zeroInit();
 
-        auto device_id = BaseType::getDataBuffer().getDevTag().getDeviceID();
-        auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
+        auto device_id = data_buffer_->getDevTag().getDeviceID();
+        auto stream_id = data_buffer_->getDevTag().getStreamID();
 
         index_type num_elements = num_indices;
         DataBuffer<index_type, int> d_indices{
@@ -177,7 +184,7 @@ class StateVectorCudaManaged
         d_indices.CopyHostDataToGpu(indices, d_indices.getLength(), async);
         d_values.CopyHostDataToGpu(values, d_values.getLength(), async);
 
-        setStateVector_CUDA(BaseType::getData(), num_elements,
+        setStateVector_CUDA(data_buffer_->getData(), num_elements,
                             d_values.getData(), d_indices.getData(),
                             thread_per_block, stream_id);
     }
@@ -1721,5 +1728,8 @@ class StateVectorCudaManaged
             PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
         return expect;
     }
+
+  private:
+    std::unique_ptr<DataBuffer<CFP_t>> data_buffer_;
 };
 }; // namespace Pennylane

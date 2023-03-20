@@ -810,4 +810,31 @@ inline SharedCusparseHandle make_shared_cusparse_handle() {
     return {h, HandleDeleter()};
 }
 
+/**
+ * @brief Utility to wrap calls to cudaMemcpy/cudaMemcpyAsync with explicit
+ * source and destination, and normalised to infer cudaMemcpyKind from pointers
+ * through UVA.
+ *
+ * @tparam SrcData Source data type.
+ * @tparam DestData Deestination data type.
+ * @param src Pointer to source data buffer.
+ * @param dest Pointer to destination data buffer.
+ * @param num_bytes Number of bytes to copy.
+ * @param async Whether to use asynchronous copy.
+ * @param stream Stream to use with asynchronous copy. Only used if
+ * `async=true`.
+ */
+template <class SrcData, class DestData>
+inline void CudaCopy(const SrcData *src, DestData *dest, std::size_t num_bytes,
+                     bool async = false, cudaStream_t stream = 0) {
+    PL_ABORT_IF_NOT(sizeof(SrcData) == sizeof(DestData));
+    if (async) {
+        PL_CUDA_IS_SUCCESS(cudaMemcpyAsync(
+            dest, src, sizeof(SrcData) * num_bytes, cudaMemcpyDefault, stream));
+    } else {
+        PL_CUDA_IS_SUCCESS(cudaMemcpy(dest, src, sizeof(SrcData) * num_bytes,
+                                      cudaMemcpyDefault));
+    }
+}
+
 } // namespace Pennylane::CUDA::Util
