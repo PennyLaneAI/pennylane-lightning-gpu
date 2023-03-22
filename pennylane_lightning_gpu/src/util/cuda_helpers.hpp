@@ -827,7 +827,8 @@ inline SharedCusparseHandle make_shared_cusparse_handle() {
 template <class SrcData, class DestData>
 inline void CudaCopy(const SrcData *src, DestData *dest, std::size_t num_bytes,
                      bool async = false, cudaStream_t stream = 0) {
-    PL_ABORT_IF_NOT(sizeof(SrcData) == sizeof(DestData));
+    PL_ABORT_IF_NOT(sizeof(SrcData) == sizeof(DestData),
+                    "Source and destination data types have different sizes");
     if (async) {
         PL_CUDA_IS_SUCCESS(cudaMemcpyAsync(
             dest, src, sizeof(SrcData) * num_bytes, cudaMemcpyDefault, stream));
