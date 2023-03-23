@@ -1,3 +1,23 @@
+# Release 0.30.0-dev
+
+### New features since last release
+
+### Breaking changes
+
+### Improvements
+
+* Optimization updates to custatevector integration. E.g., creation of fewer cublas, cusparse and custatevec handles and fewer calls to small data transfers between host and device. [(#73)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/73)
+
+### Documentation
+
+### Bug fixes
+
+### Contributors
+
+Ania Brown (NVIDIA), Andreas Hehn (NVIDIA)
+
+---
+
 # Release 0.29.0
 
 ### Improvements

@@ -1,8 +1,28 @@
 // Adapted from JET: https://github.com/XanaduAI/jet.git
 // and from Lightning: https://github.com/PennylaneAI/pennylane-lightning.git
 
+// Copyright 2022-2023 Xanadu Quantum Technologies Inc. and contributors.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/**
+ * @file cuda_helpers.hpp
+ */
+
 #pragma once
 #include <algorithm>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <numeric>
 #include <type_traits>
 #include <unordered_map>
@@ -17,8 +37,6 @@
 #include "DevTag.hpp"
 #include "Error.hpp"
 #include "Util.hpp"
-
-namespace Pennylane::CUDA::Util {
 
 #ifndef CUDA_UNSAFE
 
@@ -56,6 +74,7 @@ namespace Pennylane::CUDA::Util {
     { static_cast<void>(err); }
 #endif
 
+namespace Pennylane::CUDA::Util {
 static const std::string GetCuBlasErrorString(const cublasStatus_t &err) {
     std::string result;
     switch (err) {
@@ -372,31 +391,107 @@ template <class CFP_t> inline static constexpr auto INVSQRT2() -> CFP_t {
 }
 
 /**
+ * @brief A wrapper for cuBLAS calls. This should be used for all calls to
+ * cuBLAS.
+ *
+ * In most cases you do not want to create objects of this class directly but
+ * use
+ * %
+ * This classes purpose is to manage the cuBLAS handle and avoid data races
+ * between setting the active CUDA device, the current cuBLAS stream and the
+ * call of the cuBLAS function via the call method.
+ * The class creates and destroys a cuBLAS handle on construction/destruction.
+ */
+class CublasCaller {
+  public:
+    /** Creates a new CublasCaller with a new cuBLAS handle */
+    CublasCaller() { PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle)); }
+    /** Destructs the CublasCaller and destroys its cuBLAS handle */
+    ~CublasCaller() { PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle)); }
+
+    CublasCaller(CublasCaller const &) = delete;
+    CublasCaller(CublasCaller &&) = delete;
+    CublasCaller &operator=(CublasCaller const &) = delete;
+    CublasCaller &operator=(CublasCaller &&) = delete;
+
+    /**
+     * @brief Call a cuBLAS function.
+     *
+     * The call function executes a cuBLAS function on a specified CUDA device
+     * and stream pair. It ensures thread safety for this operation, i.e.,
+     * it prevents other thread from changing the active device and stream
+     * of the cuBLAS handle before the passed cuBLAS call could be queued.
+     *
+     * @param func the cuBLAS function to be called.
+     * @param dev_id the CUDA device id on which the function should be
+     * executed.
+     * @param stream the CUDA stream on which the cuBLAS function should be
+     * queued.
+     * @param args the arguments for the cuBLAS function.
+     */
+    template <typename F, typename... Args>
+    void call(F &&func, int dev_id, cudaStream_t stream, Args &&...args) const {
+        std::lock_guard lk(mtx);
+        PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
+        PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream));
+        PL_CUBLAS_IS_SUCCESS(std::invoke(std::forward<F>(func), handle,
+                                         std::forward<Args>(args)...));
+    }
+
+  private:
+    mutable std::mutex mtx;
+    cublasHandle_t handle;
+};
+
+/**
  * @brief cuBLAS backed inner product for GPU data.
  *
  * @tparam T Complex data-type. Accepts cuFloatComplex and cuDoubleComplex
  * @param v1 Device data pointer 1
  * @param v2 Device data pointer 2
- * @param data_size Lengtyh of device data.
+ * @param data_size Length of device data.
+ * @return T Device data pointer to store inner-product result
+ */
+template <class T = cuDoubleComplex, class DevTypeID = int>
+inline auto innerProdC_CUDA_device(const T *v1, const T *v2,
+                                   const int data_size, int dev_id,
+                                   cudaStream_t stream_id,
+                                   const CublasCaller &cublas, T *d_result) {
+
+    if constexpr (std::is_same_v<T, cuFloatComplex>) {
+        cublas.call(cublasCdotc, dev_id, stream_id, data_size, v1, 1, v2, 1,
+                    d_result);
+    } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
+        cublas.call(cublasZdotc, dev_id, stream_id, data_size, v1, 1, v2, 1,
+                    d_result);
+    }
+}
+
+/**
+ * @brief cuBLAS backed inner product for GPU data.
+ *
+ * @tparam T Complex data-type. Accepts cuFloatComplex and cuDoubleComplex
+ * @param v1 Device data pointer 1
+ * @param v2 Device data pointer 2
+ * @param data_size Length of device data.
+ * @param dev_id the device on which the function should be executed.
+ * @param stream_id the CUDA stream on which the operation should be executed.
+ * @param cublas the CublasCaller object that manages the cuBLAS handle.
  * @return T Inner-product result
  */
 template <class T = cuDoubleComplex, class DevTypeID = int>
 inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
-                            int dev_id, cudaStream_t stream_id) -> T {
+                            int dev_id, cudaStream_t stream_id,
+                            const CublasCaller &cublas) -> T {
     T result{0.0, 0.0}; // Host result
-    cublasHandle_t handle;
-    PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
-    PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));
-    PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream_id));
 
     if constexpr (std::is_same_v<T, cuFloatComplex>) {
-        PL_CUBLAS_IS_SUCCESS(
-            cublasCdotc(handle, data_size, v1, 1, v2, 1, &result));
+        cublas.call(cublasCdotc, dev_id, stream_id, data_size, v1, 1, v2, 1,
+                    &result);
     } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
-        PL_CUBLAS_IS_SUCCESS(
-            cublasZdotc(handle, data_size, v1, 1, v2, 1, &result));
+        cublas.call(cublasZdotc, dev_id, stream_id, data_size, v1, 1, v2, 1,
+                    &result);
     }
-    PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
     return result;
 }
 
@@ -409,27 +504,26 @@ inline auto innerProdC_CUDA(const T *v1, const T *v2, const int data_size,
  * @param v1 Device data pointer 1 (data to be modified)
  * @param v2 Device data pointer 2 (the result data)
  * @param data_size Length of device data.
+ * @param dev_id the device on which the function should be executed.
+ * @param stream_id the CUDA stream on which the operation should be executed.
+ * @param cublas the CublasCaller object that manages the cuBLAS handle.
  */
 template <class CFP_t = std::complex<double>, class T = cuDoubleComplex,
           class DevTypeID = int>
 inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
                               const int data_size, DevTypeID dev_id,
-                              cudaStream_t stream_id) {
-    cublasHandle_t handle;
-    PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
-    PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));
-    PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream_id));
+                              cudaStream_t stream_id,
+                              const CublasCaller &cublas) {
 
     if constexpr (std::is_same_v<T, cuComplex>) {
         const cuComplex alpha{a.real(), a.imag()};
-        PL_CUBLAS_IS_SUCCESS(
-            cublasCaxpy(handle, data_size, &alpha, v1, 1, v2, 1));
+        cublas.call(cublasCaxpy, dev_id, stream_id, data_size, &alpha, v1, 1,
+                    v2, 1);
     } else if constexpr (std::is_same_v<T, cuDoubleComplex>) {
         const cuDoubleComplex alpha{a.real(), a.imag()};
-        PL_CUBLAS_IS_SUCCESS(
-            cublasZaxpy(handle, data_size, &alpha, v1, 1, v2, 1));
+        cublas.call(cublasZaxpy, dev_id, stream_id, data_size, &alpha, v1, 1,
+                    v2, 1);
     }
-    PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
 }
 
 /**
@@ -440,16 +534,16 @@ inline auto scaleAndAddC_CUDA(const CFP_t a, const T *v1, T *v2,
  * @param a scaling factor
  * @param v1 Device data pointer
  * @param data_size Length of device data.
+ * @param dev_id the device on which the function should be executed.
+ * @param stream_id the CUDA stream on which the operation should be executed.
+ * @param cublas the CublasCaller object that manages the cuBLAS handle.
  */
 template <class CFP_t = std::complex<double>, class T = cuDoubleComplex,
           class DevTypeID = int>
 inline auto scaleC_CUDA(const CFP_t a, T *v1, const int data_size,
-                        DevTypeID dev_id, cudaStream_t stream_id) {
+                        DevTypeID dev_id, cudaStream_t stream_id,
+                        const CublasCaller &cublas) {
 
-    cublasHandle_t handle;
-    PL_CUDA_IS_SUCCESS(cudaSetDevice(dev_id));
-    PL_CUBLAS_IS_SUCCESS(cublasCreate(&handle));
-    PL_CUBLAS_IS_SUCCESS(cublasSetStream(handle, stream_id));
     cudaDataType_t data_type;
 
     if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
@@ -459,11 +553,9 @@ inline auto scaleC_CUDA(const CFP_t a, T *v1, const int data_size,
         data_type = CUDA_C_32F;
     }
 
-    PL_CUBLAS_IS_SUCCESS(cublasScalEx(handle, data_size,
-                                      reinterpret_cast<const void *>(&a),
-                                      data_type, v1, data_type, 1, data_type));
-
-    PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
+    cublas.call(cublasScalEx, dev_id, stream_id, data_size,
+                reinterpret_cast<const void *>(&a), data_type, v1, data_type, 1,
+                data_type);
 }
 
 /**
@@ -670,5 +762,52 @@ class CudaScopedDevice {
     /// constructor is the current CUDA device).
     int prev_device_;
 };
+
+/**
+ * Utility function object to tell std::shared_ptr how to
+ * release/destroy various CUDA objects.
+ */
+struct HandleDeleter {
+    void operator()(cublasHandle_t handle) const {
+        PL_CUBLAS_IS_SUCCESS(cublasDestroy(handle));
+    }
+    void operator()(custatevecHandle_t handle) const {
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecDestroy(handle));
+    }
+    void operator()(cusparseHandle_t handle) const {
+        PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle));
+    }
+};
+
+using SharedCublasCaller = std::shared_ptr<CublasCaller>;
+using SharedCusvHandle =
+    std::shared_ptr<std::remove_pointer<custatevecHandle_t>::type>;
+using SharedCusparseHandle =
+    std::shared_ptr<std::remove_pointer<cusparseHandle_t>::type>;
+
+/**
+ * @brief Creates a SharedCublasCaller (a shared pointer to a CublasCaller)
+ */
+inline SharedCublasCaller make_shared_cublas_caller() {
+    return std::make_shared<CublasCaller>();
+}
+
+/**
+ * @brief Creates a SharedCusvHandle (a shared pointer to a custatevecHandle)
+ */
+inline SharedCusvHandle make_shared_cusv_handle() {
+    custatevecHandle_t h;
+    PL_CUSTATEVEC_IS_SUCCESS(custatevecCreate(&h));
+    return {h, HandleDeleter()};
+}
+
+/**
+ * @brief Creates a SharedCusparseHandle (a shared pointer to a cusparseHandle)
+ */
+inline SharedCusparseHandle make_shared_cusparse_handle() {
+    cusparseHandle_t h;
+    PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&h));
+    return {h, HandleDeleter()};
+}
 
 } // namespace Pennylane::CUDA::Util

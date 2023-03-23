@@ -1,3 +1,17 @@
+// Copyright 2022-2023 Xanadu Quantum Technologies Inc. and contributors.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <functional>
@@ -341,7 +355,8 @@ template <typename T> class HamiltonianGPU final : public ObservableGPU<T> {
             scaleAndAddC_CUDA(std::complex<T>{coeffs_[term_idx], 0.0},
                               tmp.getData(), buffer.getData(), tmp.getLength(),
                               tmp.getDataBuffer().getDevTag().getDeviceID(),
-                              tmp.getDataBuffer().getDevTag().getStreamID());
+                              tmp.getDataBuffer().getDevTag().getStreamID(),
+                              tmp.getCublasCaller());
         }
         sv.CopyGpuDataToGpuIn(buffer.getData(), buffer.getLength());
     }
@@ -498,13 +513,11 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
         }
 
         // CUSPARSE APIs
-        cusparseHandle_t handle = nullptr;
+        cusparseHandle_t handle = sv.getCusparseHandle();
         cusparseSpMatDescr_t sparseH_descriptor;
         cusparseDnVecDescr_t sv_descriptor, sv_prime_descriptor;
 
         size_t bufferSize = 0;
-
-        PL_CUSPARSE_IS_SUCCESS(cusparseCreate(&handle));
 
         // Create sparse matrix descriptor for H in CSR format
         PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
@@ -569,7 +582,6 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(sparseH_descriptor));
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(sv_descriptor));
         PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(sv_prime_descriptor));
-        PL_CUSPARSE_IS_SUCCESS(cusparseDestroy(handle));
 
         sv.updateData(std::move(d_sv_prime));
     }
