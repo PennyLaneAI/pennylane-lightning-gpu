@@ -16,12 +16,13 @@ using namespace Pennylane::CUDA;
 using namespace Pennylane::CUDA::Generators;
 using namespace Pennylane::Algorithms;
 
-// NOTE: the scaling factors are implicitly included in the Adjoint Jacobian evaluation, so
-// excluded from the matrices here.
+// NOTE: the scaling factors are implicitly included in the Adjoint Jacobian
+// evaluation, so excluded from the matrices here.
 
 TEST_CASE("Generators::applyGeneratorRX_GPU", "[GateGenerators]") {
     // grad(RX) = grad(e^{-i*0.5*PauliX*a}) => -i*0.5*PauliX
-    std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{cuGates::getPauliX<typename StateVectorCudaManaged<double>::CFP_t>()};
+    std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{
+        cuGates::getPauliX<typename StateVectorCudaManaged<double>::CFP_t>()};
 
     for (std::size_t num_qubits = 1; num_qubits <= 5; num_qubits++) {
         for (std::size_t applied_qubit = 0; applied_qubit < num_qubits;
@@ -44,8 +45,8 @@ TEST_CASE("Generators::applyGeneratorRX_GPU", "[GateGenerators]") {
 
 TEST_CASE("Generators::applyGeneratorRY_GPU", "[GateGenerators]") {
     // grad(RY) = grad(e^{-i*0.5*PauliY*a}) => -i*0.5*PauliY
-    std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{cuGates::getPauliY<typename StateVectorCudaManaged<double>::CFP_t>()};
-
+    std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{
+        cuGates::getPauliY<typename StateVectorCudaManaged<double>::CFP_t>()};
 
     for (std::size_t num_qubits = 1; num_qubits <= 5; num_qubits++) {
         for (std::size_t applied_qubit = 0; applied_qubit < num_qubits;
@@ -68,8 +69,8 @@ TEST_CASE("Generators::applyGeneratorRY_GPU", "[GateGenerators]") {
 
 TEST_CASE("Generators::applyGeneratorRZ_GPU", "[GateGenerators]") {
     // grad(RZ) = grad(e^{-i*0.5*PauliZ*a}) => -i*0.5*PauliZ
-    std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{cuGates::getPauliZ<typename StateVectorCudaManaged<double>::CFP_t>()};
-
+    std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{
+        cuGates::getPauliZ<typename StateVectorCudaManaged<double>::CFP_t>()};
 
     for (std::size_t num_qubits = 1; num_qubits <= 5; num_qubits++) {
         for (std::size_t applied_qubit = 0; applied_qubit < num_qubits;
