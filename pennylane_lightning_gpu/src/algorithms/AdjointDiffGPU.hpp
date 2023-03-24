@@ -38,6 +38,15 @@ template <class CFP_t> static constexpr auto getP11_CU() -> std::vector<CFP_t> {
     return {cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
             cuUtil::ONE<CFP_t>()};
 }
+template <class CFP_t>
+static constexpr auto getP1111_CU() -> std::vector<CFP_t> {
+    return {cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+            cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+            cuUtil::ONE<CFP_t>()};
+}
 
 template <class T = double, class SVType>
 void applyGeneratorRX_GPU(SVType &sv, const std::vector<size_t> &wires,
@@ -110,8 +119,8 @@ template <class T = double, class SVType>
 void applyGeneratorControlledPhaseShift_GPU(SVType &sv,
                                             const std::vector<size_t> &wires,
                                             const bool adj = false) {
-    sv.applyOperation("P_11", {wires.back()}, adj, {0.0},
-                      getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
+    sv.applyOperation("P_1111", {wires}, adj, {0.0},
+                      getP1111_CU<decltype(cuUtil::getCudaType(T{}))>());
 }
 template <class T = double, class SVType>
 void applyGeneratorSingleExcitation_GPU(SVType &sv,
