@@ -1048,7 +1048,7 @@ TEST_CASE("Generators::applyGeneratorMultiRZ_GPU", "[GateGenerators]") {
             }
         }
         SECTION("Decreasing qubit indices, MultiRZ 3") {
-            for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
+            for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 2;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
                 SVDataGPU<double> psi_direct(num_qubits);
