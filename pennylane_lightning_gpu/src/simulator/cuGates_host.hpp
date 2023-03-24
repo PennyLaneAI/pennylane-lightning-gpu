@@ -690,9 +690,9 @@ static constexpr auto getGeneratorSingleExcitation() -> std::vector<CFP_t> {
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
-        cuUtil::IMAG<CFP_t>(), cuUtil::ZERO<CFP_t>(),
+        -cuUtil::IMAG<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
-        cuUtil::ZERO<CFP_t>(), -cuUtil::IMAG<CFP_t>(),
+        cuUtil::ZERO<CFP_t>(), cuUtil::IMAG<CFP_t>(),
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
 
         cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
