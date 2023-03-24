@@ -84,7 +84,7 @@ void applyGeneratorPhaseShift_GPU(SVType &sv, const std::vector<size_t> &wires,
 template <class T = double, class SVType>
 void applyGeneratorCRX_GPU(SVType &sv, const std::vector<size_t> &wires,
                            const bool adj = false) {
-    sv.applyOperation("P_11", wires.front(), adj, {0.0},
+    sv.applyOperation("P_11", {wires.front()}, adj, {0.0},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
     sv.applyPauliX(std::vector<size_t>{wires.back()}, adj);
 }
@@ -93,7 +93,7 @@ template <class T = double, class SVType>
 void applyGeneratorCRY_GPU(SVType &sv, const std::vector<size_t> &wires,
                            const bool adj = false) {
 
-    sv.applyOperation("P_11", wires.front(), adj, {0.0},
+    sv.applyOperation("P_11", {wires.front()}, adj, {0.0},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
     sv.applyPauliY(std::vector<size_t>{wires.back()}, adj);
 }
@@ -101,7 +101,7 @@ void applyGeneratorCRY_GPU(SVType &sv, const std::vector<size_t> &wires,
 template <class T = double, class SVType>
 void applyGeneratorCRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
                            const bool adj = false) {
-    sv.applyOperation("P_11", wires.front(), adj, {0.0},
+    sv.applyOperation("P_11", {wires.front()}, adj, {0.0},
                       getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
     sv.applyPauliZ(std::vector<size_t>{wires.back()}, adj);
 }
