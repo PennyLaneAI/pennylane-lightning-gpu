@@ -8,10 +8,6 @@
 #include "StateVectorCudaManaged.hpp"
 #include "TestHelpers.hpp"
 
-#ifndef _USE_MATH_DEFINES
-#define _USE_MATH_DEFINES
-#endif
-
 using namespace Pennylane::CUDA;
 using namespace Pennylane::CUDA::Generators;
 using namespace Pennylane::Algorithms;
