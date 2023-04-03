@@ -25,8 +25,7 @@ TEST_CASE("Generators::applyGeneratorRX_GPU", "[GateGenerators]") {
         for (std::size_t applied_qubit = 0; applied_qubit < num_qubits;
              applied_qubit++) {
             SVDataGPU<double> psi(num_qubits);
-            psi.sv.updateData(
-                createRandomState<double, std::size_t>(re, num_qubits));
+            psi.sv.updateData(createRandomState<double>(re, num_qubits));
             psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
             SVDataGPU<double> psi_direct(num_qubits);
