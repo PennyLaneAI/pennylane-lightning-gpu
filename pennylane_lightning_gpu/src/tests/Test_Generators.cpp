@@ -1,5 +1,6 @@
 #include <cmath>
 #include <complex>
+#include <random>
 #include <vector>
 
 #include <catch2/catch.hpp>
@@ -19,16 +20,17 @@ TEST_CASE("Generators::applyGeneratorRX_GPU", "[GateGenerators]") {
     // grad(RX) = grad(e^{-i*0.5*PauliX*a}) => -i*0.5*PauliX
     std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{
         cuGates::getPauliX<typename StateVectorCudaManaged<double>::CFP_t>()};
-
+    std::mt19937 re{1337U};
     for (std::size_t num_qubits = 1; num_qubits <= 5; num_qubits++) {
         for (std::size_t applied_qubit = 0; applied_qubit < num_qubits;
              applied_qubit++) {
             SVDataGPU<double> psi(num_qubits);
-            psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+            psi.sv.updateData(
+                createRandomState<double, std::size_t>(re, num_qubits));
             psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
             SVDataGPU<double> psi_direct(num_qubits);
-            psi_direct.sv.updateData(psi.sv.getData());
+            psi_direct.sv.updateData(psi.sv.getDataVector());
             psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
             std::string cache_gate_name = "DirectGenRX" +
@@ -49,16 +51,16 @@ TEST_CASE("Generators::applyGeneratorRY_GPU", "[GateGenerators]") {
     // grad(RY) = grad(e^{-i*0.5*PauliY*a}) => -i*0.5*PauliY
     std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{
         cuGates::getPauliY<typename StateVectorCudaManaged<double>::CFP_t>()};
-
+    std::mt19937 re{1337U};
     for (std::size_t num_qubits = 1; num_qubits <= 5; num_qubits++) {
         for (std::size_t applied_qubit = 0; applied_qubit < num_qubits;
              applied_qubit++) {
             SVDataGPU<double> psi(num_qubits);
-            psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+            psi.sv.updateData(createRandomState<double>(re, num_qubits));
             psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
             SVDataGPU<double> psi_direct(num_qubits);
-            psi_direct.sv.updateData(psi.sv.getData());
+            psi_direct.sv.updateData(psi.sv.getDataVector());
             psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
             std::string cache_gate_name = "DirectGenRY" +
@@ -79,16 +81,17 @@ TEST_CASE("Generators::applyGeneratorRZ_GPU", "[GateGenerators]") {
     // grad(RZ) = grad(e^{-i*0.5*PauliZ*a}) => -i*0.5*PauliZ
     std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{
         cuGates::getPauliZ<typename StateVectorCudaManaged<double>::CFP_t>()};
+    std::mt19937 re{1337U};
 
     for (std::size_t num_qubits = 1; num_qubits <= 5; num_qubits++) {
         for (std::size_t applied_qubit = 0; applied_qubit < num_qubits;
              applied_qubit++) {
             SVDataGPU<double> psi(num_qubits);
-            psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+            psi.sv.updateData(createRandomState<double>(re, num_qubits));
             psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
             SVDataGPU<double> psi_direct(num_qubits);
-            psi_direct.sv.updateData(psi.sv.getData());
+            psi_direct.sv.updateData(psi.sv.getDataVector());
             psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
             std::string cache_gate_name = "DirectGenRZ" +
@@ -109,17 +112,18 @@ TEST_CASE("Generators::applyGeneratorPhaseShift_GPU", "[GateGenerators]") {
     // grad(PhaseShift) = grad(e^{i*0.5*a}*e^{-i*0.5*PauliZ*a}) => -i|1><1|
     std::vector<typename StateVectorCudaManaged<double>::CFP_t> matrix{
         {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {1.0, 0.0}};
+    std::mt19937 re{1337U};
 
     for (std::size_t num_qubits = 1; num_qubits <= 5; num_qubits++) {
         for (std::size_t applied_qubit = 0; applied_qubit < num_qubits;
              applied_qubit++) {
 
             SVDataGPU<double> psi(num_qubits);
-            psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+            psi.sv.updateData(createRandomState<double>(re, num_qubits));
             psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
             SVDataGPU<double> psi_direct(num_qubits);
-            psi_direct.sv.updateData(psi.sv.getData());
+            psi_direct.sv.updateData(psi.sv.getDataVector());
             psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
             std::string cache_gate_name = "DirectGenPhaseShift" +
@@ -146,6 +150,7 @@ TEST_CASE("Generators::applyGeneratorIsingXX_GPU", "[GateGenerators]") {
         {1.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
 
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
@@ -153,11 +158,11 @@ TEST_CASE("Generators::applyGeneratorIsingXX_GPU", "[GateGenerators]") {
                  applied_qubit++) {
 
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -179,11 +184,11 @@ TEST_CASE("Generators::applyGeneratorIsingXX_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -214,17 +219,18 @@ TEST_CASE("Generators::applyGeneratorIsingYY_GPU", "[GateGenerators]") {
         {-1.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
 
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -246,11 +252,11 @@ TEST_CASE("Generators::applyGeneratorIsingYY_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -281,17 +287,18 @@ TEST_CASE("Generators::applyGeneratorIsingZZ_GPU", "[GateGenerators]") {
         {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {1.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
 
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -313,11 +320,11 @@ TEST_CASE("Generators::applyGeneratorIsingZZ_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -351,16 +358,18 @@ TEST_CASE("Generators::applyGeneratorCRX_GPU", "[GateGenerators]") {
         {0.0, 0.0}, {0.0, 0.0}, {1.0, 0.0}, {0.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -382,11 +391,11 @@ TEST_CASE("Generators::applyGeneratorCRX_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -418,16 +427,18 @@ TEST_CASE("Generators::applyGeneratorCRY_GPU", "[GateGenerators]") {
         {0.0, 0.0}, {0.0, 0.0}, {0.0, 1.0}, {0.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -449,11 +460,11 @@ TEST_CASE("Generators::applyGeneratorCRY_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -485,16 +496,18 @@ TEST_CASE("Generators::applyGeneratorCRZ_GPU", "[GateGenerators]") {
         {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {-1.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -516,11 +529,11 @@ TEST_CASE("Generators::applyGeneratorCRZ_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -553,16 +566,18 @@ TEST_CASE("Generators::applyGeneratorControlledPhaseShift_GPU",
         {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {1.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -585,11 +600,11 @@ TEST_CASE("Generators::applyGeneratorControlledPhaseShift_GPU",
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -621,16 +636,18 @@ TEST_CASE("Generators::applyGeneratorSingleExcitation_GPU",
         {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -653,11 +670,11 @@ TEST_CASE("Generators::applyGeneratorSingleExcitation_GPU",
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -689,16 +706,18 @@ TEST_CASE("Generators::applyGeneratorSingleExcitationMinus_GPU",
         {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {1.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -721,11 +740,11 @@ TEST_CASE("Generators::applyGeneratorSingleExcitationMinus_GPU",
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -757,16 +776,18 @@ TEST_CASE("Generators::applyGeneratorSingleExcitationPlus_GPU",
         {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {1.0, 0.0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 2; num_qubits <= 5; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -789,11 +810,11 @@ TEST_CASE("Generators::applyGeneratorSingleExcitationPlus_GPU",
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -856,16 +877,18 @@ TEST_CASE("Generators::applyGeneratorDoubleExcitation_GPU",
         {0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 4; num_qubits <= 8; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 3;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -895,11 +918,11 @@ TEST_CASE("Generators::applyGeneratorDoubleExcitation_GPU",
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 3;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -950,16 +973,18 @@ TEST_CASE("Generators::applyGeneratorDoubleExcitationMinus_GPU",
         {0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{1.0, 0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 4; num_qubits <= 8; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 3;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -989,11 +1014,11 @@ TEST_CASE("Generators::applyGeneratorDoubleExcitationMinus_GPU",
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 3;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -1044,16 +1069,18 @@ TEST_CASE("Generators::applyGeneratorDoubleExcitationPlus_GPU",
         {0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{-1.0, 0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 4; num_qubits <= 8; num_qubits++) {
         SECTION("Increasing qubit indices") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 3;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -1083,11 +1110,11 @@ TEST_CASE("Generators::applyGeneratorDoubleExcitationPlus_GPU",
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 3;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -1160,16 +1187,18 @@ TEST_CASE("Generators::applyGeneratorMultiRZ_GPU", "[GateGenerators]") {
         {0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{0, 0},{1.0, 0}
         // clang-format on
     };
+    std::mt19937 re{1337U};
+
     for (std::size_t num_qubits = 4; num_qubits <= 8; num_qubits++) {
         SECTION("Increasing qubit indices, MultiRZ 2") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -1191,11 +1220,11 @@ TEST_CASE("Generators::applyGeneratorMultiRZ_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 1;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -1218,11 +1247,11 @@ TEST_CASE("Generators::applyGeneratorMultiRZ_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 2;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -1248,11 +1277,11 @@ TEST_CASE("Generators::applyGeneratorMultiRZ_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 2;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -1279,11 +1308,11 @@ TEST_CASE("Generators::applyGeneratorMultiRZ_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 3;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
@@ -1312,11 +1341,11 @@ TEST_CASE("Generators::applyGeneratorMultiRZ_GPU", "[GateGenerators]") {
             for (std::size_t applied_qubit = 0; applied_qubit < num_qubits - 3;
                  applied_qubit++) {
                 SVDataGPU<double> psi(num_qubits);
-                psi.sv.updateData(createRandomState<double>(1337, num_qubits));
+                psi.sv.updateData(createRandomState<double>(re, num_qubits));
                 psi.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 SVDataGPU<double> psi_direct(num_qubits);
-                psi_direct.sv.updateData(psi.sv.getData());
+                psi_direct.sv.updateData(psi.sv.getDataVector());
                 psi_direct.cuda_sv.CopyHostDataToGpu(psi.sv);
 
                 std::string cache_gate_name =
