@@ -6,11 +6,24 @@
 
 ### Improvements
 
-* Optimization updates to custatevector integration. E.g., creation of fewer cublas, cusparse and custatevec handles and fewer calls to small data transfers between host and device. [(#73)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/73)
-
 ### Documentation
 
 ### Bug fixes
+
+* Fix the controlled-gate generators, which are now fully used in the adjoint pipeline following PennyLane PR [(#3874)](https://github.com/PennyLaneAI/pennylane/pull/3874).
+[(#101)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/101)
+
+### Contributors
+
+Lee James O'Riordan
+
+---
+
+# Release 0.29.1
+
+### Improvements
+
+* Optimization updates to custatevector integration. E.g., creation of fewer cublas, cusparse and custatevec handles and fewer calls to small data transfers between host and device. [(#73)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/73)
 
 ### Contributors
 

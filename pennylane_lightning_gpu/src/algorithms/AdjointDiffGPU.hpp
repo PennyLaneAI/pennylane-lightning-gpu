@@ -25,6 +25,7 @@
 
 #include "DevTag.hpp"
 #include "DevicePool.hpp"
+#include "GateGenerators.hpp"
 #include "JacobianTape.hpp"
 #include "ObservablesGPU.hpp"
 #include "StateVectorCudaManaged.hpp"
@@ -33,120 +34,7 @@
 namespace {
 using namespace Pennylane::CUDA;
 namespace cuUtil = Pennylane::CUDA::Util;
-
-template <class CFP_t> static constexpr auto getP11_CU() -> std::vector<CFP_t> {
-    return {cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(), cuUtil::ZERO<CFP_t>(),
-            cuUtil::ONE<CFP_t>()};
-}
-
-template <class T = double, class SVType>
-void applyGeneratorRX_GPU(SVType &sv, const std::vector<size_t> &wires,
-                          const bool adj = false) {
-    sv.applyPauliX(wires, adj);
-}
-
-template <class T = double, class SVType>
-void applyGeneratorRY_GPU(SVType &sv, const std::vector<size_t> &wires,
-                          const bool adj = false) {
-    sv.applyPauliY(wires, adj);
-}
-
-template <class T = double, class SVType>
-void applyGeneratorRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                          const bool adj = false) {
-    sv.applyPauliZ(wires, adj);
-}
-
-template <class T = double, class SVType>
-void applyGeneratorIsingXX_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
-    sv.applyGeneratorIsingXX(wires, adj);
-}
-
-template <class T = double, class SVType>
-void applyGeneratorIsingYY_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
-    sv.applyGeneratorIsingYY(wires, adj);
-}
-
-template <class T = double, class SVType>
-void applyGeneratorIsingZZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
-    sv.applyGeneratorIsingZZ(wires, adj);
-}
-template <class T = double, class SVType>
-void applyGeneratorPhaseShift_GPU(SVType &sv, const std::vector<size_t> &wires,
-                                  const bool adj = false) {
-    sv.applyOperation("P_11", wires, adj, {0.0},
-                      getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
-}
-
-template <class T = double, class SVType>
-void applyGeneratorCRX_GPU(SVType &sv, const std::vector<size_t> &wires,
-                           const bool adj = false) {
-    sv.applyPauliX(std::vector<size_t>{wires.back()}, adj);
-}
-
-template <class T = double, class SVType>
-void applyGeneratorCRY_GPU(SVType &sv, const std::vector<size_t> &wires,
-                           const bool adj = false) {
-    sv.applyPauliY(std::vector<size_t>{wires.back()}, adj);
-}
-
-template <class T = double, class SVType>
-void applyGeneratorCRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                           const bool adj = false) {
-    sv.applyPauliZ(std::vector<size_t>{wires.back()}, adj);
-}
-
-template <class T = double, class SVType>
-void applyGeneratorControlledPhaseShift_GPU(SVType &sv,
-                                            const std::vector<size_t> &wires,
-                                            const bool adj = false) {
-    sv.applyOperation("P_11", {wires.back()}, adj, {0.0},
-                      getP11_CU<decltype(cuUtil::getCudaType(T{}))>());
-}
-template <class T = double, class SVType>
-void applyGeneratorSingleExcitation_GPU(SVType &sv,
-                                        const std::vector<size_t> &wires,
-                                        const bool adj = false) {
-    sv.applyGeneratorSingleExcitation(wires, adj);
-}
-template <class T = double, class SVType>
-void applyGeneratorSingleExcitationMinus_GPU(SVType &sv,
-                                             const std::vector<size_t> &wires,
-                                             const bool adj = false) {
-    sv.applyGeneratorSingleExcitationMinus(wires, adj);
-}
-template <class T = double, class SVType>
-void applyGeneratorSingleExcitationPlus_GPU(SVType &sv,
-                                            const std::vector<size_t> &wires,
-                                            const bool adj = false) {
-    sv.applyGeneratorSingleExcitationPlus(wires, adj);
-}
-template <class T = double, class SVType>
-void applyGeneratorDoubleExcitation_GPU(SVType &sv,
-                                        const std::vector<size_t> &wires,
-                                        const bool adj = false) {
-    sv.applyGeneratorDoubleExcitation(wires, adj);
-}
-template <class T = double, class SVType>
-void applyGeneratorDoubleExcitationMinus_GPU(SVType &sv,
-                                             const std::vector<size_t> &wires,
-                                             const bool adj = false) {
-    sv.applyGeneratorDoubleExcitationMinus(wires, adj);
-}
-template <class T = double, class SVType>
-void applyGeneratorDoubleExcitationPlus_GPU(SVType &sv,
-                                            const std::vector<size_t> &wires,
-                                            const bool adj = false) {
-    sv.applyGeneratorDoubleExcitationPlus(wires, adj);
-}
-template <class T = double, class SVType>
-void applyGeneratorMultiRZ_GPU(SVType &sv, const std::vector<size_t> &wires,
-                               const bool adj = false) {
-    sv.applyGeneratorMultiRZ(wires, adj);
-}
+namespace Generators = Pennylane::CUDA::Generators;
 } // namespace
 /// @endcond
 
@@ -168,37 +56,41 @@ template <class T = double> class AdjointJacobianGPU {
 
     // Holds the mapping from gate labels to associated generator functions.
     const std::unordered_map<std::string, GeneratorFunc> generator_map{
-        {"RX", &::applyGeneratorRX_GPU<T, StateVectorCudaManaged<T>>},
-        {"RY", &::applyGeneratorRY_GPU<T, StateVectorCudaManaged<T>>},
-        {"RZ", &::applyGeneratorRZ_GPU<T, StateVectorCudaManaged<T>>},
-        {"IsingXX", &::applyGeneratorIsingXX_GPU<T, StateVectorCudaManaged<T>>},
-        {"IsingYY", &::applyGeneratorIsingYY_GPU<T, StateVectorCudaManaged<T>>},
-        {"IsingZZ", &::applyGeneratorIsingZZ_GPU<T, StateVectorCudaManaged<T>>},
-        {"CRX", &::applyGeneratorCRX_GPU<T, StateVectorCudaManaged<T>>},
-        {"CRY", &::applyGeneratorCRY_GPU<T, StateVectorCudaManaged<T>>},
-        {"CRZ", &::applyGeneratorCRZ_GPU<T, StateVectorCudaManaged<T>>},
+        {"RX", &Generators::applyGeneratorRX_GPU<StateVectorCudaManaged<T>>},
+        {"RY", &Generators::applyGeneratorRY_GPU<StateVectorCudaManaged<T>>},
+        {"RZ", &Generators::applyGeneratorRZ_GPU<StateVectorCudaManaged<T>>},
+        {"IsingXX",
+         &Generators::applyGeneratorIsingXX_GPU<StateVectorCudaManaged<T>>},
+        {"IsingYY",
+         &Generators::applyGeneratorIsingYY_GPU<StateVectorCudaManaged<T>>},
+        {"IsingZZ",
+         &Generators::applyGeneratorIsingZZ_GPU<StateVectorCudaManaged<T>>},
+        {"CRX", &Generators::applyGeneratorCRX_GPU<StateVectorCudaManaged<T>>},
+        {"CRY", &Generators::applyGeneratorCRY_GPU<StateVectorCudaManaged<T>>},
+        {"CRZ", &Generators::applyGeneratorCRZ_GPU<StateVectorCudaManaged<T>>},
         {"PhaseShift",
-         ::applyGeneratorPhaseShift_GPU<T, StateVectorCudaManaged<T>>},
+         &Generators::applyGeneratorPhaseShift_GPU<StateVectorCudaManaged<T>>},
         {"ControlledPhaseShift",
-         &applyGeneratorControlledPhaseShift_GPU<T, StateVectorCudaManaged<T>>},
-        {"SingleExcitation",
-         &::applyGeneratorSingleExcitation_GPU<T, StateVectorCudaManaged<T>>},
+         &Generators::applyGeneratorControlledPhaseShift_GPU<
+             StateVectorCudaManaged<T>>},
+        {"SingleExcitation", &Generators::applyGeneratorSingleExcitation_GPU<
+                                 StateVectorCudaManaged<T>>},
         {"SingleExcitationMinus",
-         &::applyGeneratorSingleExcitationMinus_GPU<T,
-                                                    StateVectorCudaManaged<T>>},
+         &Generators::applyGeneratorSingleExcitationMinus_GPU<
+             StateVectorCudaManaged<T>>},
         {"SingleExcitationPlus",
-         &::applyGeneratorSingleExcitationPlus_GPU<T,
-                                                   StateVectorCudaManaged<T>>},
-        {"DoubleExcitation",
-         &::applyGeneratorDoubleExcitation_GPU<T, StateVectorCudaManaged<T>>},
+         &Generators::applyGeneratorSingleExcitationPlus_GPU<
+             StateVectorCudaManaged<T>>},
+        {"DoubleExcitation", &Generators::applyGeneratorDoubleExcitation_GPU<
+                                 StateVectorCudaManaged<T>>},
         {"DoubleExcitationMinus",
-         &::applyGeneratorDoubleExcitationMinus_GPU<T,
-                                                    StateVectorCudaManaged<T>>},
+         &Generators::applyGeneratorDoubleExcitationMinus_GPU<
+             StateVectorCudaManaged<T>>},
         {"DoubleExcitationPlus",
-         &::applyGeneratorDoubleExcitationPlus_GPU<T,
-                                                   StateVectorCudaManaged<T>>},
+         &Generators::applyGeneratorDoubleExcitationPlus_GPU<
+             StateVectorCudaManaged<T>>},
         {"MultiRZ",
-         &::applyGeneratorMultiRZ_GPU<T, StateVectorCudaManaged<T>>}};
+         &Generators::applyGeneratorMultiRZ_GPU<StateVectorCudaManaged<T>>}};
 
     // Holds the mappings from gate labels to associated generator coefficients.
     const std::unordered_map<std::string, T> scaling_factors{
