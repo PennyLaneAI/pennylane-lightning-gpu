@@ -3,6 +3,7 @@ cmake
 cuquantum>=22.3.0
 flaky
 pennylane>=0.28
+pennylane-lightning>=0.28
 pybind11
 pytest
 pytest-cov

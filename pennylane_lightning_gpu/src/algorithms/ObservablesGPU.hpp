@@ -575,7 +575,7 @@ class SparseHamiltonianGPU final : public ObservableGPU<T> {
             /* cusparseDnVecDescr_t */ sv_prime_descriptor,
             /* cudaDataType */ data_type,
             /* cusparseSpMVAlg_t */
-            CUSPARSE_SPMV_CSR_ALG1,
+            CUSPARSE_SPMV_ALG_DEFAULT,
             /* void* */ reinterpret_cast<void *>(dBuffer.getData())));
 
         // destroy matrix/vector descriptors

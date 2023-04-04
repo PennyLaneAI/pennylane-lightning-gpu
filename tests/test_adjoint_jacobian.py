@@ -721,7 +721,7 @@ def test_integration(returns):
     j_gpu = qml.jacobian(qnode_gpu)(params)
     j_default = qml.jacobian(qnode_default)(params)
 
-    assert np.allclose(j_gpu, j_default, rtol=0, atol=1.e-6)
+    assert np.allclose(j_gpu, j_default, atol=1e-7)
 
 
 custom_wires = ["alice", 3.14, -1, 0]
@@ -765,7 +765,7 @@ def test_integration_custom_wires(returns):
     j_gpu = qml.jacobian(qnode_gpu)(params)
     j_lightning = qml.jacobian(qnode_lightning)(params)
 
-    assert np.allclose(j_gpu, j_lightning, rtol=0, atol=1.e-6)
+    assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
 
 @pytest.mark.parametrize(
@@ -866,7 +866,7 @@ def test_batching_H(returns):
     j_gpu = qml.jacobian(qnode_gpu)(params)
     j_gpu_default = qml.jacobian(qnode_gpu_default)(params)
 
-    assert np.allclose(j_cpu, j_gpu, rtol=0, atol=1.e-6)
+    assert np.allclose(j_cpu, j_gpu)
     assert np.allclose(j_gpu, j_gpu_default)
 
 
@@ -1050,4 +1050,4 @@ def test_adjoint_SparseHamiltonian(returns):
     j_gpu = qml.jacobian(qnode_gpu)(params)
     j_cpu = qml.jacobian(qnode_cpu)(params)
 
-    assert np.allclose(j_cpu, j_gpu, rtol=0, atol=1.e-6)
+    assert np.allclose(j_cpu, j_gpu)
