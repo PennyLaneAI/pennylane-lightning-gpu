@@ -687,9 +687,7 @@ if CPP_BINARY_AVAILABLE:
                     new_tape = tape.copy()
                     new_tape._measurements = [qml.expval(ham)]
 
-                    return self.adjoint_jacobian(
-                        new_tape, starting_state, use_device_state
-                    )
+                    return self.adjoint_jacobian(new_tape, starting_state, use_device_state)
 
                 return processing_fn
 

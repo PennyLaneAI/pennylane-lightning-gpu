@@ -890,7 +890,6 @@ def test_batching_H(returns):
     def convert_to_array_gpu_default(params):
         return np.array(qnode_gpu_default(params))
 
-
     j_cpu = qml.jacobian(qnode_cpu)(params)
     j_gpu = qml.jacobian(qnode_gpu)(params)
     j_gpu_default = qml.jacobian(qnode_gpu_default)(params)
