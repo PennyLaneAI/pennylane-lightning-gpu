@@ -294,7 +294,7 @@ class TestAdjointJacobian:
             qml.RX(0.543, wires=0)
             qml.CNOT(wires=[0, 1])
 
-            op
+            qml.apply(op)
 
             qml.Rot(1.3, -2.3, 0.5, wires=[0])
             qml.RZ(-0.5, wires=0)
@@ -330,7 +330,8 @@ class TestAdjointJacobian:
         grad_PS = fn(qml.execute(gtapes, dev_gpu, gradient_fn=None))
 
         # gradient has the correct shape and every element is nonzero
-        assert grad_D.shape == (1, 3)
+        assert len(grad_D) == 3
+        assert all(isinstance(v, np.ndarray) for v in grad_D)
         assert np.count_nonzero(grad_D) == 3
         # the different methods agree
         assert np.allclose(grad_D, grad_PS, atol=tol, rtol=0)
@@ -718,8 +719,14 @@ def test_integration(returns):
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
     qnode_default = qml.QNode(circuit, dev_default, diff_method="parameter-shift")
 
-    j_gpu = qml.jacobian(qnode_gpu)(params)
-    j_default = qml.jacobian(qnode_default)(params)
+    def convert_to_array_gpu(params):
+        return np.array(qnode_gpu(params))
+
+    def convert_to_array_default(params):
+        return np.array(qnode_default(params))
+
+    j_gpu = qml.jacobian(convert_to_array_gpu)(params)
+    j_default = qml.jacobian(convert_to_array_default)(params)
 
     assert np.allclose(j_gpu, j_default, atol=1e-7)
 
@@ -762,8 +769,14 @@ def test_integration_custom_wires(returns):
     qnode_gpu = qml.QNode(circuit, dev_gpu)
     qnode_lightning = qml.QNode(circuit, dev_lightning, diff_method="adjoint")
 
-    j_gpu = qml.jacobian(qnode_gpu)(params)
-    j_lightning = qml.jacobian(qnode_lightning)(params)
+    def convert_to_array_gpu(params):
+        return np.array(qnode_gpu(params))
+
+    def convert_to_array_lightning(params):
+        return np.array(qnode_lightning(params))
+
+    j_gpu = qml.jacobian(convert_to_array_gpu)(params)
+    j_lightning = qml.jacobian(convert_to_array_lightning)(params)
 
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
@@ -805,8 +818,14 @@ def test_integration_custom_wires_batching(returns):
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
     qnode_lightning = qml.QNode(circuit, dev_lightning, diff_method="adjoint")
 
-    j_gpu = qml.jacobian(qnode_gpu)(params)
-    j_lightning = qml.jacobian(qnode_lightning)(params)
+    def convert_to_array_gpu(params):
+        return np.array(qnode_gpu(params))
+
+    def convert_to_array_lightning(params):
+        return np.array(qnode_lightning(params))
+
+    j_gpu = qml.jacobian(convert_to_array_gpu)(params)
+    j_lightning = qml.jacobian(convert_to_array_lightning)(params)
 
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
@@ -861,6 +880,16 @@ def test_batching_H(returns):
     qnode_cpu = qml.QNode(circuit, dev_cpu, diff_method="parameter-shift")
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
     qnode_gpu_default = qml.QNode(circuit, dev_gpu_default, diff_method="adjoint")
+
+    def convert_to_array_cpu(params):
+        return np.array(qnode_cpu(params))
+
+    def convert_to_array_gpu(params):
+        return np.array(qnode_gpu(params))
+
+    def convert_to_array_gpu_default(params):
+        return np.array(qnode_gpu_default(params))
+
 
     j_cpu = qml.jacobian(qnode_cpu)(params)
     j_gpu = qml.jacobian(qnode_gpu)(params)
