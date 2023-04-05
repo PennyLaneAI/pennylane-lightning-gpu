@@ -244,7 +244,7 @@ class StateVectorCudaManaged
         }
     }
     /**
-     * @brief STL-fiendly variant of `applyOperation(
+     * @brief STL-friendly variant of `applyOperation(
         const std::string &opName, const std::vector<size_t> &wires,
         bool adjoint = false, const std::vector<Precision> &params = {0.0},
         [[maybe_unused]] const std::vector<CFP_t> &gate_matrix = {})`
@@ -1397,7 +1397,7 @@ class StateVectorCudaManaged
 
     /**
      * @brief Apply a given host or device-stored array representing the gate
-     * `matrix` to the statevector at qubit indices given by `tgts` and
+     * `matrix` to the state vector at qubit indices given by `tgts` and
      * control-lines given by `ctrls`. The adjoint can be taken by setting
      * `use_adjoint` to true.
      *
@@ -1482,7 +1482,7 @@ class StateVectorCudaManaged
     }
 
     /**
-     * @brief Apply a given host-matrix `matrix` to the statevector at qubit
+     * @brief Apply a given host-matrix `matrix` to the state vector at qubit
      * indices given by `tgts` and control-lines given by `ctrls`. The adjoint
      * can be taken by setting `use_adjoint` to true.
      *

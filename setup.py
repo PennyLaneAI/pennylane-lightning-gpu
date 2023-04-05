@@ -21,7 +21,6 @@ from pathlib import Path
 from setuptools import setup, find_packages
 
 if not os.getenv("READTHEDOCS"):
-
     from setuptools import Extension
     from setuptools.command.build_ext import build_ext
 
@@ -71,13 +70,13 @@ if not os.getenv("READTHEDOCS"):
                 f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
                 "-GNinja",
                 f"-DCMAKE_MAKE_PROGRAM={ninja_path}",
-                f"-DENABLE_OPENMP=OFF",
+                "-DENABLE_OPENMP=OFF",
                 *(self.cmake_defines),
             ]
 
             build_args = []
 
-            if not platform.system() == "Linux":
+            if platform.system() != "Linux":
                 raise RuntimeError(f"Unsupported '{platform.system()}' platform")
 
             if not Path(self.build_temp).exists():
@@ -93,9 +92,6 @@ with open("pennylane_lightning_gpu/_version.py") as f:
     version = f.readlines()[-1].split()[-1].strip("\"'")
 
 requirements = [
-    "ninja",
-    "wheel",
-    "cmake",
     "pennylane-lightning>=0.28",
     "pennylane>=0.28",
 ]
