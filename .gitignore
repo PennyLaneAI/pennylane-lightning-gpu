@@ -20,6 +20,7 @@ doc/__pycache__/
 # build system
 build/
 dist/
+BuildTests/
 
 # misc
 .idea
