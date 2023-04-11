@@ -124,7 +124,7 @@ jobs:
           sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov
           # Sync with latest master branches
           python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
-          python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre
+          python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
           
       - name: Checkout pennyLane-lightning-gpu
         uses: actions/checkout@v3
