@@ -819,10 +819,10 @@ def test_integration_custom_wires_batching(returns):
     qnode_lightning = qml.QNode(circuit, dev_lightning, diff_method="adjoint")
 
     def convert_to_array_gpu(params):
-        return np.array(qnode_gpu(params))
+        return np.hstack(qnode_gpu(params))
 
     def convert_to_array_lightning(params):
-        return np.array(qnode_lightning(params))
+        return np.hstack(qnode_lightning(params))
 
     j_gpu = qml.jacobian(convert_to_array_gpu)(params)
     j_lightning = qml.jacobian(convert_to_array_lightning)(params)
@@ -871,7 +871,7 @@ def test_batching_H(returns):
 
     def circuit(params):
         circuit_ansatz(params, wires=custom_wires)
-        return [qml.expval(r) for r in returns]
+        return np.array([qml.expval(r) for r in returns])
 
     n_params = 30
     np.random.seed(1337)
@@ -882,13 +882,13 @@ def test_batching_H(returns):
     qnode_gpu_default = qml.QNode(circuit, dev_gpu_default, diff_method="adjoint")
 
     def convert_to_array_cpu(params):
-        return np.array(qnode_cpu(params))
+        return np.hstack(qnode_cpu(params))
 
     def convert_to_array_gpu(params):
-        return np.array(qnode_gpu(params))
+        return np.hstack(qnode_gpu(params))
 
     def convert_to_array_gpu_default(params):
-        return np.array(qnode_gpu_default(params))
+        return np.hstack(qnode_gpu_default(params))
 
     j_cpu = qml.jacobian(qnode_cpu)(params)
     j_gpu = qml.jacobian(qnode_gpu)(params)
