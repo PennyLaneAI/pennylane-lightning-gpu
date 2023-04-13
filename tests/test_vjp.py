@@ -16,7 +16,7 @@ Tests for the ``vjp`` method of`pennylane_lightning_gpu.LightningGPU`.
 """
 import pytest
 
-import numpy as np
+from pennylane import numpy as np
 import pennylane as qml
 from pennylane_lightning_gpu import LightningGPU
 
@@ -69,4 +69,4 @@ class TestVectorJacobianProduct:
 
         vjp2 = dev.adjoint_jacobian(tape2, use_device_state=True)
 
-        assert np.allclose(vjp1, vjp2.ravel(order="C"), atol=tol, rtol=0)
+        assert np.allclose(vjp1, vjp2, atol=tol, rtol=0)
