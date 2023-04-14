@@ -52,6 +52,8 @@ from ._version import __version__
 
 try:
     from .lightning_gpu_qubit_ops import (
+        LightningGPUMPI_C128,
+        LightningGPUMPI_C64,
         LightningGPU_C128,
         LightningGPU_C64,
         AdjointJacobianGPU_C128,

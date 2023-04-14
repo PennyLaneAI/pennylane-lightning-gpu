@@ -7,6 +7,11 @@ enable_language(CXX CUDA)
 find_package(CUDAToolkit REQUIRED)
 
 set(SIMULATOR_FILES StateVectorCudaBase.hpp StateVectorCudaManaged.hpp cuGateCache.hpp cuGates_host.hpp initSV.cu CACHE INTERNAL "" FORCE)
+
+if(PLGPU_ENABLE_MPI)
+    list(APPEND SIMULATOR_FILES StateVectorCudaMPI.hpp)
+endif()
+
 add_library(lightning_gpu_simulator STATIC ${SIMULATOR_FILES})
 
 get_filename_component(CUSTATEVEC_INC_DIR ${CUSTATEVEC_INC} DIRECTORY)
