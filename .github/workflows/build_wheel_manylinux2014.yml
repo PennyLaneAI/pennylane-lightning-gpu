@@ -80,6 +80,7 @@ jobs:
 
           # Python build settings
           CIBW_BEFORE_BUILD: |
+            which python
             python -m pip install ninja cmake~=3.24.3 auditwheel
             python -m pip install custatevec-cu11
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
