@@ -60,7 +60,7 @@ if(PLLGPU_ENABLE_MPI)
 	target_link_libraries(mpi_runner PUBLIC MPI::MPI_CXX)
 	target_link_libraries(mpi_runner PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
 	target_sources(mpi_runner PRIVATE ./mpi/Test_MPI_StateVectorCudaManaged_Param.cpp 
-									  #./mpi/Test_MPI_StateVectorCudaManaged_NonParam.cpp
+									  ./mpi/Test_MPI_StateVectorCudaManaged_NonParam.cpp
 	)
 	target_compile_options(mpi_runner PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")
 
