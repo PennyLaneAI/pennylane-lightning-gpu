@@ -144,6 +144,7 @@ jobs:
 
       - name: Install required packages
         run: |
+          source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
           python3 -m pip install pip~=22.0
           python3 -m pip install ninja cmake cuquantum pytest pytest-mock flaky pytest-cov
           sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov
@@ -153,11 +154,13 @@ jobs:
           
       - name: Build and install package
         run: |
+          source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
           python3 setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }}"
           python3 -m pip install -e . --verbose
 
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
+          source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
           python3 -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
           pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
           pl-device-test --device lightning.gpu --shots=None --skip-ops ${{ env.COVERAGE_FLAGS }} --cov-append
