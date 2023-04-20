@@ -183,6 +183,9 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
     int nDevices = 0;
     PL_CUDA_IS_SUCCESS(cudaGetDeviceCount(&nDevices));
 
+    nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()
+                                                    : nDevices;
+
     int nP2PDeviceBits = 0;
     while ((1 << nP2PDeviceBits) < nDevices) {
         ++nP2PDeviceBits;

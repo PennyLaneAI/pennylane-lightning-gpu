@@ -43,6 +43,7 @@ class MPIManager {
   private:
     bool isExternalComm_;
     int rank_;
+    int size_per_node_;
     int size_;
     MPI_Comm communiator_;
 
@@ -57,6 +58,7 @@ class MPIManager {
         PL_MPI_IS_SUCCESS(MPI_Comm_size(communiator_, &size_));
         findVendor();
         findVersion();
+        getNumProcsPerNode();
     }
 
     MPIManager(int argc, char **argv) {
@@ -67,6 +69,7 @@ class MPIManager {
         PL_MPI_IS_SUCCESS(MPI_Comm_size(communiator_, &size_));
         findVendor();
         findVersion();
+        getNumProcsPerNode();
     }
 
     MPIManager(MPIManager &other) {
@@ -77,6 +80,7 @@ class MPIManager {
         vendor_ = other.vendor_;
         version_ = other.version_;
         subversion_ = other.subversion_;
+        size_per_node_ = other.size_per_node_;
     }
 
     ~MPIManager() {
@@ -95,6 +99,8 @@ class MPIManager {
     auto getRank() const { return rank_; }
 
     auto getSize() const { return size_; }
+
+    auto getSizeNode() const { return size_per_node_; }
 
     auto getComm() const { return communiator_; }
 
@@ -126,6 +132,15 @@ class MPIManager {
         PL_MPI_IS_SUCCESS(MPI_Get_version(&version_, &subversion_));
     }
 
+    void getNumProcsPerNode() {
+        MPI_Comm node_comm;
+        PL_MPI_IS_SUCCESS(
+            MPI_Comm_split_type(this->getComm(), MPI_COMM_TYPE_SHARED,
+                                this->getRank(), MPI_INFO_NULL, &node_comm));
+        PL_MPI_IS_SUCCESS(MPI_Comm_size(node_comm, &size_per_node_));
+        this->Barrier();
+    }
+
     void check_mpi_config() {
         // check if number of processes is power of two.
         // This is required by custatevec
@@ -133,14 +148,7 @@ class MPIManager {
                     "Processes number is not power of two.");
         // Check if number of processes per node is power of two.
         // This is required by custatevec
-        int num_procs_per_node;
-        MPI_Comm node_comm;
-        PL_MPI_IS_SUCCESS(
-            MPI_Comm_split_type(this->getComm(), MPI_COMM_TYPE_SHARED,
-                                this->getRank(), MPI_INFO_NULL, &node_comm));
-        PL_MPI_IS_SUCCESS(MPI_Comm_size(node_comm, &num_procs_per_node));
-        this->Barrier();
-        PL_ABORT_IF(isPow2(num_procs_per_node) != true,
+        PL_ABORT_IF(isPow2(size_per_node_) != true,
                     "Processes number per node is not power of two.");
     }
 
