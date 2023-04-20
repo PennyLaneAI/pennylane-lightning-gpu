@@ -4101,3 +4101,235 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyDoubleExcitationPlus",
     }
 }
 // MultiRZ Gate
+TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyMultiRZ",
+                   "[StateVectorCudaMPI_Param]", float, double) {
+    using PrecisionT = TestType;
+    using cp_t = std::complex<PrecisionT>;
+    const size_t num_qubits = 4;
+
+    MPIManager mpi_manager(MPI_COMM_WORLD);
+
+    int nGlobalIndexBits = 0;
+    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
+        ++nGlobalIndexBits;
+    }
+
+    int nLocalIndexBits = num_qubits - nGlobalIndexBits;
+    int subSvLength = 1 << nLocalIndexBits;
+
+    mpi_manager.Barrier();
+
+    const std::vector<PrecisionT> angles{{0.4}};
+
+    std::vector<std::vector<cp_t>> initstate{
+        std::vector<cp_t>{{0.1653855288944372, 0.08360762242222763},
+                          {0.0731293375604395, 0.13209080879903976},
+                          {0.23742759434160687, 0.2613440813782711},
+                          {0.16768740742688235, 0.2340607179431313},
+                          {0.2247465091396771, 0.052469062762363974},
+                          {0.1595307101966878, 0.018355977199570113},
+                          {0.01433428625707798, 0.18836803047905595},
+                          {0.20447553584586473, 0.02069817884076428},
+                          {0.17324175995006008, 0.12834320562185453},
+                          {0.021542232643170886, 0.2537776554975786},
+                          {0.2917899745322105, 0.30227665008366594},
+                          {0.17082687702494623, 0.013880922806771745},
+                          {0.03801974084659355, 0.2233816291263903},
+                          {0.1991010562067874, 0.2378546697582974},
+                          {0.13833362414043807, 0.0571737109901294},
+                          {0.1960850292216881, 0.22946370987301284}}};
+
+    std::vector<std::vector<cp_t>> expected_results{
+        std::vector<cp_t>{{0.17869909972402495, 0.049084004040150196},
+                          {0.09791401219094054, 0.114929230389338},
+                          {0.2846159036261283, 0.20896501819533683},
+                          {0.21084550974310806, 0.1960807418253313},
+                          {0.20984254850784573, 0.09607341335335315},
+                          {0.1527039474967227, 0.04968393919295135},
+                          {-0.023374395680686586, 0.1874609940644216},
+                          {0.19628754532973963, 0.06090861117447334},
+                          {0.14429060004046249, 0.16020271083802284},
+                          {-0.029305014762791147, 0.25299877929913567},
+                          {0.2259205020010718, 0.35422096098183514},
+                          {0.16466399912430643, 0.047542289852867514},
+                          {0.08164095607238234, 0.21137551233950838},
+                          {0.24238671886852403, 0.19355813861638085},
+                          {0.14693482451317494, 0.02855139473814395},
+                          {0.23776378523742325, 0.18593363133959642}},
+        std::vector<cp_t>{{0.17869909972402495, 0.049084004040150196},
+                          {0.045429227014373304, 0.1439863434985753},
+                          {0.18077379611678607, 0.3033041807555934},
+                          {0.21084550974310806, 0.1960807418253313},
+                          {0.23069053568073156, 0.0067729362147416275},
+                          {0.1527039474967227, 0.04968393919295135},
+                          {-0.023374395680686586, 0.1874609940644216},
+                          {0.2045117320076819, -0.02033742456644565},
+                          {0.19528631758643603, 0.09136706180794868},
+                          {-0.029305014762791147, 0.25299877929913567},
+                          {0.2259205020010718, 0.35422096098183514},
+                          {0.1701794264139849, -0.020333832827845056},
+                          {0.08164095607238234, 0.21137551233950838},
+                          {0.1478778627338016, 0.2726686858107655},
+                          {0.12421749871021645, 0.08351669180701665},
+                          {0.23776378523742325, 0.18593363133959642}},
+        std::vector<cp_t>{{0.17869909972402495, 0.049084004040150196},
+                          {0.09791401219094054, 0.114929230389338},
+                          {0.18077379611678607, 0.3033041807555934},
+                          {0.11784413734476112, 0.2627094318578463},
+                          {0.20984254850784573, 0.09607341335335315},
+                          {0.1527039474967227, 0.04968393919295135},
+                          {0.0514715054362289, 0.18176542794818454},
+                          {0.2045117320076819, -0.02033742456644565},
+                          {0.19528631758643603, 0.09136706180794868},
+                          {0.0715306592140959, 0.24443921741303512},
+                          {0.2259205020010718, 0.35422096098183514},
+                          {0.16466399912430643, 0.047542289852867514},
+                          {-0.0071172014685187066, 0.22648222528149717},
+                          {0.1478778627338016, 0.2726686858107655},
+                          {0.14693482451317494, 0.02855139473814395},
+                          {0.23776378523742325, 0.18593363133959642}}};
+
+    std::vector<cp_t> localstate(subSvLength, {0.0, 0.0});
+
+    auto init_localstate = mpi_manager.scatter<cp_t>(initstate[0], 0);
+    auto expected_localstate0 =
+        mpi_manager.scatter<cp_t>(expected_results[0], 0);
+    auto expected_localstate1 =
+        mpi_manager.scatter<cp_t>(expected_results[1], 0);
+    auto expected_localstate2 =
+        mpi_manager.scatter<cp_t>(expected_results[2], 0);
+
+    mpi_manager.Barrier();
+
+    int nDevices = 0; // Number of GPU devices per node
+    PL_CUDA_IS_SUCCESS(cudaGetDeviceCount(&nDevices));
+    int deviceId = mpi_manager.getRank() % nDevices;
+    PL_CUDA_IS_SUCCESS(cudaSetDevice(deviceId));
+
+    SECTION("Apply directly at global wires") {
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
+                                          nLocalIndexBits);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyHostDataToGpu(init_localstate, false);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.applyMultiRZ({0, 1}, false, angles[0]);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyGpuDataToHost(localstate.data(),
+                             static_cast<std::size_t>(subSvLength));
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+        CHECK(localstate == Pennylane::approx(expected_localstate0));
+    }
+
+    SECTION("Apply directly at local wires") {
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
+                                          nLocalIndexBits);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyHostDataToGpu(init_localstate, false);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.applyMultiRZ({num_qubits - 2, num_qubits - 1}, false, angles[0]);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyGpuDataToHost(localstate.data(),
+                             static_cast<std::size_t>(subSvLength));
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+        CHECK(localstate == Pennylane::approx(expected_localstate1));
+    }
+
+    SECTION("Apply directly at both local and global wires") {
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
+                                          nLocalIndexBits);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyHostDataToGpu(init_localstate, false);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.applyMultiRZ({1, num_qubits - 2}, false, angles[0]);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyGpuDataToHost(localstate.data(),
+                             static_cast<std::size_t>(subSvLength));
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+        CHECK(localstate == Pennylane::approx(expected_localstate2));
+    }
+
+    SECTION("Apply using dispatcher at global wires") {
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
+                                          nLocalIndexBits);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyHostDataToGpu(init_localstate, false);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.applyOperation("MultiRZ", {0, 1}, false, {angles[0]});
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyGpuDataToHost(localstate.data(),
+                             static_cast<std::size_t>(subSvLength));
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+        CHECK(localstate == Pennylane::approx(expected_localstate0));
+    }
+
+    SECTION("Apply using dispatcher at local wires") {
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
+                                          nLocalIndexBits);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyHostDataToGpu(init_localstate, false);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.applyOperation("MultiRZ", {num_qubits - 2, num_qubits - 1}, false,
+                          {angles[0]});
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyGpuDataToHost(localstate.data(),
+                             static_cast<std::size_t>(subSvLength));
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+        CHECK(localstate == Pennylane::approx(expected_localstate1));
+    }
+
+    SECTION("Apply using dispatcher at both global and local wires") {
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
+                                          nLocalIndexBits);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyHostDataToGpu(init_localstate, false);
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.applyOperation("MultiRZ", {1, num_qubits - 2}, false, {angles[0]});
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+
+        sv.CopyGpuDataToHost(localstate.data(),
+                             static_cast<std::size_t>(subSvLength));
+        cudaDeviceSynchronize();
+        mpi_manager.Barrier();
+        CHECK(localstate == Pennylane::approx(expected_localstate2));
+    }
+}
