@@ -113,6 +113,9 @@ jobs:
       max-parallel: 1
 
     steps:
+      - name: Checkout pennyLane-lightning-gpu
+        uses: actions/checkout@v3
+
       - uses: actions/setup-python@v4
         name: Install Python
         with:
@@ -138,9 +141,6 @@ jobs:
           # Adding venv name as an output for subsequent steps to reference if needed
           source ${{ env.VENV_NAME }}/bin/activate
           echo "venv_name=${{ env.VENV_NAME }}" >> $GITHUB_OUTPUT
-
-      - name: Checkout pennyLane-lightning-gpu
-        uses: actions/checkout@v3
 
       - name: Install required packages
         run: |
