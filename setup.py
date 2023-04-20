@@ -85,7 +85,7 @@ if not os.getenv("READTHEDOCS"):
             subprocess.check_call(
                 ["cmake", str(ext.sourcedir)] + configure_args, cwd=self.build_temp
             )
-            subprocess.check_call(["cmake", "--build", "."] + build_args, cwd=self.build_temp)
+            subprocess.check_call(["cmake", "--build", ".", "--verbose"] + build_args, cwd=self.build_temp)
 
 
 with open("pennylane_lightning_gpu/_version.py") as f:
