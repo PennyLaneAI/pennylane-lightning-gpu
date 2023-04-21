@@ -23,11 +23,13 @@
 #include "AdjointDiffGPU.hpp"
 #include "JacobianTape.hpp"
 
+#include "MPIManager.hpp"
 #include "DevTag.hpp"
 #include "DevicePool.hpp"
 #include "Error.hpp"
 #include "StateVectorCudaManaged.hpp"
 #include "StateVectorManagedCPU.hpp"
+#include "StateVectorCudaMPI.hpp"
 #include "StateVectorRawCPU.hpp"
 #include "cuGateCache.hpp"
 #include "cuda_helpers.hpp"
@@ -43,6 +45,7 @@ using namespace Pennylane;
 using namespace Pennylane::CUDA;
 using namespace Pennylane::Algorithms;
 using namespace Pennylane::CUDA::Util;
+using namespace Pennylane::MPI;
 using std::complex;
 using std::set;
 using std::string;
@@ -864,6 +867,425 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
 }
 
 /**
+ * @brief Templated class to build all required precisions for Python module.
+ *
+ * @tparam PrecisionT Precision of the statevector data.
+ * @tparam ParamT Precision of the parameter data.
+ * @param m Pybind11 module.
+ */
+template <class PrecisionT, class ParamT>
+void StateVectorCudaMPI_class_bindings(py::module &m) {
+    //using np_arr_r =
+    //    py::array_t<ParamT, py::array::c_style | py::array::forcecast>;
+    using np_arr_c = py::array_t<std::complex<ParamT>,
+                                 py::array::c_style | py::array::forcecast>;
+    using np_arr_sparse_ind = typename std::conditional<
+        std::is_same<ParamT, float>::value,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast>,
+        py::array_t<int64_t, py::array::c_style | py::array::forcecast>>::type;
+    //  Enable module name to be based on size of complex datatype
+    const std::string bitsize =
+        std::to_string(sizeof(std::complex<PrecisionT>) * 8);
+    std::string class_name = "LightningGPUMPI_C" + bitsize;
+
+    py::class_<StateVectorCudaMPI<PrecisionT>>(m, class_name.c_str())
+        .def(py::init([](MPIManager& mpi_manager, std::size_t num_global_qubits, std::size_t num_local_qubits){
+            return new StateVectorCudaMPI<PrecisionT>(mpi_manager,num_global_qubits,num_local_qubits);
+        }))              // qubits, device
+        .def(
+            "setBasisState",
+            [](StateVectorCudaMPI<PrecisionT> &sv, const size_t index,
+               const bool use_async) {
+                const std::complex<PrecisionT> value(1, 0);
+                sv.setBasisState(value, index, use_async);
+            },
+            "Create Basis State on GPU.")
+        .def(
+            "setStateVector",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const np_arr_sparse_ind &indices, const np_arr_c &state,
+               const bool use_async) {
+                using index_type = typename std::conditional<
+                    std::is_same<ParamT, float>::value, int32_t, int64_t>::type;
+
+                sv.template setStateVector<index_type>(
+                    static_cast<index_type>(indices.request().size),
+                    static_cast<std::complex<PrecisionT> *>(
+                        state.request().ptr),
+                    static_cast<index_type *>(indices.request().ptr),
+                    use_async);
+            },
+            "Set State Vector on GPU with values and their corresponding "
+            "indices for the state vector on device")
+        .def(
+            "Identity",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyIdentity(wires, adjoint);
+            },
+            "Apply the Identity gate.")
+
+        .def(
+            "PauliX",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyPauliX(wires, adjoint);
+            },
+            "Apply the PauliX gate.")
+
+        .def(
+            "PauliY",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyPauliY(wires, adjoint);
+            },
+            "Apply the PauliY gate.")
+
+        .def(
+            "PauliZ",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyPauliZ(wires, adjoint);
+            },
+            "Apply the PauliZ gate.")
+
+        .def(
+            "Hadamard",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyHadamard(wires, adjoint);
+            },
+            "Apply the Hadamard gate.")
+
+        .def(
+            "S",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyS(wires, adjoint);
+            },
+            "Apply the S gate.")
+
+        .def(
+            "T",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyT(wires, adjoint);
+            },
+            "Apply the T gate.")
+
+        .def(
+            "CNOT",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyCNOT(wires, adjoint);
+            },
+            "Apply the CNOT gate.")
+
+        .def(
+            "SWAP",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applySWAP(wires, adjoint);
+            },
+            "Apply the SWAP gate.")
+
+        .def(
+            "CSWAP",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyCSWAP(wires, adjoint);
+            },
+            "Apply the CSWAP gate.")
+
+        .def(
+            "Toffoli",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyToffoli(wires, adjoint);
+            },
+            "Apply the Toffoli gate.")
+
+        .def(
+            "CY",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyCY(wires, adjoint);
+            },
+            "Apply the CY gate.")
+
+        .def(
+            "CZ",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               [[maybe_unused]] const std::vector<ParamT> &params) {
+                return sv.applyCZ(wires, adjoint);
+            },
+            "Apply the CZ gate.")
+
+        .def(
+            "PhaseShift",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyPhaseShift(wires, adjoint, params.front());
+            },
+            "Apply the PhaseShift gate.")
+
+        .def("apply",
+             py::overload_cast<
+                 const vector<string> &, const vector<vector<std::size_t>> &,
+                 const vector<bool> &, const vector<vector<PrecisionT>> &>(
+                 &StateVectorCudaMPI<PrecisionT>::applyOperation))
+
+        .def("apply", py::overload_cast<const vector<string> &,
+                                        const vector<vector<std::size_t>> &,
+                                        const vector<bool> &>(
+                          &StateVectorCudaMPI<PrecisionT>::applyOperation))
+
+        .def("apply",
+             py::overload_cast<const std::string &, const vector<size_t> &,
+                               bool, const vector<PrecisionT> &,
+                               const std::vector<std::complex<PrecisionT>> &>(
+                 &StateVectorCudaMPI<PrecisionT>::applyOperation_std))
+
+        .def(
+            "ControlledPhaseShift",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyControlledPhaseShift(wires, adjoint,
+                                                    params.front());
+            },
+            "Apply the ControlledPhaseShift gate.")
+
+        .def(
+            "RX",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyRX(wires, adjoint, params.front());
+            },
+            "Apply the RX gate.")
+
+        .def(
+            "RY",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyRY(wires, adjoint, params.front());
+            },
+            "Apply the RY gate.")
+
+        .def(
+            "RZ",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyRZ(wires, adjoint, params.front());
+            },
+            "Apply the RZ gate.")
+
+        .def(
+            "Rot",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyRot(wires, adjoint, params);
+            },
+            "Apply the Rot gate.")
+
+        .def(
+            "CRX",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyCRX(wires, adjoint, params.front());
+            },
+            "Apply the CRX gate.")
+
+        .def(
+            "CRY",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyCRY(wires, adjoint, params.front());
+            },
+            "Apply the CRY gate.")
+
+        .def(
+            "CRZ",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyCRZ(wires, adjoint, params.front());
+            },
+            "Apply the CRZ gate.")
+
+        .def(
+            "CRot",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyCRot(wires, adjoint, params);
+            },
+            "Apply the CRot gate.")
+        .def(
+            "IsingXX",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyIsingXX(wires, adjoint, params.front());
+            },
+            "Apply the IsingXX gate.")
+        .def(
+            "IsingYY",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyIsingYY(wires, adjoint, params.front());
+            },
+            "Apply the IsingYY gate.")
+        .def(
+            "IsingZZ",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyIsingZZ(wires, adjoint, params.front());
+            },
+            "Apply the IsingZZ gate.")
+        .def(
+            "SingleExcitation",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applySingleExcitation(wires, adjoint, params.front());
+            },
+            "Apply the SingleExcitation gate.")
+        .def(
+            "SingleExcitationMinus",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applySingleExcitationMinus(wires, adjoint,
+                                                     params.front());
+            },
+            "Apply the SingleExcitationMinus gate.")
+        .def(
+            "SingleExcitationPlus",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applySingleExcitationPlus(wires, adjoint,
+                                                    params.front());
+            },
+            "Apply the SingleExcitationPlus gate.")
+        .def(
+            "DoubleExcitation",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyDoubleExcitation(wires, adjoint, params.front());
+            },
+            "Apply the DoubleExcitation gate.")
+        .def(
+            "DoubleExcitationMinus",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyDoubleExcitationMinus(wires, adjoint,
+                                                     params.front());
+            },
+            "Apply the DoubleExcitationMinus gate.")
+        .def(
+            "DoubleExcitationPlus",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyDoubleExcitationPlus(wires, adjoint,
+                                                    params.front());
+            },
+            "Apply the DoubleExcitationPlus gate.")
+        .def(
+            "MultiRZ",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires, bool adjoint,
+               const std::vector<ParamT> &params) {
+                return sv.applyMultiRZ(wires, adjoint, params.front());
+            },
+            "Apply the MultiRZ gate.")
+        .def(
+            "DeviceToDevice",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const StateVectorCudaMPI<PrecisionT> &other,
+               bool async) { sv.updateData(other, async); },
+            "Synchronize data from another GPU device to current device.")
+        .def("DeviceToHost",
+             py::overload_cast<StateVectorManagedCPU<PrecisionT> &, bool>(
+                 &StateVectorCudaMPI<PrecisionT>::CopyGpuDataToHost,
+                 py::const_),
+             "Synchronize data from the GPU device to host.")
+        .def("DeviceToHost",
+             py::overload_cast<std::complex<PrecisionT> *, size_t, bool>(
+                 &StateVectorCudaMPI<PrecisionT>::CopyGpuDataToHost,
+                 py::const_),
+             "Synchronize data from the GPU device to host.")
+        .def(
+            "DeviceToHost",
+            [](const StateVectorCudaMPI<PrecisionT> &gpu_sv,
+               np_arr_c &cpu_sv, bool) {
+                py::buffer_info numpyArrayInfo = cpu_sv.request();
+                auto *data_ptr =
+                    static_cast<complex<PrecisionT> *>(numpyArrayInfo.ptr);
+                if (cpu_sv.size()) {
+                    gpu_sv.CopyGpuDataToHost(data_ptr, cpu_sv.size());
+                }
+            },
+            "Synchronize data from the GPU device to host.")
+        .def("HostToDevice",
+             py::overload_cast<const std::complex<PrecisionT> *, size_t, bool>(
+                 &StateVectorCudaMPI<PrecisionT>::CopyHostDataToGpu),
+             "Synchronize data from the host device to GPU.")
+        .def("HostToDevice",
+             py::overload_cast<const std::vector<std::complex<PrecisionT>> &,
+                               bool>(
+                 &StateVectorCudaMPI<PrecisionT>::CopyHostDataToGpu),
+             "Synchronize data from the host device to GPU.")
+        .def(
+            "HostToDevice",
+            [](StateVectorCudaMPI<PrecisionT> &gpu_sv,
+               const np_arr_c &cpu_sv, bool async) {
+                const py::buffer_info numpyArrayInfo = cpu_sv.request();
+                const auto *data_ptr =
+                    static_cast<complex<PrecisionT> *>(numpyArrayInfo.ptr);
+                const auto length =
+                    static_cast<size_t>(numpyArrayInfo.shape[0]);
+                if (length) {
+                    gpu_sv.CopyHostDataToGpu(data_ptr, length, async);
+                }
+            },
+            "Synchronize data from the host device to GPU.")
+        .def("GetNumGPUs", &getGPUCount, "Get the number of available GPUs.")
+        .def("getCurrentGPU", &getGPUIdx,
+             "Get the GPU index for the statevector data.")
+        .def("numLocalQubits", &StateVectorCudaMPI<PrecisionT>::getNumLocalQubits)
+        .def("numGlobalQubits", &StateVectorCudaMPI<PrecisionT>::getNumGlobalQubits)
+        .def("dataLength", &StateVectorCudaMPI<PrecisionT>::getLength)
+        .def("resetGPU", &StateVectorCudaMPI<PrecisionT>::initSV_MPI);
+}
+
+/**
  * @brief Add C++ classes, methods and functions to Python module.
  */
 PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
@@ -916,9 +1338,24 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
                  return static_cast<void *>(dev_tag.getStreamID());
              })
         .def("refresh", &DevTag<int>::refresh);
-
+    
+    py::class_<MPIManager>(m, "MPIManager")
+        .def(py::init<MPI_Comm>())
+        .def(py::init<MPIManager &>())
+        .def("getRank", &MPIManager::getRank)
+        .def("getSize",&MPIManager::getSize)
+        .def("getSizeNode", &MPIManager::getSizeNode)
+        .def("getComm", &MPIManager::getComm)
+        .def("getTime", &MPIManager::getTime)
+        .def("getVendor", &MPIManager::getVendor)
+        .def("getVersion", &MPIManager::getVersion)
+        .def("checkMPIConfig", &MPIManager::check_mpi_config);
+    
     StateVectorCudaManaged_class_bindings<float, float>(m);
     StateVectorCudaManaged_class_bindings<double, double>(m);
+
+    StateVectorCudaMPI_class_bindings<float, float>(m);
+    StateVectorCudaMPI_class_bindings<double, double>(m);
 }
 
 } // namespace

@@ -112,12 +112,27 @@ class StateVectorCudaMPI
     using GateType = CFP_t *;
 
     StateVectorCudaMPI() = delete;
+    
     StateVectorCudaMPI(MPIManager mpi_manager, size_t num_global_qubits,
                        size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
               num_local_qubits),
           numGlobalQubits_(num_global_qubits),
           numLocalQubits_(num_local_qubits), mpi_manager_(mpi_manager),
+          handle_(make_shared_cusv_handle()),
+          cublascaller_(make_shared_cublas_caller()),
+          localStream_(make_shared_local_stream()),
+          svSegSwapWorker_(make_shared_mpi_worker(
+              handle_.get(), mpi_manager_, BaseType::getData(),
+              num_local_qubits, localStream_.get())),
+          gate_cache_(true){};
+
+    StateVectorCudaMPI(MPI_Comm mpi_communicator, size_t num_global_qubits,
+                       size_t num_local_qubits)
+        : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
+              num_local_qubits),
+          numGlobalQubits_(num_global_qubits),
+          numLocalQubits_(num_local_qubits), mpi_manager_(mpi_communicator),
           handle_(make_shared_cusv_handle()),
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
@@ -144,7 +159,7 @@ class StateVectorCudaMPI
         size_t index = 0;
         const std::complex<Precision> value = {1, 0};
         BaseType::getDataBuffer().zeroInit();
-        setBasisState(value, index, false);
+        setBasisState(value, index, async);
     }
 
     /**

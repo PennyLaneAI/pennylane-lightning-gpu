@@ -52,6 +52,8 @@ from ._version import __version__
 
 try:
     from .lightning_gpu_qubit_ops import (
+        LightningGPUMPI_C128,
+        LightningGPUMPI_C64,
         LightningGPU_C128,
         LightningGPU_C64,
         AdjointJacobianGPU_C128,
@@ -61,6 +63,7 @@ try:
         get_gpu_arch,
         DevPool,
         DevTag,
+        MPIManager,
         NamedObsGPU_C64,
         NamedObsGPU_C128,
         TensorProdObsGPU_C64,
@@ -98,6 +101,11 @@ def _gpu_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
     return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
+    
+def _gpu_mpi_dtype(dtype):
+    if dtype not in [np.complex128, np.complex64]:
+        raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
+    return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
 
 
 def _H_dtype(dtype):
