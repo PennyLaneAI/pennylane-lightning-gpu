@@ -194,6 +194,9 @@ if CPP_BINARY_AVAILABLE:
             "SparseHamiltonian",
             "Hamiltonian",
             "Identity",
+            "Sum",
+            "Prod",
+            "SProd",
         }
 
         def __init__(
@@ -573,7 +576,7 @@ if CPP_BINARY_AVAILABLE:
 
             for op_idx, tp in enumerate(trainable_params):
                 # get op_idx-th operator among differentiable operators
-                op, _, _ = tape.get_operation(op_idx, return_op_index=True)
+                op, _, _ = tape.get_operation(op_idx)
 
                 if isinstance(op, Operation) and not isinstance(op, (BasisState, QubitStateVector)):
                     # We now just ignore non-op or state preps
@@ -819,6 +822,19 @@ if CPP_BINARY_AVAILABLE:
             )
 
             return squared_mean - (mean**2)
+
+        def _get_diagonalizing_gates(self, circuit: qml.tape.QuantumTape) -> List[Operation]:
+            skip_diagonalizing = lambda obs: isinstance(obs, qml.Hamiltonian) or (
+                isinstance(obs, qml.ops.Sum) and obs._pauli_rep is not None
+            )
+            meas_filtered = list(
+                filter(
+                    lambda m: m.obs is None or not skip_diagonalizing(m.obs), circuit.measurements
+                )
+            )
+            return super()._get_diagonalizing_gates(
+                qml.tape.QuantumScript(measurements=meas_filtered)
+            )
 
 else:  # CPP_BINARY_AVAILABLE:
 

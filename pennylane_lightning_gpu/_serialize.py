@@ -20,13 +20,14 @@ import numpy as np
 from pennylane import (
     BasisState,
     Hadamard,
-    Projector,
+    PauliX,
+    PauliY,
+    PauliZ,
+    Identity,
     QubitStateVector,
     Rot,
 )
-from pennylane.grouping import is_pauli_word
-from pennylane.operation import Observable, Tensor
-from pennylane.ops.qubit.observables import Hermitian
+from pennylane.operation import Tensor
 from pennylane.ops.op_math import Adjoint
 from pennylane.tape import QuantumTape
 
@@ -46,46 +47,25 @@ try:
         HamiltonianGPU_C128,
         SparseHamiltonianGPU_C64,
         SparseHamiltonianGPU_C128,
-        HermitianObsGPU_C64,
-        HermitianObsGPU_C128,
     )
 except ImportError as e:
     print(e)
 
-
-def _obs_has_kernel(obs: Observable) -> bool:
-    """Returns True if the input observable has a supported kernel in the C++ backend.
-
-    Args:
-        obs (Observable): the input observable
-
-    Returns:
-        bool: indicating whether ``obs`` has a dedicated kernel in the backend
-    """
-    if is_pauli_word(obs):
-        return True
-    if isinstance(obs, (Hadamard, Projector)):
-        return True
-    if isinstance(obs, Tensor):
-        return all(_obs_has_kernel(o) for o in obs.obs)
-    return False
+pauli_name_map = {
+    "I": "Identity",
+    "X": "PauliX",
+    "Y": "PauliY",
+    "Z": "PauliZ",
+}
 
 
 def _serialize_named_ob(o, wires_map: dict, use_csingle: bool):
     """Serializes an observable (Named)"""
-    assert not isinstance(o, Tensor)
-
-    if use_csingle:
-        ctype = np.complex64
-        named_obs = NamedObsGPU_C64
-    else:
-        ctype = np.complex128
-        named_obs = NamedObsGPU_C128
-
-    wires_list = o.wires.tolist()
-    wires = [wires_map[w] for w in wires_list]
-    if _obs_has_kernel(o):
-        return named_obs(o.name, wires)
+    named_obs = NamedObsGPU_C64 if use_csingle else NamedObsGPU_C128
+    wires = [wires_map[w] for w in o.wires]
+    if o.name == "Identity":
+        wires = wires[:1]
+    return named_obs(o.name, wires)
 
 
 def _serialize_tensor_ob(ob, wires_map: dict, use_csingle: bool):
@@ -134,16 +114,37 @@ def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool):
     return sparsehamiltonian_obs(data, indices, offsets, wires)
 
 
-def _serialize_hermitian(ob, wires_map: dict, use_csingle: bool):
+def _serialize_pauli_word(ob, wires_map: dict, use_csingle: bool):
+    """Serialize a :class:`pennylane.pauli.PauliWord` into a Named or Tensor observable."""
+    if use_csingle:
+        named_obs = NamedObsGPU_C64
+        tensor_obs = TensorProdObsGPU_C64
+    else:
+        named_obs = NamedObsGPU_C128
+        tensor_obs = TensorProdObsGPU_C128
+
+    if len(ob) == 1:
+        wire, pauli = list(ob.items())[0]
+        return named_obs(pauli_name_map[pauli], [wires_map[wire]])
+
+    return tensor_obs(
+        [named_obs(pauli_name_map[pauli], [wires_map[wire]]) for wire, pauli in ob.items()]
+    )
+
+
+def _serialize_pauli_sentence(ob, wires_map: dict, use_csingle: bool):
+    """Serialize a :class:`pennylane.pauli.PauliSentence` into a Hamiltonian."""
     if use_csingle:
         rtype = np.float32
-        hermitian_obs = HermitianObsGPU_C64
+        hamiltonian_obs = HamiltonianGPU_C64
     else:
         rtype = np.float64
-        hermitian_obs = HermitianObsGPU_C128
+        hamiltonian_obs = HamiltonianGPU_C128
 
-    data = qml.matrix(ob).astype(rtype).ravel(order="C")
-    return hermitian_obs(data, ob.wires.tolist())
+    pwords, coeffs = zip(*ob.items())
+    terms = [_serialize_pauli_word(pw, wires_map, use_csingle) for pw in pwords]
+    coeffs = np.array(coeffs).astype(rtype)
+    return hamiltonian_obs(coeffs, terms)
 
 
 def _serialize_ob(ob, wires_map, use_csingle):
@@ -153,12 +154,16 @@ def _serialize_ob(ob, wires_map, use_csingle):
         return _serialize_hamiltonian(ob, wires_map, use_csingle)
     elif ob.name == "SparseHamiltonian":
         return _serialize_sparsehamiltonian(ob, wires_map, use_csingle)
+    elif isinstance(ob, (PauliX, PauliY, PauliZ, Identity, Hadamard)):
+        return _serialize_named_ob(ob, wires_map, use_csingle)
+    elif ob._pauli_rep is not None:
+        return _serialize_pauli_sentence(ob._pauli_rep, wires_map, use_csingle)
     elif ob.name == "Hermitian":
         raise TypeError(
-            f"Hermitian observables are not currently supported for adjoint differentiation. Please use Pauli-words only."
+            "Hermitian observables are not currently supported for adjoint differentiation. Please use Pauli-words only."
         )
     else:
-        return _serialize_named_ob(ob, wires_map, use_csingle)
+        raise TypeError(f"Unknown observable found: {ob}. Please use Pauli-words only.")
 
 
 def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool = False) -> List:

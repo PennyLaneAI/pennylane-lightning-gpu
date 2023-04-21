@@ -22,7 +22,14 @@ import pennylane as qml
 from pennylane import numpy as np
 from pennylane import QNode, qnode
 from scipy.stats import unitary_group
-from pennylane_lightning_gpu.lightning_gpu_qubit_ops import DevPool
+from pennylane_lightning_gpu.lightning_gpu_qubit_ops import (
+    DevPool,
+    NamedObsGPU_C64,
+    TensorProdObsGPU_C64,
+    HamiltonianGPU_C64,
+    SparseHamiltonianGPU_C64,
+)
+from pennylane_lightning_gpu._serialize import _serialize_ob
 
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
@@ -376,6 +383,25 @@ class TestAdjointJacobian:
         dM2 = dev_gpu.adjoint_jacobian(tape, starting_state=state_vector)
 
         assert np.allclose(dM1, dM2, atol=tol, rtol=0)
+
+    @pytest.mark.parametrize(
+        "old_obs",
+        [
+            qml.PauliX(0) @ qml.PauliZ(1),
+            qml.Hamiltonian([1.1], [qml.PauliZ(0)]),
+            qml.Hamiltonian([1.1, 2.2], [qml.PauliZ(0), qml.PauliZ(1)]),
+            qml.Hamiltonian([1.1, 2.2], [qml.PauliX(0), qml.PauliZ(0) @ qml.PauliX(1)]),
+        ],
+    )
+    def test_op_arithmetic_is_supported(self, old_obs, dev_gpu):
+        """Tests that an arithmetic obs with a PauliRep are supported for adjoint_jacobian."""
+        ops = [qml.RX(1.1, 0), qml.RY(2.2, 0), qml.RX(0.66, 1), qml.RY(1.23, 1)]
+        new_obs = qml.pauli.pauli_sentence(old_obs).operation()
+        old_tape = qml.tape.QuantumScript(ops, [qml.expval(old_obs)])
+        new_tape = qml.tape.QuantumScript(ops, [qml.expval(new_obs)])
+        old_res = dev_gpu.adjoint_jacobian(old_tape)
+        new_res = dev_gpu.adjoint_jacobian(new_tape)
+        assert qml.math.allequal(old_res, new_res)
 
 
 class TestAdjointJacobianQNode:
@@ -1079,3 +1105,41 @@ def test_adjoint_SparseHamiltonian(returns):
     j_cpu = qml.jacobian(qnode_cpu)(params)
 
     assert np.allclose(j_cpu, j_gpu)
+
+
+@pytest.mark.parametrize(
+    "obs,obs_type",
+    [
+        (qml.PauliZ(0), NamedObsGPU_C64),
+        (qml.PauliZ(0) @ qml.PauliZ(1), TensorProdObsGPU_C64),
+        (qml.Hadamard(0), NamedObsGPU_C64),
+        (qml.Hamiltonian([1], [qml.PauliZ(0)]), HamiltonianGPU_C64),
+        (
+            qml.PauliZ(0) @ qml.Hadamard(1) @ (0.1 * (qml.PauliZ(2) + qml.PauliX(3))),
+            TensorProdObsGPU_C64,
+        ),
+        (
+            qml.SparseHamiltonian(qml.Hamiltonian([1], [qml.PauliZ(0)]).sparse_matrix(), wires=[0]),
+            SparseHamiltonianGPU_C64,
+        ),
+    ],
+)
+def test_obs_returns_expected_type(obs, obs_type):
+    """Tests that observables get serialized to the expected type."""
+    assert isinstance(plk._serialize._serialize_ob(obs, dict(enumerate(obs.wires)), True), obs_type)
+
+
+@pytest.mark.parametrize(
+    "bad_obs",
+    [
+        qml.Hermitian(np.eye(2), wires=0),
+        qml.sum(qml.PauliZ(0), qml.Hadamard(1)),
+        qml.Projector([0], wires=0),
+        qml.PauliZ(0) @ qml.Projector([0], wires=1),
+        qml.sum(qml.Hadamard(0), qml.PauliX(1)),
+    ],
+)
+def test_obs_not_supported_for_adjoint_diff(bad_obs):
+    """Tests observables that can't be serialized for adjoint-differentiation."""
+    with pytest.raises(TypeError, match="Please use Pauli-words only."):
+        _serialize_ob(bad_obs, dict(enumerate(bad_obs.wires)), True)
