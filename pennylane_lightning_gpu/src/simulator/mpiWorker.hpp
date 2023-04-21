@@ -28,11 +28,11 @@ inline bool IsIndexSwapRequired(int numLocalQubits, int numTotalQubits,
                                 const std::vector<int> &tgtsInt,
                                 std::vector<int> &totalWires) {
     for (size_t i = 0; i < ctrlsInt.size(); i++) {
-        totalWires[ctrlsInt[i]] = Control;
+        totalWires[ctrlsInt[i]] = WireName::Control;
     }
 
     for (size_t i = 0; i < tgtsInt.size(); i++) {
-        totalWires[tgtsInt[i]] = Target;
+        totalWires[tgtsInt[i]] = WireName::Target;
     }
 
     int BSwapReq = 0;
@@ -51,7 +51,7 @@ inline bool IsIndexSwapRequired(int numLocalQubits, int numTotalQubits,
                                 const std::vector<int> &tgtsInt,
                                 std::vector<int> &totalWires) {
     for (size_t i = 0; i < tgtsInt.size(); i++) {
-        totalWires[tgtsInt[i]] = Target;
+        totalWires[tgtsInt[i]] = WireName::Target;
     }
 
     int BSwapReq = 0;
@@ -77,7 +77,7 @@ inline std::vector<int2> createOperationWires(int numLocalQubits,
         if (totalWires[i] == 0 && totalWires[j] != 0) {
             int2 wirepair = make_int2(i, j);
             wirePairs.push_back(wirepair);
-            if (totalWires[j] == Control) {
+            if (totalWires[j] == WireName::Control) {
                 for (size_t k = 0; k < localCtrls.size(); k++) {
                     if (localCtrls[k] == j) {
                         localCtrls[k] = i;

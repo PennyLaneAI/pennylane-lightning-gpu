@@ -1,9 +1,9 @@
 #pragma once
 
-// #include <assert.h>
 #include <complex>
 #include <cstring>
 #include <cuda.h>
+#include <cuda_runtime.h>
 #include <mpi.h>
 #include <stdexcept>
 #include <stdio.h>
@@ -13,6 +13,8 @@
 #include <typeinfo>
 #include <unordered_map>
 #include <vector>
+
+#include "Error.hpp"
 
 namespace Pennylane::MPI {
 // check if num is a power of 2
@@ -155,7 +157,7 @@ class MPIManager {
     template <typename T>
     void Allgather(T &sendBuf, std::vector<T> &recvBuf, int sendCount = 1) {
         MPI_Datatype datatype = getMPIDatatype<T>();
-        PL_ABORT_IF(recvBuf.size() != this->getSize(),
+        PL_ABORT_IF(recvBuf.size() != static_cast<size_t>(this->getSize()),
                     "Incompatible size of sendBuf and recvBuf.");
         PL_MPI_IS_SUCCESS(MPI_Allgather(&sendBuf, sendCount, datatype,
                                         recvBuf.data(), sendCount, datatype,
@@ -288,6 +290,13 @@ class MPIManager {
                                        dest, sendtag, recvBuf.data(),
                                        recvBuf.size(), datatype, source,
                                        recvtag, this->getComm(), &status));
+    }
+
+    auto split(int color, int key) -> MPIManager {
+        MPI_Comm newcomm;
+        PL_MPI_IS_SUCCESS(
+            MPI_Comm_split(this->getComm(), color, key, &newcomm));
+        return MPIManager(newcomm);
     }
 
   private:
