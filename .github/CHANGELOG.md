@@ -16,9 +16,12 @@
 * Fix the controlled-gate generators, which are now fully used in the adjoint pipeline following PennyLane PR [(#3874)](https://github.com/PennyLaneAI/pennylane/pull/3874).
 [(#101)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/101)
 
+* Updates to use the new call signature for `QuantumScript.get_opeartion`.
+  [(#104)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/104)
+
 ### Contributors
 
-Lee James O'Riordan
+Romain Moyard, Lee James O'Riordan
 
 ---
 
