@@ -350,8 +350,8 @@ if CPP_BINARY_AVAILABLE:
 
             # length of basis state parameter
             n_basis_state = len(state)
-
-            if not set(state.tolist()).issubset({0, 1}):
+            state = state.tolist() if hasattr(state, "tolist") else state
+            if not set(state).issubset({0, 1}):
                 raise ValueError("BasisState parameter must consist of 0 or 1 integers.")
 
             if n_basis_state != len(device_wires):
@@ -573,7 +573,7 @@ if CPP_BINARY_AVAILABLE:
 
             for op_idx, tp in enumerate(trainable_params):
                 # get op_idx-th operator among differentiable operators
-                op, _, _ = tape.get_operation(op_idx, return_op_index=True)
+                op, _, _ = tape.get_operation(op_idx)
 
                 if isinstance(op, Operation) and not isinstance(op, (BasisState, QubitStateVector)):
                     # We now just ignore non-op or state preps

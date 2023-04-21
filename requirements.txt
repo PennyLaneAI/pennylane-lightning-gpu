@@ -1,3 +1,4 @@
+pip~=22.0
 ninja
 cmake
 cuquantum>=22.3.0
