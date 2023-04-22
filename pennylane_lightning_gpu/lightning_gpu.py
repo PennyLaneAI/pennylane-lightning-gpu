@@ -18,6 +18,7 @@ interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enable
 from typing import List, Union
 from warnings import warn
 from itertools import product
+from mpi4py import MPI
 
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
@@ -101,7 +102,8 @@ def _gpu_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
     return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
-    
+
+
 def _gpu_mpi_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
@@ -208,6 +210,7 @@ if CPP_BINARY_AVAILABLE:
             self,
             wires,
             *,
+            mpi_comm=None,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -221,17 +224,53 @@ if CPP_BINARY_AVAILABLE:
                 self.use_csingle = False
             else:
                 raise TypeError(f"Unsupported complex Type: {c_dtype}")
-            super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
-            self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
-            self._create_basis_state_GPU(0)
-            self._sync = sync
-            self._dp = DevPool()
-            self._batch_obs = batch_obs
+
+            if mpi_comm is None:
+                self._mpi_comm = None
+                super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
+                self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
+                self._create_basis_state_GPU(0)
+                self._sync = sync
+                self._dp = DevPool()
+                self._batch_obs = batch_obs
+            else:
+                self._mpi_comm = MPI.COMM_WORLD
+                # initialize MPIManager and config check in the MPIManager ctor
+                self._mpi_manager = MPIManager()
+                self._dp = DevPool()
+                # check if number of GPUs per node is larger than
+                # number of processes per node
+                numDevices = self._dp.getTotalDevices()
+                numProcsNode = self._mpi_manager.getSizeNode()
+                if numDevices < numProcsNode:
+                    raise ValueError(
+                        "Number of devices should be larger than the number of processes on each node."
+                    )
+                # set GPU device
+                rank = self._mpi_manager.getRank()
+                print("rank is ", rank)
+                print("Vendor",self._mpi_manager.getVendor())
+                deviceid = rank % numProcsNode
+                self._dp.setDeviceID(deviceid)
+                # Data initialization
+                super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
+                commSize = self._mpi_manager.getSize()
+                self._num_global_wires = commSize.bit_length() - 1
+                self._num_local_wires = self.num_wires - self._num_global_wires
+                self._mpi_manager.Barrier() 
+                self._dp.setDeviceID(deviceid)
+                self._gpu_mpi_state = _gpu_mpi_dtype(c_dtype)(self._num_global_wires, self._num_local_wires)
+                self._mpi_manager.Barrier() 
+                self._create_basis_state_GPU(0)
+                self._batch_obs = False
 
         def reset(self):
             super().reset()
             # init the state vector to |00..0>
-            self._gpu_state.resetGPU(False)  # Sync reset
+            if self._mpi_comm is None:
+                self._gpu_state.resetGPU(False)  # Sync reset
+            else:
+                self._gpu_mpi_state.resetGPU(False)  # Sync reset
 
         @property
         def state(self):
@@ -262,7 +301,10 @@ if CPP_BINARY_AVAILABLE:
             >>> print(state_vector)
             [0.+0.j 1.+0.j]
             """
-            self._gpu_state.DeviceToHost(state_vector.ravel(order="C"), use_async)
+            if self._mpi_comm is None:
+                self._gpu_state.DeviceToHost(state_vector.ravel(order="C"), use_async)
+            else:
+                self._gpu_mpi_state.DeviceToHost(state_vector.ravel(order="C"), use_async)
 
         def syncH2D(self, state_vector, use_async=False):
             """Copy the state vector data on host provided by the user to the state vector on the device
@@ -283,7 +325,10 @@ if CPP_BINARY_AVAILABLE:
             >>> print(res)
             1.0
             """
-            self._gpu_state.HostToDevice(state_vector.ravel(order="C"), use_async)
+            if self._mpi_comm is None:
+                self._gpu_state.HostToDevice(state_vector.ravel(order="C"), use_async)
+            else:
+                self._gpu_mpi_state.HostToDevice(state_vector.ravel(order="C"), use_async)
 
         def _create_basis_state_GPU(self, index, use_async=False):
             """Return a computational basis state over all wires.
@@ -292,7 +337,10 @@ if CPP_BINARY_AVAILABLE:
                 use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
                 Note: This function only supports synchronized memory copy.
             """
-            self._gpu_state.setBasisState(index, use_async)
+            if self._mpi_comm is None:
+                self._gpu_state.setBasisState(index, use_async)
+            else:
+                self._gpu_mpi_state.setBasisState(index, use_async)
 
         def _apply_state_vector_GPU(self, state, device_wires, use_async=False):
             """Initialize the state vector on GPU with a specified state on host.
@@ -341,9 +389,14 @@ if CPP_BINARY_AVAILABLE:
             ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
 
             # set the state vector on GPU with the unravelled_indices and their corresponding values
-            self._gpu_state.setStateVector(
-                ravelled_indices, state, use_async
-            )  # this operation on device
+            if self._mpi_comm is None:
+                self._gpu_state.setStateVector(
+                    ravelled_indices, state, use_async
+                )  # this operation on device
+            else:
+                self._gpu_mpi_state.setStateVector(
+                    ravelled_indices, state, use_async
+                )  # this operation on device
 
         def _apply_basis_state_GPU(self, state, wires):
             """Initialize the state vector in a specified computational basis state on GPU directly.
@@ -428,7 +481,11 @@ if CPP_BINARY_AVAILABLE:
                 if isinstance(o, Adjoint):
                     name = o.base.name
                     invert_param = True
-                method = getattr(self._gpu_state, name, None)
+            
+                if self._mpi_comm is None:
+                    method = getattr(self._gpu_state, name, None)
+                else:
+                    method = getattr(self._gpu_mpi_state, name, None)
 
                 wires = self.wires.indices(o.wires)
 
@@ -442,13 +499,23 @@ if CPP_BINARY_AVAILABLE:
 
                     if len(mat) == 0:
                         raise Exception("Unsupported operation")
-                    self._gpu_state.apply(
-                        name,
-                        wires,
-                        False,
-                        [],
-                        mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
-                    )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
+
+                    if self._mpi_comm is None:
+                        self._gpu_state.apply(
+                            name,
+                            wires,
+                            False,
+                            [],
+                            mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
+                        )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
+                    else:
+                        self._gpu_mpi_state.apply(
+                            name,
+                            wires,
+                            False,
+                            [],
+                            mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
+                        )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
 
                 else:
                     param = o.parameters

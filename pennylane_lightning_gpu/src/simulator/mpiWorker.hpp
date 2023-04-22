@@ -175,13 +175,15 @@ inline SharedLocalStream make_shared_local_stream() {
 }
 template <typename CFP_t>
 inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
-                                              MPIManager &mpi_manager,
+                                              MPI_Comm mpi_communicator,
                                               CFP_t *sv, int numLocalQubits,
                                               cudaStream_t localStream) {
-    custatevecSVSwapWorkerDescriptor_t svSegSwapWorker;
+    custatevecSVSwapWorkerDescriptor_t svSegSwapWorker=nullptr;
 
     int nDevices = 0;
     PL_CUDA_IS_SUCCESS(cudaGetDeviceCount(&nDevices));
+
+    MPIManager mpi_manager(mpi_communicator);
 
     nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()
                                                     : nDevices;
@@ -199,14 +201,26 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         svDataType = CUDA_C_32F;
     }
 
-    cudaEvent_t localEvent;
-    custatevecCommunicatorDescriptor_t communicator;
+    cudaEvent_t localEvent=nullptr;
+    custatevecCommunicatorDescriptor_t communicator=nullptr;
 
     PL_CUDA_IS_SUCCESS(cudaEventCreateWithFlags(
         &localEvent, cudaEventInterprocess | cudaEventDisableTiming));
 
     custatevecCommunicatorType_t communicatorType;
+    std::string mpilibname;
+    if (mpi_manager.getVendor() == "MPICH") {
+        communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH;
+        mpilibname = "libmpi.so";
+    }
 
+    if (mpi_manager.getVendor() == "Open MPI") {
+        communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
+        mpilibname = "";
+    }
+
+    //custatevecCommunicatorType_t communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH ;
+    /*
     if (mpi_manager.getVendor() == "MPICH") {
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH;
     }
@@ -214,9 +228,16 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
     if (mpi_manager.getVendor() == "Open MPI") {
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
     }
+    
     const char *soname = nullptr;
-    PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
+    */
+    //const char *soname = "libmpi.so";
+    const char *soname = mpilibname.c_str();
+    mpi_manager.Barrier();
+    PL_CUSTATEVEC_IS_SUCCESS(
+        custatevecCommunicatorCreate(
         handle, &communicator, communicatorType, soname));
+    mpi_manager.Barrier();
 
     void *d_extraWorkspace = nullptr;
     void *d_transferWorkspace = nullptr;

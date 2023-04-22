@@ -112,6 +112,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pennylane_lightning)
 
+
 if(PLLGPU_ENABLE_MPI)
     if(${CMAKE_SYSTEM_NAME} STREQUAL "CrayLinuxEnvironment")
         find_package(MPI REQUIRED)
@@ -184,6 +185,14 @@ find_file( CUSTATEVEC_INC
             ENV CPATH
 )
 
+#find_file( MPI4PY_INC
+#    NAMES mpi4py.h
+#    HINTS ${Python_SITELIB}/mpi4py/include
+#)
+
+set(MPI4PY_INC "${Python_SITELIB}/mpi4py/include")
+
+
 if(NOT CUSTATEVEC_LIB OR NOT CUSTATEVEC_INC)
     message(FATAL_ERROR "\nUnable to find cuQuantum SDK installation. Please ensure it is correctly installed and available on path.")
 endif()
@@ -213,7 +222,7 @@ if(PLLGPU_ENABLE_PYTHON)
     set_target_properties(lightning_gpu_qubit_ops PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
     target_compile_options(lightning_gpu_qubit_ops PRIVATE "$<$<CONFIG:RELEASE>:-W>")
     target_compile_definitions(lightning_gpu_qubit_ops PRIVATE VERSION_INFO=${VERSION_STRING})
-    target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include)
+    target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include ${MPI4PY_INC})
     target_link_libraries(lightning_gpu_qubit_ops PRIVATE CUDA::cudart)
 endif()
 

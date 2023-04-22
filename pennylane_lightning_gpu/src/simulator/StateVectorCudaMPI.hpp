@@ -112,7 +112,7 @@ class StateVectorCudaMPI
     using GateType = CFP_t *;
 
     StateVectorCudaMPI() = delete;
-    
+
     StateVectorCudaMPI(MPIManager mpi_manager, size_t num_global_qubits,
                        size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
@@ -122,22 +122,23 @@ class StateVectorCudaMPI
           handle_(make_shared_cusv_handle()),
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
-          svSegSwapWorker_(make_shared_mpi_worker(
-              handle_.get(), mpi_manager_, BaseType::getData(),
+          svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
+              handle_.get(), mpi_manager_.getComm(), BaseType::getData(),
               num_local_qubits, localStream_.get())),
           gate_cache_(true){};
 
-    StateVectorCudaMPI(MPI_Comm mpi_communicator, size_t num_global_qubits,
+    //StateVectorCudaMPI(MPI_Comm mpi_communicator, size_t num_global_qubits,
+    StateVectorCudaMPI(size_t num_global_qubits,
                        size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
               num_local_qubits),
           numGlobalQubits_(num_global_qubits),
-          numLocalQubits_(num_local_qubits), mpi_manager_(mpi_communicator),
+          numLocalQubits_(num_local_qubits), mpi_manager_(MPI_COMM_WORLD),
           handle_(make_shared_cusv_handle()),
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
-          svSegSwapWorker_(make_shared_mpi_worker(
-              handle_.get(), mpi_manager_, BaseType::getData(),
+          svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
+              handle_.get(), MPI_COMM_WORLD, BaseType::getData(),
               num_local_qubits, localStream_.get())),
           gate_cache_(true){};
 

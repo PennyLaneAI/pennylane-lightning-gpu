@@ -23,21 +23,24 @@
 #include "AdjointDiffGPU.hpp"
 #include "JacobianTape.hpp"
 
-#include "MPIManager.hpp"
 #include "DevTag.hpp"
 #include "DevicePool.hpp"
 #include "Error.hpp"
+#include "MPIManager.hpp"
+#include "StateVectorCudaMPI.hpp"
 #include "StateVectorCudaManaged.hpp"
 #include "StateVectorManagedCPU.hpp"
-#include "StateVectorCudaMPI.hpp"
 #include "StateVectorRawCPU.hpp"
 #include "cuGateCache.hpp"
 #include "cuda_helpers.hpp"
+#include "mpi.h"
 
 #include "pybind11/complex.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
+#include "Python.h"
+#include <mpi4py/mpi4py.h>
 
 /// @cond DEV
 namespace {
@@ -875,8 +878,8 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
  */
 template <class PrecisionT, class ParamT>
 void StateVectorCudaMPI_class_bindings(py::module &m) {
-    //using np_arr_r =
-    //    py::array_t<ParamT, py::array::c_style | py::array::forcecast>;
+    // using np_arr_r =
+    //     py::array_t<ParamT, py::array::c_style | py::array::forcecast>;
     using np_arr_c = py::array_t<std::complex<ParamT>,
                                  py::array::c_style | py::array::forcecast>;
     using np_arr_sparse_ind = typename std::conditional<
@@ -889,9 +892,15 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
     std::string class_name = "LightningGPUMPI_C" + bitsize;
 
     py::class_<StateVectorCudaMPI<PrecisionT>>(m, class_name.c_str())
-        .def(py::init([](MPIManager& mpi_manager, std::size_t num_global_qubits, std::size_t num_local_qubits){
-            return new StateVectorCudaMPI<PrecisionT>(mpi_manager,num_global_qubits,num_local_qubits);
-        }))              // qubits, device
+        .def(py::init([](MPIManager &mpi_manager, std::size_t num_global_qubits,
+                         std::size_t num_local_qubits) {
+            return new StateVectorCudaMPI<PrecisionT>(
+                mpi_manager, num_global_qubits, num_local_qubits);
+        })) // qubits, device
+        .def(py::init([](std::size_t num_global_qubits,
+                         std::size_t num_local_qubits) {
+            return new StateVectorCudaMPI<PrecisionT>(num_global_qubits, num_local_qubits);
+        })) // qubits, device
         .def(
             "setBasisState",
             [](StateVectorCudaMPI<PrecisionT> &sv, const size_t index,
@@ -1231,20 +1240,20 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                const StateVectorCudaMPI<PrecisionT> &other,
                bool async) { sv.updateData(other, async); },
             "Synchronize data from another GPU device to current device.")
-        .def("DeviceToHost",
-             py::overload_cast<StateVectorManagedCPU<PrecisionT> &, bool>(
-                 &StateVectorCudaMPI<PrecisionT>::CopyGpuDataToHost,
-                 py::const_),
-             "Synchronize data from the GPU device to host.")
-        .def("DeviceToHost",
-             py::overload_cast<std::complex<PrecisionT> *, size_t, bool>(
-                 &StateVectorCudaMPI<PrecisionT>::CopyGpuDataToHost,
-                 py::const_),
-             "Synchronize data from the GPU device to host.")
         .def(
             "DeviceToHost",
-            [](const StateVectorCudaMPI<PrecisionT> &gpu_sv,
-               np_arr_c &cpu_sv, bool) {
+            py::overload_cast<StateVectorManagedCPU<PrecisionT> &, bool>(
+                &StateVectorCudaMPI<PrecisionT>::CopyGpuDataToHost, py::const_),
+            "Synchronize data from the GPU device to host.")
+        .def(
+            "DeviceToHost",
+            py::overload_cast<std::complex<PrecisionT> *, size_t, bool>(
+                &StateVectorCudaMPI<PrecisionT>::CopyGpuDataToHost, py::const_),
+            "Synchronize data from the GPU device to host.")
+        .def(
+            "DeviceToHost",
+            [](const StateVectorCudaMPI<PrecisionT> &gpu_sv, np_arr_c &cpu_sv,
+               bool) {
                 py::buffer_info numpyArrayInfo = cpu_sv.request();
                 auto *data_ptr =
                     static_cast<complex<PrecisionT> *>(numpyArrayInfo.ptr);
@@ -1264,8 +1273,8 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
              "Synchronize data from the host device to GPU.")
         .def(
             "HostToDevice",
-            [](StateVectorCudaMPI<PrecisionT> &gpu_sv,
-               const np_arr_c &cpu_sv, bool async) {
+            [](StateVectorCudaMPI<PrecisionT> &gpu_sv, const np_arr_c &cpu_sv,
+               bool async) {
                 const py::buffer_info numpyArrayInfo = cpu_sv.request();
                 const auto *data_ptr =
                     static_cast<complex<PrecisionT> *>(numpyArrayInfo.ptr);
@@ -1279,8 +1288,10 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
         .def("GetNumGPUs", &getGPUCount, "Get the number of available GPUs.")
         .def("getCurrentGPU", &getGPUIdx,
              "Get the GPU index for the statevector data.")
-        .def("numLocalQubits", &StateVectorCudaMPI<PrecisionT>::getNumLocalQubits)
-        .def("numGlobalQubits", &StateVectorCudaMPI<PrecisionT>::getNumGlobalQubits)
+        .def("numLocalQubits",
+             &StateVectorCudaMPI<PrecisionT>::getNumLocalQubits)
+        .def("numGlobalQubits",
+             &StateVectorCudaMPI<PrecisionT>::getNumGlobalQubits)
         .def("dataLength", &StateVectorCudaMPI<PrecisionT>::getLength)
         .def("resetGPU", &StateVectorCudaMPI<PrecisionT>::initSV_MPI);
 }
@@ -1338,19 +1349,31 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
                  return static_cast<void *>(dev_tag.getStreamID());
              })
         .def("refresh", &DevTag<int>::refresh);
-    
+
     py::class_<MPIManager>(m, "MPIManager")
-        .def(py::init<MPI_Comm>())
+        //.def(py::init([](void *comm_ptr) {
+        //    MPI_Comm comm_c =
+        //        MPI_Comm_f2c(*reinterpret_cast<MPI_Fint *>(comm_ptr));
+        //    return new MPIManager(comm_c);
+        //})) // qubits, device
+        //.def(py::init([](py::object py_comm){
+        //    PyObject* py_obj = py_comm.ptr();
+        //    MPI_Comm* comm = PyMPIComm_Get(py_obj);
+        //    return new MPIManager(*comm);
+        //}))
+        .def(py::init<>())       
+        //.def(py::init<MPI_Comm>())
         .def(py::init<MPIManager &>())
+        .def("Barrier",&MPIManager::Barrier)
         .def("getRank", &MPIManager::getRank)
-        .def("getSize",&MPIManager::getSize)
+        .def("getSize", &MPIManager::getSize)
         .def("getSizeNode", &MPIManager::getSizeNode)
         .def("getComm", &MPIManager::getComm)
         .def("getTime", &MPIManager::getTime)
         .def("getVendor", &MPIManager::getVendor)
         .def("getVersion", &MPIManager::getVersion)
         .def("checkMPIConfig", &MPIManager::check_mpi_config);
-    
+
     StateVectorCudaManaged_class_bindings<float, float>(m);
     StateVectorCudaManaged_class_bindings<double, double>(m);
 

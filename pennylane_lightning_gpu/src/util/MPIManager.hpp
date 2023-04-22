@@ -54,6 +54,16 @@ class MPIManager {
     int subversion_;
 
   public:
+  
+    MPIManager() : communiator_(MPI_COMM_WORLD) {
+        isExternalComm_ = true;
+        PL_MPI_IS_SUCCESS(MPI_Comm_rank(communiator_, &rank_));
+        PL_MPI_IS_SUCCESS(MPI_Comm_size(communiator_, &size_));
+        findVendor();
+        findVersion();
+        getNumProcsPerNode();
+    }
+
     MPIManager(MPI_Comm communicator) : communiator_(communicator) {
         isExternalComm_ = true;
         PL_MPI_IS_SUCCESS(MPI_Comm_rank(communiator_, &rank_));
@@ -71,6 +81,7 @@ class MPIManager {
         PL_MPI_IS_SUCCESS(MPI_Comm_size(communiator_, &size_));
         findVendor();
         findVersion();
+        check_mpi_config();
         getNumProcsPerNode();
     }
 
@@ -141,6 +152,8 @@ class MPIManager {
                                 this->getRank(), MPI_INFO_NULL, &node_comm));
         PL_MPI_IS_SUCCESS(MPI_Comm_size(node_comm, &size_per_node_));
         this->Barrier();
+        PL_ABORT_IF(isPow2(size_per_node_) != true,
+                    "Number of processes per node is not power of two.");
     }
 
     void check_mpi_config() {
