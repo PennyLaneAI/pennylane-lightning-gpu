@@ -190,7 +190,10 @@ find_file( CUSTATEVEC_INC
 #    HINTS ${Python_SITELIB}/mpi4py/include
 #)
 
-set(MPI4PY_INC "${Python_SITELIB}/mpi4py/include")
+#set(MPI4PY_INC "${Python_SITELIB}/mpi4py/include")
+set(PythonSiteLIB "/global/common/software/nersc/pm-2022q3/sw/python/3.9-anaconda-2021.11/lib/python3.9/site-packages")
+set(MPI4PY_INC "${PythonSiteLIB}/mpi4py/include")
+message(STATUS "${PythonSiteLIB}")
 
 
 if(NOT CUSTATEVEC_LIB OR NOT CUSTATEVEC_INC)
