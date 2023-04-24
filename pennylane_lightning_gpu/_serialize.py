@@ -47,6 +47,8 @@ try:
         HamiltonianGPU_C128,
         SparseHamiltonianGPU_C64,
         SparseHamiltonianGPU_C128,
+        HermitianObsGPU_C64,
+        HermitianObsGPU_C128,
     )
 except ImportError as e:
     print(e)
@@ -112,6 +114,18 @@ def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool):
     wires.extend([wires_map[w] for w in wires_list])
 
     return sparsehamiltonian_obs(data, indices, offsets, wires)
+
+
+def _serialize_hermitian(ob, wires_map: dict, use_csingle: bool):
+    if use_csingle:
+        rtype = np.float32
+        hermitian_obs = HermitianObsGPU_C64
+    else:
+        rtype = np.float64
+        hermitian_obs = HermitianObsGPU_C128
+
+    data = qml.matrix(ob).astype(rtype).ravel(order="C")
+    return hermitian_obs(data, ob.wires.tolist())
 
 
 def _serialize_pauli_word(ob, wires_map: dict, use_csingle: bool):
