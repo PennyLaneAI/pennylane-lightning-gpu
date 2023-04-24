@@ -25,15 +25,18 @@ from scipy.stats import unitary_group
 from pennylane_lightning_gpu.lightning_gpu_qubit_ops import (
     DevPool,
     NamedObsGPU_C64,
+    NamedObsGPU_C128,
     TensorProdObsGPU_C64,
+    TensorProdObsGPU_C128,
     HamiltonianGPU_C64,
+    HamiltonianGPU_C128,
     SparseHamiltonianGPU_C64,
+    SparseHamiltonianGPU_C128,
 )
 from pennylane_lightning_gpu._serialize import _serialize_ob
 
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
-    import pennylane_lightning_gpu as plg
 
     if not CPP_BINARY_AVAILABLE:
         raise ImportError("PennyLane-Lightning-GPU is unsupported on this platform")
@@ -1109,25 +1112,29 @@ def test_adjoint_SparseHamiltonian(returns):
 
 
 @pytest.mark.parametrize(
-    "obs,obs_type",
+    "obs,obs_type_c64,obs_type_c128",
     [
-        (qml.PauliZ(0), NamedObsGPU_C64),
-        (qml.PauliZ(0) @ qml.PauliZ(1), TensorProdObsGPU_C64),
-        (qml.Hadamard(0), NamedObsGPU_C64),
-        (qml.Hamiltonian([1], [qml.PauliZ(0)]), HamiltonianGPU_C64),
+        (qml.PauliZ(0), NamedObsGPU_C64, NamedObsGPU_C128),
+        (qml.PauliZ(0) @ qml.PauliZ(1), TensorProdObsGPU_C64, TensorProdObsGPU_C128),
+        (qml.Hadamard(0), NamedObsGPU_C64, NamedObsGPU_C128),
+        (qml.Hamiltonian([1], [qml.PauliZ(0)]), HamiltonianGPU_C64, HamiltonianGPU_C128),
         (
             qml.PauliZ(0) @ qml.Hadamard(1) @ (0.1 * (qml.PauliZ(2) + qml.PauliX(3))),
             TensorProdObsGPU_C64,
+            TensorProdObsGPU_C128,
         ),
         (
             qml.SparseHamiltonian(qml.Hamiltonian([1], [qml.PauliZ(0)]).sparse_matrix(), wires=[0]),
             SparseHamiltonianGPU_C64,
+            SparseHamiltonianGPU_C128,
         ),
     ],
 )
-def test_obs_returns_expected_type(obs, obs_type):
+@pytest.mark.parametrize("use_csingle", [True, False])
+def test_obs_returns_expected_type(obs, obs_type_c64, obs_type_c128, use_csingle):
     """Tests that observables get serialized to the expected type."""
-    assert isinstance(plg._serialize._serialize_ob(obs, dict(enumerate(obs.wires)), True), obs_type)
+    obs_type = obs_type_c64 if use_csingle else obs_type_c128
+    assert isinstance(_serialize_ob(obs, dict(enumerate(obs.wires)), use_csingle), obs_type)
 
 
 @pytest.mark.parametrize(
@@ -1140,7 +1147,8 @@ def test_obs_returns_expected_type(obs, obs_type):
         qml.sum(qml.Hadamard(0), qml.PauliX(1)),
     ],
 )
-def test_obs_not_supported_for_adjoint_diff(bad_obs):
+@pytest.mark.parametrize("use_csingle", [True, False])
+def test_obs_not_supported_for_adjoint_diff(bad_obs, use_csingle):
     """Tests observables that can't be serialized for adjoint-differentiation."""
     with pytest.raises(TypeError, match="Please use Pauli-words only."):
-        _serialize_ob(bad_obs, dict(enumerate(bad_obs.wires)), True)
+        _serialize_ob(bad_obs, dict(enumerate(bad_obs.wires)), use_csingle)
