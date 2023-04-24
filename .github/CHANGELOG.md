@@ -13,6 +13,9 @@
 
 ### Bug fixes
 
+* Fix CUDA version to 11 for cuquantum dependency in CI. 
+[(#107)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/107)
+
 * Fix the controlled-gate generators, which are now fully used in the adjoint pipeline following PennyLane PR [(#3874)](https://github.com/PennyLaneAI/pennylane/pull/3874).
 [(#101)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/101)
 
@@ -21,7 +24,7 @@
 
 ### Contributors
 
-Romain Moyard, Lee James O'Riordan
+Vincent Michaud-Rioux, Romain Moyard, Lee James O'Riordan
 
 ---
 
