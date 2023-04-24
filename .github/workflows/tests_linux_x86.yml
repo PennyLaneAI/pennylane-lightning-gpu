@@ -38,8 +38,8 @@ jobs:
       - name: Install required packages
         run: |
           sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov
-          python -m pip install ninja cmake~=3.24.3 cuquantum
-
+          python -m pip install ninja cmake~=3.24.3 custatevec-cu11 
+          
       - name: Checkout pennyLane-lightning-gpu
         uses: actions/checkout@v3
 
@@ -127,6 +127,7 @@ jobs:
         id: setup_venv
         env:
           VENV_NAME: venv_${{ steps.setup_python.outputs.python-version }}_${{ github.sha }}
+
         run: |
           # Clear any pre-existing venvs
           rm -rf venv_*
@@ -146,13 +147,15 @@ jobs:
         run: |
           source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
           python3 -m pip install pip~=22.0
-          python3 -m pip install ninja cmake cuquantum pytest pytest-mock flaky pytest-cov
+          python3 -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov
           sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov
           # Sync with latest master branches
           python3 -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python3 -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
           
       - name: Build and install package
+        env: 
+          CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
           source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
           python3 setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }}"
