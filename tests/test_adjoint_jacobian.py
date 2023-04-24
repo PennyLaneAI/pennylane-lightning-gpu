@@ -33,6 +33,7 @@ from pennylane_lightning_gpu._serialize import _serialize_ob
 
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
+    import pennylane_lightning_gpu as plg
 
     if not CPP_BINARY_AVAILABLE:
         raise ImportError("PennyLane-Lightning-GPU is unsupported on this platform")
@@ -1126,7 +1127,7 @@ def test_adjoint_SparseHamiltonian(returns):
 )
 def test_obs_returns_expected_type(obs, obs_type):
     """Tests that observables get serialized to the expected type."""
-    assert isinstance(plk._serialize._serialize_ob(obs, dict(enumerate(obs.wires)), True), obs_type)
+    assert isinstance(plg._serialize._serialize_ob(obs, dict(enumerate(obs.wires)), True), obs_type)
 
 
 @pytest.mark.parametrize(
