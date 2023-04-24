@@ -38,8 +38,7 @@ jobs:
       - name: Install required packages
         run: |
           sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov
-          python -m pip install ninja cmake~=3.24.3 cuquantum
-
+          python -m pip install ninja cmake~=3.24.3 custatevec-cu11 cuquantum 
       - name: Checkout pennyLane-lightning-gpu
         uses: actions/checkout@v3
 
@@ -146,7 +145,7 @@ jobs:
         run: |
           source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
           python3 -m pip install pip~=22.0
-          python3 -m pip install ninja cmake cuquantum pytest pytest-mock flaky pytest-cov
+          python3 -m pip install ninja cmake custatevec-cu11 cuquantum pytest pytest-mock flaky pytest-cov
           sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov
           # Sync with latest master branches
           python3 -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
