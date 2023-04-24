@@ -38,7 +38,7 @@ jobs:
       - name: Install required packages
         run: |
           sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov
-          python -m pip install ninja cmake~=3.24.3 custatevec-cu11 cuquantum 
+          python -m pip install ninja cmake~=3.24.3 custatevec-cu11 
       - name: Checkout pennyLane-lightning-gpu
         uses: actions/checkout@v3
 
