@@ -725,23 +725,23 @@ if CPP_BINARY_AVAILABLE:
             if observable.name in ["Hamiltonian"]:
                 device_wires = self.map_wires(observable.wires)
                 # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
-                if len(device_wires) > 13:
-                    coeffs = observable.coeffs
-                    pauli_words = []
-                    word_wires = []
-                    for word in observable.ops:
-                        compressed_word = []
-                        if isinstance(word.name, list):
-                            for char in word.name:
-                                compressed_word.append(_name_map[char])
-                        else:
-                            compressed_word.append(_name_map[word.name])
-                        word_wires.append(word.wires.tolist())
-                        pauli_words.append("".join(compressed_word))
-                    return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
+                #if len(device_wires) > 13:
+                #    coeffs = observable.coeffs
+                #    pauli_words = []
+                #    word_wires = []
+                #    for word in observable.ops:
+                #        compressed_word = []
+                #        if isinstance(word.name, list):
+                #            for char in word.name:
+                #                compressed_word.append(_name_map[char])
+                #        else:
+                #            compressed_word.append(_name_map[word.name])
+                #        word_wires.append(word.wires.tolist())
+                #        pauli_words.append("".join(compressed_word))
+                #    return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
 
-                else:
-                    return self._gpu_state.ExpectationValue(
+                #else:
+                return self._gpu_state.ExpectationValue(
                         device_wires, qml.matrix(observable).ravel(order="C")
                     )
 
