@@ -1327,6 +1327,7 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
         .def("isInactive", &DevicePool<int>::isInactive)
         .def("acquireDevice", &DevicePool<int>::acquireDevice)
         .def("releaseDevice", &DevicePool<int>::releaseDevice)
+        .def("syncDevice",&DevicePool<int>::syncDevice)
         .def_static("getTotalDevices", &DevicePool<int>::getTotalDevices)
         .def_static("getDeviceUIDs", &DevicePool<int>::getDeviceUIDs)
         .def_static("setDeviceID", &DevicePool<int>::setDeviceIdx);

@@ -46,22 +46,6 @@ using namespace Pennylane::Util;
 } // namespace
 /// @endcond
 
-inline void errhandler(int errcode, const char *str) {
-    char msg[MPI_MAX_ERROR_STRING];
-    int resultlen;
-    MPI_Error_string(errcode, msg, &resultlen);
-    fprintf(stderr, "%s: %s\n", str, msg);
-    MPI_Abort(MPI_COMM_WORLD, 1);
-}
-
-#define PL_MPI_IS_SUCCESS(fn)                                                  \
-    {                                                                          \
-        int errcode;                                                           \
-        errcode = (fn);                                                        \
-        if (errcode != MPI_SUCCESS)                                            \
-            errhandler(errcode, #fn);                                          \
-    }
-
 namespace Pennylane {
 
 // declarations of external functions (defined in initSV.cu).
@@ -996,15 +980,24 @@ class StateVectorCudaMPI
                 return static_cast<int>(this->getTotalNumQubits() - 1 - x);
             });
 
-        std::vector<int> totalWires(this->getTotalNumQubits(), 0);
+        //Initialize a vector to store the status of wires and default its elements
+        //as zeros, which assumes there is no target and control wire.
+        std::vector<int> statusWires(this->getTotalNumQubits(), WireStatus::Default);
+ 
+       //Update wire status based on the gate information
+        for (size_t i = 0; i < ctrlsInt.size(); i++) {
+            statusWires[ctrlsInt[i]] = WireStatus::Control;
+        }
+       //Update wire status based on the gate information
+        for (size_t i = 0; i < tgtsInt.size(); i++) {
+            statusWires[tgtsInt[i]] = WireStatus::Target;
+        }
 
-        bool BSwapReq = IsIndexSwapRequired(this->getNumLocalQubits(),
-                                            this->getTotalNumQubits(), ctrlsInt,
-                                            tgtsInt, totalWires);
+        int StatusGlobalWires = std::reduce(statusWires.begin()+this->getNumLocalQubits(), statusWires.end());
 
         mpi_manager_.Barrier();
 
-        if (!BSwapReq) {
+        if (!StatusGlobalWires) {
             applyCuSVPauliGate(pauli_words, ctrlsInt, tgtsInt, param,
                                use_adjoint);
         } else {
@@ -1012,8 +1005,8 @@ class StateVectorCudaMPI
             std::vector<int> localTgts(tgtsInt);
             auto wirePairs = createOperationWires(
                 this->getNumLocalQubits(), this->getTotalNumQubits(),
-                localCtrls, localTgts, totalWires);
-            applyGate_MPI(wirePairs, &StateVectorCudaMPI::applyCuSVPauliGate,
+                localCtrls, localTgts, statusWires);
+            applyMPI_Dispatcher(wirePairs, &StateVectorCudaMPI::applyCuSVPauliGate,
                           pauli_words, localCtrls, localTgts, param,
                           use_adjoint);
         }
@@ -1108,30 +1101,50 @@ class StateVectorCudaMPI
                 return static_cast<int>(this->getTotalNumQubits() - 1 - x);
             });
 
-        std::vector<int> totalWires(this->getTotalNumQubits(), 0);
+        //Initialize a vector to store the status of wires and default its elements
+        //as zeros, which assumes there is no target and control wire.
+        std::vector<int> statusWires(this->getTotalNumQubits(), WireStatus::Default);
+ 
+       //Update wire status based on the gate information
+        for (size_t i = 0; i < ctrlsInt.size(); i++) {
+            statusWires[ctrlsInt[i]] = WireStatus::Control;
+        }
+       //Update wire status based on the gate information
+        for (size_t i = 0; i < tgtsInt.size(); i++) {
+            statusWires[tgtsInt[i]] = WireStatus::Target;
+        }
 
-        bool BSwapReq = IsIndexSwapRequired(this->getNumLocalQubits(),
-                                            this->getTotalNumQubits(), ctrlsInt,
-                                            tgtsInt, totalWires);
+        int StatusGlobalWires = std::reduce(statusWires.begin()+this->getNumLocalQubits(), statusWires.end());
 
         mpi_manager_.Barrier();
 
-        if (!BSwapReq) {
+        if (!StatusGlobalWires) {
             applyCuSVMatrixGate(matrix, ctrlsInt, tgtsInt, use_adjoint);
         } else {
             std::vector<int> localCtrls = ctrlsInt;
             std::vector<int> localTgts = tgtsInt;
+
             auto wirePairs = createOperationWires(
                 this->getNumLocalQubits(), this->getTotalNumQubits(),
-                localCtrls, localTgts, totalWires);
+                localCtrls, localTgts, statusWires);
 
-            applyGate_MPI(wirePairs, &StateVectorCudaMPI::applyCuSVMatrixGate,
+            applyMPI_Dispatcher(wirePairs, &StateVectorCudaMPI::applyCuSVMatrixGate,
                           matrix, localCtrls, localTgts, use_adjoint);
         }
     }
-
+    /**
+     * @brief MPI dispatcher for the target and control gates at global qubits.
+     * 
+     * @tparam F Return type of the callable.
+     * @tparam Args Types of arguments of t the callable.
+     * 
+     * @param wirePairs Vector of wire pairs for bit index swap operations.
+     * @param functor The callable.
+     * @param args Arguments of the callable.
+     */
     template <typename F, typename... Args>
-    void applyGate_MPI(std::vector<int2> &wirePairs, F &&functor,
+    void applyMPI_Dispatcher(std::vector<int2> &wirePairs, F &&functor,
+    //void applyGate_MPI(std::vector<int2> &wirePairs, F &&functor,
                        Args &&...args) {
         int maskBitString[] = {}; // specify the values of mask qubits
         int maskOrdering[] = {};  // specify the mask qubits

@@ -331,7 +331,7 @@ class MPIManager {
         }
     }
 
-    std::unordered_map<std::string, MPI_Datatype> cpp_mpi_op_map = {
+    std::unordered_map<std::string, MPI_Op> cpp_mpi_op_map = {
         {"op_null", MPI_OP_NULL}, {"max", MPI_MAX},
         {"min", MPI_MIN},         {"sum", MPI_SUM},
         {"prod", MPI_PROD},       {"land", MPI_LAND},

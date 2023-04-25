@@ -24,7 +24,7 @@ from pennylane import DeviceError
 
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
-    from pennylane_lightning_gpu.lightning_gpu_qubit_ops import MPIManager
+    from pennylane_lightning_gpu.lightning_gpu_qubit_ops import MPIManager, DevPool
     from pennylane_lightning_gpu import LightningGPU
     import pennylane_lightning_gpu as plg
 
@@ -114,12 +114,18 @@ class TestApply:
         
         state_vector = np.zeros(2**2).astype(dev.C_DTYPE)
         comm.Scatter(input, state_vector, root=0)
-
+        
+        DevPool.syncDevice
         dev.syncH2D(state_vector)
+        DevPool.syncDevice
+
 
         dev.apply([operation(wires=[0])])
+        DevPool.syncDevice
+
         dev.syncD2H(state_vector)
-        
+        DevPool.syncDevice
+
         comm.Barrier()
 
         local_expected_output = np.empty(2**2, dtype=np.complex128)

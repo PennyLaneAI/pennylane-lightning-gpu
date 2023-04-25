@@ -21,111 +21,48 @@ using namespace Pennylane::Util;
 
 namespace Pennylane::MPI {
 
-enum WireName { Target = 1, Control };
+enum WireStatus {Default, Target, Control };
 
-inline bool IsIndexSwapRequired(int numLocalQubits, int numTotalQubits,
-                                const std::vector<int> &ctrlsInt,
-                                const std::vector<int> &tgtsInt,
-                                std::vector<int> &totalWires) {
-    for (size_t i = 0; i < ctrlsInt.size(); i++) {
-        totalWires[ctrlsInt[i]] = WireName::Control;
-    }
-
-    for (size_t i = 0; i < tgtsInt.size(); i++) {
-        totalWires[tgtsInt[i]] = WireName::Target;
-    }
-
-    int BSwapReq = 0;
-    for (int i = numLocalQubits; i < numTotalQubits; i++) {
-        BSwapReq += totalWires[i];
-    }
-
-    if (BSwapReq > 0) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-inline bool IsIndexSwapRequired(int numLocalQubits, int numTotalQubits,
-                                const std::vector<int> &tgtsInt,
-                                std::vector<int> &totalWires) {
-    for (size_t i = 0; i < tgtsInt.size(); i++) {
-        totalWires[tgtsInt[i]] = WireName::Target;
-    }
-
-    int BSwapReq = 0;
-    for (int i = numLocalQubits; i < numTotalQubits; i++) {
-        BSwapReq += totalWires[i];
-    }
-
-    if (BSwapReq > 0) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
+/**
+ * @brief Create wire pairs for bit index swap and transform all control and target wires to local ones.
+ * 
+ * @param numLocalQubits Number of local qubits.
+ * @param numTotalQubits Number of total qubits.
+ * @param ctrls Vector of control wires.
+ * @param tgts Vector of target wires.
+ * 
+ * @return wirePairs Wire pairs to be passed to SV bit index swap worker.
+*/
 inline std::vector<int2> createOperationWires(int numLocalQubits,
                                               int numTotalQubits,
-                                              std::vector<int> &localCtrls,
-                                              std::vector<int> &localTgts,
-                                              std::vector<int> &totalWires) {
+                                              std::vector<int> &ctrls,
+                                              std::vector<int> &tgts,
+                                              std::vector<int> &statusWires) {
     std::vector<int2> wirePairs;
     int i = 0, j = numLocalQubits;
     while (i < numLocalQubits && j < numTotalQubits) {
-        if (totalWires[i] == 0 && totalWires[j] != 0) {
+        if (statusWires[i] == 0 && statusWires[j] != 0) {
             int2 wirepair = make_int2(i, j);
             wirePairs.push_back(wirepair);
-            if (totalWires[j] == WireName::Control) {
-                for (size_t k = 0; k < localCtrls.size(); k++) {
-                    if (localCtrls[k] == j) {
-                        localCtrls[k] = i;
+            if (statusWires[j] == WireStatus::Control) {
+                for (size_t k = 0; k < ctrls.size(); k++) {
+                    if (ctrls[k] == j) {
+                        ctrls[k] = i;
                     }
                 }
             } else {
-                for (size_t k = 0; k < localTgts.size(); k++) {
-                    if (localTgts[k] == j) {
-                        localTgts[k] = i;
+                for (size_t k = 0; k < tgts.size(); k++) {
+                    if (tgts[k] == j) {
+                        tgts[k] = i;
                     }
                 }
             }
-            std::swap(totalWires[i], totalWires[j]);
+            std::swap(statusWires[i], statusWires[j]);
         } else {
-            if (totalWires[i] != 0) {
+            if (statusWires[i] != 0) {
                 i++;
             }
-            if (totalWires[j] == 0) {
-                j++;
-            }
-        }
-    }
-    return wirePairs;
-}
-
-inline std::vector<int2> createOperationWires(int numLocalQubits,
-                                              int numTotalQubits,
-                                              std::vector<int> &localTgts,
-                                              std::vector<int> &totalWires) {
-    std::vector<int2> wirePairs;
-    int i = 0, j = numLocalQubits;
-    while (i < numLocalQubits && j < numTotalQubits) {
-        if (totalWires[i] == 0 && totalWires[j] != 0) {
-            int2 wirepair = make_int2(i, j);
-            wirePairs.push_back(wirepair);
-            if (totalWires[j] != 0) {
-                for (size_t k = 0; k < localTgts.size(); k++) {
-                    if (localTgts[k] == j) {
-                        localTgts[k] = i;
-                    }
-                }
-            }
-            std::swap(totalWires[i], totalWires[j]);
-        } else {
-            if (totalWires[i] != 0) {
-                i++;
-            }
-            if (totalWires[j] == 0) {
+            if (statusWires[j] == 0) {
                 j++;
             }
         }
@@ -135,7 +72,7 @@ inline std::vector<int2> createOperationWires(int numLocalQubits,
 
 /*
  * Utility function object to tell std::shared_ptr how to
- * release/destroy various CUDA objects.
+ * release/destroy various custatevecSVSwapWorker related objects.
  */
 struct MPIWorkerDeleter {
     void operator()(cudaStream_t localStream) const {
@@ -168,16 +105,31 @@ using SharedLocalStream =
 using SharedMPIWorker = std::shared_ptr<
     std::remove_pointer<custatevecSVSwapWorkerDescriptor_t>::type>;
 
+/**
+ * @brief Creates a SharedLocalStream (a shared pointer to a cuda stream)
+ */
 inline SharedLocalStream make_shared_local_stream() {
     cudaStream_t localStream;
     PL_CUDA_IS_SUCCESS(cudaStreamCreate(&localStream));
     return {localStream, MPIWorkerDeleter()};
 }
+
+/**
+ * @brief Creates a SharedMPIWorker (a shared pointer to a custatevecSVSwapWorker)
+ * 
+ * @param handle custatevecHandle.
+ * @param mpi_communicator MPI communicator 
+ * @param sv Pointer to the data requires MPI operation.
+ * @param numLocalQubits Number of local qubits.
+ * @param localStream Local cuda stream.
+ */
+
 template <typename CFP_t>
 inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
                                               MPI_Comm mpi_communicator,
                                               CFP_t *sv, int numLocalQubits,
                                               cudaStream_t localStream) {
+    
     custatevecSVSwapWorkerDescriptor_t svSegSwapWorker=nullptr;
 
     int nDevices = 0;
@@ -185,6 +137,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     MPIManager mpi_manager(mpi_communicator);
 
+    //Ensure the P2P devices is calulcated based on the numbe of MPI processes within the node
     nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()
                                                     : nDevices;
 
@@ -216,7 +169,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     if (mpi_manager.getVendor() == "Open MPI") {
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
-        mpilibname = "";
+        //mpilibname = "";
     }
 
     //custatevecCommunicatorType_t communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH ;
@@ -233,6 +186,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
     */
     //const char *soname = "libmpi.so";
     const char *soname = mpilibname.c_str();
+    //const char *soname = nullptr;
     mpi_manager.Barrier();
     PL_CUSTATEVEC_IS_SUCCESS(
         custatevecCommunicatorCreate(

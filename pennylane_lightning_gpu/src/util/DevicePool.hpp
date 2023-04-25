@@ -90,6 +90,14 @@ template <typename DeviceIndexType = int> class DevicePool {
     }
 
     /**
+     * @brief Synchronize device with host
+    */
+    
+    void syncDevice(){
+        cudaDeviceSynchronize();
+    }
+
+    /**
      * @brief Get the UIDs of available devices.
      *
      * @return std::vector<cudaUUID_t>
