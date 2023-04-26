@@ -413,9 +413,7 @@ class TestAdjointJacobian:
 
             return qml.jacobian(circuit)(params)
 
-        old_obs = qml.Hamiltonian([1.1, 2.2], [qml.PauliX(0), qml.PauliZ(0) @ qml.PauliX(1)])
         new_obs = qml.pauli.pauli_sentence(old_obs).operation()
-
         res_old = run_circuit(old_obs)
         res_new = run_circuit(new_obs)
         assert np.allclose(res_old, res_new, atol=tol, rtol=0)
