@@ -57,11 +57,15 @@ jobs:
         run: |
           which python3
           which pip
+          echo $PATH
+          echo $GITHUB_PATH
 
       - name: Install required packages
         run: |
           python3 -m pip install ninja cmake custatevec-cu11 
           ls $(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/cuquantum/include
+          echo $PATH
+          echo $GITHUB_PATH
           
       - name: Checkout pennyLane-lightning-gpu
         uses: actions/checkout@v3
@@ -73,6 +77,8 @@ jobs:
 
       - name: Build and run unit tests
         run: |
+            echo $PATH
+            echo $GITHUB_PATH
             cmake . -BBuild \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
