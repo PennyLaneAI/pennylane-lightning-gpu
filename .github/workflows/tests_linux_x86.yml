@@ -77,6 +77,9 @@ jobs:
 
       - name: Build and run unit tests
         run: |
+            which python
+            which pip
+            echo $PATH
             source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
             cmake . -BBuild \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -102,6 +105,9 @@ jobs:
 
       - name: Build and run unit tests for code coverage
         run: |
+            which python
+            which pip
+            echo $PATH
             source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
             cmake . -BBuildCov \
               -DCMAKE_BUILD_TYPE=Debug \
