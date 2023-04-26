@@ -77,8 +77,7 @@ jobs:
 
       - name: Build and run unit tests
         run: |
-            echo $PATH
-            echo $GITHUB_PATH
+            source ${{ env.VENV_NAME }}/bin/activate
             cmake . -BBuild \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
@@ -86,8 +85,8 @@ jobs:
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
-              -DPython_EXECUTABLE=$(which python) \
-              -DPYTHON_EXECUTABLE=$(which python) \
+              -DPython_EXECUTABLE:FILE=$(which python) \
+              -DPYTHON_EXECUTABLE:FILE=$(which python) \
               -G Ninja
             cmake --build ./Build
             cd ./Build
@@ -103,6 +102,7 @@ jobs:
 
       - name: Build and run unit tests for code coverage
         run: |
+            source ${{ env.VENV_NAME }}/bin/activate
             cmake . -BBuildCov \
               -DCMAKE_BUILD_TYPE=Debug \
               -DPLLGPU_BUILD_TESTS=ON \
