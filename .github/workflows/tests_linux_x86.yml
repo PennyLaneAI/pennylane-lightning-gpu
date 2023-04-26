@@ -27,6 +27,9 @@ jobs:
       max-parallel: 1
 
     steps:
+      - name: Checkout pennyLane-lightning-gpu
+        uses: actions/checkout@v3
+
       - uses: actions/setup-python@v4
         id: setup_python
         name: Install Python
@@ -66,9 +69,6 @@ jobs:
           ls $(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/cuquantum/include
           echo $PATH
           echo $GITHUB_PATH
-          
-      - name: Checkout pennyLane-lightning-gpu
-        uses: actions/checkout@v3
 
       - name: Validate GPU version and installed compiler
         run: |
