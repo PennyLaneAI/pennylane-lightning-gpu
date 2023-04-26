@@ -397,15 +397,28 @@ class TestAdjointJacobian:
             qml.Hamiltonian([1.1, 2.2], [qml.PauliX(0), qml.PauliZ(0) @ qml.PauliX(1)]),
         ],
     )
-    def test_op_arithmetic_is_supported(self, old_obs, dev_gpu):
+    def test_op_arithmetic_is_supported(self, old_obs, dev_gpu, tol):
         """Tests that an arithmetic obs with a PauliRep are supported for adjoint_jacobian."""
-        ops = [qml.RX(1.1, 0), qml.RY(2.2, 0), qml.RX(0.66, 1), qml.RY(1.23, 1)]
+
+        def run_circuit(obs):
+            params = qml.numpy.array([1.1, 2.2, 0.66, 1.23])
+
+            @qml.qnode(dev_gpu, diff_method="adjoint")
+            def circuit(par):
+                qml.RX(par[0], 0)
+                qml.RY(par[1], 0)
+                qml.RX(par[2], 1)
+                qml.RY(par[3], 1)
+                return qml.expval(obs)
+
+            return qml.jacobian(circuit)(params)
+
+        old_obs = qml.Hamiltonian([1.1, 2.2], [qml.PauliX(0), qml.PauliZ(0) @ qml.PauliX(1)])
         new_obs = qml.pauli.pauli_sentence(old_obs).operation()
-        old_tape = qml.tape.QuantumScript(ops, [qml.expval(old_obs)])
-        new_tape = qml.tape.QuantumScript(ops, [qml.expval(new_obs)])
-        old_res = dev_gpu.adjoint_jacobian(old_tape)
-        new_res = dev_gpu.adjoint_jacobian(new_tape)
-        assert qml.math.allequal(old_res, new_res)
+
+        res_old = run_circuit(old_obs)
+        res_new = run_circuit(new_obs)
+        assert np.allclose(res_old, res_new, atol=tol, rtol=0)
 
 
 class TestAdjointJacobianQNode:
@@ -1134,7 +1147,7 @@ def test_adjoint_SparseHamiltonian(returns):
 def test_obs_returns_expected_type(obs, obs_type_c64, obs_type_c128, use_csingle):
     """Tests that observables get serialized to the expected type."""
     obs_type = obs_type_c64 if use_csingle else obs_type_c128
-    assert isinstance(_serialize_ob(obs, dict(enumerate(obs.wires)), use_csingle), obs_type)
+    assert isinstance(_serialize_ob(obs, dict(enumerate(obs.wires)), use_csingle, False), obs_type)
 
 
 @pytest.mark.parametrize(

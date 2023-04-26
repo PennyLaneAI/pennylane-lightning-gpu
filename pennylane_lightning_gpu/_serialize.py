@@ -81,7 +81,7 @@ def _serialize_tensor_ob(ob, wires_map: dict, use_csingle: bool):
     return tensor_obs([_serialize_ob(o, wires_map, use_csingle) for o in ob.obs])
 
 
-def _serialize_hamiltonian(ob, wires_map: dict, use_csingle: bool):
+def _serialize_hamiltonian(ob, wires_map: dict, use_csingle: bool, split_terms: bool = True):
     if use_csingle:
         rtype = np.float32
         hamiltonian_obs = HamiltonianGPU_C64
@@ -91,7 +91,10 @@ def _serialize_hamiltonian(ob, wires_map: dict, use_csingle: bool):
 
     coeffs = np.array(ob.coeffs).astype(rtype)
     terms = [_serialize_ob(t, wires_map, use_csingle) for t in ob.ops]
-    return [hamiltonian_obs([c], [t]) for (c, t) in zip(coeffs, terms)]
+
+    if split_terms:
+        return [hamiltonian_obs([c], [t]) for (c, t) in zip(coeffs, terms)]
+    return hamiltonian_obs(coeffs, terms)
 
 
 def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool):
@@ -146,7 +149,7 @@ def _serialize_pauli_word(ob, wires_map: dict, use_csingle: bool):
     )
 
 
-def _serialize_pauli_sentence(ob, wires_map: dict, use_csingle: bool):
+def _serialize_pauli_sentence(ob, wires_map: dict, use_csingle: bool, split_terms: bool = True):
     """Serialize a :class:`pennylane.pauli.PauliSentence` into a Hamiltonian."""
     if use_csingle:
         rtype = np.float32
@@ -158,20 +161,22 @@ def _serialize_pauli_sentence(ob, wires_map: dict, use_csingle: bool):
     pwords, coeffs = zip(*ob.items())
     terms = [_serialize_pauli_word(pw, wires_map, use_csingle) for pw in pwords]
     coeffs = np.array(coeffs).astype(rtype)
+    if split_terms:
+        return [hamiltonian_obs([c], [t]) for (c, t) in zip(coeffs, terms)]
     return hamiltonian_obs(coeffs, terms)
 
 
-def _serialize_ob(ob, wires_map, use_csingle):
+def _serialize_ob(ob, wires_map, use_csingle, use_splitting: bool = True):
     if isinstance(ob, Tensor):
         return _serialize_tensor_ob(ob, wires_map, use_csingle)
     elif ob.name == "Hamiltonian":
-        return _serialize_hamiltonian(ob, wires_map, use_csingle)
+        return _serialize_hamiltonian(ob, wires_map, use_csingle, use_splitting)
     elif ob.name == "SparseHamiltonian":
         return _serialize_sparsehamiltonian(ob, wires_map, use_csingle)
     elif isinstance(ob, (PauliX, PauliY, PauliZ, Identity, Hadamard)):
         return _serialize_named_ob(ob, wires_map, use_csingle)
     elif ob._pauli_rep is not None:
-        return _serialize_pauli_sentence(ob._pauli_rep, wires_map, use_csingle)
+        return _serialize_pauli_sentence(ob._pauli_rep, wires_map, use_csingle, use_splitting)
     elif ob.name == "Hermitian":
         raise TypeError(
             "Hermitian observables are not currently supported for adjoint differentiation. Please use Pauli-words only."
