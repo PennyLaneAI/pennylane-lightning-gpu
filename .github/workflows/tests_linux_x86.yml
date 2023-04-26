@@ -57,6 +57,9 @@ jobs:
         run: |
           which python
           which pip
+          python -m site
+          ls $(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+          ls $(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/cuquantum/include
 
       - name: Install required packages
         run: |

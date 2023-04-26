@@ -116,6 +116,8 @@ find_package(CUDAToolkit REQUIRED)
 
 find_package (Python COMPONENTS Interpreter Development)
 
+message(STATUS  "CMAKE_OUTPUT:!!!!!!!! ${Python_SITELIB}/cuquantum/lib")
+
 find_library(CUSTATEVEC_LIB
     NAMES   libcustatevec.so.1 custatevec.so.1
     HINTS   /usr/lib
