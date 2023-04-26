@@ -118,7 +118,7 @@ inline SharedLocalStream make_shared_local_stream() {
  * @brief Creates a SharedMPIWorker (a shared pointer to a custatevecSVSwapWorker)
  * 
  * @param handle custatevecHandle.
- * @param mpi_communicator MPI communicator 
+ * @param mpi_manager MPI manager object. 
  * @param sv Pointer to the data requires MPI operation.
  * @param numLocalQubits Number of local qubits.
  * @param localStream Local cuda stream.
@@ -126,7 +126,8 @@ inline SharedLocalStream make_shared_local_stream() {
 
 template <typename CFP_t>
 inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
-                                              MPI_Comm mpi_communicator,
+                                              //MPI_Comm mpi_communicator,
+                                              MPIManager mpi_manager,
                                               CFP_t *sv, int numLocalQubits,
                                               cudaStream_t localStream) {
     
@@ -135,7 +136,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
     int nDevices = 0;
     PL_CUDA_IS_SUCCESS(cudaGetDeviceCount(&nDevices));
 
-    MPIManager mpi_manager(mpi_communicator);
+    //MPIManager mpi_manager(mpi_communicator);
 
     //Ensure the P2P devices is calulcated based on the numbe of MPI processes within the node
     nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()

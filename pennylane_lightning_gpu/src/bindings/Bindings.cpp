@@ -1352,18 +1352,13 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
         .def("refresh", &DevTag<int>::refresh);
 
     py::class_<MPIManager>(m, "MPIManager")
-        //.def(py::init([](void *comm_ptr) {
-        //    MPI_Comm comm_c =
-        //        MPI_Comm_f2c(*reinterpret_cast<MPI_Fint *>(comm_ptr));
-        //    return new MPIManager(comm_c);
-        //})) // qubits, device
-        //.def(py::init([](py::object py_comm){
-        //    PyObject* py_obj = py_comm.ptr();
-        //    MPI_Comm* comm = PyMPIComm_Get(py_obj);
-        //    return new MPIManager(*comm);
-        //}))
+        .def(py::init([](pybind11::handle const& py_comm){            
+            if (import_mpi4py() < 0) {
+                throw std::runtime_error("Could not load mpi4py API.");
+            }
+            return new MPIManager(*PyMPIComm_Get(py_comm.ptr()));
+        }))
         .def(py::init<>())       
-        //.def(py::init<MPI_Comm>())
         .def(py::init<MPIManager &>())
         .def("Barrier",&MPIManager::Barrier)
         .def("getRank", &MPIManager::getRank)

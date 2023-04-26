@@ -109,7 +109,7 @@ class TestApply:
         operations that have no parameters."""
 
         comm = MPI.COMM_WORLD
-        dev = LightningGPU(wires=4, mpi_comm="mpi", c_dtype=np.complex128)
+        dev = LightningGPU(wires=4, mpi_comm=comm, c_dtype=np.complex128)
         #dev = qml.device('lightning.gpu', wires=4, mpi_comm=comm, c_dtype=np.complex128)
         
         state_vector = np.zeros(2**2).astype(dev.C_DTYPE)
@@ -118,10 +118,12 @@ class TestApply:
         DevPool.syncDevice
         dev.syncH2D(state_vector)
         DevPool.syncDevice
-
+        comm.Barrier()
 
         dev.apply([operation(wires=[0])])
         DevPool.syncDevice
+        comm.Barrier()
+
 
         dev.syncD2H(state_vector)
         DevPool.syncDevice

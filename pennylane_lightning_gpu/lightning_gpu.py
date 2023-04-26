@@ -234,9 +234,9 @@ if CPP_BINARY_AVAILABLE:
                 self._dp = DevPool()
                 self._batch_obs = batch_obs
             else:
-                self._mpi_comm = MPI.COMM_WORLD
+                self._mpi_comm = mpi_comm
                 # initialize MPIManager and config check in the MPIManager ctor
-                self._mpi_manager = MPIManager()
+                self._mpi_manager = MPIManager(self._mpi_comm)
                 self._dp = DevPool()
                 # check if number of GPUs per node is larger than
                 # number of processes per node
@@ -248,8 +248,6 @@ if CPP_BINARY_AVAILABLE:
                     )
                 # set GPU device
                 rank = self._mpi_manager.getRank()
-                print("rank is ", rank)
-                print("Vendor",self._mpi_manager.getVendor())
                 deviceid = rank % numProcsNode
                 self._dp.setDeviceID(deviceid)
                 # Data initialization
@@ -259,7 +257,8 @@ if CPP_BINARY_AVAILABLE:
                 self._num_local_wires = self.num_wires - self._num_global_wires
                 self._mpi_manager.Barrier() 
                 self._dp.setDeviceID(deviceid)
-                self._gpu_mpi_state = _gpu_mpi_dtype(c_dtype)(self._num_global_wires, self._num_local_wires)
+                #self._gpu_mpi_state = _gpu_mpi_dtype(c_dtype)(self._num_global_wires, self._num_local_wires)
+                self._gpu_mpi_state = _gpu_mpi_dtype(c_dtype)(self._mpi_manager, self._num_global_wires, self._num_local_wires)
                 self._mpi_manager.Barrier() 
                 self._create_basis_state_GPU(0)
                 self._batch_obs = False
