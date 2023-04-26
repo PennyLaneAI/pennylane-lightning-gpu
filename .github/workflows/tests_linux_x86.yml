@@ -77,7 +77,7 @@ jobs:
 
       - name: Build and run unit tests
         run: |
-            source ${{ env.VENV_NAME }}/bin/activate
+            source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
             cmake . -BBuild \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
@@ -102,7 +102,7 @@ jobs:
 
       - name: Build and run unit tests for code coverage
         run: |
-            source ${{ env.VENV_NAME }}/bin/activate
+            source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
             cmake . -BBuildCov \
               -DCMAKE_BUILD_TYPE=Debug \
               -DPLLGPU_BUILD_TESTS=ON \
