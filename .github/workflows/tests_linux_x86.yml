@@ -198,6 +198,9 @@ jobs:
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
+          echo $PATH
+          which python
+          which pip
           source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
           python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=$(which python);PYTHON_EXECUTABLE=$(which python)"
           python -m pip install -e . --verbose
