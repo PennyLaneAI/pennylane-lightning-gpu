@@ -72,6 +72,7 @@ jobs:
 
       - name: Build and run unit tests
         run: |
+            which python
             cmake . -BBuild \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
@@ -79,6 +80,8 @@ jobs:
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
+              -DPython_EXECUTABLE:FILE=$(which python) \
+              -DPYTHON_EXECUTABLE:FILE=$(which python) \
               -G Ninja
             cmake --build ./Build
             cd ./Build
@@ -102,6 +105,8 @@ jobs:
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
+              -DPython_EXECUTABLE:FILE=$(which python) \
+              -DPYTHON_EXECUTABLE:FILE=$(which python) \
               -G Ninja
             cmake --build ./BuildCov
             cd ./BuildCov
