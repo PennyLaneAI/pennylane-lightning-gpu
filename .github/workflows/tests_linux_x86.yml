@@ -23,9 +23,6 @@ jobs:
       - ubuntu-22.04
       - gpu
 
-    strategy:
-      max-parallel: 1
-
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -57,9 +54,15 @@ jobs:
           echo "venv_name=${{ env.VENV_NAME }}" >> $GITHUB_OUTPUT
 
       - name: Display Python-Path
+        id: python_path
         run: |
-          which python
-          which pip
+          py_path=$(which python)
+          echo "Python Interpreter Path => $py_path"
+          echo "python=$py_path" >> $GITHUB_OUTPUT
+          
+          pip_path=$(which python)
+          echo "PIP Path => $pip_path"
+          echo "pip=$pip_path" >> $GITHUB_OUTPUT
 
       - name: Install required packages
         run: |
@@ -72,7 +75,6 @@ jobs:
 
       - name: Build and run unit tests
         run: |
-            which python
             cmake . -BBuild \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
@@ -80,7 +82,7 @@ jobs:
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
-              -DPython_EXECUTABLE:FILE=$(which python) \
+              -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
               -G Ninja
             cmake --build ./Build
             cd ./Build
@@ -104,7 +106,7 @@ jobs:
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
-              -DPython_EXECUTABLE:FILE=$(which python) \
+              -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
               -G Ninja
             cmake --build ./BuildCov
             cd ./BuildCov
@@ -134,9 +136,6 @@ jobs:
       - self-hosted
       - ubuntu-22.04
       - gpu
-
-    strategy:
-      max-parallel: 1
 
     steps:
       - name: Checkout
@@ -170,9 +169,15 @@ jobs:
           echo "venv_name=${{ env.VENV_NAME }}" >> $GITHUB_OUTPUT
 
       - name: Display Python-Path
+        id: python_path
         run: |
-          which python
-          which pip
+          py_path=$(which python)
+          echo "Python Interpreter Path => $py_path"
+          echo "python=$py_path" >> $GITHUB_OUTPUT
+          
+          pip_path=$(which python)
+          echo "PIP Path => $pip_path"
+          echo "pip=$pip_path" >> $GITHUB_OUTPUT
 
       - name: Install required packages
         run: |
@@ -181,23 +186,16 @@ jobs:
           # Sync with latest master branches
           python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
-          ls $(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/cuquantum/include
 
-          
       - name: Build and install package
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
-          echo $PATH
-          which python
-          which pip
-          # source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
-          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=$(which python);PYTHON_EXECUTABLE=$(which python)"
+          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
           python -m pip install -e . --verbose
 
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
-          # source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
           python -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
           pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
           pl-device-test --device lightning.gpu --shots=None --skip-ops ${{ env.COVERAGE_FLAGS }} --cov-append
