@@ -27,6 +27,9 @@ jobs:
       max-parallel: 1
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - uses: actions/setup-python@v4
         id: setup_python
         name: Install Python
@@ -38,7 +41,7 @@ jobs:
       - name: Setup Python virtual environment
         id: setup_venv
         env:
-          VENV_NAME: venv_${{ steps.setup_python.outputs.python-version }}_${{ github.sha }}
+          VENV_NAME: ${{ github.workspace }}/venv_${{ steps.setup_python.outputs.python-version }}_${{ github.sha }}
         run: |
           # Clear any pre-existing venvs
           rm -rf venv_*
@@ -53,14 +56,9 @@ jobs:
           # Adding venv name as an output for subsequent steps to reference if needed
           echo "venv_name=${{ env.VENV_NAME }}" >> $GITHUB_OUTPUT
 
-      - name: Display Python-Path
-        run: |
-          which python
-          which pip
-
       - name: Install required packages
         run: |
-          python -m pip install ninja cmake~=3.24.3 custatevec-cu11 
+          python -m pip install ninja cmake custatevec-cu11 
           
       - name: Checkout pennyLane-lightning-gpu
         uses: actions/checkout@v3
@@ -79,6 +77,7 @@ jobs:
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
+              -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
               -G Ninja
             cmake --build ./Build
             cd ./Build
@@ -102,6 +101,7 @@ jobs:
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
+              -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
               -G Ninja
             cmake --build ./BuildCov
             cd ./BuildCov
@@ -150,14 +150,14 @@ jobs:
       - name: Setup Python virtual environment
         id: setup_venv
         env:
-          VENV_NAME: venv_${{ steps.setup_python.outputs.python-version }}_${{ github.sha }}
+          VENV_NAME: ${{ github.workspace }}/venv_${{ steps.setup_python.outputs.python-version }}_${{ github.sha }}
         run: |
           # Clear any pre-existing venvs
           rm -rf venv_*
 
           # Create new venv for this workflow_run
-          python3 --version
-          python3 -m venv ${{ env.VENV_NAME }}
+          python --version
+          python -m venv ${{ env.VENV_NAME }}
 
           # Add the venv to PATH for subsequent steps
           echo ${{ env.VENV_NAME }}/bin >> $GITHUB_PATH
@@ -166,31 +166,24 @@ jobs:
           source ${{ env.VENV_NAME }}/bin/activate
           echo "venv_name=${{ env.VENV_NAME }}" >> $GITHUB_OUTPUT
 
-      - name: Display Python-Path
-        run: |
-          which python
-          which pip
-
       - name: Install required packages
         run: |
-          python3 -m pip install pip~=22.0
-          python3 -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov
+          python -m pip install pip~=22.0
+          python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
-          python3 -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
-          python3 -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
+          python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
+          python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
           
       - name: Build and install package
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
-          source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
-          python3 setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }}"
-          python3 -m pip install -e . --verbose
+          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python -m pip install -e . --verbose
 
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
-          source ${{ steps.setup_venv.outputs.venv_name }}/bin/activate
-          python3 -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
+          python -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
           pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
           pl-device-test --device lightning.gpu --shots=None --skip-ops ${{ env.COVERAGE_FLAGS }} --cov-append
           mv coverage.xml coverage-${{ github.job }}.xml
