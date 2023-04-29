@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <bit>
 #include <cctype>
 #include <string>
 #include <vector>
@@ -21,18 +22,19 @@ using namespace Pennylane::Util;
 
 namespace Pennylane::MPI {
 
-enum WireStatus {Default, Target, Control };
+enum WireStatus { Default, Target, Control };
 
 /**
- * @brief Create wire pairs for bit index swap and transform all control and target wires to local ones.
- * 
+ * @brief Create wire pairs for bit index swap and transform all control and
+ * target wires to local ones.
+ *
  * @param numLocalQubits Number of local qubits.
  * @param numTotalQubits Number of total qubits.
  * @param ctrls Vector of control wires.
  * @param tgts Vector of target wires.
- * 
+ *
  * @return wirePairs Wire pairs to be passed to SV bit index swap worker.
-*/
+ */
 inline std::vector<int2> createOperationWires(int numLocalQubits,
                                               int numTotalQubits,
                                               std::vector<int> &ctrls,
@@ -115,10 +117,11 @@ inline SharedLocalStream make_shared_local_stream() {
 }
 
 /**
- * @brief Creates a SharedMPIWorker (a shared pointer to a custatevecSVSwapWorker)
- * 
+ * @brief Creates a SharedMPIWorker (a shared pointer to a
+ * custatevecSVSwapWorker)
+ *
  * @param handle custatevecHandle.
- * @param mpi_manager MPI manager object. 
+ * @param mpi_manager MPI manager object.
  * @param sv Pointer to the data requires MPI operation.
  * @param numLocalQubits Number of local qubits.
  * @param localStream Local cuda stream.
@@ -126,26 +129,22 @@ inline SharedLocalStream make_shared_local_stream() {
 
 template <typename CFP_t>
 inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
-                                              //MPI_Comm mpi_communicator,
-                                              MPIManager mpi_manager,
+                                              MPIManager &mpi_manager,
                                               CFP_t *sv, int numLocalQubits,
                                               cudaStream_t localStream) {
-    
-    custatevecSVSwapWorkerDescriptor_t svSegSwapWorker=nullptr;
+
+    custatevecSVSwapWorkerDescriptor_t svSegSwapWorker = nullptr;
 
     int nDevices = 0;
     PL_CUDA_IS_SUCCESS(cudaGetDeviceCount(&nDevices));
 
-    //MPIManager mpi_manager(mpi_communicator);
-
-    //Ensure the P2P devices is calulcated based on the numbe of MPI processes within the node
+    // Ensure the P2P devices is calulcated based on the numbe of MPI processes
+    // within the node
     nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()
                                                     : nDevices;
 
-    int nP2PDeviceBits = 0;
-    while ((1 << nP2PDeviceBits) < nDevices) {
-        ++nP2PDeviceBits;
-    }
+    int nP2PDeviceBits =
+        std::bit_width(static_cast<unsigned int>(nDevices)) - 1;
 
     cudaDataType_t svDataType;
     if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
@@ -155,8 +154,8 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         svDataType = CUDA_C_32F;
     }
 
-    cudaEvent_t localEvent=nullptr;
-    custatevecCommunicatorDescriptor_t communicator=nullptr;
+    cudaEvent_t localEvent = nullptr;
+    custatevecCommunicatorDescriptor_t communicator = nullptr;
 
     PL_CUDA_IS_SUCCESS(cudaEventCreateWithFlags(
         &localEvent, cudaEventInterprocess | cudaEventDisableTiming));
@@ -170,27 +169,13 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     if (mpi_manager.getVendor() == "Open MPI") {
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
-        //mpilibname = "";
+        mpilibname = "";
     }
 
-    //custatevecCommunicatorType_t communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH ;
-    /*
-    if (mpi_manager.getVendor() == "MPICH") {
-        communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH;
-    }
-
-    if (mpi_manager.getVendor() == "Open MPI") {
-        communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
-    }
-    
-    const char *soname = nullptr;
-    */
-    //const char *soname = "libmpi.so";
     const char *soname = mpilibname.c_str();
-    //const char *soname = nullptr;
+
     mpi_manager.Barrier();
-    PL_CUSTATEVEC_IS_SUCCESS(
-        custatevecCommunicatorCreate(
+    PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
         handle, &communicator, communicatorType, soname));
     mpi_manager.Barrier();
 
@@ -241,20 +226,18 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         cudaIpcMemHandle_t ipcMemHandle;
         PL_CUDA_IS_SUCCESS(cudaIpcGetMemHandle(&ipcMemHandle, sv));
         std::vector<cudaIpcMemHandle_t> ipcMemHandles(mpi_manager.getSize());
-        PL_MPI_IS_SUCCESS(MPI_Allgather(&ipcMemHandle, sizeof(ipcMemHandle),
-                                        MPI_UINT8_T, ipcMemHandles.data(),
-                                        sizeof(ipcMemHandle), MPI_UINT8_T,
-                                        mpi_manager.getComm()));
+
+        mpi_manager.Allgather<cudaIpcMemHandle_t>(ipcMemHandle, ipcMemHandles,
+                                                  sizeof(ipcMemHandle));
         cudaIpcEventHandle_t eventHandle;
         PL_CUDA_IS_SUCCESS(cudaIpcGetEventHandle(&eventHandle, localEvent));
         // distribute event handles
         std::vector<cudaIpcEventHandle_t> ipcEventHandles(
             mpi_manager.getSize());
-        PL_MPI_IS_SUCCESS(MPI_Allgather(&eventHandle, sizeof(eventHandle),
-                                        MPI_UINT8_T, ipcEventHandles.data(),
-                                        sizeof(eventHandle), MPI_UINT8_T,
-                                        mpi_manager.getComm()));
-        // get remove device pointers and events
+
+        mpi_manager.Allgather<cudaIpcEventHandle_t>(
+            eventHandle, ipcEventHandles, sizeof(eventHandle));
+        //  get remove device pointers and events
         int nSubSVsP2P = 1 << nP2PDeviceBits;
         int p2pSubSVIndexBegin =
             (mpi_manager.getRank() / nSubSVsP2P) * nSubSVsP2P;
@@ -284,6 +267,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
             /* cudaEvent_t */ remoteEvents.data(),
             /* const uint32_t */ static_cast<int>(d_subSVsP2P.size())));
     }
+
     return {svSegSwapWorker,
             std::bind(MPIWorkerDeleter(), std::placeholders::_1, handle,
                       communicator, d_extraWorkspace, d_transferWorkspace,

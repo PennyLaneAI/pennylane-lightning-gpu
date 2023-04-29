@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bit>
 #include <complex>
 #include <cstring>
 #include <cuda.h>
@@ -17,12 +18,6 @@
 #include "Error.hpp"
 
 namespace Pennylane::MPI {
-// check if num is a power of 2
-inline bool isPow2(int num) {
-    PL_ABORT_IF_NOT(num > 0, "Operand of isPow2 should be positive.");
-    return (num & (num - 1)) == 0;
-}
-
 inline void errhandler(int errcode, const char *str) {
     char msg[MPI_MAX_ERROR_STRING];
     int resultlen;
@@ -54,7 +49,6 @@ class MPIManager {
     int subversion_;
 
   public:
-  
     MPIManager() : communiator_(MPI_COMM_WORLD) {
         isExternalComm_ = true;
         PL_MPI_IS_SUCCESS(MPI_Comm_rank(communiator_, &rank_));
@@ -81,11 +75,11 @@ class MPIManager {
         PL_MPI_IS_SUCCESS(MPI_Comm_size(communiator_, &size_));
         findVendor();
         findVersion();
-        check_mpi_config();
         getNumProcsPerNode();
+        check_mpi_config();
     }
 
-    MPIManager(MPIManager &other) {
+    MPIManager(const MPIManager &other) {
         isExternalComm_ = true;
         rank_ = other.rank_;
         size_ = other.size_;
@@ -133,7 +127,7 @@ class MPIManager {
 
         if (strstr(version, "Open MPI") != nullptr) {
             vendor_ = "Open MPI";
-        } else if (strstr(version, "MPICH") != NULL) {
+        } else if (strstr(version, "MPICH") != nullptr) {
             vendor_ = "MPICH";
         } else {
             std::cerr << "Unsupported MPI implementation.\n";
@@ -152,19 +146,17 @@ class MPIManager {
                                 this->getRank(), MPI_INFO_NULL, &node_comm));
         PL_MPI_IS_SUCCESS(MPI_Comm_size(node_comm, &size_per_node_));
         this->Barrier();
-        PL_ABORT_IF(isPow2(size_per_node_) != true,
-                    "Number of processes per node is not power of two.");
     }
 
     void check_mpi_config() {
         // check if number of processes is power of two.
         // This is required by custatevec
-        PL_ABORT_IF(isPow2(this->getSize()) != true,
+        PL_ABORT_IF(std::has_single_bit(
+                        static_cast<unsigned int>(this->getSize())) != true,
                     "Processes number is not power of two.");
-        // Check if number of processes per node is power of two.
-        // This is required by custatevec
-        PL_ABORT_IF(isPow2(size_per_node_) != true,
-                    "Processes number per node is not power of two.");
+        PL_ABORT_IF(std::has_single_bit(
+                        static_cast<unsigned int>(size_per_node_)) != true,
+                    "Number of processes per node is not power of two.");
     }
 
     template <typename T>
@@ -370,6 +362,6 @@ class MPIManager {
         {CPPTYPE(std::complex<long double>), MPI_C_LONG_DOUBLE_COMPLEX},
         // cuda related types
         {CPPTYPE(cudaIpcMemHandle_t), MPI_INT8_T},
-    };
+        {CPPTYPE(cudaIpcEventHandle_t), MPI_INT8_T}};
 };
 } // namespace Pennylane::MPI

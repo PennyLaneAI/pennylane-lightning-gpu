@@ -35,11 +35,11 @@
 #include "cuda_helpers.hpp"
 #include "mpi.h"
 
+#include "Python.h"
 #include "pybind11/complex.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-#include "Python.h"
 #include <mpi4py/mpi4py.h>
 
 /// @cond DEV
@@ -897,10 +897,11 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
             return new StateVectorCudaMPI<PrecisionT>(
                 mpi_manager, num_global_qubits, num_local_qubits);
         })) // qubits, device
-        .def(py::init([](std::size_t num_global_qubits,
-                         std::size_t num_local_qubits) {
-            return new StateVectorCudaMPI<PrecisionT>(num_global_qubits, num_local_qubits);
-        })) // qubits, device
+        .def(py::init(
+            [](std::size_t num_global_qubits, std::size_t num_local_qubits) {
+                return new StateVectorCudaMPI<PrecisionT>(num_global_qubits,
+                                                          num_local_qubits);
+            })) // qubits, device
         .def(
             "setBasisState",
             [](StateVectorCudaMPI<PrecisionT> &sv, const size_t index,
@@ -1327,7 +1328,7 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
         .def("isInactive", &DevicePool<int>::isInactive)
         .def("acquireDevice", &DevicePool<int>::acquireDevice)
         .def("releaseDevice", &DevicePool<int>::releaseDevice)
-        .def("syncDevice",&DevicePool<int>::syncDevice)
+        .def("syncDevice", &DevicePool<int>::syncDevice)
         .def_static("getTotalDevices", &DevicePool<int>::getTotalDevices)
         .def_static("getDeviceUIDs", &DevicePool<int>::getDeviceUIDs)
         .def_static("setDeviceID", &DevicePool<int>::setDeviceIdx);
@@ -1352,15 +1353,16 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
         .def("refresh", &DevTag<int>::refresh);
 
     py::class_<MPIManager>(m, "MPIManager")
-        .def(py::init([](pybind11::handle const& py_comm){            
-            if (import_mpi4py() < 0) {
+        .def(py::init([](pybind11::handle const &py_comm) {
+            if (import_mpi4py() == 0) {
+                return new MPIManager(*PyMPIComm_Get(py_comm.ptr()));
+            } else {
                 throw std::runtime_error("Could not load mpi4py API.");
             }
-            return new MPIManager(*PyMPIComm_Get(py_comm.ptr()));
         }))
-        .def(py::init<>())       
+        .def(py::init<>())
         .def(py::init<MPIManager &>())
-        .def("Barrier",&MPIManager::Barrier)
+        .def("Barrier", &MPIManager::Barrier)
         .def("getRank", &MPIManager::getRank)
         .def("getSize", &MPIManager::getSize)
         .def("getSizeNode", &MPIManager::getSizeNode)

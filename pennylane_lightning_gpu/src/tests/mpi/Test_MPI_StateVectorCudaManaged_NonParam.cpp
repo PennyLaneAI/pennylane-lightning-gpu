@@ -9,12 +9,12 @@
 #include <catch2/catch.hpp>
 #include <mpi.h>
 
-#include "StateVectorCudaMPI.hpp"
-#include "StateVectorRawCPU.hpp"
-
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"
+
+#include "StateVectorCudaMPI.hpp"
+#include "StateVectorRawCPU.hpp"
 
 #include "MPIManager.hpp"
 
@@ -32,11 +32,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetStateVector",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -79,8 +76,6 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetStateVector",
             "the host") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        mpi_manager.Barrier();
-
         // The setStates will shuffle the state vector values on the device with
         // the following indices and values setting on host. For example, the
         // values[i] is used to set the indices[i] th element of state vector on
@@ -107,11 +102,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -160,11 +152,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPauliX",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -223,42 +212,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPauliX",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyPauliX({0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyPauliX({num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -267,42 +234,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPauliX",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("PauliX", {0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("PauliX", {num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -315,11 +260,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPauliY",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -390,42 +332,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPauliY",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyPauliY({0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyPauliY({num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -434,42 +354,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPauliY",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("PauliY", {0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("PauliY", {num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -482,11 +380,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPauliZ",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -557,42 +452,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPauliZ",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyPauliZ({0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyPauliZ({num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -601,42 +474,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPauliZ",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("PauliZ", {0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("PauliZ", {num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -649,11 +500,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyHadamard",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -724,42 +572,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyHadamard",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyHadamard({0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyHadamard({num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -768,42 +594,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyHadamard",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("Hadamard", {0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("Hadamard", {num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -816,11 +620,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyS",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -891,42 +692,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyS",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyS({0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyS({num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -935,42 +714,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyS",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("S", {0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("S", {num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -983,11 +740,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyT",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -1058,42 +812,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyT",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyT({0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyT({num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -1102,42 +834,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyT",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("T", {0}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("T", {num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -1150,11 +860,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCNOT",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -1242,63 +949,30 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCNOT",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCNOT({0, 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCNOT({num_qubits - 2, num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
 
         SECTION("Operation on both global and local qubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCNOT({1, num_qubits - 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv2));
         }
     }
@@ -1307,63 +981,30 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCNOT",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CNOT", {0, 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CNOT", {num_qubits - 2, num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CNOT", {1, num_qubits - 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv2));
         }
     }
@@ -1376,11 +1017,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySWAP",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -1468,63 +1106,30 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySWAP",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applySWAP({0, 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applySWAP({num_qubits - 2, num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
 
         SECTION("Operation on both global and local qubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applySWAP({1, num_qubits - 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv2));
         }
     }
@@ -1533,63 +1138,30 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySWAP",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("SWAP", {0, 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("SWAP", {num_qubits - 2, num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("SWAP", {1, num_qubits - 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv2));
         }
     }
@@ -1602,11 +1174,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCY",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -1694,63 +1263,30 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCY",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCY({0, 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCY({num_qubits - 2, num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
 
         SECTION("Operation on both global and local qubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCY({1, num_qubits - 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv2));
         }
     }
@@ -1759,63 +1295,30 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCY",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CY", {0, 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CY", {num_qubits - 2, num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CY", {1, num_qubits - 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv2));
         }
     }
@@ -1828,11 +1331,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCZ",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -1920,63 +1420,30 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCZ",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCZ({0, 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCZ({num_qubits - 2, num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
 
         SECTION("Operation on both global and local qubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCZ({1, num_qubits - 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv2));
         }
     }
@@ -1985,63 +1452,30 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCZ",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CZ", {0, 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CZ", {num_qubits - 2, num_qubits - 1}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
 
         SECTION("Operation on localQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CZ", {1, num_qubits - 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv2));
         }
     }
@@ -2054,11 +1488,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyToffoli",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -2273,43 +1704,21 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyToffoli",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyToffoli({0, 1, 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on local and global Qubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyToffoli({num_qubits - 3, num_qubits - 2, num_qubits - 1},
                             false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -2318,44 +1727,22 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyToffoli",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("Toffoli", {0, 1, 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on local and global qubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("Toffoli",
                               {num_qubits - 3, num_qubits - 2, num_qubits - 1},
                               false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -2368,11 +1755,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCSWAP",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
@@ -2587,43 +1971,21 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCSWAP",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCSWAP({0, 1, 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on local and global Qubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyCSWAP({num_qubits - 3, num_qubits - 2, num_qubits - 1},
                           false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }
@@ -2632,44 +1994,22 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCSWAP",
         SECTION("Operation on globalQubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CSWAP", {0, 1, 2}, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv0));
         }
 
         SECTION("Operation on local and global qubits") {
             StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
                                             nLocalIndexBits);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyHostDataToGpu(local_state, false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.applyOperation("CSWAP",
                               {num_qubits - 3, num_qubits - 2, num_qubits - 1},
                               false);
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
-
             sv.CopyGpuDataToHost(local_state.data(),
                                  static_cast<std::size_t>(subSvLength));
-            cudaDeviceSynchronize();
-            mpi_manager.Barrier();
             CHECK(local_state == Pennylane::approx(expected_sv1));
         }
     }

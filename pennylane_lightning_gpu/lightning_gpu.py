@@ -210,7 +210,7 @@ if CPP_BINARY_AVAILABLE:
             self,
             wires,
             *,
-            mpi_comm=None,
+            mpi_comm: Union[bool, MPI.Comm] = None,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -234,7 +234,10 @@ if CPP_BINARY_AVAILABLE:
                 self._dp = DevPool()
                 self._batch_obs = batch_obs
             else:
-                self._mpi_comm = mpi_comm
+                if isinstance(mpi_comm, bool):
+                    self._mpi_comm = MPI.COMM_WORLD
+                if isinstance(mpi_comm, MPI.Comm):
+                    self._mpi_comm = mpi_comm
                 # initialize MPIManager and config check in the MPIManager ctor
                 self._mpi_manager = MPIManager(self._mpi_comm)
                 self._dp = DevPool()
@@ -255,11 +258,12 @@ if CPP_BINARY_AVAILABLE:
                 commSize = self._mpi_manager.getSize()
                 self._num_global_wires = commSize.bit_length() - 1
                 self._num_local_wires = self.num_wires - self._num_global_wires
-                self._mpi_manager.Barrier() 
+                self._mpi_manager.Barrier()
                 self._dp.setDeviceID(deviceid)
-                #self._gpu_mpi_state = _gpu_mpi_dtype(c_dtype)(self._num_global_wires, self._num_local_wires)
-                self._gpu_mpi_state = _gpu_mpi_dtype(c_dtype)(self._mpi_manager, self._num_global_wires, self._num_local_wires)
-                self._mpi_manager.Barrier() 
+                self._gpu_mpi_state = _gpu_mpi_dtype(c_dtype)(
+                    self._mpi_manager, self._num_global_wires, self._num_local_wires
+                )
+                self._mpi_manager.Barrier()
                 self._create_basis_state_GPU(0)
                 self._batch_obs = False
 
@@ -480,7 +484,7 @@ if CPP_BINARY_AVAILABLE:
                 if isinstance(o, Adjoint):
                     name = o.base.name
                     invert_param = True
-            
+
                 if self._mpi_comm is None:
                     method = getattr(self._gpu_state, name, None)
                 else:

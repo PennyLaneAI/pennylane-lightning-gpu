@@ -26,16 +26,15 @@
 #include <cuComplex.h> // cuDoubleComplex
 #include <cuda.h>
 #include <custatevec.h> // custatevecApplyMatrix
-// #include <mpi.h>
 
 #include "Constant.hpp"
 #include "Error.hpp"
 #include "MPIManager.hpp"
+#include "MPIWorker.hpp"
 #include "StateVectorCudaBase.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"
-#include "MPIWorker.hpp"
 
 /// @cond DEV
 namespace {
@@ -109,9 +108,11 @@ class StateVectorCudaMPI
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
               handle_.get(), mpi_manager_, BaseType::getData(),
               num_local_qubits, localStream_.get())),
-          gate_cache_(true){};
+          gate_cache_(true) {
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
+        mpi_manager_.Barrier();
+    };
 
-    //StateVectorCudaMPI(MPI_Comm mpi_communicator, size_t num_global_qubits,
     StateVectorCudaMPI(MPI_Comm mpi_communicator, size_t num_global_qubits,
                        size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
@@ -124,8 +125,11 @@ class StateVectorCudaMPI
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
               handle_.get(), mpi_manager_, BaseType::getData(),
               num_local_qubits, localStream_.get())),
-          gate_cache_(true){};
-    
+          gate_cache_(true) {
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
+        mpi_manager_.Barrier();
+    };
+
     StateVectorCudaMPI(size_t num_global_qubits, size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
               num_local_qubits),
@@ -137,7 +141,10 @@ class StateVectorCudaMPI
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
               handle_.get(), mpi_manager_, BaseType::getData(),
               num_local_qubits, localStream_.get())),
-          gate_cache_(true){};
+          gate_cache_(true) {
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
+        mpi_manager_.Barrier();
+    };
 
     ~StateVectorCudaMPI(){};
 
@@ -170,14 +177,16 @@ class StateVectorCudaMPI
      */
     void setBasisState(const std::complex<Precision> &value, const size_t index,
                        const bool async = false) {
-        int rankId = index >> BaseType::getNumQubits();
+        assert(index >= 0);
+        size_t rankId = static_cast<size_t>(index) >> BaseType::getNumQubits();
+
         int local_index = (rankId << BaseType::getNumQubits()) ^ index;
         BaseType::getDataBuffer().zeroInit();
 
         CFP_t value_cu = cuUtil::complexToCu<std::complex<Precision>>(value);
         auto stream_id = localStream_.get();
 
-        if (mpi_manager_.getRank() == rankId) {
+        if (mpi_manager_.getRank() == static_cast<int>(rankId)) {
             setBasisState_CUDA(BaseType::getData(), value_cu, local_index,
                                async, stream_id);
         }
@@ -206,8 +215,11 @@ class StateVectorCudaMPI
 
         for (int i = 0; i < num_indices; i++) {
             int index = indices[i];
-            int rankId = index >> BaseType::getNumQubits();
-            if (rankId == mpi_manager_.getRank()) {
+            assert(index >= 0);
+            size_t rankId =
+                static_cast<size_t>(index) >> BaseType::getNumQubits();
+
+            if (static_cast<int>(rankId) == mpi_manager_.getRank()) {
                 int local_index = index ^ (rankId << BaseType::getNumQubits());
                 indices_local.push_back(local_index);
                 values_local.push_back(values[i]);
@@ -993,20 +1005,22 @@ class StateVectorCudaMPI
                 return static_cast<int>(this->getTotalNumQubits() - 1 - x);
             });
 
-        //Initialize a vector to store the status of wires and default its elements
-        //as zeros, which assumes there is no target and control wire.
-        std::vector<int> statusWires(this->getTotalNumQubits(), WireStatus::Default);
- 
-       //Update wire status based on the gate information
+        // Initialize a vector to store the status of wires and default its
+        // elements as zeros, which assumes there is no target and control wire.
+        std::vector<int> statusWires(this->getTotalNumQubits(),
+                                     WireStatus::Default);
+
+        // Update wire status based on the gate information
         for (size_t i = 0; i < ctrlsInt.size(); i++) {
             statusWires[ctrlsInt[i]] = WireStatus::Control;
         }
-       //Update wire status based on the gate information
+        // Update wire status based on the gate information
         for (size_t i = 0; i < tgtsInt.size(); i++) {
             statusWires[tgtsInt[i]] = WireStatus::Target;
         }
 
-        int StatusGlobalWires = std::reduce(statusWires.begin()+this->getNumLocalQubits(), statusWires.end());
+        int StatusGlobalWires = std::reduce(
+            statusWires.begin() + this->getNumLocalQubits(), statusWires.end());
 
         mpi_manager_.Barrier();
 
@@ -1019,9 +1033,14 @@ class StateVectorCudaMPI
             auto wirePairs = createOperationWires(
                 this->getNumLocalQubits(), this->getTotalNumQubits(),
                 localCtrls, localTgts, statusWires);
-            applyMPI_Dispatcher(wirePairs, &StateVectorCudaMPI::applyCuSVPauliGate,
-                          pauli_words, localCtrls, localTgts, param,
-                          use_adjoint);
+
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+
+            applyMPI_Dispatcher(
+                wirePairs, &StateVectorCudaMPI::applyCuSVPauliGate, pauli_words,
+                localCtrls, localTgts, param, use_adjoint);
+            PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         }
     }
 
@@ -1114,20 +1133,22 @@ class StateVectorCudaMPI
                 return static_cast<int>(this->getTotalNumQubits() - 1 - x);
             });
 
-        //Initialize a vector to store the status of wires and default its elements
-        //as zeros, which assumes there is no target and control wire.
-        std::vector<int> statusWires(this->getTotalNumQubits(), WireStatus::Default);
- 
-       //Update wire status based on the gate information
+        // Initialize a vector to store the status of wires and default its
+        // elements as zeros, which assumes there is no target and control wire.
+        std::vector<int> statusWires(this->getTotalNumQubits(),
+                                     WireStatus::Default);
+
+        // Update wire status based on the gate information
         for (size_t i = 0; i < ctrlsInt.size(); i++) {
             statusWires[ctrlsInt[i]] = WireStatus::Control;
         }
-       //Update wire status based on the gate information
+        // Update wire status based on the gate information
         for (size_t i = 0; i < tgtsInt.size(); i++) {
             statusWires[tgtsInt[i]] = WireStatus::Target;
         }
 
-        int StatusGlobalWires = std::reduce(statusWires.begin()+this->getNumLocalQubits(), statusWires.end());
+        int StatusGlobalWires = std::reduce(
+            statusWires.begin() + this->getNumLocalQubits(), statusWires.end());
 
         mpi_manager_.Barrier();
 
@@ -1141,24 +1162,28 @@ class StateVectorCudaMPI
                 this->getNumLocalQubits(), this->getTotalNumQubits(),
                 localCtrls, localTgts, statusWires);
 
-            applyMPI_Dispatcher(wirePairs, &StateVectorCudaMPI::applyCuSVMatrixGate,
-                          matrix, localCtrls, localTgts, use_adjoint);
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+
+            applyMPI_Dispatcher(wirePairs,
+                                &StateVectorCudaMPI::applyCuSVMatrixGate,
+                                matrix, localCtrls, localTgts, use_adjoint);
+            PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         }
     }
     /**
      * @brief MPI dispatcher for the target and control gates at global qubits.
-     * 
+     *
      * @tparam F Return type of the callable.
      * @tparam Args Types of arguments of t the callable.
-     * 
+     *
      * @param wirePairs Vector of wire pairs for bit index swap operations.
      * @param functor The callable.
      * @param args Arguments of the callable.
      */
     template <typename F, typename... Args>
     void applyMPI_Dispatcher(std::vector<int2> &wirePairs, F &&functor,
-    //void applyGate_MPI(std::vector<int2> &wirePairs, F &&functor,
-                       Args &&...args) {
+                             Args &&...args) {
         int maskBitString[] = {}; // specify the values of mask qubits
         int maskOrdering[] = {};  // specify the mask qubits
 
@@ -1196,13 +1221,13 @@ class StateVectorCudaMPI
                 /* const int32_t* */ maskBitString,
                 /* const int32_t* */ maskOrdering,
                 /* const uint32_t */ 0,
-                /* int32_t* */ &nSwapBatches));
+                /* uint32_t* */ &nSwapBatches));
 
         //
         // the main loop of index bit swaps
         //
-        constexpr int nLoops = 2;
-        for (int loop = 0; loop < nLoops; ++loop) {
+        constexpr size_t nLoops = 2;
+        for (size_t loop = 0; loop < nLoops; ++loop) {
             for (int swapBatchIndex = 0;
                  swapBatchIndex < static_cast<int>(nSwapBatches);
                  ++swapBatchIndex) {
@@ -1230,6 +1255,8 @@ class StateVectorCudaMPI
                     /* const custatevecSVSwapParameters_t* */
                     &parameters,
                     /* int */ rank));
+                PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
+                PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
                 // execute swap
                 PL_CUSTATEVEC_IS_SUCCESS(custatevecSVSwapWorkerExecute(
                     /* custatevecHandle_t */ handle_.get(),
@@ -1238,20 +1265,23 @@ class StateVectorCudaMPI
                     /* custatevecIndex_t */ 0,
                     /* custatevecIndex_t */ parameters.transferSize));
                 // all internal CUDA calls are serialized on localStream
+                PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
+                mpi_manager_.Barrier();
             }
-            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
-            mpi_manager_.Barrier();
             if (loop == 0) {
                 std::invoke(std::forward<F>(functor), this,
                             std::forward<Args>(args)...);
             }
+            PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
             PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
             mpi_manager_.Barrier();
         }
         // synchronize all operations on device
         PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
-        // barrier here for time measurement
         mpi_manager_.Barrier();
+
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecDistIndexBitSwapSchedulerDestroy(
+            handle_.get(), scheduler));
     }
 };
 

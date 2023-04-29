@@ -7,7 +7,6 @@
 #include <vector>
 
 #include <catch2/catch.hpp>
-
 #include <mpi.h>
 
 #include "cuGateCache.hpp"
@@ -37,14 +36,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRX", "[StateVectorCudaMPI_Param]",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<PrecisionT> angles{{0.4}};
@@ -110,8 +105,6 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRX", "[StateVectorCudaMPI_Param]",
     auto expected_localstate1 =
         mpi_manager.scatter<cp_t>(expected_results[1], 0);
 
-    mpi_manager.Barrier();
-
     int nDevices = 0; // Number of GPU devices per node
     PL_CUDA_IS_SUCCESS(cudaGetDeviceCount(&nDevices));
     int deviceId = mpi_manager.getRank() % nDevices;
@@ -120,84 +113,40 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRX", "[StateVectorCudaMPI_Param]",
     SECTION("Apply directly at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyRX({0}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyRX({num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("RX", {0}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("RX", {num_qubits - 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 }
@@ -210,11 +159,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRY", "[StateVectorCudaMPI_Param]",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -293,84 +239,40 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRY", "[StateVectorCudaMPI_Param]",
     SECTION("Apply directly at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyRY({0}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyRY({num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("RY", {0}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("RY", {num_qubits - 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 }
@@ -383,14 +285,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRZ", "[StateVectorCudaMPI_Param]",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<PrecisionT> angles{{0.4}};
@@ -455,7 +353,6 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRZ", "[StateVectorCudaMPI_Param]",
         mpi_manager.scatter<cp_t>(expected_results[0], 0);
     auto expected_localstate1 =
         mpi_manager.scatter<cp_t>(expected_results[1], 0);
-
     mpi_manager.Barrier();
 
     int nDevices = 0; // Number of GPU devices per node
@@ -466,84 +363,40 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRZ", "[StateVectorCudaMPI_Param]",
     SECTION("Apply directly at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyRZ({0}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyRZ({num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("RZ", {0}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("RZ", {num_qubits - 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 }
@@ -556,14 +409,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPhaseShift",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<PrecisionT> angles{{0.4}};
@@ -638,84 +487,40 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyPhaseShift",
     SECTION("Apply directly at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyPhaseShift({0}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyPhaseShift({num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("PhaseShift", {0}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("PhaseShift", {num_qubits - 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 }
@@ -728,14 +533,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRot", "[StateVectorCudaMPI_Param]",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<std::vector<PrecisionT>> angles{{0.4, 0.3, 0.2}};
@@ -810,90 +611,45 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRot", "[StateVectorCudaMPI_Param]",
     SECTION("Apply directly at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyRot({0}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyRot({num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at a global wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("Rot", {0}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at a local wire") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("Rot", {num_qubits - 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 }
 
 // Two-qubit gates
-
 // IsingXX Gate
 TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyIsingXX",
                    "[StateVectorCudaMPI_Param]", float, double) {
@@ -903,14 +659,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyIsingXX",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<PrecisionT> angles{{0.4}};
@@ -1003,127 +755,61 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyIsingXX",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyIsingXX({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyIsingXX({num_qubits - 2, num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyIsingXX({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("IsingXX", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("IsingXX", {num_qubits - 2, num_qubits - 1}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("IsingXX", {1, num_qubits - 2}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -1137,11 +823,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyIsingYY",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -1237,127 +920,61 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyIsingYY",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyIsingYY({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyIsingYY({num_qubits - 2, num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyIsingYY({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("IsingYY", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("IsingYY", {num_qubits - 2, num_qubits - 1}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("IsingYY", {1, num_qubits - 2}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -1371,14 +988,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyIsingZZ",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<PrecisionT> angles{{0.4}};
@@ -1471,127 +1084,61 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyIsingZZ",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyIsingZZ({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyIsingZZ({num_qubits - 2, num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyIsingZZ({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("IsingZZ", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("IsingZZ", {num_qubits - 2, num_qubits - 1}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("IsingZZ", {1, num_qubits - 2}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -1605,14 +1152,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyControlledPhaseShift",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<PrecisionT> angles{{0.4}};
@@ -1705,129 +1248,63 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyControlledPhaseShift",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyControlledPhaseShift({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyControlledPhaseShift({num_qubits - 2, num_qubits - 1}, false,
                                      angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyControlledPhaseShift({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("ControlledPhaseShift", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("ControlledPhaseShift",
                           {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("ControlledPhaseShift", {1, num_qubits - 2}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -1841,11 +1318,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRX", "[StateVectorCudaMPI_Param]",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -1941,127 +1415,61 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRX", "[StateVectorCudaMPI_Param]",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRX({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRX({num_qubits - 2, num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRX({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRX", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRX", {num_qubits - 2, num_qubits - 1}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRX", {1, num_qubits - 2}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -2075,11 +1483,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRY", "[StateVectorCudaMPI_Param]",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -2175,127 +1580,61 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRY", "[StateVectorCudaMPI_Param]",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRY({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRY({num_qubits - 2, num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRY({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRY", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRY", {num_qubits - 2, num_qubits - 1}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRY", {1, num_qubits - 2}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -2308,11 +1647,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRZ", "[StateVectorCudaMPI_Param]",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -2408,127 +1744,61 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRZ", "[StateVectorCudaMPI_Param]",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRZ({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRZ({num_qubits - 2, num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRZ({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRZ", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRZ", {num_qubits - 2, num_qubits - 1}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRZ", {1, num_qubits - 2}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -2541,11 +1811,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRot",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -2641,127 +1908,61 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRot",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRot({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRot({num_qubits - 2, num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyCRot({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRot", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRot", {num_qubits - 2, num_qubits - 1}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("CRot", {1, num_qubits - 2}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -2774,11 +1975,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySingleExcitation",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -2874,129 +2072,63 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySingleExcitation",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applySingleExcitation({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applySingleExcitation({num_qubits - 2, num_qubits - 1}, false,
                                  angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applySingleExcitation({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("SingleExcitation", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("SingleExcitation", {num_qubits - 2, num_qubits - 1},
                           false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("SingleExcitation", {1, num_qubits - 2}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -3009,14 +2141,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySingleExcitationMinus",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<PrecisionT> angles{{0.4}};
@@ -3109,129 +2237,63 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySingleExcitationMinus",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applySingleExcitationMinus({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applySingleExcitationMinus({num_qubits - 2, num_qubits - 1}, false,
                                       angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applySingleExcitationMinus({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("SingleExcitationMinus", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("SingleExcitationMinus",
                           {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("SingleExcitationMinus", {1, num_qubits - 2}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -3245,11 +2307,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySingleExcitationPlus",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -3345,129 +2404,63 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySingleExcitationPlus",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applySingleExcitationPlus({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applySingleExcitationPlus({num_qubits - 2, num_qubits - 1}, false,
                                      angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applySingleExcitationPlus({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("SingleExcitationPlus", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("SingleExcitationPlus",
                           {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("SingleExcitationPlus", {1, num_qubits - 2}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
@@ -3481,14 +2474,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyDoubleExcitation",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<PrecisionT> angles{{0.4}};
@@ -3641,42 +2630,20 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyDoubleExcitation",
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyDoubleExcitation({0, 1, 2, 3}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("DoubleExcitation", {0, 1, 2, 3}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 }
@@ -3690,11 +2657,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyDoubleExcitationMinus",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -3850,43 +2814,21 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyDoubleExcitationMinus",
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyDoubleExcitationMinus({0, 1, 2, 3}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("DoubleExcitationMinus", {0, 1, 2, 3}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 }
@@ -3900,14 +2842,10 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyDoubleExcitationPlus",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
-
     mpi_manager.Barrier();
 
     const std::vector<PrecisionT> angles{{0.4}};
@@ -4060,43 +2998,21 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyDoubleExcitationPlus",
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyDoubleExcitationPlus({0, 1, 2, 3}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("DoubleExcitationPlus", {0, 1, 2, 3}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 }
@@ -4109,11 +3025,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyMultiRZ",
 
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits = 0;
-    while ((1 << nGlobalIndexBits) < mpi_manager.getSize()) {
-        ++nGlobalIndexBits;
-    }
-
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
     int nLocalIndexBits = num_qubits - nGlobalIndexBits;
     int subSvLength = 1 << nLocalIndexBits;
 
@@ -4209,127 +3122,61 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyMultiRZ",
     SECTION("Apply directly at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyMultiRZ({0, 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply directly at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyMultiRZ({num_qubits - 2, num_qubits - 1}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply directly at both local and global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyMultiRZ({1, num_qubits - 2}, false, angles[0]);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 
     SECTION("Apply using dispatcher at global wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("MultiRZ", {0, 1}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate0));
     }
 
     SECTION("Apply using dispatcher at local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("MultiRZ", {num_qubits - 2, num_qubits - 1}, false,
                           {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate1));
     }
 
     SECTION("Apply using dispatcher at both global and local wires") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
                                           nLocalIndexBits);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyHostDataToGpu(init_localstate, false);
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.applyOperation("MultiRZ", {1, num_qubits - 2}, false, {angles[0]});
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
-
         sv.CopyGpuDataToHost(localstate.data(),
                              static_cast<std::size_t>(subSvLength));
-        cudaDeviceSynchronize();
-        mpi_manager.Barrier();
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
