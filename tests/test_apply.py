@@ -1094,7 +1094,7 @@ class TestLightningGPUIntegration:
 
     def test_apply_qpe(self, qubit_device_2_wires, tol):
         """Test the application of qml.QuantumPhaseEstimation"""
-        dev = qubit_device_1_wire
+        dev = qubit_device_2_wires
 
         @qml.qnode(dev)
         def circuit():
