@@ -1,15 +1,11 @@
-# Release 0.30.0-dev
+# Release 0.30.0
 
 ### New features since last release
-
-### Breaking changes
 
 ### Improvements
 
 * Wheels are now checked with `twine check` post-creation for PyPI compatibility.
   [(#103)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/103)
-
-### Documentation
 
 ### Bug fixes
 
