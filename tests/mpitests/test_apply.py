@@ -248,15 +248,339 @@ class TestApply:
 
         assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
+    test_three_qubit_gates_qnode_nonparam = [
+        (qml.CSWAP, [0, 1, 2]),
+        (qml.CSWAP, [numQubits - 3, numQubits - 2, numQubits - 1]),
+        (qml.CSWAP, [0, 1, numQubits - 1]),
+        (qml.CSWAP, [0, numQubits - 2, numQubits - 1]),
+        (qml.Toffoli, [0, 1, 2]),
+        (qml.Toffoli, [numQubits - 3, numQubits - 2, numQubits - 1]),
+        (qml.Toffoli, [0, 1, numQubits - 1]),
+        (qml.Toffoli, [0, numQubits - 2, numQubits - 1]),
+    ]
 
-# 1Qubits gate parametric
-# PhaseShift, RX, RY, RZ, (single parameter)
-# Rot (three parameters)
+    @pytest.mark.parametrize("operation, Wires", test_three_qubit_gates_qnode_nonparam)
+    def test_apply_operation_three_wire_qnode_nonparam(self, tol, operation, Wires):
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        commSize = comm.Get_size()
+        num_global_wires = commSize.bit_length() - 1
+        num_local_wires = num_wires - num_global_wires
 
-# 2 Qubit gate parametric
-# CRX, CRY, CRZ, ControlledPhaseShift, SingleExcitation, SingleExcitationMinus, SingleExcitationPlus (single parameter)
-# IsingXX, IsingYY, IsingZZ (single parameter)
-# CRot(three parameters)
+        state_vector = np.zeros(1 << num_wires).astype(np.complex128)
+        expected_output_cpu = np.zeros(1 << num_wires).astype(np.complex128)
+        local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
+        local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
-# 4 Qubit gate parametric
-# DoubleExcitation, DoubleExcitationMinus, DoubleExcitationPlus, (single parameter)
+        state_vector = createRandomInitState(num_wires)
+
+        comm.Scatter(state_vector, local_state_vector, root=0)
+        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+        @qml.qnode(dev_cpu)
+        def circuit():
+            qml.QubitStateVector(state_vector, wires=range(num_wires))
+            operation(wires=Wires)
+            return qml.state()
+
+        expected_output_cpu = circuit()
+        mpi_comm.Barrier
+        comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
+
+        dev_gpumpi = qml.device(
+            "lightning.gpu", wires=num_wires, mpi_comm=comm, c_dtype=np.complex128
+        )
+
+        @qml.qnode(dev_gpumpi)
+        def circuit_mpi():
+            qml.QubitStateVector(state_vector, wires=range(num_wires))
+            operation(wires=Wires)
+            return qml.state()
+
+        mpi_comm.Barrier
+        local_state_vector = circuit_mpi()
+
+        mpi_comm.Barrier
+        assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
+
+    # 1Qubits gate parametric
+    # PhaseShift, RX, RY, RZ, (single parameter)
+    # Rot (three parameters)
+
+    # 2 Qubit gate parametric
+    # CRX, CRY, CRZ, ControlledPhaseShift, SingleExcitation, SingleExcitationMinus, SingleExcitationPlus (single parameter)
+    # IsingXX, IsingYY, IsingZZ (single parameter)
+    # CRot(three parameters)
+    # 4 Qubit gate parametric
+    # DoubleExcitation, DoubleExcitationMinus, DoubleExcitationPlus, (single parameter)
+
+    test_two_qubit_gates_qnode_nonparam = [
+        (qml.PhaseShift, [0.1], [0]),
+        (qml.PhaseShift, [0.1], [numQubits - 1]),
+        (qml.RX, [0.2], [0]),
+        (qml.RX, [0.2], [numQubits - 1]),
+        (qml.RY, [0.3], [0]),
+        (qml.RY, [0.3], [numQubits - 1]),
+        (qml.RZ, [0.4], [0]),
+        (qml.RZ, [0.4], [numQubits - 1]),
+        (qml.Rot, [0.1, 0.2, 0.3], [0]),
+        (qml.Rot, [0.1, 0.2, 0.3], [numQubits - 1]),
+        (qml.CRX, [0.1], [0, 1]),
+        (qml.CRX, [0.1], [0, numQubits - 1]),
+        (qml.CRX, [0.1], [numQubits - 2, numQubits - 1]),
+        (qml.CRY, [0.2], [0, 1]),
+        (qml.CRY, [0.2], [0, numQubits - 1]),
+        (qml.CRY, [0.2], [numQubits - 2, numQubits - 1]),
+        (qml.CRZ, [0.3], [0, 1]),
+        (qml.CRZ, [0.3], [0, numQubits - 1]),
+        (qml.CRZ, [0.3], [numQubits - 2, numQubits - 1]),
+        (qml.ControlledPhaseShift, [0.4], [0, 1]),
+        (qml.ControlledPhaseShift, [0.4], [0, numQubits - 1]),
+        (qml.ControlledPhaseShift, [0.4], [numQubits - 2, numQubits - 1]),
+        (qml.SingleExcitation, [0.5], [0, 1]),
+        (qml.SingleExcitation, [0.5], [0, numQubits - 1]),
+        (qml.SingleExcitation, [0.5], [numQubits - 2, numQubits - 1]),
+        (qml.SingleExcitationMinus, [0.6], [0, 1]),
+        (qml.SingleExcitationMinus, [0.6], [0, numQubits - 1]),
+        (qml.SingleExcitationMinus, [0.6], [numQubits - 2, numQubits - 1]),
+        (qml.SingleExcitationPlus, [0.7], [0, 1]),
+        (qml.SingleExcitationPlus, [0.7], [0, numQubits - 1]),
+        (qml.SingleExcitationPlus, [0.7], [numQubits - 2, numQubits - 1]),
+        (qml.IsingXX, [0.8], [0, 1]),
+        (qml.IsingXX, [0.8], [0, numQubits - 1]),
+        (qml.IsingXX, [0.8], [numQubits - 2, numQubits - 1]),
+        (qml.IsingYY, [0.9], [0, 1]),
+        (qml.IsingYY, [0.9], [0, numQubits - 1]),
+        (qml.IsingYY, [0.9], [numQubits - 2, numQubits - 1]),
+        (qml.IsingZZ, [0.1], [0, 1]),
+        (qml.IsingZZ, [0.1], [0, numQubits - 1]),
+        (qml.IsingZZ, [0.1], [numQubits - 2, numQubits - 1]),
+        (qml.CRot, [0.1, 0.2, 0.3], [0, 1]),
+        (qml.CRot, [0.1, 0.2, 0.3], [0, numQubits - 1]),
+        (qml.CRot, [0.1, 0.2, 0.3], [numQubits - 2, numQubits - 1]),
+        (qml.DoubleExcitation, [0.1], [0, 1, 2, 3]),
+        (qml.DoubleExcitation, [0.1], [0, 1, numQubits - 2, numQubits - 1]),
+        (qml.DoubleExcitationPlus, [0.2], [0, 1, 2, 3]),
+        (qml.DoubleExcitationPlus, [0.2], [0, 1, numQubits - 2, numQubits - 1]),
+        (qml.DoubleExcitationMinus, [0.3], [0, 1, 2, 3]),
+        (qml.DoubleExcitationMinus, [0.3], [0, 1, numQubits - 2, numQubits - 1]),
+    ]
+
+    @pytest.mark.parametrize("operation, par, Wires", test_two_qubit_gates_qnode_nonparam)
+    def test_apply_operation_three_wire_qnode_nonparam(self, tol, operation, par, Wires):
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        commSize = comm.Get_size()
+        num_global_wires = commSize.bit_length() - 1
+        num_local_wires = num_wires - num_global_wires
+
+        state_vector = np.zeros(1 << num_wires).astype(np.complex128)
+        expected_output_cpu = np.zeros(1 << num_wires).astype(np.complex128)
+        local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
+        local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
+
+        state_vector = createRandomInitState(num_wires)
+
+        comm.Scatter(state_vector, local_state_vector, root=0)
+        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+        @qml.qnode(dev_cpu)
+        def circuit():
+            qml.QubitStateVector(state_vector, wires=range(num_wires))
+            operation(*par, wires=Wires)
+            return qml.state()
+
+        expected_output_cpu = circuit()
+        mpi_comm.Barrier
+        comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
+
+        dev_gpumpi = qml.device(
+            "lightning.gpu", wires=num_wires, mpi_comm=comm, c_dtype=np.complex128
+        )
+
+        @qml.qnode(dev_gpumpi)
+        def circuit_mpi():
+            qml.QubitStateVector(state_vector, wires=range(num_wires))
+            operation(*par, wires=Wires)
+            return qml.state()
+
+        mpi_comm.Barrier
+        local_state_vector = circuit_mpi()
+
+        mpi_comm.Barrier
+        assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
+
+    test_state_prep = [
+        (qml.BasisState, np.array([1, 0, 0, 0, 0, 0]), range(numQubits)),
+        (qml.BasisState, np.array([0, 1, 0, 0, 0, 0]), range(numQubits)),
+        (qml.BasisState, np.array([0, 0, 1, 0, 0, 0]), range(numQubits)),
+        (qml.BasisState, np.array([0, 0, 0, 1, 0, 0]), range(numQubits)),
+        (qml.BasisState, np.array([0, 0, 0, 0, 1, 0]), range(numQubits)),
+        (qml.BasisState, np.array([0, 0, 0, 0, 0, 1]), range(numQubits)),
+    ]
+
+    @pytest.mark.parametrize("operation, par, Wires", test_state_prep)
+    def test_state_prep(self, tol, operation, par, Wires):
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        commSize = comm.Get_size()
+        num_global_wires = commSize.bit_length() - 1
+        num_local_wires = num_wires - num_global_wires
+
+        state_vector = np.zeros(1 << num_wires).astype(np.complex128)
+        expected_output_cpu = np.zeros(1 << num_wires).astype(np.complex128)
+        local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
+        local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
+
+        state_vector = createRandomInitState(num_wires)
+
+        comm.Scatter(state_vector, local_state_vector, root=0)
+        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+        @qml.qnode(dev_cpu)
+        def circuit():
+            operation(par, wires=Wires)
+            return qml.state()
+
+        expected_output_cpu = circuit()
+        mpi_comm.Barrier
+        comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
+
+        dev_gpumpi = qml.device(
+            "lightning.gpu", wires=num_wires, mpi_comm=comm, c_dtype=np.complex128
+        )
+
+        @qml.qnode(dev_gpumpi)
+        def circuit_mpi():
+            operation(par, wires=Wires)
+            return qml.state()
+
+        mpi_comm.Barrier
+        local_state_vector = circuit_mpi()
+
+        mpi_comm.Barrier
+        assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
+
+    test_qubit_state_prep = [
+        (qml.QubitStateVector, np.array([1 / np.sqrt(2), 1 / np.sqrt(2)]), [0]),
+        (qml.QubitStateVector, np.array([1 / np.sqrt(2), 1 / np.sqrt(2)]), [1]),
+        (qml.QubitStateVector, np.array([1 / np.sqrt(2), 1 / np.sqrt(2)]), [2]),
+        (qml.QubitStateVector, np.array([1 / np.sqrt(2), 1 / np.sqrt(2)]), [3]),
+        (qml.QubitStateVector, np.array([1 / np.sqrt(2), 1 / np.sqrt(2)]), [4]),
+        (qml.QubitStateVector, np.array([1 / np.sqrt(2), 1 / np.sqrt(2)]), [5]),
+        (qml.QubitStateVector, np.array([0, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)]), [1, 0]),
+        (qml.QubitStateVector, np.array([0, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)]), [0, 1]),
+        (qml.QubitStateVector, np.array([0, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)]), [0, 2]),
+        (
+            qml.QubitStateVector,
+            np.array([0, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)]),
+            [numQubits - 2, numQubits - 1],
+        ),
+        (
+            qml.QubitStateVector,
+            np.array([0, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)]),
+            [0, numQubits - 1],
+        ),
+        (
+            qml.QubitStateVector,
+            np.array([0, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)]),
+            [0, numQubits - 2],
+        ),
+    ]
+
+    @pytest.mark.parametrize("operation, par, Wires", test_qubit_state_prep)
+    def test_qubit_state_prep(self, tol, operation, par, Wires):
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        commSize = comm.Get_size()
+        num_global_wires = commSize.bit_length() - 1
+        num_local_wires = num_wires - num_global_wires
+
+        state_vector = np.zeros(1 << num_wires).astype(np.complex128)
+        expected_output_cpu = np.zeros(1 << num_wires).astype(np.complex128)
+        local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
+        local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
+
+        state_vector = createRandomInitState(num_wires)
+
+        comm.Scatter(state_vector, local_state_vector, root=0)
+        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+        @qml.qnode(dev_cpu)
+        def circuit():
+            operation(par, wires=Wires)
+            return qml.state()
+
+        expected_output_cpu = circuit()
+        mpi_comm.Barrier
+        comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
+
+        dev_gpumpi = qml.device(
+            "lightning.gpu", wires=num_wires, mpi_comm=comm, c_dtype=np.complex128
+        )
+
+        @qml.qnode(dev_gpumpi)
+        def circuit_mpi():
+            operation(par, wires=Wires)
+            return qml.state()
+
+        mpi_comm.Barrier
+        local_state_vector = circuit_mpi()
+
+        mpi_comm.Barrier
+        assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
+
+    test_dev_reset = [
+        (qml.QubitStateVector, np.array([1 / np.sqrt(2), 1 / np.sqrt(2)]), [0]),
+    ]
+
+    @pytest.mark.parametrize("operation, par, Wires", test_dev_reset)
+    def test_dev_reset(self, tol, operation, par, Wires):
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        commSize = comm.Get_size()
+        num_global_wires = commSize.bit_length() - 1
+        num_local_wires = num_wires - num_global_wires
+
+        state_vector = np.zeros(1 << num_wires).astype(np.complex128)
+        expected_output_cpu = np.zeros(1 << num_wires).astype(np.complex128)
+        local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
+        local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
+
+        state_vector = createRandomInitState(num_wires)
+
+        comm.Scatter(state_vector, local_state_vector, root=0)
+        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+        dev_cpu.reset()
+
+        @qml.qnode(dev_cpu)
+        def circuit():
+            # operation(par, wires=Wires)
+            return qml.state()
+
+        expected_output_cpu = circuit()
+        mpi_comm.Barrier
+        comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
+
+        dev_gpumpi = qml.device(
+            "lightning.gpu", wires=num_wires, mpi_comm=comm, c_dtype=np.complex128
+        )
+
+        dev_cpu.reset()
+
+        @qml.qnode(dev_gpumpi)
+        def circuit_mpi():
+            # operation(par, wires=Wires)
+            return qml.state()
+
+        mpi_comm.Barrier
+        local_state_vector = circuit_mpi()
+
+        mpi_comm.Barrier
+        assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)

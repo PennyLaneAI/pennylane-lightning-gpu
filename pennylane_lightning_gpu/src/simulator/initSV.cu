@@ -85,9 +85,10 @@ void setStateVector_CUDA_call(GPUDataT *sv, index_type &num_indices,
                               GPUDataT *value, index_type *indices,
                               size_t thread_per_block, cudaStream_t stream_id) {
     auto dv = std::div(num_indices, thread_per_block);
-    const size_t num_blocks = dv.quot + (dv.rem == 0 ? 0 : 1);
+    size_t num_blocks = dv.quot + (dv.rem == 0 ? 0 : 1);
+    const size_t block_per_grid = (num_blocks == 0 ? 1 : num_blocks);
     dim3 blockSize(thread_per_block, 1, 1);
-    dim3 gridSize(num_blocks, 1);
+    dim3 gridSize(block_per_grid, 1);
 
     setStateVectorkernel<GPUDataT, index_type>
         <<<gridSize, blockSize, 0, stream_id>>>(sv, num_indices, value,

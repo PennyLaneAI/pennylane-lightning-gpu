@@ -284,10 +284,16 @@ if CPP_BINARY_AVAILABLE:
             >>> print(dev.state)
             [0.+0.j 1.+0.j]
             """
-            state = np.zeros(1 << self.num_wires, dtype=self.C_DTYPE)
-            state = self._asarray(state, dtype=self.C_DTYPE)
-            self.syncD2H(state)
-            return state
+            if self._mpi_comm is None:
+                state = np.zeros(1 << self.num_wires, dtype=self.C_DTYPE)
+                state = self._asarray(state, dtype=self.C_DTYPE)
+                self.syncD2H(state)
+                return state
+            else:
+                state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
+                state = self._asarray(state, dtype=self.C_DTYPE)
+                self.syncD2H(state)
+                return state
 
         def syncD2H(self, state_vector, use_async=False):
             """Copy the state vector data on device to a state vector on the host provided by the user
@@ -355,48 +361,86 @@ if CPP_BINARY_AVAILABLE:
             use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
             Note: This function only supports synchronized memory copy from host to device.
             """
-            # translate to wire labels used by device
-            device_wires = self.map_wires(device_wires)
-            dim = 2 ** len(device_wires)
-
-            state = self._asarray(state, dtype=self.C_DTYPE)  # this operation on host
-            batch_size = self._get_batch_size(state, (dim,), dim)  # this operation on host
-            output_shape = [2] * self.num_wires
-
-            if batch_size is not None:
-                output_shape.insert(0, batch_size)
-
-            if not (state.shape in [(dim,), (batch_size, dim)]):
-                raise ValueError(
-                    "State vector must have shape (2**wires,) or (batch_size, 2**wires)."
-                )
-
-            if not qml.math.is_abstract(state):
-                norm = qml.math.linalg.norm(state, axis=-1, ord=2)
-                if not qml.math.allclose(norm, 1.0, atol=tolerance):
-                    raise ValueError("Sum of amplitudes-squared does not equal one.")
-
-            if len(device_wires) == self.num_wires and Wires(sorted(device_wires)) == device_wires:
-                # Initialize the entire device state with the input state
-                self.syncH2D(self._reshape(state, output_shape))
-                return
-
-            # generate basis states on subset of qubits via the cartesian product
-            basis_states = np.array(list(product([0, 1], repeat=len(device_wires))))
-
-            # get basis states to alter on full set of qubits
-            unravelled_indices = np.zeros((2 ** len(device_wires), self.num_wires), dtype=int)
-            unravelled_indices[:, device_wires] = basis_states
-
-            # get indices for which the state is changed to input state vector elements
-            ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
-
-            # set the state vector on GPU with the unravelled_indices and their corresponding values
             if self._mpi_comm is None:
+                # translate to wire labels used by device
+                device_wires = self.map_wires(device_wires)
+                dim = 2 ** len(device_wires)
+
+                state = self._asarray(state, dtype=self.C_DTYPE)  # this operation on host
+                batch_size = self._get_batch_size(state, (dim,), dim)  # this operation on host
+                output_shape = [2] * self.num_wires
+
+                if batch_size is not None:
+                    output_shape.insert(0, batch_size)
+
+                if not (state.shape in [(dim,), (batch_size, dim)]):
+                    raise ValueError(
+                        "State vector must have shape (2**wires,) or (batch_size, 2**wires)."
+                    )
+
+                if not qml.math.is_abstract(state):
+                    norm = qml.math.linalg.norm(state, axis=-1, ord=2)
+                    if not qml.math.allclose(norm, 1.0, atol=tolerance):
+                        raise ValueError("Sum of amplitudes-squared does not equal one.")
+
+                if (
+                    len(device_wires) == self.num_wires
+                    and Wires(sorted(device_wires)) == device_wires
+                ):
+                    # Initialize the entire device state with the input state
+                    self.syncH2D(self._reshape(state, output_shape))
+                    return
+
+                # generate basis states on subset of qubits via the cartesian product
+                basis_states = np.array(list(product([0, 1], repeat=len(device_wires))))
+
+                # get basis states to alter on full set of qubits
+                unravelled_indices = np.zeros((2 ** len(device_wires), self.num_wires), dtype=int)
+                unravelled_indices[:, device_wires] = basis_states
+
+                # get indices for which the state is changed to input state vector elements
+                ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
+
+                # set the state vector on GPU with the unravelled_indices and their corresponding values
                 self._gpu_state.setStateVector(
                     ravelled_indices, state, use_async
                 )  # this operation on device
             else:
+                # translate to wire labels used by device
+                device_wires = self.map_wires(device_wires)
+                dim = 2 ** len(device_wires)
+
+                state = self._asarray(state, dtype=self.C_DTYPE)  # this operation on host
+                output_shape = [2] * self._num_local_wires
+
+                if not (state.shape in [(dim,)]):
+                    raise ValueError("State vector must have shape (2**wires,)).")
+
+                if not qml.math.is_abstract(state):
+                    norm = qml.math.linalg.norm(state, axis=-1, ord=2)
+                    if not qml.math.allclose(norm, 1.0, atol=tolerance):
+                        raise ValueError("Sum of amplitudes-squared does not equal one.")
+
+                if (
+                    len(device_wires) == self.num_wires
+                    and Wires(sorted(device_wires)) == device_wires
+                ):
+                    local_state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
+                    self._mpi_comm.Scatter(state, local_state, root=0)
+                    # Initialize the entire device state with the input state
+                    self.syncH2D(self._reshape(local_state, output_shape))
+                    return
+
+                # generate basis states on subset of qubits via the cartesian product
+                basis_states = np.array(list(product([0, 1], repeat=len(device_wires))))
+
+                # get basis states to alter on full set of qubits
+                unravelled_indices = np.zeros((2 ** len(device_wires), self.num_wires), dtype=int)
+                unravelled_indices[:, device_wires] = basis_states
+
+                # get indices for which the state is changed to input state vector elements
+                ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
+
                 self._gpu_mpi_state.setStateVector(
                     ravelled_indices, state, use_async
                 )  # this operation on device

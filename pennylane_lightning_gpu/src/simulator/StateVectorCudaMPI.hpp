@@ -225,6 +225,7 @@ class StateVectorCudaMPI
                 values_local.push_back(values[i]);
             }
         }
+        mpi_manager_.Barrier();
 
         auto device_id = BaseType::getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
@@ -243,14 +244,13 @@ class StateVectorCudaMPI
                                     async);
         d_values.CopyHostDataToGpu(values_local.data(), d_values.getLength(),
                                    async);
-        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
 
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         mpi_manager_.Barrier();
 
         setStateVector_CUDA(BaseType::getData(), num_elements,
                             d_values.getData(), d_indices.getData(),
                             thread_per_block, stream_id);
-
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         mpi_manager_.Barrier();
     }
@@ -1030,7 +1030,7 @@ class StateVectorCudaMPI
         } else {
             std::vector<int> localCtrls(ctrlsInt);
             std::vector<int> localTgts(tgtsInt);
-            auto wirePairs = createOperationWires(
+            auto wirePairs = createWirePairs(
                 this->getNumLocalQubits(), this->getTotalNumQubits(),
                 localCtrls, localTgts, statusWires);
 
@@ -1158,7 +1158,7 @@ class StateVectorCudaMPI
             std::vector<int> localCtrls = ctrlsInt;
             std::vector<int> localTgts = tgtsInt;
 
-            auto wirePairs = createOperationWires(
+            auto wirePairs = createWirePairs(
                 this->getNumLocalQubits(), this->getTotalNumQubits(),
                 localCtrls, localTgts, statusWires);
 

@@ -35,14 +35,13 @@ enum WireStatus { Default, Target, Control };
  *
  * @return wirePairs Wire pairs to be passed to SV bit index swap worker.
  */
-inline std::vector<int2> createOperationWires(int numLocalQubits,
-                                              int numTotalQubits,
-                                              std::vector<int> &ctrls,
-                                              std::vector<int> &tgts,
-                                              std::vector<int> &statusWires) {
+inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
+                                         std::vector<int> &ctrls,
+                                         std::vector<int> &tgts,
+                                         std::vector<int> &statusWires) {
     std::vector<int2> wirePairs;
-    int i = 0, j = numLocalQubits;
-    while (i < numLocalQubits && j < numTotalQubits) {
+    int i = numLocalQubits - 1, j = numLocalQubits;
+    while (i >= 0 && j < numTotalQubits) {
         if (statusWires[i] == 0 && statusWires[j] != 0) {
             int2 wirepair = make_int2(i, j);
             wirePairs.push_back(wirepair);
@@ -62,7 +61,7 @@ inline std::vector<int2> createOperationWires(int numLocalQubits,
             std::swap(statusWires[i], statusWires[j]);
         } else {
             if (statusWires[i] != 0) {
-                i++;
+                i--;
             }
             if (statusWires[j] == 0) {
                 j++;
@@ -211,7 +210,6 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     size_t transferWorkspaceSize =
         size_t(1) << (numLocalQubits < 26 ? (numLocalQubits) : 26);
-    // size_t transferWorkspaceSize = size_t(1) << 26;
 
     transferWorkspaceSize =
         std::max(minTransferWorkspaceSize, transferWorkspaceSize);
