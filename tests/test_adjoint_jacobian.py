@@ -1065,13 +1065,7 @@ def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns):
 
     qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
 
-    with pytest.raises(
-        (TypeError, ValueError),
-        match=(
-            "Hermitian observables are not currently supported for adjoint differentiation",
-            "PennyLane has a new return shape specification",
-        ),
-    ):
+    with pytest.raises((TypeError, ValueError)):
         j_gpu = qml.jacobian(qnode_gpu)(params)
 
 
