@@ -82,7 +82,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-${{ env.GCC_VERSION }})" \
-              -DLIGHTNING_RELEASE_TAG="v0.30.0_rc" \
+              -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
@@ -106,7 +106,7 @@ jobs:
               -DPLLGPU_BUILD_TESTS=ON \
               -DPLLGPU_ENABLE_COVERAGE=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-${{ env.GCC_VERSION }})" \
-              -DLIGHTNING_RELEASE_TAG="v0.30.0_rc" \
+              -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
@@ -190,14 +190,14 @@ jobs:
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
-          python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@v0.30.0-rc0
+          python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
           
       - name: Build and install package
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
-          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=v0.30.0_rc;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
           python -m pip install -e . --verbose
 
       - name: Run PennyLane-Lightning-GPU unit tests
