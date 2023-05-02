@@ -118,6 +118,7 @@ find_package(CUDA REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
 find_package (Python COMPONENTS Interpreter Development)
+set(MPI4PY_INC "${Python_SITELIB}/mpi4py/include")
 
 if(PLLGPU_ENABLE_MPI)
     find_package(MPI REQUIRED)
@@ -126,8 +127,6 @@ if(PLLGPU_ENABLE_MPI)
     else()
         message(FATAL_ERROR "MPI is NOT found.")
     endif()
-
-    set(MPI4PY_INC "${Python_SITELIB}/mpi4py/include")
 
     if(${SYSTEM_NAME} STREQUAL "CrayLinux")
         find_library(MPI_GTL
@@ -209,11 +208,7 @@ if(PLLGPU_ENABLE_PYTHON)
     set_target_properties(lightning_gpu_qubit_ops PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
     target_compile_options(lightning_gpu_qubit_ops PRIVATE "$<$<CONFIG:RELEASE>:-W>")
     target_compile_definitions(lightning_gpu_qubit_ops PRIVATE VERSION_INFO=${VERSION_STRING})
-    if(PLLGPU_ENABLE_MPI)
-        target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include ${MPI4PY_INC})
-    else()
-        target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include)
-    endif()
+    target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include ${MPI4PY_INC})
     target_link_libraries(lightning_gpu_qubit_ops PRIVATE CUDA::cudart)
 endif()
 
