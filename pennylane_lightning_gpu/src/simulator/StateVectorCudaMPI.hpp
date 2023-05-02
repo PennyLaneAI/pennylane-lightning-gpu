@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 /**
- * @file StateVectorCudaBase.hpp
+ * @file StateVectorCudaMPI.hpp
  */
 #pragma once
 
@@ -148,12 +148,21 @@ class StateVectorCudaMPI
 
     ~StateVectorCudaMPI(){};
 
+    /**
+     * @brief Get the total number of wires.
+     */
     auto getTotalNumQubits() const {
         return numGlobalQubits_ + numLocalQubits_;
     }
 
+    /**
+     * @brief Get the number of wires distributed across devices.
+     */
     auto getNumGlobalQubits() const { return numGlobalQubits_; }
 
+    /**
+     * @brief Get the number of wires within the local devices.
+     */
     auto getNumLocalQubits() const { return numLocalQubits_; }
 
     auto getSwapWorker() -> custatevecSVSwapWorkerDescriptor_t {

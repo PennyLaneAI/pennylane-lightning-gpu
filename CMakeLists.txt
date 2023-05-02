@@ -96,6 +96,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
+find_package(PythonInterp 3)
+
 # Add PennyLane-Lightning
 if (NOT DEFINED LIGHTNING_RELEASE_TAG)
   set(LIGHTNING_RELEASE_TAG "latest_release")
@@ -151,6 +153,12 @@ else()
 endif()
 
 find_package (Python COMPONENTS Interpreter Development)
+
+find_library(MPI_GTL
+    NAMES libmpi_gtl_cuda.so libmpi_gtl_cuda.so.0 libmpi_gtl_cuda.so.0.0.0
+    HINTS ENV CRAY_LD_LIBRARY_PATH
+          ENV LD_LIBRARY_PATH
+)
 
 find_library(CUSTATEVEC_LIB
     NAMES   libcustatevec.so.1 custatevec.so.1
@@ -215,7 +223,7 @@ target_link_libraries(pennylane_lightning_gpu INTERFACE pennylane_lightning
                                                         lightning_gpu_simulator
                                                         lightning_gpu_algorithms)
 target_include_directories(pennylane_lightning_gpu INTERFACE "pennylane_lightning_gpu/src")
-target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})
+target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT} ${MPI_GTL})
 
 # Create binding module
 if(PLLGPU_ENABLE_PYTHON)
@@ -227,6 +235,7 @@ if(PLLGPU_ENABLE_PYTHON)
     target_compile_definitions(lightning_gpu_qubit_ops PRIVATE VERSION_INFO=${VERSION_STRING})
     target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include ${MPI4PY_INC})
     target_link_libraries(lightning_gpu_qubit_ops PRIVATE CUDA::cudart)
+    #target_compile_options(lightning_gpu_qubit_ops PRIVATE -target-accel=nvidia80)
 endif()
 
 # To avoid DSO errors on platforms preferring static linkage, uncomment the following line:
