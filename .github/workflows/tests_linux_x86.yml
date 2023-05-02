@@ -59,12 +59,18 @@ jobs:
       - name: Display Python-Path
         id: python_path
         run: |
-          sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov mpich
-          python -m pip install ninja cmake~=3.24.3 cuquantum mpi4py
+          py_path=$(which python)
+          echo "Python Interpreter Path => $py_path"
+          echo "python=$py_path" >> $GITHUB_OUTPUT
+          
+          pip_path=$(which python)
+          echo "PIP Path => $pip_path"
+          echo "pip=$pip_path" >> $GITHUB_OUTPUT
 
       - name: Install required packages
         run: |
-          python -m pip install ninja cmake custatevec-cu11 
+          sudo apt-get update && sudo apt-get -y -q install mpich 
+          python -m pip install ninja cmake custatevec-cu11 mpi4py
 
       - name: Validate GPU version and installed compiler
         run: |
@@ -182,8 +188,9 @@ jobs:
 
       - name: Install required packages
         run: |
-          python -m pip install ninja cmake~=3.24.3 cuquantum pytest pytest-mock flaky pytest-cov mpi4py
-          sudo apt-get update && sudo apt-get -y -q install gcc-${{ env.GCC_VERSION }} g++-${{ env.GCC_VERSION }} gcovr lcov mpich
+          sudo apt-get update && sudo apt-get -y -q install mpich
+          python -m pip install pip~=22.0
+          python -m pip install ninja cmake custatevec-cu11 mpi4py pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
           python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
