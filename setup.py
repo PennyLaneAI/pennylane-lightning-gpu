@@ -37,6 +37,7 @@ if not os.getenv("READTHEDOCS"):
         user_options = build_ext.user_options + [
             ("define=", "D", "Define variables for CMake"),
             ("cuquantum=", None, "Path to cuQuantum SDK"),
+            ("enablempi=", "E", "Enable MPI build"),
             ("verbosity", "V", "Increase CMake build verbosity"),
         ]
 
@@ -44,6 +45,7 @@ if not os.getenv("READTHEDOCS"):
             super().initialize_options()
             self.define = None
             self.cuquantum = os.getenv("CUQUANTUM_SDK", None)
+            self.enablempi = None
             self.verbosity = ""
 
         def finalize_options(self):
@@ -52,6 +54,8 @@ if not os.getenv("READTHEDOCS"):
             self.cmake_defines = [f"-D{define}" for define in defines]
             if self.cuquantum is not None:
                 self.cmake_defines.append(f"-DCUQUANTUM_SDK={self.cuquantum}")
+            if self.enablempi is not None:
+                self.cmake_defines.append(f"-DPLLGPU_ENABLE_MPI={self.enablempi}")
             if self.verbosity != "":
                 self.verbosity = "--verbose"
 
@@ -78,6 +82,11 @@ if not os.getenv("READTHEDOCS"):
 
             if platform.system() != "Linux":
                 raise RuntimeError(f"Unsupported '{platform.system()}' platform")
+
+            if 'cray' in platform.release():
+                 configure_args += [
+                    "-DSYSTEM_NAME=CrayLinux",
+                 ]
 
             if not Path(self.build_temp).exists():
                 os.makedirs(self.build_temp)
