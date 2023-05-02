@@ -3,6 +3,7 @@ PYTHON3 := $(shell which python3 2>/dev/null)
 PYTHON := python3
 COVERAGE := --cov=pennylane_lightning_gpu --cov-report term-missing --cov-report=html:coverage_html_report
 TESTRUNNER := -m pytest tests --tb=short
+MPITESTRUNNER :=  -m pytest tests/mpitests --tb=short
 
 .PHONY: help
 help:
@@ -66,6 +67,9 @@ clean-docs:
 .PHONY : test-python test-builtin test-suite
 test-python: test-builtin test-suite
 
+test-python-mpi-cray: 
+	srun $(PYTHON) -I $(MPITESTRUNNER)
+
 test-builtin:
 	$(PYTHON) -I $(TESTRUNNER)
 
@@ -78,11 +82,16 @@ ifndef CUQUANTUM_SDK
 	@echo "Please ensure the CUQUANTUM variable is assigned to the cuQuantum SDK path"
 	@test $(CUQUANTUM_SDK)
 endif
-	#rm -rf ./BuildTests
+	rm -rf ./BuildTests
 	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
-	#cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=/home/shuli/Xanadu/venv/lib64/python3.10/site-packages/cuquantum/
 	cmake --build ./BuildTests
 	./BuildTests/pennylane_lightning_gpu/src/tests/runner_gpu
+
+test-cpp-mpi-cray:
+	rm -rf ./BuildTests
+	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DSYSTEM_NAME=CrayLinux -DPLLGPU_ENABLE_MPI=On
+	cmake --build ./BuildTests
+	srun ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
 
 coverage:
 	@echo "Generating coverage report..."

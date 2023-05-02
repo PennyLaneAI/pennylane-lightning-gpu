@@ -117,43 +117,6 @@ FetchContent_MakeAvailable(pennylane_lightning)
 find_package(CUDA REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
-#if(PLLGPU_ENABLE_MPI)
-#    if(${CMAKE_SYSTEM_NAME} STREQUAL "CrayLinuxEnvironment")
-#        find_package(MPI REQUIRED)
-#        if(MPI_FOUND)
-#            include_directories($ENV{CRAY_MPICH_DIR}/include)
-#        else()
-#            message(FATAL_ERROR "MPI is NOT found.")
-#        endif()
-#    else()
-#        find_package(MPI REQUIRED)
-#        if(MPI_FOUND)
-#            message(STATUS "MPI found.")
-#        else()
-#            message(FATAL_ERROR "MPI is NOT found.")
-#        endif()
-#    endif()
-#endif()
-
-#if(${CMAKE_SYSTEM_NAME} STREQUAL "CrayLinuxEnvironment")
-#    find_program(CUDA_COMPILER NAMES nvcc)
-#    if(CUDA_COMPILER)
-#        execute_process(COMMAND which ${CUDA_COMPILER} OUTPUT_VARIABLE CUDA_COMPILER_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-#        set(CMAKE_CUDA_COMPILER ${CUDA_COMPILER_PATH})
-#    else()
-#        message(FATAL_ERROR "CUDA compiler is NOT found.")
-#    endif()
-#    string(REGEX REPLACE "/bin/nvcc" "" cuda_toolkit_root_path "${CMAKE_CUDA_COMPILER}")
-#    set(CUDA_INCLUDE_DIRS "${cuda_toolkit_root_path}/include")
-#    set(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES "${cuda_toolkit_root_path}/include")
-#    set(CUDA_TOOLKIT_ROOT_DIR ${cuda_toolkit_root_path})
-#    set(CUDA_CUDART_LIBRARY "${cuda_toolkit_root_path}/lib64/libcudart.so")
-#    find_package(CUDAToolkit REQUIRED)
-#else()
-#    find_package(CUDA REQUIRED)
-#    find_package(CUDAToolkit REQUIRED)
-#endif()
-
 find_package (Python COMPONENTS Interpreter Development)
 
 if(PLLGPU_ENABLE_MPI)
@@ -165,9 +128,6 @@ if(PLLGPU_ENABLE_MPI)
     endif()
 
     set(MPI4PY_INC "${Python_SITELIB}/mpi4py/include")
-    message(STATUS "---------${Python_SITELIB}")
-
-    message(STATUS ${SYSTEM_NAME})
 
     if(${SYSTEM_NAME} STREQUAL "CrayLinux")
         find_library(MPI_GTL
@@ -177,15 +137,6 @@ if(PLLGPU_ENABLE_MPI)
         )
     endif()
 endif()
-
-
-#if(${CMAKE_SYSTEM_NAME} STREQUAL "CrayLinuxEnvironment")
-#    find_library(MPI_GTL
-#    NAMES libmpi_gtl_cuda.so libmpi_gtl_cuda.so.0 libmpi_gtl_cuda.so.0.0.0
-#    HINTS ENV CRAY_LD_LIBRARY_PATH
-#            ENV LD_LIBRARY_PATH
-#    )
-#endif()
 
 find_library(CUSTATEVEC_LIB
     NAMES   libcustatevec.so.1 custatevec.so.1
@@ -219,17 +170,6 @@ find_file( CUSTATEVEC_INC
             ${Python_SITELIB}/cuquantum/include
             ENV CPATH
 )
-
-#find_file( MPI4PY_INC
-#    NAMES mpi4py.h
-#    HINTS ${Python_SITELIB}/mpi4py/include
-#)
-
-#set(MPI4PY_INC "${Python_SITELIB}/mpi4py/include")
-#set(PythonSiteLIB "/global/common/software/nersc/pm-2022q3/sw/python/3.9-anaconda-2021.11/lib/python3.9/site-packages")
-#set(MPI4PY_INC "${PythonSiteLIB}/mpi4py/include")
-#message(STATUS "${Python_SITELIB}")
-
 
 if(NOT CUSTATEVEC_LIB OR NOT CUSTATEVEC_INC)
     message(FATAL_ERROR "\nUnable to find cuQuantum SDK installation. Please ensure it is correctly installed and available on path.")
