@@ -54,7 +54,7 @@ option(PLLGPU_ENABLE_PYTHON "Build Python bindings" ON)
 option(PLLGPU_ENABLE_SANITIZER "Enable address sanitizer" OFF)
 option(PLLGPU_ENABLE_COVERAGE "Enable code coverage" OFF)
 option(PLLGPU_ENABLE_OPENMP "Enable OpenMP support" ON)
-option(PLLGPU_ENABLE_MPI "Enable MPI support" OFF)
+option(PLLGPU_ENABLE_MPI "Enable MPI support" ON)
 
 # Build options
 if(NOT CMAKE_BUILD_TYPE)
