@@ -1,4 +1,4 @@
-# Release 0.30.0-dev
+# Release 0.31.0-dev
 
 ### New features since last release
 
@@ -6,19 +6,39 @@
 
 ### Improvements
 
-* Wheels are now checked with `twine check` post-creation for PyPI compatibility.
-  [(#103)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/103)
-
 ### Documentation
 
 ### Bug fixes
 
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+---
+
+# Release 0.30.0
+
+### New features since last release
+
+### Improvements
+
+* Wheels are now checked with `twine check` post-creation for PyPI compatibility.
+  [(#103)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/103)
+
+### Bug fixes
+
+* Fix CUDA version to 11 for cuquantum dependency in CI. 
+[(#107)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/107)
+
 * Fix the controlled-gate generators, which are now fully used in the adjoint pipeline following PennyLane PR [(#3874)](https://github.com/PennyLaneAI/pennylane/pull/3874).
 [(#101)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/101)
 
+* Updates to use the new call signature for `QuantumScript.get_opeartion`.
+  [(#104)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/104)
+
 ### Contributors
 
-Lee James O'Riordan
+Vincent Michaud-Rioux, Romain Moyard, Lee James O'Riordan
 
 ---
 
