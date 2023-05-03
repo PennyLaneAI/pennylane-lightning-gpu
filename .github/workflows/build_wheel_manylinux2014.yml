@@ -60,7 +60,7 @@ jobs:
 
           # Python build settings
           CIBW_BEFORE_BUILD: |
-            sudo yum install mpich mpich-devel python3-devel
+            yum install mpich mpich-devel python3-devel
             python -m pip install ninja cmake~=3.24.3 auditwheel
             python -m pip install custatevec-cu11 mpi4py
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
