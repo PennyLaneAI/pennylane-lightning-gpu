@@ -165,10 +165,15 @@ class StateVectorCudaMPI
      */
     auto getNumLocalQubits() const { return numLocalQubits_; }
 
+    /**
+     * @brief Get pointer to custatevecSVSwapWorkerDescriptor.
+     */
     auto getSwapWorker() -> custatevecSVSwapWorkerDescriptor_t {
         return svSegSwapWorker_.get();
     }
-
+    /**
+     * @brief Init 00....0>.
+     */
     void initSV_MPI(bool async = false) {
         size_t index = 0;
         const std::complex<Precision> value = {1, 0};
@@ -186,8 +191,10 @@ class StateVectorCudaMPI
      */
     void setBasisState(const std::complex<Precision> &value, const size_t index,
                        const bool async = false) {
-        assert(index >= 0);
-        size_t rankId = static_cast<size_t>(index) >> BaseType::getNumQubits();
+        // assert(index >= 0);
+        // size_t rankId = static_cast<size_t>(index) >>
+        // BaseType::getNumQubits();
+        size_t rankId = index >> BaseType::getNumQubits();
 
         int local_index = (rankId << BaseType::getNumQubits()) ^ index;
         BaseType::getDataBuffer().zeroInit();

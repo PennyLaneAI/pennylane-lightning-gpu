@@ -252,6 +252,11 @@ if CPP_BINARY_AVAILABLE:
                     raise ValueError(
                         "Number of devices should be larger than the number of processes on each node."
                     )
+                # check if the process number is larger than number of statevector elements
+                if self._mpi_manager.getSize() > (1 << (wires + 1)):
+                    raise ValueError(
+                        "Number of processes should be smaller than the number of statevector elements."
+                    )
                 # set GPU device
                 rank = self._mpi_manager.getRank()
                 deviceid = rank % numProcsNode

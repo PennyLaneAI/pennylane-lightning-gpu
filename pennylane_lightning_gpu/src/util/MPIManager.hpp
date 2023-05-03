@@ -103,22 +103,46 @@ class MPIManager {
     }
 
     // General MPI operations
+    /**
+     * @brief Get the process rank in the communicator.
+     */
     auto getRank() const { return rank_; }
 
+    /**
+     * @brief Get the process number in the communicator.
+     */
     auto getSize() const { return size_; }
 
+    /**
+     * @brief Get the number of processes per node in the communicator.
+     */
     auto getSizeNode() const { return size_per_node_; }
 
+    /**
+     * @brief Get the communicator.
+     */
     auto getComm() const { return communiator_; }
 
+    /**
+     * @brief Get an elapsed time.
+     */
     auto getTime() const { return MPI_Wtime(); }
 
+    /**
+     * @brief Get the MPI vendor.
+     */
     auto getVendor() const { return vendor_; }
 
+    /**
+     * @brief Get the MPI version.
+     */
     auto getVersion() -> std::tuple<int, int> {
         return {version_, subversion_};
     }
 
+    /**
+     * @brief Find the MPI vendor.
+     */
     void findVendor() {
         char version[MPI_MAX_LIBRARY_VERSION_STRING];
         int resultlen;
@@ -135,10 +159,16 @@ class MPIManager {
         }
     }
 
+    /**
+     * @brief Find the MPI version.
+     */
     void findVersion() {
         PL_MPI_IS_SUCCESS(MPI_Get_version(&version_, &subversion_));
     }
 
+    /**
+     * @brief Get the number of processes per node in the communicator.
+     */
     void getNumProcsPerNode() {
         MPI_Comm node_comm;
         PL_MPI_IS_SUCCESS(
@@ -148,6 +178,9 @@ class MPIManager {
         this->Barrier();
     }
 
+    /**
+     * @brief Check if the MPI configuration meets the cuQuantum.
+     */
     void check_mpi_config() {
         // check if number of processes is power of two.
         // This is required by custatevec
@@ -159,6 +192,15 @@ class MPIManager {
                     "Number of processes per node is not power of two.");
     }
 
+    /**
+     * @brief MPI_Allgather wrapper.
+     *
+     * @tparam T C++ data type.
+     *
+     * @param sendBuf Send buffer.
+     * @param recvBuf Receive buffer vector.
+     * @param sendCound Number of elements received from any process.
+     */
     template <typename T>
     void Allgather(T &sendBuf, std::vector<T> &recvBuf, int sendCount = 1) {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -169,6 +211,16 @@ class MPIManager {
                                         this->getComm()));
     }
 
+    /**
+     * @brief MPI_Allgather wrapper.
+     *
+     * @tparam T C++ data type.
+     *
+     * @param sendBuf Send buffer.
+     * @param sendCound Number of elements received from any process.
+     *
+     * @return recvBuf Vector of receive buffer.
+     */
     template <typename T>
     auto allgather(T &sendBuf, int sendCount = 1) -> std::vector<T> {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -179,6 +231,14 @@ class MPIManager {
         return recvBuf;
     }
 
+    /**
+     * @brief MPI_Allgather wrapper.
+     *
+     * @tparam T C++ data type.
+     *
+     * @param sendBuf Send buffer vector.
+     * @param recvBuf Receive buffer vector.
+     */
     template <typename T>
     void Allgather(std::vector<T> &sendBuf, std::vector<T> &recvBuf) {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -189,6 +249,15 @@ class MPIManager {
             sendBuf.size(), datatype, this->getComm()));
     }
 
+    /**
+     * @brief MPI_Allgather wrapper.
+     *
+     * @tparam T C++ data type.
+     *
+     * @param sendBuf Send buffer vector.
+     *
+     * @return recvBuf Vector of receive buffer.
+     */
     template <typename T>
     auto allgather(std::vector<T> &sendBuf) -> std::vector<T> {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -199,6 +268,15 @@ class MPIManager {
         return recvBuf;
     }
 
+    /**
+     * @brief MPI_Allreduce wrapper.
+     *
+     * @tparam T C++ data type.
+     *
+     * @param sendBuf Send buffer.
+     * @param recvBuf Receive buffer.
+     * @param op_str String of MPI_Op.
+     */
     template <typename T>
     void Allreduce(T &sendBuf, T &recvBuf, const std::string &op_str) {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -207,6 +285,16 @@ class MPIManager {
                                         this->getComm()));
     }
 
+    /**
+     * @brief MPI_Allreduce wrapper.
+     *
+     * @tparam T C++ data type.
+     *
+     * @param sendBuf Send buffer.
+     * @param op_str String of MPI_Op.
+     *
+     * @return recvBuf Receive buffer.
+     */
     template <typename T>
     auto allreduce(T &sendBuf, const std::string &op_str) -> T {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -217,6 +305,15 @@ class MPIManager {
         return recvBuf;
     }
 
+    /**
+     * @brief MPI_Allreduce wrapper.
+     *
+     * @tparam T C++ data type.
+     *
+     * @param sendBuf Send buffer vector.
+     * @param recvBuf Receive buffer vector.
+     * @param op_str String of MPI_Op.
+     */
     template <typename T>
     void Allreduce(std::vector<T> &sendBuf, std::vector<T> &recvBuf,
                    const std::string &op_str) {
@@ -227,6 +324,16 @@ class MPIManager {
                                         this->getComm()));
     }
 
+    /**
+     * @brief MPI_Allreduce wrapper.
+     *
+     * @tparam T C++ data type.
+     *
+     * @param sendBuf Send buffer vector.
+     * @param op_str String of MPI_Op.
+     *
+     * @return recvBuf Receive buffer.
+     */
     template <typename T>
     auto allreduce(std::vector<T> &sendBuf, const std::string &op_str)
         -> std::vector<T> {
@@ -238,20 +345,45 @@ class MPIManager {
         return recvBuf;
     }
 
+    /**
+     * @brief MPI_Barrier wrapper.
+     */
     void Barrier() { PL_MPI_IS_SUCCESS(MPI_Barrier(this->getComm())); }
 
+    /**
+     * @brief MPI_Bcast wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer.
+     * @param root Rank of broadcast root.
+     */
     template <typename T> void Bcast(T &sendBuf, int root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         PL_MPI_IS_SUCCESS(
             MPI_Bcast(&sendBuf, 1, datatype, root, this->getComm()));
     }
 
+    /**
+     * @brief MPI_Bcast wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer vector.
+     * @param root Rank of broadcast root.
+     */
     template <typename T> void Bcast(std::vector<T> &sendBuf, int root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         PL_MPI_IS_SUCCESS(MPI_Bcast(sendBuf.data(), sendBuf.size(), datatype,
                                     root, this->getComm()));
     }
 
+    /**
+     * @brief MPI_Scatter wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer vector.
+     * @param recvBuf Receive buffer vector.
+     * @param root Rank of scatter root.
+     */
     template <typename T>
     void Scatter(std::vector<T> &sendBuf, std::vector<T> &recvBuf, int root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -262,6 +394,15 @@ class MPIManager {
                                       root, this->getComm()));
     }
 
+    /**
+     * @brief MPI_Scatter wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer vector.
+     * @param root Rank of scatter root.
+     *
+     * @return recvBuf Receive buffer vector.
+     */
     template <typename T>
     auto scatter(std::vector<T> &sendBuf, int root) -> std::vector<T> {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -273,6 +414,15 @@ class MPIManager {
         return recvBuf;
     }
 
+    /**
+     * @brief MPI_Scatter wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer.
+     * @param dest Rank of destination.
+     * @param recvBuf Receive buffer.
+     * @param source Rank of source.
+     */
     template <typename T>
     void Sendrecv(T &sendBuf, int dest, T &recvBuf, int source) {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -284,6 +434,15 @@ class MPIManager {
                                        this->getComm(), &status));
     }
 
+    /**
+     * @brief MPI_Scatter wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer vector.
+     * @param dest Rank of destination.
+     * @param recvBuf Receive buffer vector.
+     * @param source Rank of source.
+     */
     template <typename T>
     void Sendrecv(std::vector<T> &sendBuf, int dest, std::vector<T> &recvBuf,
                   int source) {
@@ -297,6 +456,15 @@ class MPIManager {
                                        recvtag, this->getComm(), &status));
     }
 
+    /**
+     * @brief Creates new MPIManager based on colors and keys.
+     *
+     * @param color Processes with the same color are in the same new
+     * communicator.
+     * @param key Rank assignment control.
+     *
+     * @return new MPIManager object.
+     */
     auto split(int color, int key) -> MPIManager {
         MPI_Comm newcomm;
         PL_MPI_IS_SUCCESS(
@@ -305,6 +473,11 @@ class MPIManager {
     }
 
   private:
+    /**
+     * @brief Find C++ data type's corresponding MPI data type.
+     *
+     * @tparam T C++ data type.
+     */
     template <typename T> auto getMPIDatatype() -> MPI_Datatype {
         auto it = cpp_mpi_type_map.find(CPPTYPE(T));
         if (it != cpp_mpi_type_map.end()) {
@@ -314,6 +487,11 @@ class MPIManager {
         }
     }
 
+    /**
+     * @brief Find operation string's corresponding MPI_Op type.
+     *
+     * @param op_str std::string of MPI_Op name.
+     */
     auto getMPIOpType(const std::string &op_str) -> MPI_Op {
         auto it = cpp_mpi_op_map.find(op_str);
         if (it != cpp_mpi_op_map.end()) {
@@ -323,6 +501,9 @@ class MPIManager {
         }
     }
 
+    /**
+     * @brief Map of std::string and MPI_Op.
+     */
     std::unordered_map<std::string, MPI_Op> cpp_mpi_op_map = {
         {"op_null", MPI_OP_NULL}, {"max", MPI_MAX},
         {"min", MPI_MIN},         {"sum", MPI_SUM},
@@ -333,6 +514,9 @@ class MPIManager {
         {"maxloc", MPI_MAXLOC},   {"replace", MPI_REPLACE},
     };
 
+    /**
+     * @brief Map of std::type_index and MPI_Datatype.
+     */
     std::unordered_map<std::type_index, MPI_Datatype> cpp_mpi_type_map = {
         {CPPTYPE(char), MPI_CHAR},
         {CPPTYPE(signed char), MPI_SIGNED_CHAR},
