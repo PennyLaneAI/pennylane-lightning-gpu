@@ -60,14 +60,16 @@ jobs:
 
           # Python build settings
           CIBW_BEFORE_BUILD: |
+            sudo yum -y install mpich
             python -m pip install ninja cmake~=3.24.3 auditwheel
-            python -m pip install custatevec-cu11
+            python -m pip install custatevec-cu11 mpi4py
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
             yum clean all
+            yum -y install mpich
             yum -y install cuda-11-5 git openssh wget
 
           # ensure nvcc is available
-          CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
+          CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin:/usr/include/mpich LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib:/usr/lib64:/usr/local/lib:/usr/local/lib64:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
 
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: "./docker/auditwheel repair -w {dest_dir} {wheel}"
