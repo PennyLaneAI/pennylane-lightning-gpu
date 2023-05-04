@@ -65,7 +65,7 @@ jobs:
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
             yum clean all
             yum -y install cuda-11-5 git openssh wget gcc make gcc-gfortran gcc-c++ curl tar
-            cd /usr/local/src/ && wget http://www.mpich.org/static/downloads/${MPI_VERSION}/mpich-${MPI_VERSION}.tar.gz 
+            cd /usr/local/src/ && wget http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz 
             tar xf mpich-3.2.tar.gz && rm mpich-3.2.tar.gz && cd mpich-3.2 && ./configure --disable-fortran --enable-fast=all,O3 && make -j4 && make install && ldconfig
             cd /usr/local/src && rm -rf mpich-3.2
             wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.1.4.tar.gz && tar xzf mpi4py-3.1.4.tar.gz && rm mpi4py-3.1.4.tar.gz && cd mpi4py-3.1.4 && python setup.py build && python setup.py install && cp -a demo/ / && cd .. && rm -rf mpi4py-3.1.4 
