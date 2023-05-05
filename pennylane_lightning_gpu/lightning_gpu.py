@@ -194,6 +194,9 @@ if CPP_BINARY_AVAILABLE:
             "SparseHamiltonian",
             "Hamiltonian",
             "Identity",
+            "Sum",
+            "Prod",
+            "SProd",
         }
 
         def __init__(
@@ -350,8 +353,8 @@ if CPP_BINARY_AVAILABLE:
 
             # length of basis state parameter
             n_basis_state = len(state)
-
-            if not set(state.tolist()).issubset({0, 1}):
+            state = state.tolist() if hasattr(state, "tolist") else state
+            if not set(state).issubset({0, 1}):
                 raise ValueError("BasisState parameter must consist of 0 or 1 integers.")
 
             if n_basis_state != len(device_wires):
@@ -572,9 +575,8 @@ if CPP_BINARY_AVAILABLE:
             all_params = 0
 
             for op_idx, tp in enumerate(trainable_params):
-                op, _ = tape.get_operation(
-                    op_idx
-                )  # get op_idx-th operator among differentiable operators
+                # get op_idx-th operator among differentiable operators
+                op, _, _ = tape.get_operation(op_idx)
 
                 if isinstance(op, Operation) and not isinstance(op, (BasisState, QubitStateVector)):
                     # We now just ignore non-op or state preps
@@ -632,7 +634,24 @@ if CPP_BINARY_AVAILABLE:
                 else:
                     jac_r[idx, :] = jac[obs_offsets[idx] : obs_offsets[idx + 1], :]
 
-            return jac_r
+            return self._adjoint_jacobian_processing(jac_r) if qml.active_return() else jac_r
+
+        @staticmethod
+        def _adjoint_jacobian_processing(jac):
+            """
+            Post-process the Jacobian matrix returned by ``adjoint_jacobian`` for
+            the new return type system.
+            """
+            jac = np.squeeze(jac)
+
+            if jac.ndim == 0:
+                return np.array(jac)
+
+            if jac.ndim == 1:
+                return tuple(np.array(j) for j in jac)
+
+            # must be 2-dimensional
+            return tuple(tuple(np.array(j_) for j_ in j) for j in jac)
 
         def vjp(self, measurements, dy, starting_state=None, use_device_state=False):
             """Generate the processing function required to compute the vector-Jacobian products of a tape."""
@@ -671,9 +690,7 @@ if CPP_BINARY_AVAILABLE:
                     new_tape = tape.copy()
                     new_tape._measurements = [qml.expval(ham)]
 
-                    return self.adjoint_jacobian(
-                        new_tape, starting_state, use_device_state
-                    ).reshape(-1)
+                    return self.adjoint_jacobian(new_tape, starting_state, use_device_state)
 
                 return processing_fn
 
@@ -805,6 +822,19 @@ if CPP_BINARY_AVAILABLE:
             )
 
             return squared_mean - (mean**2)
+
+        def _get_diagonalizing_gates(self, circuit: qml.tape.QuantumTape) -> List[Operation]:
+            skip_diagonalizing = lambda obs: isinstance(obs, qml.Hamiltonian) or (
+                isinstance(obs, qml.ops.Sum) and obs._pauli_rep is not None
+            )
+            meas_filtered = list(
+                filter(
+                    lambda m: m.obs is None or not skip_diagonalizing(m.obs), circuit.measurements
+                )
+            )
+            return super()._get_diagonalizing_gates(
+                qml.tape.QuantumScript(measurements=meas_filtered)
+            )
 
 else:  # CPP_BINARY_AVAILABLE:
 
