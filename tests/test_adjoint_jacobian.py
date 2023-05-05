@@ -654,25 +654,30 @@ def test_qchem_expvalcost_correct():
     active_electrons = 2
     hf_state = qchem.hf_state(active_electrons, qubits)
 
+    dev_lig = qml.device("lightning.gpu", wires=qubits)
+    @qml.qnode(dev_lig, diff_method="adjoint")
     def circuit_1(params, wires):
         qml.BasisState(hf_state, wires=wires)
         qml.RX(params[0], wires=0)
         qml.RY(params[0], wires=1)
         qml.RZ(params[0], wires=2)
         qml.Hadamard(wires=1)
+        return qml.expval(H)
 
-    diff_method = "adjoint"
-    dev_lig = qml.device("lightning.gpu", wires=qubits)
-    cost_fn_lig = qml.ExpvalCost(circuit_1, H, dev_lig, optimize=False, diff_method=diff_method)
-    circuit_gradient_lig = qml.grad(cost_fn_lig, argnum=0)
     params = np.array([0.123], requires_grad=True)
-    grads_lig = circuit_gradient_lig(params)
+    grads_lig = qml.grad(circuit_1)(params, wires=range(qubits))
 
     dev_def = qml.device("default.qubit", wires=qubits)
-    cost_fn_def = qml.ExpvalCost(circuit_1, H, dev_def, optimize=False, diff_method=diff_method)
-    circuit_gradient_def = qml.grad(cost_fn_def, argnum=0)
+    @qml.qnode(dev_def, diff_method="backprop")
+    def circuit_2(params, wires):
+        qml.BasisState(hf_state, wires=wires)
+        qml.RX(params[0], wires=0)
+        qml.RY(params[0], wires=1)
+        qml.RZ(params[0], wires=2)
+        qml.Hadamard(wires=1)
+        return qml.expval(H)
     params = np.array([0.123], requires_grad=True)
-    grads_def = circuit_gradient_def(params)
+    grads_def = qml.grad(circuit_2)(params, wires=range(qubits))
 
     assert np.allclose(grads_lig, grads_def)
 
