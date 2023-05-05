@@ -5,6 +5,7 @@ sphinx:
 
 python:
   install:
+    - requirements: ci_build_requirements.txt
     - requirements: doc/requirements.txt
     - requirements: requirements.txt
     - method: pip
@@ -17,4 +18,10 @@ build:
     python: "3.8"
   apt_packages:
     - cmake
+    - build-essential
+    - libopenblas-base
+    - libopenblas-dev
     - graphviz
+  jobs:
+    pre_install:
+      - echo "setuptools~=66.0\npip~=22.0" >> ci_build_requirements.txt
