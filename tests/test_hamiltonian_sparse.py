@@ -57,7 +57,7 @@ class TestHamiltonianExpval:
         )
 
         dev.syncH2D(state_vector)
-        #Hmat = qml.utils.sparse_hamiltonian(H)
+        # Hmat = qml.utils.sparse_hamiltonian(H)
         H_sparse = qml.SparseHamiltonian(Hmat, wires=range(3))
 
         res = dev.expval(H_sparse)
