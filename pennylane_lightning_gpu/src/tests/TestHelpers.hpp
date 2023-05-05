@@ -156,15 +156,17 @@ template <typename fp_t> struct SVDataGPU {
     }
     SVDataGPU(std::size_t num_qubits,
               const std::vector<std::complex<fp_t>> &cdata_input)
-        : num_qubits_{num_qubits}, sv{cdata_input},
-          cuda_sv{cdata_input.data(), cdata_input.size()} {}
+        : num_qubits_{num_qubits}, sv{cdata_input}, cuda_sv{
+                                                        cdata_input.data(),
+                                                        cdata_input.size()} {}
     SVDataGPU(
         std::size_t num_qubits,
         const std::vector<std::complex<fp_t>,
                           Pennylane::Util::AlignedAllocator<std::complex<fp_t>>>
             &cdata_input)
-        : num_qubits_{num_qubits}, sv{cdata_input},
-          cuda_sv{cdata_input.data(), cdata_input.size()} {}
+        : num_qubits_{num_qubits}, sv{cdata_input}, cuda_sv{
+                                                        cdata_input.data(),
+                                                        cdata_input.size()} {}
 
     ~SVDataGPU() {}
 };
