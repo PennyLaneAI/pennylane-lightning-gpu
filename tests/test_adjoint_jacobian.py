@@ -1007,24 +1007,24 @@ def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns):
     "returns",
     [
         qml.SparseHamiltonian(
-            qml.utils.sparse_hamiltonian(
-                0.1 * qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[1]),
-                wires=custom_wires,
-            ),
+            #qml.utils.sparse_hamiltonian(
+            qml.Hamiltonian(
+                0.1 * qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[1])
+            ).sparse_matrix(),
             wires=custom_wires,
         ),
         qml.SparseHamiltonian(
-            qml.utils.sparse_hamiltonian(
-                2 * qml.PauliX(wires=custom_wires[2]) @ qml.PauliZ(wires=custom_wires[0]),
-                wires=custom_wires,
-            ),
+            #qml.utils.sparse_hamiltonian(
+            qml.Hamiltonian(
+                2 * qml.PauliX(wires=custom_wires[2]) @ qml.PauliZ(wires=custom_wires[0])
+            ).sparse_matrix(),
             wires=custom_wires,
         ),
         qml.SparseHamiltonian(
-            qml.utils.sparse_hamiltonian(
-                1.1 * qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[2]),
-                wires=custom_wires,
-            ),
+            #qml.utils.sparse_hamiltonian(
+            qml.Hamiltonian(
+                1.1 * qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[2])
+            ).sparse_matrix(),
             wires=custom_wires,
         ),
     ],
