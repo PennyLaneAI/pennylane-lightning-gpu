@@ -655,6 +655,7 @@ def test_qchem_expvalcost_correct():
     hf_state = qchem.hf_state(active_electrons, qubits)
 
     dev_lig = qml.device("lightning.gpu", wires=qubits)
+
     @qml.qnode(dev_lig, diff_method="adjoint")
     def circuit_1(params, wires):
         qml.BasisState(hf_state, wires=wires)
@@ -668,6 +669,7 @@ def test_qchem_expvalcost_correct():
     grads_lig = qml.grad(circuit_1)(params, wires=range(qubits))
 
     dev_def = qml.device("default.qubit", wires=qubits)
+
     @qml.qnode(dev_def, diff_method="backprop")
     def circuit_2(params, wires):
         qml.BasisState(hf_state, wires=wires)
@@ -676,6 +678,7 @@ def test_qchem_expvalcost_correct():
         qml.RZ(params[0], wires=2)
         qml.Hadamard(wires=1)
         return qml.expval(H)
+
     params = np.array([0.123], requires_grad=True)
     grads_def = qml.grad(circuit_2)(params, wires=range(qubits))
 
