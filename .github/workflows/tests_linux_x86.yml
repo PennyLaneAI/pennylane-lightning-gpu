@@ -206,7 +206,7 @@ jobs:
 
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
-          python -m pytest ./tests/test_apply.py
+          mpirun -np 1 python -m pytest ./tests/test_apply.py
         #pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
         #python -m pytest ./tests/test_apply.py
         #python -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
