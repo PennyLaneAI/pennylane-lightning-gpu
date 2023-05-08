@@ -351,14 +351,13 @@ if CPP_BINARY_AVAILABLE:
             use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
             Note: This function only supports synchronized memory copy from host to device.
             """
-
+            # translate to wire labels used by device
             device_wires = self.map_wires(device_wires)
             dim = 2 ** len(device_wires)
 
             state = self._asarray(state, dtype=self.C_DTYPE)  # this operation on host
             batch_size = self._get_batch_size(state, (dim,), dim)  # this operation on host
             output_shape = [2] * self._num_local_wires
-
 
             if batch_size is not None:
                 output_shape.insert(0, batch_size)
@@ -483,7 +482,6 @@ if CPP_BINARY_AVAILABLE:
                 if isinstance(o, Adjoint):
                     name = o.base.name
                     invert_param = True
-
                 method = getattr(self._gpu_state, name, None)
                 wires = self.wires.indices(o.wires)
 
@@ -497,7 +495,6 @@ if CPP_BINARY_AVAILABLE:
 
                     if len(mat) == 0:
                         raise Exception("Unsupported operation")
-
                     self._gpu_state.apply(
                         name,
                         wires,
@@ -505,6 +502,7 @@ if CPP_BINARY_AVAILABLE:
                         [],
                         mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
                     )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
+
                 else:
                     param = o.parameters
                     method(wires, invert_param, param)
