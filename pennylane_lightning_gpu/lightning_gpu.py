@@ -18,8 +18,8 @@ interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enable
 from typing import List, Union
 from warnings import warn
 from itertools import product
-if USE_MPI:
-    from mpi4py import MPI
+
+from mpi4py import MPI
 
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor

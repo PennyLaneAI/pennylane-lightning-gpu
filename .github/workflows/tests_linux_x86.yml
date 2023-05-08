@@ -69,7 +69,7 @@ jobs:
 
       - name: Install required packages
         run: |
-          sudo apt-get update && sudo apt-get -y -q install mpich libmpich-dev
+          sudo apt-get update && sudo apt-get -y -q install mpich=3.3.2-1 libmpich-dev=3.3.2-1
           python -m pip install ninja cmake custatevec-cu11 mpi4py
 
       - name: Validate GPU version and installed compiler
@@ -188,7 +188,7 @@ jobs:
 
       - name: Install required packages
         run: |
-          sudo apt-get update && sudo apt-get -y -q install mpich libmpich-dev
+          sudo apt-get update && sudo apt-get -y -q install mpich=3.3.2-1 libmpich-dev=3.3.2-1
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 mpi4py pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
@@ -199,7 +199,7 @@ jobs:
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
-          python setup.py build_ext -i --define="USE_MPI=False;CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
           python -m pip install -e . 
         #--verbose
         #python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
@@ -207,6 +207,7 @@ jobs:
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
           python -m pytest ./tests/
+        #make test-python
         #mpirun -np 1 python -m pytest ./tests/test_apply.py
         #pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
         #python -m pytest ./tests/test_apply.py
