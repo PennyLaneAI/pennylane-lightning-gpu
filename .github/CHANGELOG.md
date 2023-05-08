@@ -4,6 +4,9 @@
 
 ### Breaking changes
 
+* Update tests to be compliant with PennyLane v0.31.0 development changes and deprecations.
+  [(#114)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/114)
+
 ### Improvements
 
 ### Documentation
@@ -13,6 +16,8 @@
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
+
+Shuli Shu
 
 ---
 

@@ -40,7 +40,7 @@ class TestHamiltonianExpval:
 
         obs1 = qml.Identity(1)
 
-        H = qml.Hamiltonian([1.0, 1.0], [obs1, obs])
+        Hmat = qml.Hamiltonian([1.0, 1.0], [obs1, obs]).sparse_matrix()
 
         state_vector = np.array(
             [
@@ -57,7 +57,6 @@ class TestHamiltonianExpval:
         )
 
         dev.syncH2D(state_vector)
-        Hmat = qml.utils.sparse_hamiltonian(H)
         H_sparse = qml.SparseHamiltonian(Hmat, wires=range(3))
 
         res = dev.expval(H_sparse)
@@ -72,7 +71,6 @@ class TestSparseExpval:
     @pytest.fixture(params=[np.complex64, np.complex128])
     def dev(self, request):
         return LightningGPU(wires=2, c_dtype=request.param)
-        # return qml.device("lightning.qubit", wires=2, c_dtype=request.param)
 
     @pytest.mark.parametrize(
         "cases",
@@ -94,7 +92,7 @@ class TestSparseExpval:
             qml.RY(-0.2, wires=[1])
             return qml.expval(
                 qml.SparseHamiltonian(
-                    qml.utils.sparse_hamiltonian(qml.Hamiltonian([1], [cases[0]])), wires=[0, 1]
+                    qml.Hamiltonian([1], [cases[0]]).sparse_matrix(), wires=[0, 1]
                 )
             )
 
@@ -125,7 +123,7 @@ class TestSparseExpval:
             qml.RY(-0.2, wires=[1])
             return qml.expval(
                 qml.SparseHamiltonian(
-                    qml.utils.sparse_hamiltonian(qml.Hamiltonian([1], [cases[0]])), wires=[0, 1]
+                    qml.Hamiltonian([1], [cases[0]]).sparse_matrix(), wires=[0, 1]
                 )
             )
 
