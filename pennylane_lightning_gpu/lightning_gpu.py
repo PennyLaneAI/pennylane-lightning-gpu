@@ -289,9 +289,6 @@ if CPP_BINARY_AVAILABLE:
             >>> print(dev.state)
             [0.+0.j 1.+0.j]
             """
-            # numLocalWires = self.num_wires
-            # if self._mpi_comm is not None:
-            #    numLocalWires = self._num_local_wires
             state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
             state = self._asarray(state, dtype=self.C_DTYPE)
             self.syncD2H(state)
@@ -359,9 +356,9 @@ if CPP_BINARY_AVAILABLE:
             dim = 2 ** len(device_wires)
 
             state = self._asarray(state, dtype=self.C_DTYPE)  # this operation on host
+            batch_size = self._get_batch_size(state, (dim,), dim)  # this operation on host
             output_shape = [2] * self._num_local_wires
 
-            batch_size = self._get_batch_size(state, (dim,), dim)  # this operation on host
 
             if batch_size is not None:
                 output_shape.insert(0, batch_size)
