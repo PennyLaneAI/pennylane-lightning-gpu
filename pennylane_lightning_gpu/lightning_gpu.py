@@ -18,7 +18,7 @@ interfaces with the NVIDIA cuQuantum cuStateVec simulator library for GPU-enable
 from typing import List, Union
 from warnings import warn
 from itertools import product
-from mpi4py import MPI
+#from mpi4py import MPI
 
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
@@ -213,7 +213,8 @@ if CPP_BINARY_AVAILABLE:
             self,
             wires,
             *,
-            mpi_comm: Union[bool, MPI.Comm] = None,
+            mpi_comm=None,
+            #mpi_comm: Union[bool, MPI.Comm] = None,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -237,12 +238,12 @@ if CPP_BINARY_AVAILABLE:
                 self._dp = DevPool()
                 self._batch_obs = batch_obs
             else:
-                if isinstance(mpi_comm, bool):
-                    self._mpi_comm = MPI.COMM_WORLD
-                if isinstance(mpi_comm, MPI.Comm):
-                    self._mpi_comm = mpi_comm
+                #if isinstance(mpi_comm, bool):
+                #    self._mpi_comm = MPI.COMM_WORLD
+                #if isinstance(mpi_comm, MPI.Comm):
+                #    self._mpi_comm = mpi_comm
                 # initialize MPIManager and config check in the MPIManager ctor
-                self._mpi_manager = MPIManager(self._mpi_comm)
+                self._mpi_manager = MPIManager(mpi_comm)
                 self._dp = DevPool()
                 # check if number of GPUs per node is larger than
                 # number of processes per node
@@ -434,7 +435,7 @@ if CPP_BINARY_AVAILABLE:
                     and Wires(sorted(device_wires)) == device_wires
                 ):
                     local_state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
-                    self._mpi_comm.Scatter(state, local_state, root=0)
+                    #self._mpi_comm.Scatter(state, local_state, root=0)
                     # Initialize the entire device state with the input state
                     self.syncH2D(self._reshape(local_state, output_shape))
                     return
