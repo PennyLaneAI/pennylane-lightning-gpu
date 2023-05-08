@@ -69,7 +69,7 @@ jobs:
 
       - name: Install required packages
         run: |
-          sudo apt-get update && sudo apt-get -y -q install mpich=3.3.2 libmpich-dev=3.3.2
+          sudo apt-get update && sudo apt-get -y -q install mpich3 libmpich3-dev
           python -m pip install ninja cmake custatevec-cu11 mpi4py
 
       - name: Validate GPU version and installed compiler
