@@ -199,14 +199,15 @@ jobs:
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
-          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python setup.py build_ext -i --define="USE_MPI=False;CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
           python -m pip install -e . 
         #--verbose
         #python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
 
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
-          mpirun -np 1 python -m pytest ./tests/test_apply.py
+          python -m pytest ./tests/
+        #mpirun -np 1 python -m pytest ./tests/test_apply.py
         #pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
         #python -m pytest ./tests/test_apply.py
         #python -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
