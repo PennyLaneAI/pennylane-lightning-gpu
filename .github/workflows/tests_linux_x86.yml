@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - "!mpi_gate_operation"
   pull_request:
 
 env:
