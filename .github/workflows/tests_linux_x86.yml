@@ -69,7 +69,7 @@ jobs:
 
       - name: Install required packages
         run: |
-          sudo apt-get update && sudo apt-get -y -q install mpich=3.3.2-1 libmpich-dev=3.3.2-1
+          sudo apt-get update && sudo apt-get -y -q install mpich=3.3.2 libmpich-dev=3.3.2
           python -m pip install ninja cmake custatevec-cu11 mpi4py
 
       - name: Validate GPU version and installed compiler
@@ -188,7 +188,7 @@ jobs:
 
       - name: Install required packages
         run: |
-          sudo apt-get update && sudo apt-get -y -q install mpich=3.3.2-1 libmpich-dev=3.3.2-1
+          sudo apt-get update && sudo apt-get -y -q install mpich=3.3.2 libmpich-dev=3.3.2
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 mpi4py pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
