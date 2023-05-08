@@ -239,10 +239,10 @@ if CPP_BINARY_AVAILABLE:
                 self._dp = DevPool()
                 self._batch_obs = batch_obs
             else:
-                # if isinstance(mpi_comm, bool):
-                #    self._mpi_comm = MPI.COMM_WORLD
-                # if isinstance(mpi_comm, MPI.Comm):
-                #    self._mpi_comm = mpi_comm
+                if isinstance(mpi_comm, bool):
+                    self._mpi_comm = MPI.COMM_WORLD
+                if isinstance(mpi_comm, MPI.Comm):
+                    self._mpi_comm = mpi_comm
                 # initialize MPIManager and config check in the MPIManager ctor
                 self._mpi_manager = MPIManager(mpi_comm)
                 self._dp = DevPool()
@@ -436,7 +436,7 @@ if CPP_BINARY_AVAILABLE:
                     and Wires(sorted(device_wires)) == device_wires
                 ):
                     local_state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
-                    # self._mpi_comm.Scatter(state, local_state, root=0)
+                    self._mpi_comm.Scatter(state, local_state, root=0)
                     # Initialize the entire device state with the input state
                     self.syncH2D(self._reshape(local_state, output_shape))
                     return
