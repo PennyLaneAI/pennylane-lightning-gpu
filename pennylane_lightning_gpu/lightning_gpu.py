@@ -99,16 +99,13 @@ except (ModuleNotFoundError, ImportError, ValueError, PLException) as e:
     CPP_BINARY_AVAILABLE = False
 
 
-def _gpu_dtype(dtype):
+def _gpu_dtype(dtype, mpi_comm=None):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
-
-
-def _gpu_mpi_dtype(dtype):
-    if dtype not in [np.complex128, np.complex64]:
-        raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
+    if mpi_comm is None:
+        return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
+    else:
+        return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
 
 
 def _H_dtype(dtype):
@@ -214,8 +211,7 @@ if CPP_BINARY_AVAILABLE:
             self,
             wires,
             *,
-            mpi_comm=None,
-            # mpi_comm: Union[bool, MPI.Comm] = None,
+            mpi_comm: Union[bool, MPI.Comm] = None,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -230,14 +226,25 @@ if CPP_BINARY_AVAILABLE:
             else:
                 raise TypeError(f"Unsupported complex Type: {c_dtype}")
 
+            super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
+
+            self.init_helper(mpi_comm, self.num_wires)
+            if mpi_comm is None:
+                self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
+                self._batch_obs = batch_obs
+            else:
+                self._gpu_state = _gpu_dtype(c_dtype, mpi_comm)(
+                    self._mpi_manager, self._num_global_wires, self._num_local_wires
+                )
+                self._batch_obs = False
+            self._create_basis_state_GPU(0)
+            self._sync = sync
+
+        def init_helper(self, mpi_comm, num_wires):
             if mpi_comm is None:
                 self._mpi_comm = None
-                super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
-                self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
-                self._create_basis_state_GPU(0)
-                self._sync = sync
-                self._dp = DevPool()
-                self._batch_obs = batch_obs
+                self._num_local_wires = num_wires
+                return
             else:
                 if isinstance(mpi_comm, bool):
                     self._mpi_comm = MPI.COMM_WORLD
@@ -252,38 +259,26 @@ if CPP_BINARY_AVAILABLE:
                 numProcsNode = self._mpi_manager.getSizeNode()
                 if numDevices < numProcsNode:
                     raise ValueError(
-                        "Number of devices should be larger than the number of processes on each node."
+                        "Number of devices should be larger than or equal to the number of processes on each node."
                     )
                 # check if the process number is larger than number of statevector elements
-                if self._mpi_manager.getSize() > (1 << (wires + 1)):
+                if self._mpi_manager.getSize() > (1 << (num_wires - 1)):
                     raise ValueError(
                         "Number of processes should be smaller than the number of statevector elements."
                     )
+                # set the number of global and local wires
+                commSize = self._mpi_manager.getSize()
+                self._num_global_wires = commSize.bit_length() - 1
+                self._num_local_wires = num_wires - self._num_global_wires
                 # set GPU device
                 rank = self._mpi_manager.getRank()
                 deviceid = rank % numProcsNode
                 self._dp.setDeviceID(deviceid)
-                # Data initialization
-                super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
-                commSize = self._mpi_manager.getSize()
-                self._num_global_wires = commSize.bit_length() - 1
-                self._num_local_wires = self.num_wires - self._num_global_wires
-                self._mpi_manager.Barrier()
-                self._dp.setDeviceID(deviceid)
-                self._gpu_mpi_state = _gpu_mpi_dtype(c_dtype)(
-                    self._mpi_manager, self._num_global_wires, self._num_local_wires
-                )
-                self._mpi_manager.Barrier()
-                self._create_basis_state_GPU(0)
-                self._batch_obs = False
 
         def reset(self):
             super().reset()
             # init the state vector to |00..0>
-            if self._mpi_comm is None:
-                self._gpu_state.resetGPU(False)  # Sync reset
-            else:
-                self._gpu_mpi_state.resetGPU(False)  # Sync reset
+            self._gpu_state.resetGPU(False)  # Sync reset
 
         @property
         def state(self):
@@ -294,16 +289,13 @@ if CPP_BINARY_AVAILABLE:
             >>> print(dev.state)
             [0.+0.j 1.+0.j]
             """
-            if self._mpi_comm is None:
-                state = np.zeros(1 << self.num_wires, dtype=self.C_DTYPE)
-                state = self._asarray(state, dtype=self.C_DTYPE)
-                self.syncD2H(state)
-                return state
-            else:
-                state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
-                state = self._asarray(state, dtype=self.C_DTYPE)
-                self.syncD2H(state)
-                return state
+            # numLocalWires = self.num_wires
+            # if self._mpi_comm is not None:
+            #    numLocalWires = self._num_local_wires
+            state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
+            state = self._asarray(state, dtype=self.C_DTYPE)
+            self.syncD2H(state)
+            return state
 
         def syncD2H(self, state_vector, use_async=False):
             """Copy the state vector data on device to a state vector on the host provided by the user
@@ -320,10 +312,7 @@ if CPP_BINARY_AVAILABLE:
             >>> print(state_vector)
             [0.+0.j 1.+0.j]
             """
-            if self._mpi_comm is None:
-                self._gpu_state.DeviceToHost(state_vector.ravel(order="C"), use_async)
-            else:
-                self._gpu_mpi_state.DeviceToHost(state_vector.ravel(order="C"), use_async)
+            self._gpu_state.DeviceToHost(state_vector.ravel(order="C"), use_async)
 
         def syncH2D(self, state_vector, use_async=False):
             """Copy the state vector data on host provided by the user to the state vector on the device
@@ -344,10 +333,7 @@ if CPP_BINARY_AVAILABLE:
             >>> print(res)
             1.0
             """
-            if self._mpi_comm is None:
-                self._gpu_state.HostToDevice(state_vector.ravel(order="C"), use_async)
-            else:
-                self._gpu_mpi_state.HostToDevice(state_vector.ravel(order="C"), use_async)
+            self._gpu_state.HostToDevice(state_vector.ravel(order="C"), use_async)
 
         def _create_basis_state_GPU(self, index, use_async=False):
             """Return a computational basis state over all wires.
@@ -356,10 +342,7 @@ if CPP_BINARY_AVAILABLE:
                 use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
                 Note: This function only supports synchronized memory copy.
             """
-            if self._mpi_comm is None:
-                self._gpu_state.setBasisState(index, use_async)
-            else:
-                self._gpu_mpi_state.setBasisState(index, use_async)
+            self._gpu_state.setBasisState(index, use_async)
 
         def _apply_state_vector_GPU(self, state, device_wires, use_async=False):
             """Initialize the state vector on GPU with a specified state on host.
@@ -371,89 +354,54 @@ if CPP_BINARY_AVAILABLE:
             use_async(bool): indicates whether to use asynchronous memory copy from host to device or not.
             Note: This function only supports synchronized memory copy from host to device.
             """
-            if self._mpi_comm is None:
-                # translate to wire labels used by device
-                device_wires = self.map_wires(device_wires)
-                dim = 2 ** len(device_wires)
 
-                state = self._asarray(state, dtype=self.C_DTYPE)  # this operation on host
-                batch_size = self._get_batch_size(state, (dim,), dim)  # this operation on host
-                output_shape = [2] * self.num_wires
+            device_wires = self.map_wires(device_wires)
+            dim = 2 ** len(device_wires)
 
-                if batch_size is not None:
-                    output_shape.insert(0, batch_size)
+            state = self._asarray(state, dtype=self.C_DTYPE)  # this operation on host
+            output_shape = [2] * self._num_local_wires
 
-                if not (state.shape in [(dim,), (batch_size, dim)]):
-                    raise ValueError(
-                        "State vector must have shape (2**wires,) or (batch_size, 2**wires)."
-                    )
+            batch_size = self._get_batch_size(state, (dim,), dim)  # this operation on host
 
-                if not qml.math.is_abstract(state):
-                    norm = qml.math.linalg.norm(state, axis=-1, ord=2)
-                    if not qml.math.allclose(norm, 1.0, atol=tolerance):
-                        raise ValueError("Sum of amplitudes-squared does not equal one.")
+            if batch_size is not None:
+                output_shape.insert(0, batch_size)
 
-                if (
-                    len(device_wires) == self.num_wires
-                    and Wires(sorted(device_wires)) == device_wires
-                ):
-                    # Initialize the entire device state with the input state
+            if not (state.shape in [(dim,), (batch_size, dim)]):
+                raise ValueError(
+                    "State vector must have shape (2**wires,) or (batch_size, 2**wires)."
+                )
+
+            if not qml.math.is_abstract(state):
+                norm = qml.math.linalg.norm(state, axis=-1, ord=2)
+                if not qml.math.allclose(norm, 1.0, atol=tolerance):
+                    raise ValueError("Sum of amplitudes-squared does not equal one.")
+
+            if len(device_wires) == self.num_wires and Wires(sorted(device_wires)) == device_wires:
+                # Initialize the entire device state with the input state
+                if self.num_wires == self._num_local_wires:
                     self.syncH2D(self._reshape(state, output_shape))
                     return
-
-                # generate basis states on subset of qubits via the cartesian product
-                basis_states = np.array(list(product([0, 1], repeat=len(device_wires))))
-
-                # get basis states to alter on full set of qubits
-                unravelled_indices = np.zeros((2 ** len(device_wires), self.num_wires), dtype=int)
-                unravelled_indices[:, device_wires] = basis_states
-
-                # get indices for which the state is changed to input state vector elements
-                ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
-
-                # set the state vector on GPU with the unravelled_indices and their corresponding values
-                self._gpu_state.setStateVector(
-                    ravelled_indices, state, use_async
-                )  # this operation on device
-            else:
-                # translate to wire labels used by device
-                device_wires = self.map_wires(device_wires)
-                dim = 2 ** len(device_wires)
-
-                state = self._asarray(state, dtype=self.C_DTYPE)  # this operation on host
-                output_shape = [2] * self._num_local_wires
-
-                if not (state.shape in [(dim,)]):
-                    raise ValueError("State vector must have shape (2**wires,)).")
-
-                if not qml.math.is_abstract(state):
-                    norm = qml.math.linalg.norm(state, axis=-1, ord=2)
-                    if not qml.math.allclose(norm, 1.0, atol=tolerance):
-                        raise ValueError("Sum of amplitudes-squared does not equal one.")
-
-                if (
-                    len(device_wires) == self.num_wires
-                    and Wires(sorted(device_wires)) == device_wires
-                ):
+                else:
                     local_state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
                     self._mpi_comm.Scatter(state, local_state, root=0)
                     # Initialize the entire device state with the input state
                     self.syncH2D(self._reshape(local_state, output_shape))
                     return
 
-                # generate basis states on subset of qubits via the cartesian product
-                basis_states = np.array(list(product([0, 1], repeat=len(device_wires))))
+            # generate basis states on subset of qubits via the cartesian product
+            basis_states = np.array(list(product([0, 1], repeat=len(device_wires))))
 
-                # get basis states to alter on full set of qubits
-                unravelled_indices = np.zeros((2 ** len(device_wires), self.num_wires), dtype=int)
-                unravelled_indices[:, device_wires] = basis_states
+            # get basis states to alter on full set of qubits
+            unravelled_indices = np.zeros((2 ** len(device_wires), self.num_wires), dtype=int)
+            unravelled_indices[:, device_wires] = basis_states
 
-                # get indices for which the state is changed to input state vector elements
-                ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
+            # get indices for which the state is changed to input state vector elements
+            ravelled_indices = np.ravel_multi_index(unravelled_indices.T, [2] * self.num_wires)
 
-                self._gpu_mpi_state.setStateVector(
-                    ravelled_indices, state, use_async
-                )  # this operation on device
+            # set the state vector on GPU with the unravelled_indices and their corresponding values
+            self._gpu_state.setStateVector(
+                ravelled_indices, state, use_async
+            )  # this operation on device
 
         def _apply_basis_state_GPU(self, state, wires):
             """Initialize the state vector in a specified computational basis state on GPU directly.
@@ -539,11 +487,7 @@ if CPP_BINARY_AVAILABLE:
                     name = o.base.name
                     invert_param = True
 
-                if self._mpi_comm is None:
-                    method = getattr(self._gpu_state, name, None)
-                else:
-                    method = getattr(self._gpu_mpi_state, name, None)
-
+                method = getattr(self._gpu_state, name, None)
                 wires = self.wires.indices(o.wires)
 
                 if method is None:
@@ -557,23 +501,13 @@ if CPP_BINARY_AVAILABLE:
                     if len(mat) == 0:
                         raise Exception("Unsupported operation")
 
-                    if self._mpi_comm is None:
-                        self._gpu_state.apply(
-                            name,
-                            wires,
-                            False,
-                            [],
-                            mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
-                        )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
-                    else:
-                        self._gpu_mpi_state.apply(
-                            name,
-                            wires,
-                            False,
-                            [],
-                            mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
-                        )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
-
+                    self._gpu_state.apply(
+                        name,
+                        wires,
+                        False,
+                        [],
+                        mat.ravel(order="C"),  # inv = False: Matrix already in correct form;
+                    )  # Parameters can be ignored for explicit matrices; F-order for cuQuantum
                 else:
                     param = o.parameters
                     method(wires, invert_param, param)
