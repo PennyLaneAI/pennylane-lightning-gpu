@@ -74,21 +74,7 @@ jobs:
           MPI_MAKE_OPTIONS: "-j4"
           MPI4PY_VERSION: "3.1.4"
         run: |
-          sudo apt-get update
-          mkdir -p /tmp/mpich-build && cd /tmp/mpich-build \
-          && wget http://www.mpich.org/static/downloads/${{env.MPI_VERSION}}/mpich-${{env.MPI_VERSION}}.tar.gz \
-          && tar xvzf mpich-${{env.MPI_VERSION}}.tar.gz \
-          && cd mpich-${{env.MPI_VERSION}}  \
-          && ./configure ${{env.MPI_CONFIGURE_OPTIONS}} \
-          && make ${{env.MPI_MAKE_OPTIONS}} \
-          && make install \
-          && ldconfig \
-          && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
-          && cd / \
-          && rm -rf /tmp/mpich-build
-          export MPI_DIR=/usr/local/mpich/
-          export PATH=/usr/local/mpich/bin:/usr/local/mpich/include:$PATH
-          export LD_LIBRARY_PATH=/usr/local/mpich/lib:$LD_LIBRARY_PATH
+          sudo apt-get update && sudo apt-get -y -q install mpich libmpich-dev
           python -m pip install ninja cmake custatevec-cu11 mpi4py
 
       - name: Validate GPU version and installed compiler
@@ -213,21 +199,7 @@ jobs:
           MPI_MAKE_OPTIONS: "-j4"
           MPI4PY_VERSION: "3.1.4"
         run: |
-          sudo apt-get update
-          mkdir -p /tmp/mpich-build && cd /tmp/mpich-build \
-          && wget http://www.mpich.org/static/downloads/${{env.MPI_VERSION}}/mpich-${{env.MPI_VERSION}}.tar.gz \
-          && tar xvzf mpich-${{env.MPI_VERSION}}.tar.gz \
-          && cd mpich-${{env.MPI_VERSION}}  \
-          && ./configure ${{env.MPI_CONFIGURE_OPTIONS}} \
-          && make ${{env.MPI_MAKE_OPTIONS}} \
-          && make install \
-          && ldconfig \
-          && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
-          && cd / \
-          && rm -rf /tmp/mpich-build
-          export MPI_DIR=/usr/local/mpich
-          export PATH=/usr/local/mpich/bin:/usr/local/mpich/include:$PATH
-          export LD_LIBRARY_PATH=/usr/local/mpich/lib:$LD_LIBRARY_PATH
+          sudo apt-get update && sudo apt-get -y -q install mpich libmpich-dev
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 mpi4py pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
@@ -239,7 +211,7 @@ jobs:
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
           MPI_VERSION: "3.4.3"
         run: |
-          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which mpicc);LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
           python -m pip install -e . 
         #--verbose
         #python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
