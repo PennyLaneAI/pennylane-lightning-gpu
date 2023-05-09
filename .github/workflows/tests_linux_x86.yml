@@ -70,16 +70,25 @@ jobs:
       - name: Install required packages
         env:
           MPI_VERSION: "3.4.3"
-          MPI_CONFIGURE_OPTIONS: "--with-cuda --enable-fast=all,O3 --prefix=/usr --with-device=ch4:ofi"
+          MPI_CONFIGURE_OPTIONS: "--with-cuda --enable-fast=all,O3 --prefix=/opt/mpich-3.4.3 --with-device=ch4:ofi"
           MPI_MAKE_OPTIONS: "-j4"
           MPI4PY_VERSION: "3.1.4"
         run: |
           sudo apt-get update
-          cd /usr/local/src/ && wget http://www.mpich.org/static/downloads/${{env.MPI_VERSION}}/mpich-${{env.MPI_VERSION}}.tar.gz 
-          tar xf mpich-${{env.MPI_VERSION}}.tar.gz && rm mpich-${{env.MPI_VERSION}}.tar.gz && cd mpich-${{env.MPI_VERSION}} && ./configure --with-cuda --disable-fortran --enable-fast=all,O3 && make -j4 && make install && ldconfig
-          cd /usr/local/src && rm -rf mpich-${{env.MPI_VERSION}}
-          wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-${{env.MPI4PY_VERSION}}.tar.gz && tar xzf mpi4py-${{env.MPI4PY_VERSION}}.tar.gz && rm mpi4py-${{env.MPI4PY_VERSION}}.tar.gz && cd mpi4py-${{env.MPI4PY_VERSION}} && python setup.py build && python setup.py install && cp -a demo/ / && cd .. && rm -rf mpi4py-${{env.MPI4PY_VERSION}}
-          python -m pip install ninja cmake custatevec-cu11
+          mkdir -p /tmp/mpich-build && cd /tmp/mpich-build \
+          && wget http://www.mpich.org/static/downloads/${{env.MPI_VERSION}}/mpich-${{env.MPI_VERSION}}.tar.gz \
+          && tar xvzf mpich-${{env.MPI_VERSION}}.tar.gz \
+          && cd mpich-${{env.MPI_VERSION}}  \
+          && ./configure ${{env.MPI_CONFIGURE_OPTIONS}} \
+          && make ${{env.MPI_MAKE_OPTIONS}} \
+          && make install \
+          && ldconfig \
+          && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
+          && cd / \
+          && rm -rf /tmp/mpich-build
+          export PATH=/opt/mpich-${{env.MPI_VERSION}}/bin:$PATH
+          export LD_LIBRARY_PATH=/opt/mpich-${{env.MPI_VERSION}}/lib:$LD_LIBRARY_PATH
+          python -m pip install ninja cmake custatevec-cu11 mpi4py
 
       - name: Validate GPU version and installed compiler
         run: |
@@ -198,17 +207,26 @@ jobs:
       - name: Install required packages
         env:
           MPI_VERSION: "3.4.3"
-          MPI_CONFIGURE_OPTIONS: "--with-cuda --enable-fast=all,O3 --prefix=/usr --with-device=ch4:ofi"
+          MPI_CONFIGURE_OPTIONS: "--with-cuda --enable-fast=all,O3 --prefix=/opt/mpich-3.4.3 --with-device=ch4:ofi"
           MPI_MAKE_OPTIONS: "-j4"
           MPI4PY_VERSION: "3.1.4"
         run: |
           sudo apt-get update
-          cd /usr/local/src/ && wget http://www.mpich.org/static/downloads/${{env.MPI_VERSION}}/mpich-${{env.MPI_VERSION}}.tar.gz 
-          tar xf mpich-${{env.MPI_VERSION}}.tar.gz && rm mpich-${{env.MPI_VERSION}}.tar.gz && cd mpich-${{env.MPI_VERSION}} && ./configure --with-cuda --disable-fortran --enable-fast=all,O3 && make -j4 && make install && ldconfig
-          cd /usr/local/src && rm -rf mpich-${{env.MPI_VERSION}}
-          wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-${{env.MPI4PY_VERSION}}.tar.gz && tar xzf mpi4py-${{env.MPI4PY_VERSION}}.tar.gz && rm mpi4py-${{env.MPI4PY_VERSION}}.tar.gz && cd mpi4py-${{env.MPI4PY_VERSION}} && python setup.py build && python setup.py install && cp -a demo/ / && cd .. && rm -rf mpi4py-${{env.MPI4PY_VERSION}}
+          mkdir -p /tmp/mpich-build && cd /tmp/mpich-build \
+          && wget http://www.mpich.org/static/downloads/${{env.MPI_VERSION}}/mpich-${{env.MPI_VERSION}}.tar.gz \
+          && tar xvzf mpich-${{env.MPI_VERSION}}.tar.gz \
+          && cd mpich-${{env.MPI_VERSION}}  \
+          && ./configure ${{env.MPI_CONFIGURE_OPTIONS}} \
+          && make ${{env.MPI_MAKE_OPTIONS}} \
+          && make install \
+          && ldconfig \
+          && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
+          && cd / \
+          && rm -rf /tmp/mpich-build
+          export PATH=/opt/mpich-${{env.MPI_VERSION}}/bin:$PATH
+          export LD_LIBRARY_PATH=/opt/mpich-${{env.MPI_VERSION}}/lib:$LD_LIBRARY_PATH
           python -m pip install pip~=22.0
-          python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov
+          python -m pip install ninja cmake custatevec-cu11 mpi4py pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
           python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
