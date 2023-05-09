@@ -86,7 +86,7 @@ jobs:
           && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
           && cd / \
           && rm -rf /tmp/mpich-build
-          export PATH=/opt/mpich-${{env.MPI_VERSION}}/bin:$PATH
+          export PATH=/opt/mpich-${{env.MPI_VERSION}}/bin:/opt/mpich-${{env.MPI_VERSION}}/include:$PATH
           export LD_LIBRARY_PATH=/opt/mpich-${{env.MPI_VERSION}}/lib:$LD_LIBRARY_PATH
           python -m pip install ninja cmake custatevec-cu11 mpi4py
 
@@ -128,6 +128,7 @@ jobs:
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
+              -DCMAKE_PREFIX_PATH=/opt/mpich-${{env.MPI_VERSION}} \
               -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
               -G Ninja
             cmake --build ./BuildCov
@@ -223,7 +224,7 @@ jobs:
           && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
           && cd / \
           && rm -rf /tmp/mpich-build
-          export PATH=/opt/mpich-${{env.MPI_VERSION}}/bin:$PATH
+          export PATH=/opt/mpich-${{env.MPI_VERSION}}/bin:/opt/mpich-${{env.MPI_VERSION}}/include:$PATH
           export LD_LIBRARY_PATH=/opt/mpich-${{env.MPI_VERSION}}/lib:$LD_LIBRARY_PATH
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 mpi4py pytest pytest-mock flaky pytest-cov
@@ -234,8 +235,9 @@ jobs:
       - name: Build and install package
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
+          MPI_VERSION: "3.4.3"
         run: |
-          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python setup.py build_ext -i --define="CMAKE_PREFIX_PATH=/opt/mpich-${{env.MPI_VERSION}};CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
           python -m pip install -e . 
         #--verbose
         #python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
