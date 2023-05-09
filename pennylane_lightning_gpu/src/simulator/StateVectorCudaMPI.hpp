@@ -76,8 +76,8 @@ class StateVectorCudaMPI
   private:
     using BaseType = StateVectorCudaBase<Precision, StateVectorCudaMPI>;
 
-    int numGlobalQubits_;
-    int numLocalQubits_;
+    size_t numGlobalQubits_;
+    size_t numLocalQubits_;
     MPIManager mpi_manager_;
 
     SharedCusvHandle handle_;
@@ -191,12 +191,9 @@ class StateVectorCudaMPI
      */
     void setBasisState(const std::complex<Precision> &value, const size_t index,
                        const bool async = false) {
-        // assert(index >= 0);
-        // size_t rankId = static_cast<size_t>(index) >>
-        // BaseType::getNumQubits();
         size_t rankId = index >> BaseType::getNumQubits();
 
-        int local_index = (rankId << BaseType::getNumQubits()) ^ index;
+        size_t local_index = (rankId << BaseType::getNumQubits()) ^ index;
         BaseType::getDataBuffer().zeroInit();
 
         CFP_t value_cu = cuUtil::complexToCu<std::complex<Precision>>(value);
@@ -229,7 +226,7 @@ class StateVectorCudaMPI
         std::vector<index_type> indices_local;
         std::vector<std::complex<Precision>> values_local;
 
-        for (int i = 0; i < num_indices; i++) {
+        for (size_t i = 0; i < static_cast<size_t>(num_indices); i++) {
             int index = indices[i];
             assert(index >= 0);
             size_t rankId =

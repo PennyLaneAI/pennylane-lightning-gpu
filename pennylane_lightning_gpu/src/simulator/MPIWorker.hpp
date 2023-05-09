@@ -40,31 +40,31 @@ inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
                                          std::vector<int> &tgts,
                                          std::vector<int> &statusWires) {
     std::vector<int2> wirePairs;
-    int i = numLocalQubits - 1, j = numLocalQubits;
-    while (i >= 0 && j < numTotalQubits) {
-        if (statusWires[i] == 0 && statusWires[j] != 0) {
-            int2 wirepair = make_int2(i, j);
+    int localbit = numLocalQubits - 1, globalbit = numLocalQubits;
+    while (localbit >= 0 && globalbit < numTotalQubits) {
+        if (statusWires[localbit] == 0 && statusWires[globalbit] != 0) {
+            int2 wirepair = make_int2(localbit, globalbit);
             wirePairs.push_back(wirepair);
-            if (statusWires[j] == WireStatus::Control) {
+            if (statusWires[globalbit] == WireStatus::Control) {
                 for (size_t k = 0; k < ctrls.size(); k++) {
-                    if (ctrls[k] == j) {
-                        ctrls[k] = i;
+                    if (ctrls[k] == globalbit) {
+                        ctrls[k] = localbit;
                     }
                 }
             } else {
                 for (size_t k = 0; k < tgts.size(); k++) {
-                    if (tgts[k] == j) {
-                        tgts[k] = i;
+                    if (tgts[k] == globalbit) {
+                        tgts[k] = localbit;
                     }
                 }
             }
-            std::swap(statusWires[i], statusWires[j]);
+            std::swap(statusWires[localbit], statusWires[globalbit]);
         } else {
-            if (statusWires[i] != 0) {
-                i--;
+            if (statusWires[localbit] != 0) {
+                localbit--;
             }
-            if (statusWires[j] == 0) {
-                j++;
+            if (statusWires[globalbit] == 0) {
+                globalbit++;
             }
         }
     }
@@ -129,7 +129,7 @@ inline SharedLocalStream make_shared_local_stream() {
 template <typename CFP_t>
 inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
                                               MPIManager &mpi_manager,
-                                              CFP_t *sv, int numLocalQubits,
+                                              CFP_t *sv, size_t numLocalQubits,
                                               cudaStream_t localStream) {
 
     custatevecSVSwapWorkerDescriptor_t svSegSwapWorker = nullptr;
@@ -142,7 +142,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
     nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()
                                                     : nDevices;
 
-    int nP2PDeviceBits =
+    size_t nP2PDeviceBits =
         std::bit_width(static_cast<unsigned int>(nDevices)) - 1;
 
     cudaDataType_t svDataType;
@@ -168,7 +168,6 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     if (mpi_manager.getVendor() == "Open MPI") {
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
-        mpilibname = "";
     }
 
     const char *soname = mpilibname.c_str();
@@ -236,13 +235,13 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         mpi_manager.Allgather<cudaIpcEventHandle_t>(
             eventHandle, ipcEventHandles, sizeof(eventHandle));
         //  get remove device pointers and events
-        int nSubSVsP2P = 1 << nP2PDeviceBits;
-        int p2pSubSVIndexBegin =
+        size_t nSubSVsP2P = 1 << nP2PDeviceBits;
+        size_t p2pSubSVIndexBegin =
             (mpi_manager.getRank() / nSubSVsP2P) * nSubSVsP2P;
-        int p2pSubSVIndexEnd = p2pSubSVIndexBegin + nSubSVsP2P;
-        for (int p2pSubSVIndex = p2pSubSVIndexBegin;
-             p2pSubSVIndex < p2pSubSVIndexEnd; ++p2pSubSVIndex) {
-            if (mpi_manager.getRank() == p2pSubSVIndex)
+        size_t p2pSubSVIndexEnd = p2pSubSVIndexBegin + nSubSVsP2P;
+        for (size_t p2pSubSVIndex = p2pSubSVIndexBegin;
+             p2pSubSVIndex < p2pSubSVIndexEnd; p2pSubSVIndex++) {
+            if (static_cast<size_t>(mpi_manager.getRank()) == p2pSubSVIndex)
                 continue; // don't need local sub state vector pointer
             void *d_subSVP2P = nullptr;
             const auto &dstMemHandle = ipcMemHandles[p2pSubSVIndex];
