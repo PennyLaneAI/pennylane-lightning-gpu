@@ -86,6 +86,7 @@ jobs:
           && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
           && cd / \
           && rm -rf /tmp/mpich-build
+          export MPI_DIR=/opt/mpich-${{env.MPI_VERSION}}/
           export PATH=/opt/mpich-${{env.MPI_VERSION}}/bin:/opt/mpich-${{env.MPI_VERSION}}/include:$PATH
           export LD_LIBRARY_PATH=/opt/mpich-${{env.MPI_VERSION}}/lib:$LD_LIBRARY_PATH
           python -m pip install ninja cmake custatevec-cu11 mpi4py
@@ -224,6 +225,7 @@ jobs:
           && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
           && cd / \
           && rm -rf /tmp/mpich-build
+          export MPI_DIR=/opt/mpich-${{env.MPI_VERSION}}/
           export PATH=/opt/mpich-${{env.MPI_VERSION}}/bin:/opt/mpich-${{env.MPI_VERSION}}/include:$PATH
           export LD_LIBRARY_PATH=/opt/mpich-${{env.MPI_VERSION}}/lib:$LD_LIBRARY_PATH
           python -m pip install pip~=22.0
