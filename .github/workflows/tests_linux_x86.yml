@@ -85,7 +85,8 @@ jobs:
           && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
           && cd / \
           && rm -rf /tmp/mpich-build
-          python -m pip install ninja cmake custatevec-cu11 mpi4py
+          wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.1.4.tar.gz && tar xzf mpi4py-3.1.4.tar.gz && rm mpi4py-3.1.4.tar.gz && cd mpi4py-3.1.4 && python setup.py build && python setup.py install && cp -a demo/ / && cd .. && rm -rf mpi4py-3.1.4 
+          python -m pip install ninja cmake custatevec-cu11
 
       - name: Validate GPU version and installed compiler
         run: |
@@ -219,8 +220,9 @@ jobs:
           && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
           && cd / \
           && rm -rf /tmp/mpich-build
+          wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.1.4.tar.gz && tar xzf mpi4py-3.1.4.tar.gz && rm mpi4py-3.1.4.tar.gz && cd mpi4py-3.1.4 && python setup.py build && python setup.py install && cp -a demo/ / && cd .. && rm -rf mpi4py-3.1.4 
           python -m pip install pip~=22.0
-          python -m pip install ninja cmake custatevec-cu11 mpi4py pytest pytest-mock flaky pytest-cov
+          python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
           python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
