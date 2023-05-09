@@ -19,7 +19,7 @@ from typing import List, Union
 from warnings import warn
 from itertools import product
 
-from mpi4py import MPI
+#from mpi4py import MPI
 
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
@@ -211,7 +211,8 @@ if CPP_BINARY_AVAILABLE:
             self,
             wires,
             *,
-            mpi_comm: Union[bool, MPI.Comm] = None,
+            mpi_comm=None,
+            #mpi_comm: Union[bool, MPI.Comm] = None,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -246,10 +247,11 @@ if CPP_BINARY_AVAILABLE:
                 self._num_local_wires = num_wires
                 return
             else:
-                if isinstance(mpi_comm, bool):
-                    self._mpi_comm = MPI.COMM_WORLD
-                if isinstance(mpi_comm, MPI.Comm):
-                    self._mpi_comm = mpi_comm
+                #if isinstance(mpi_comm, bool):
+                #    self._mpi_comm = MPI.COMM_WORLD
+                #if isinstance(mpi_comm, MPI.Comm):
+                #    self._mpi_comm = mpi_comm
+                self._mpi_comm = mpi_comm
                 # initialize MPIManager and config check in the MPIManager ctor
                 self._mpi_manager = MPIManager(mpi_comm)
                 self._dp = DevPool()
