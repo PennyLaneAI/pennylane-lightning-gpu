@@ -68,8 +68,23 @@ jobs:
           echo "pip=$pip_path" >> $GITHUB_OUTPUT
 
       - name: Install required packages
+        env:
+          MPI_VERSION: "3.4.3"
+          MPI_CONFIGURE_OPTIONS: "--with-cuda --enable-fast=all,O3 --prefix=/usr --with-device=ch4:ofi"
+          MPI_MAKE_OPTIONS: "-j4"
         run: |
-          sudo apt-get update && sudo apt-get -y -q install mpich libmpich-dev
+          sudo apt-get update
+          mkdir -p /tmp/mpich-build && cd /tmp/mpich-build \
+          && wget http://www.mpich.org/static/downloads/${{env.MPI_VERSION}}/mpich-${{env.MPI_VERSION}}.tar.gz \
+          && tar xvzf mpich-${{env.MPI_VERSION}}.tar.gz \
+          && cd mpich-${{env.MPI_VERSION}}  \
+          && ./configure ${{env.MPI_CONFIGURE_OPTIONS}} \
+          && make ${{env.MPI_MAKE_OPTIONS}} \
+          && make install \
+          && ldconfig \
+          && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
+          && cd / \
+          && rm -rf /tmp/mpich-build
           python -m pip install ninja cmake custatevec-cu11 mpi4py
 
       - name: Validate GPU version and installed compiler
@@ -187,8 +202,23 @@ jobs:
           echo "pip=$pip_path" >> $GITHUB_OUTPUT
 
       - name: Install required packages
+        env:
+          MPI_VERSION: "3.4.3"
+          MPI_CONFIGURE_OPTIONS: "--with-cuda --enable-fast=all,O3 --prefix=/usr --with-device=ch4:ofi"
+          MPI_MAKE_OPTIONS: "-j4"
         run: |
-          sudo apt-get update && sudo apt-get -y -q install mpich libmpich-dev
+          sudo apt-get update
+          mkdir -p /tmp/mpich-build && cd /tmp/mpich-build \
+          && wget http://www.mpich.org/static/downloads/${{env.MPI_VERSION}}/mpich-${{env.MPI_VERSION}}.tar.gz \
+          && tar xvzf mpich-${{env.MPI_VERSION}}.tar.gz \
+          && cd mpich-${{env.MPI_VERSION}}  \
+          && ./configure ${{env.MPI_CONFIGURE_OPTIONS}} \
+          && make ${{env.MPI_MAKE_OPTIONS}} \
+          && make install \
+          && ldconfig \
+          && cp -p /tmp/mpich-build/mpich-${{env.MPI_VERSION}}/examples/cpi /usr/bin/ \
+          && cd / \
+          && rm -rf /tmp/mpich-build
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 mpi4py pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
