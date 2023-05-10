@@ -384,6 +384,22 @@ class MPIManager {
      * @brief MPI_Scatter wrapper.
      *
      * @tparam T C++ data type.
+     * @param sendBuf Send buffer.
+     * @param recvBuf Receive buffer.
+     * @param root Rank of scatter root.
+     */
+    template <typename T>
+    void Scatter(T *sendBuf, T *recvBuf, size_t dataSize, int root) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        PL_MPI_IS_SUCCESS(MPI_Scatter(sendBuf, dataSize, datatype, recvBuf,
+                                      dataSize, datatype, root,
+                                      this->getComm()));
+    }
+
+    /**
+     * @brief MPI_Scatter wrapper.
+     *
+     * @tparam T C++ data type.
      * @param sendBuf Send buffer vector.
      * @param recvBuf Receive buffer vector.
      * @param root Rank of scatter root.

@@ -10,8 +10,6 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <custatevec.h>
-#include <mpi.h>
-
 /// @cond DEV
 namespace {
 namespace cuUtil = Pennylane::CUDA::Util;

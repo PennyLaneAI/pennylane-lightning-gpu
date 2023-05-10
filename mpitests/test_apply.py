@@ -106,7 +106,8 @@ class TestApply:
     def test_apply_operation_single_wire_nonparam(self, tol, operation, Wires):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
-        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        #mpi_comm = MPIManager(MPI.COMM_WORLD)
+        mpi_comm = MPIManager()
         commSize = comm.Get_size()
         num_global_wires = commSize.bit_length() - 1
         num_local_wires = num_wires - num_global_wires
@@ -162,7 +163,8 @@ class TestApply:
     def test_apply_operation_two_wire_nonparam(self, tol, operation, Wires):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
-        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        #mpi_comm = MPIManager(MPI.COMM_WORLD)
+        mpi_comm = MPIManager()
         commSize = comm.Get_size()
         num_global_wires = commSize.bit_length() - 1
         num_local_wires = num_wires - num_global_wires
@@ -213,7 +215,8 @@ class TestApply:
     def test_apply_operation_three_wire_nonparam(self, tol, operation, Wires):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
-        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        #mpi_comm = MPIManager(MPI.COMM_WORLD)
+        mpi_comm = MPIManager()
         commSize = comm.Get_size()
         num_global_wires = commSize.bit_length() - 1
         num_local_wires = num_wires - num_global_wires
@@ -263,7 +266,8 @@ class TestApply:
     def test_apply_operation_three_wire_qnode_nonparam(self, tol, operation, Wires):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
-        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        #mpi_comm = MPIManager(MPI.COMM_WORLD)
+        mpi_comm = MPIManager()
         commSize = comm.Get_size()
         num_global_wires = commSize.bit_length() - 1
         num_local_wires = num_wires - num_global_wires
@@ -371,7 +375,8 @@ class TestApply:
     def test_apply_operation_three_wire_qnode_nonparam(self, tol, operation, par, Wires):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
-        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        #mpi_comm = MPIManager(MPI.COMM_WORLD)
+        mpi_comm = MPIManager()
         commSize = comm.Get_size()
         num_global_wires = commSize.bit_length() - 1
         num_local_wires = num_wires - num_global_wires
@@ -425,7 +430,8 @@ class TestApply:
     def test_state_prep(self, tol, operation, par, Wires):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
-        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        #mpi_comm = MPIManager(MPI.COMM_WORLD)
+        mpi_comm = MPIManager()
         commSize = comm.Get_size()
         num_global_wires = commSize.bit_length() - 1
         num_local_wires = num_wires - num_global_wires
@@ -495,7 +501,8 @@ class TestApply:
     def test_qubit_state_prep(self, tol, operation, par, Wires):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
-        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        #mpi_comm = MPIManager(MPI.COMM_WORLD)
+        mpi_comm = MPIManager()
         commSize = comm.Get_size()
         num_global_wires = commSize.bit_length() - 1
         num_local_wires = num_wires - num_global_wires
@@ -542,7 +549,8 @@ class TestApply:
     def test_dev_reset(self, tol, operation, par, Wires):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
-        mpi_comm = MPIManager(MPI.COMM_WORLD)
+        #mpi_comm = MPIManager(MPI.COMM_WORLD)
+        mpi_comm = MPIManager()
         commSize = comm.Get_size()
         num_global_wires = commSize.bit_length() - 1
         num_local_wires = num_wires - num_global_wires
