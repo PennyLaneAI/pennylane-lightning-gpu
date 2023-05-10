@@ -56,7 +56,7 @@ jobs:
 
           CIBW_SKIP: "*-musllinux*"
 
-          CIBW_CONFIG_SETTINGS: --global-option=build_ext --global-option=--define="CMAKE_CXX_COMPILER=$(which g++-11);CMAKE_C_COMPILER=$(which gcc-11);LIGHTNING_RELEASE_TAG=master"
+          CIBW_CONFIG_SETTINGS: --global-option=build_ext --global-option=--define="CMAKE_CXX_COMPILER=$(which g++-11); PLLGPU_ENABLE_MPI=OFF;CMAKE_C_COMPILER=$(which gcc-11);LIGHTNING_RELEASE_TAG=master"
 
           # Python build settings
           CIBW_BEFORE_BUILD: |
@@ -64,11 +64,12 @@ jobs:
             python -m pip install custatevec-cu11
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
             yum clean all
-            yum -y install cuda-11-5 git openssh wget gcc make gcc-gfortran gcc-c++ curl tar
-            cd /usr/local/src/ && wget http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz 
-            tar xf mpich-3.2.tar.gz && rm mpich-3.2.tar.gz && cd mpich-3.2 && ./configure --disable-fortran --enable-fast=all,O3 && make -j4 && make install && ldconfig
-            cd /usr/local/src && rm -rf mpich-3.2
-            wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.1.4.tar.gz && tar xzf mpi4py-3.1.4.tar.gz && rm mpi4py-3.1.4.tar.gz && cd mpi4py-3.1.4 && python setup.py build && python setup.py install && cp -a demo/ / && cd .. && rm -rf mpi4py-3.1.4 
+            yum -y install cuda-11-5 git openssh wget 
+          #yum -y install gcc make gcc-gfortran gcc-c++ curl tar
+          #cd /usr/local/src/ && wget http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz 
+          #tar xf mpich-3.2.tar.gz && rm mpich-3.2.tar.gz && cd mpich-3.2 && ./configure --disable-fortran --enable-fast=all,O3 && make -j4 && make install && ldconfig
+          #cd /usr/local/src && rm -rf mpich-3.2
+          #wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.1.4.tar.gz && tar xzf mpi4py-3.1.4.tar.gz && rm mpi4py-3.1.4.tar.gz && cd mpi4py-3.1.4 && python setup.py build && python setup.py install && cp -a demo/ / && cd .. && rm -rf mpi4py-3.1.4 
           # ensure nvcc is available
           CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin:/usr/local/include LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib:/usr/lib64:/usr/local/lib:/usr/local/lib64:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
 

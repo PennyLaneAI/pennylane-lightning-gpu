@@ -80,10 +80,11 @@ try:
             LightningGPUMPI_C64,
             MPIManager,
         )
+
         MPI_Support = True
     except:
         MPI_Support = False
-        
+
     from ._serialize import _serialize_ob, _serialize_observables, _serialize_ops
     from ctypes.util import find_library
     from importlib import util as imp_util
@@ -216,7 +217,6 @@ if CPP_BINARY_AVAILABLE:
             self,
             wires,
             *,
-            # mpi_comm=None,
             mpi_comm: [bool] = None,
             sync=False,
             c_dtype=np.complex128,
@@ -248,17 +248,11 @@ if CPP_BINARY_AVAILABLE:
 
         def init_helper(self, mpi_comm, num_wires):
             if mpi_comm is None:
-                # self._mpi_comm = None
                 self._num_local_wires = num_wires
                 return
             else:
                 if MPI_Support == False:
                     raise ImportError("MPI related APIs not found.")
-                # if isinstance(mpi_comm, bool):
-                #    self._mpi_comm = MPI.COMM_WORLD
-                # if isinstance(mpi_comm, MPI.Comm):
-                #    self._mpi_comm = mpi_comm
-                # self._mpi_comm = mpi_comm
                 # initialize MPIManager and config check in the MPIManager ctor
                 self._mpi_manager = MPIManager()
                 self._dp = DevPool()
@@ -388,7 +382,6 @@ if CPP_BINARY_AVAILABLE:
                     return
                 else:
                     local_state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
-                    # self._mpi_comm.Scatter(state, local_state, root=0)
                     self._mpi_manager.Scatter(state, local_state, 0)
                     # Initialize the entire device state with the input state
                     self.syncH2D(self._reshape(local_state, output_shape))

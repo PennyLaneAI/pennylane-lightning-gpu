@@ -68,14 +68,8 @@ jobs:
           echo "pip=$pip_path" >> $GITHUB_OUTPUT
 
       - name: Install required packages
-        env:
-          MPI_VERSION: "3.4.3"
-          MPI_CONFIGURE_OPTIONS: "--with-cuda --enable-shared --enable-fast=all,O3 --prefix=/usr/local/mpich --with-device=ch4:ofi"
-          MPI_MAKE_OPTIONS: "-j4"
-          MPI4PY_VERSION: "3.1.4"
         run: |
-          sudo apt-get update && sudo apt-get -y -q install mpich libmpich-dev
-          python -m pip install ninja cmake custatevec-cu11 mpi4py
+          python -m pip install ninja cmake custatevec-cu11
 
       - name: Validate GPU version and installed compiler
         run: |
@@ -108,6 +102,7 @@ jobs:
       - name: Build and run unit tests for code coverage
         run: |
             cmake . -BBuildCov \
+              -PLLGPU_ENABLE_MPI=OFF \
               -DCMAKE_BUILD_TYPE=Debug \
               -DPLLGPU_BUILD_TESTS=ON \
               -DPLLGPU_ENABLE_COVERAGE=ON \
@@ -115,7 +110,6 @@ jobs:
               -DLIGHTNING_RELEASE_TAG="master" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
-              -DCMAKE_PREFIX_PATH=/opt/mpich-${{env.MPI_VERSION}} \
               -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
               -G Ninja
             cmake --build ./BuildCov
@@ -194,7 +188,6 @@ jobs:
 
       - name: Install required packages
         run: |
-          sudo apt-get update 
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov
           # Sync with latest master branches
@@ -204,25 +197,16 @@ jobs:
       - name: Build and install package
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
-          MPI_VERSION: "3.4.3"
         run: |
           python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;PLLGPU_ENABLE_MPI=OFF;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
-          python -m pip install -e . 
-        #--verbose
-        #python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python -m pip install -e . --verbose
 
       - name: Run PennyLane-Lightning-GPU unit tests
         run: |
-          make test-python
-        #python -m pytest ./tests/
-        #make test-python
-        #mpirun -np 1 python -m pytest ./tests/test_apply.py
-        #pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
-        #python -m pytest ./tests/test_apply.py
-        #python -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
-        #pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
-        #pl-device-test --device lightning.gpu --shots=None --skip-ops ${{ env.COVERAGE_FLAGS }} --cov-append
-        #mv coverage.xml coverage-${{ github.job }}.xml
+          python -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
+          pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
+          pl-device-test --device lightning.gpu --shots=None --skip-ops ${{ env.COVERAGE_FLAGS }} --cov-append
+          mv coverage.xml coverage-${{ github.job }}.xml
 
       - name: Upload code coverage results
         uses: actions/upload-artifact@v3

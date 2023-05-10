@@ -26,7 +26,7 @@
 #include "DevTag.hpp"
 #include "DevicePool.hpp"
 #include "Error.hpp"
-#ifdef ENABLE_MPI 
+#ifdef ENABLE_MPI
 #include "MPIManager.hpp"
 #include "StateVectorCudaMPI.hpp"
 #endif
@@ -47,7 +47,7 @@ using namespace Pennylane;
 using namespace Pennylane::CUDA;
 using namespace Pennylane::Algorithms;
 using namespace Pennylane::CUDA::Util;
-#ifdef ENABLE_MPI 
+#ifdef ENABLE_MPI
 using namespace Pennylane::MPI;
 #endif
 using std::complex;
@@ -870,7 +870,6 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
              });
 }
 
-
 /**
  * @brief Templated class to build all required precisions for Python module.
  *
@@ -1356,7 +1355,7 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
              })
         .def("refresh", &DevTag<int>::refresh);
 
-    #ifdef ENABLE_MPI
+#ifdef ENABLE_MPI
     using np_arr_c64 = py::array_t<std::complex<float>,
                                    py::array::c_style | py::array::forcecast>;
     using np_arr_c128 = py::array_t<std::complex<double>,
@@ -1405,14 +1404,14 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
                     send_ptr, recv_ptr, recvBuf.request().size, root);
             },
             "MPI Scatter.");
-    #endif
+#endif
 
     StateVectorCudaManaged_class_bindings<float, float>(m);
     StateVectorCudaManaged_class_bindings<double, double>(m);
-    #ifdef ENABLE_MPI
+#ifdef ENABLE_MPI
     StateVectorCudaMPI_class_bindings<float, float>(m);
     StateVectorCudaMPI_class_bindings<double, double>(m);
-    #endif
+#endif
 }
 
 } // namespace
