@@ -83,6 +83,10 @@ if not os.getenv("READTHEDOCS"):
                  configure_args += [
                     "-DSYSTEM_NAME=CrayLinux",
                  ]
+            else:
+                 configure_args += [
+                    "-DSYSTEM_NAME=Linux",
+                 ]
 
             if not Path(self.build_temp).exists():
                 os.makedirs(self.build_temp)

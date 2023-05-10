@@ -120,7 +120,6 @@ find_package(CUDA REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
 find_package (Python COMPONENTS Interpreter Development)
-set(MPI4PY_INC "${Python_SITELIB}/mpi4py/include")
 
 if(PLLGPU_ENABLE_MPI)
     find_package(MPI REQUIRED)
@@ -130,13 +129,13 @@ if(PLLGPU_ENABLE_MPI)
         message(FATAL_ERROR "MPI is NOT found.")
     endif()
 
-    #if(${SYSTEM_NAME} STREQUAL "CrayLinux")
-    #    find_library(MPI_GTL
-    #    NAMES libmpi_gtl_cuda.so libmpi_gtl_cuda.so.0 libmpi_gtl_cuda.so.0.0.0
-    #    HINTS ENV CRAY_LD_LIBRARY_PATH
-    #          ENV LD_LIBRARY_PATH
-    #    )
-    #endif()
+    if(${SYSTEM_NAME} STREQUAL "CrayLinux")
+        find_library(MPI_GTL
+        NAMES libmpi_gtl_cuda.so libmpi_gtl_cuda.so.0 libmpi_gtl_cuda.so.0.0.0
+        HINTS ENV CRAY_LD_LIBRARY_PATH
+              ENV LD_LIBRARY_PATH
+        )
+    endif()
 endif()
 
 find_library(CUSTATEVEC_LIB
@@ -193,11 +192,11 @@ target_link_libraries(pennylane_lightning_gpu INTERFACE pennylane_lightning
 target_include_directories(pennylane_lightning_gpu INTERFACE "pennylane_lightning_gpu/src")
 
 if(PLLGPU_ENABLE_MPI)
-    #if(${SYSTEM_NAME} STREQUAL "CrayLinux")
-    #    target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT} ${MPI_GTL})
-    #else()
-    #    target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})
-    #endif()
+    if(${SYSTEM_NAME} STREQUAL "CrayLinux")
+        target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT} ${MPI_GTL})
+    else()
+        target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})
+    endif()
 else()
     target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})
 endif()
@@ -214,7 +213,7 @@ if(PLLGPU_ENABLE_PYTHON)
         option(ENABLE_MPI "Enable MPI support" ON)
         target_compile_definitions(lightning_gpu_qubit_ops PRIVATE ENABLE_MPI)
     endif()
-    target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include ${MPI4PY_INC})
+    target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include)
     target_link_libraries(lightning_gpu_qubit_ops PRIVATE CUDA::cudart)
 endif()
 
