@@ -79,6 +79,7 @@ jobs:
       - name: Build and run unit tests
         run: |
             cmake . -BBuild \
+              -DPLLGPU_ENABLE_MPI=OFF \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-${{ env.GCC_VERSION }})" \
@@ -102,7 +103,7 @@ jobs:
       - name: Build and run unit tests for code coverage
         run: |
             cmake . -BBuildCov \
-              -PLLGPU_ENABLE_MPI=OFF \
+              -DPLLGPU_ENABLE_MPI=OFF \
               -DCMAKE_BUILD_TYPE=Debug \
               -DPLLGPU_BUILD_TESTS=ON \
               -DPLLGPU_ENABLE_COVERAGE=ON \
