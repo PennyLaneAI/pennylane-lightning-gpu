@@ -123,7 +123,7 @@ class MPIManager {
     /**
      * @brief Get the communicator.
      */
-    auto getComm() const { return communiator_; }
+    MPI_Comm getComm() { return communiator_; }
 
     /**
      * @brief Get an elapsed time.

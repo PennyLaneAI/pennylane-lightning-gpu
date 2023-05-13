@@ -1375,7 +1375,7 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
         .def("getRank", &MPIManager::getRank)
         .def("getSize", &MPIManager::getSize)
         .def("getSizeNode", &MPIManager::getSizeNode)
-        .def("getComm", &MPIManager::getComm)
+        //.def("getComm", &MPIManager::getComm)
         .def("getTime", &MPIManager::getTime)
         .def("getVendor", &MPIManager::getVendor)
         .def("getVersion", &MPIManager::getVersion)

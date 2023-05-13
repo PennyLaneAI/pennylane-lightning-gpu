@@ -166,7 +166,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     if (mpi_manager.getVendor() == "Open MPI") {
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
-        mpilibname = "libmpi.so";
+        mpilibname = "";
     }
 
     const char *soname = mpilibname.c_str();
