@@ -417,7 +417,7 @@ if CPP_BINARY_AVAILABLE:
             invert_param = False
 
             for o in operations:
-                if o.base_name in skipped_ops:
+                if o.name in skipped_ops:
                     continue
                 name = o.name
                 if isinstance(o, Adjoint):
