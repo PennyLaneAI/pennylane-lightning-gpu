@@ -10,6 +10,7 @@
 ### Improvements
 
 * Use `Operator.name` instead of `Operation.base_name`.
+  [(#115)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/115)
 
 ### Documentation
 
