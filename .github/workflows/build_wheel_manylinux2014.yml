@@ -69,8 +69,7 @@ jobs:
             wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.4.tar.gz
             tar xfz openmpi-4.1.4.tar.gz
             cd openmpi-4.1.4 && ./configure --with-cuda=/usr/local/cuda-11.5 --with-cuda-libdir=/usr/local/cuda-11.5/lib64
-            cd openmpi-4.1.4 && make all -j4
-            cd openmpi-4.1.4 && make install
+            make all -j4 && make install
             cd /usr/local/src && rm -rf openmpi-4.1.4 
           #cd /usr/local/src/
           #wget http://www.mpich.org/static/downloads/4.0.2/mpich-4.0.2.tar.gz
