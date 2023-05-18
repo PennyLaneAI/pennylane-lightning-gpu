@@ -197,12 +197,8 @@ target_link_libraries(pennylane_lightning_gpu INTERFACE pennylane_lightning
                                                         lightning_gpu_algorithms)
 target_include_directories(pennylane_lightning_gpu INTERFACE "pennylane_lightning_gpu/src")
 
-if(PLLGPU_ENABLE_MPI)
-    if(${SYSTEM_NAME} STREQUAL "CrayLinux" AND MPICH)
+if(PLLGPU_ENABLE_MPI AND ${SYSTEM_NAME} STREQUAL "CrayLinux" AND MPICH)
         target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT} ${MPI_GTL})
-    else()
-        target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})
-    endif()
 else()
     target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})
 endif()

@@ -26,10 +26,6 @@
 #include "DevTag.hpp"
 #include "DevicePool.hpp"
 #include "Error.hpp"
-#ifdef ENABLE_MPI
-#include "MPIManager.hpp"
-#include "StateVectorCudaMPI.hpp"
-#endif
 #include "StateVectorCudaManaged.hpp"
 #include "StateVectorManagedCPU.hpp"
 #include "StateVectorRawCPU.hpp"
@@ -41,15 +37,17 @@
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
+#ifdef ENABLE_MPI
+#include "MPIManager.hpp"
+#include "StateVectorCudaMPI.hpp"
+#endif
+
 /// @cond DEV
 namespace {
 using namespace Pennylane;
 using namespace Pennylane::CUDA;
 using namespace Pennylane::Algorithms;
 using namespace Pennylane::CUDA::Util;
-#ifdef ENABLE_MPI
-using namespace Pennylane::MPI;
-#endif
 using std::complex;
 using std::set;
 using std::string;
@@ -878,6 +876,51 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
  * @param m Pybind11 module.
  */
 #ifdef ENABLE_MPI
+
+using namespace Pennylane::MPI;
+
+void MPIManager_class_bindings(py::module &m) {
+    using np_arr_c64 = py::array_t<std::complex<float>,
+                                   py::array::c_style | py::array::forcecast>;
+    using np_arr_c128 = py::array_t<std::complex<double>,
+                                    py::array::c_style | py::array::forcecast>;
+    py::class_<MPIManager>(m, "MPIManager")
+        .def(py::init<>())
+        .def(py::init<MPIManager &>())
+        .def("Barrier", &MPIManager::Barrier)
+        .def("getRank", &MPIManager::getRank)
+        .def("getSize", &MPIManager::getSize)
+        .def("getSizeNode", &MPIManager::getSizeNode)
+        .def("getTime", &MPIManager::getTime)
+        .def("getVendor", &MPIManager::getVendor)
+        .def("getVersion", &MPIManager::getVersion)
+        .def("checkMPIConfig", &MPIManager::check_mpi_config)
+        .def(
+            "Scatter",
+            [](MPIManager &mpi_manager, np_arr_c64 &sendBuf,
+               np_arr_c64 &recvBuf, int root) {
+                auto send_ptr =
+                    static_cast<std::complex<float> *>(sendBuf.request().ptr);
+                auto recv_ptr =
+                    static_cast<std::complex<float> *>(recvBuf.request().ptr);
+                mpi_manager.template Scatter<std::complex<float>>(
+                    send_ptr, recv_ptr, recvBuf.request().size, root);
+            },
+            "MPI Scatter.")
+        .def(
+            "Scatter",
+            [](MPIManager &mpi_manager, np_arr_c128 &sendBuf,
+               np_arr_c128 &recvBuf, int root) {
+                auto send_ptr =
+                    static_cast<std::complex<double> *>(sendBuf.request().ptr);
+                auto recv_ptr =
+                    static_cast<std::complex<double> *>(recvBuf.request().ptr);
+                mpi_manager.template Scatter<std::complex<double>>(
+                    send_ptr, recv_ptr, recvBuf.request().size, root);
+            },
+            "MPI Scatter.");
+}
+
 template <class PrecisionT, class ParamT>
 void StateVectorCudaMPI_class_bindings(py::module &m) {
     // using np_arr_r =
@@ -1355,59 +1398,14 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
              })
         .def("refresh", &DevTag<int>::refresh);
 
-#ifdef ENABLE_MPI
-    using np_arr_c64 = py::array_t<std::complex<float>,
-                                   py::array::c_style | py::array::forcecast>;
-    using np_arr_c128 = py::array_t<std::complex<double>,
-                                    py::array::c_style | py::array::forcecast>;
-    py::class_<MPIManager>(m, "MPIManager")
+    StateVectorCudaManaged_class_bindings<float, float>(m);
+    StateVectorCudaManaged_class_bindings<double, double>(m);
 
-        /*.def(py::init([](pybind11::handle const &py_comm) {
-            if (import_mpi4py() == 0) {
-                return new MPIManager(*PyMPIComm_Get(py_comm.ptr()));
-            } else {
-                throw std::runtime_error("Could not load mpi4py API.");
-            }
-        }))*/
-        .def(py::init<>())
-        .def(py::init<MPIManager &>())
-        .def("Barrier", &MPIManager::Barrier)
-        .def("getRank", &MPIManager::getRank)
-        .def("getSize", &MPIManager::getSize)
-        .def("getSizeNode", &MPIManager::getSizeNode)
-        .def("getTime", &MPIManager::getTime)
-        .def("getVendor", &MPIManager::getVendor)
-        .def("getVersion", &MPIManager::getVersion)
-        .def("checkMPIConfig", &MPIManager::check_mpi_config)
-        .def(
-            "Scatter",
-            [](MPIManager &mpi_manager, np_arr_c64 &sendBuf,
-               np_arr_c64 &recvBuf, int root) {
-                auto send_ptr =
-                    static_cast<std::complex<float> *>(sendBuf.request().ptr);
-                auto recv_ptr =
-                    static_cast<std::complex<float> *>(recvBuf.request().ptr);
-                mpi_manager.template Scatter<std::complex<float>>(
-                    send_ptr, recv_ptr, recvBuf.request().size, root);
-            },
-            "MPI Scatter.")
-        .def(
-            "Scatter",
-            [](MPIManager &mpi_manager, np_arr_c128 &sendBuf,
-               np_arr_c128 &recvBuf, int root) {
-                auto send_ptr =
-                    static_cast<std::complex<double> *>(sendBuf.request().ptr);
-                auto recv_ptr =
-                    static_cast<std::complex<double> *>(recvBuf.request().ptr);
-                mpi_manager.template Scatter<std::complex<double>>(
-                    send_ptr, recv_ptr, recvBuf.request().size, root);
-            },
-            "MPI Scatter.");
+#ifdef ENABLE_MPI
+    MPIManager_class_bindings(m);
     StateVectorCudaMPI_class_bindings<float, float>(m);
     StateVectorCudaMPI_class_bindings<double, double>(m);
 #endif
-    StateVectorCudaManaged_class_bindings<float, float>(m);
-    StateVectorCudaManaged_class_bindings<double, double>(m);
 }
 
 } // namespace

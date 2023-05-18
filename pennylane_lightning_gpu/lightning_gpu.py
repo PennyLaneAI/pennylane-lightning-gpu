@@ -43,7 +43,6 @@ from pennylane.wires import Wires
 
 # tolerance for numerical errors
 tolerance = 1e-6
-MPI_Support = False
 # Remove after the next release of PL
 # Add from pennylane import matrix
 import pennylane as qml
