@@ -1057,9 +1057,10 @@ class StateVectorCudaMPI
         }
     }
 
-    void applyCuSVMatrixGate(const CFP_t *matrix, const std::vector<int> &ctrls,
-                             const std::vector<int> &tgts,
-                             bool use_adjoint = false) {
+    void applyCuSVDeviceMatrixGate(const CFP_t *matrix,
+                                   const std::vector<int> &ctrls,
+                                   const std::vector<int> &tgts,
+                                   bool use_adjoint = false) {
         void *extraWorkspace = nullptr;
         size_t extraWorkspaceSizeInBytes = 0;
         int nIndexBits = BaseType::getNumQubits();
@@ -1166,7 +1167,7 @@ class StateVectorCudaMPI
         mpi_manager_.Barrier();
 
         if (!StatusGlobalWires) {
-            applyCuSVMatrixGate(matrix, ctrlsInt, tgtsInt, use_adjoint);
+            applyCuSVDeviceMatrixGate(matrix, ctrlsInt, tgtsInt, use_adjoint);
         } else {
             std::vector<int> localCtrls = ctrlsInt;
             std::vector<int> localTgts = tgtsInt;
@@ -1178,12 +1179,163 @@ class StateVectorCudaMPI
             PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
 
             applyMPI_Dispatcher(wirePairs,
-                                &StateVectorCudaMPI::applyCuSVMatrixGate,
+                                &StateVectorCudaMPI::applyCuSVDeviceMatrixGate,
                                 matrix, localCtrls, localTgts, use_adjoint);
             PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
             PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         }
     }
+
+    /**
+     * @brief Apply a given host-matrix `matrix` to the state vector at qubit
+     * indices given by `tgts` and control-lines given by `ctrls`. The adjoint
+     * can be taken by setting `use_adjoint` to true.
+     *
+     * @param matrix Host-data vector in row-major order of a given gate.
+     * @param ctrls Control line qubits.
+     * @param tgts Target qubits.
+     * @param use_adjoint Use adjoint of given gate.
+     */
+    void applyCuSVHostMatrixGate(const std::vector<CFP_t> &matrix,
+                                 const std::vector<int> &ctrls,
+                                 const std::vector<int> &tgts,
+                                 bool use_adjoint = false) {
+        void *extraWorkspace = nullptr;
+        size_t extraWorkspaceSizeInBytes = 0;
+        int nIndexBits = BaseType::getNumQubits();
+
+        cudaDataType_t data_type;
+        custatevecComputeType_t compute_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+            compute_type = CUSTATEVEC_COMPUTE_64F;
+        } else {
+            data_type = CUDA_C_32F;
+            compute_type = CUSTATEVEC_COMPUTE_32F;
+        }
+
+        // check the size of external workspace
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrixGetWorkspaceSize(
+            /* custatevecHandle_t */ handle_.get(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* const void* */ matrix.data(),
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const int32_t */ use_adjoint,
+            /* const uint32_t */ tgts.size(),
+            /* const uint32_t */ ctrls.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* size_t* */ &extraWorkspaceSizeInBytes));
+
+        // allocate external workspace if necessary
+        if (extraWorkspaceSizeInBytes > 0) {
+            PL_CUDA_IS_SUCCESS(
+                cudaMalloc(&extraWorkspace, extraWorkspaceSizeInBytes));
+        }
+
+        // apply gate
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecApplyMatrix(
+            /* custatevecHandle_t */ handle_.get(),
+            /* void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* const void* */ matrix.data(),
+            /* cudaDataType_t */ data_type,
+            /* custatevecMatrixLayout_t */ CUSTATEVEC_MATRIX_LAYOUT_ROW,
+            /* const int32_t */ use_adjoint,
+            /* const int32_t* */ tgts.data(),
+            /* const uint32_t */ tgts.size(),
+            /* const int32_t* */ ctrls.data(),
+            /* const int32_t* */ nullptr,
+            /* const uint32_t */ ctrls.size(),
+            /* custatevecComputeType_t */ compute_type,
+            /* void* */ extraWorkspace,
+            /* size_t */ extraWorkspaceSizeInBytes));
+        if (extraWorkspaceSizeInBytes)
+            PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
+    }
+
+    /**
+     * @brief Apply a given host-matrix `matrix` to the state vector at qubit
+     * indices given by `tgts` and control-lines given by `ctrls`. The adjoint
+     * can be taken by setting `use_adjoint` to true.
+     *
+     * @param matrix Host-data vector in row-major order of a given gate.
+     * @param ctrls Control line qubits.
+     * @param tgts Target qubits.
+     * @param use_adjoint Use adjoint of given gate.
+     */
+    void applyHostMatrixGate(const std::vector<CFP_t> &matrix,
+                             const std::vector<std::size_t> &ctrls,
+                             const std::vector<std::size_t> &tgts,
+                             bool use_adjoint = false) {
+        std::vector<int> ctrlsInt(ctrls.size());
+        std::vector<int> tgtsInt(tgts.size());
+
+        std::transform(
+            ctrls.begin(), ctrls.end(), ctrlsInt.begin(), [&](std::size_t x) {
+                return static_cast<int>(BaseType::getNumQubits() - 1 - x);
+            });
+        std::transform(
+            tgts.begin(), tgts.end(), tgtsInt.begin(), [&](std::size_t x) {
+                return static_cast<int>(BaseType::getNumQubits() - 1 - x);
+            });
+
+        // Initialize a vector to store the status of wires and default its
+        // elements as zeros, which assumes there is no target and control wire.
+        std::vector<int> statusWires(this->getTotalNumQubits(),
+                                     WireStatus::Default);
+
+        // Update wire status based on the gate information
+        for (size_t i = 0; i < ctrlsInt.size(); i++) {
+            statusWires[ctrlsInt[i]] = WireStatus::Control;
+        }
+        // Update wire status based on the gate information
+        for (size_t i = 0; i < tgtsInt.size(); i++) {
+            statusWires[tgtsInt[i]] = WireStatus::Target;
+        }
+
+        int StatusGlobalWires = std::reduce(
+            statusWires.begin() + this->getNumLocalQubits(), statusWires.end());
+
+        mpi_manager_.Barrier();
+
+        if (!StatusGlobalWires) {
+            applyCuSVHostMatrixGate(matrix, ctrlsInt, tgtsInt, use_adjoint);
+        } else {
+            std::vector<int> localCtrls = ctrlsInt;
+            std::vector<int> localTgts = tgtsInt;
+
+            auto wirePairs = createWirePairs(
+                this->getNumLocalQubits(), this->getTotalNumQubits(),
+                localCtrls, localTgts, statusWires);
+
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+
+            applyMPI_Dispatcher(wirePairs,
+                                &StateVectorCudaMPI::applyCuSVHostMatrixGate,
+                                matrix, localCtrls, localTgts, use_adjoint);
+            PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        }
+    }
+
+    void applyHostMatrixGate(const std::vector<std::complex<Precision>> &matrix,
+                             const std::vector<std::size_t> &ctrls,
+                             const std::vector<std::size_t> &tgts,
+                             bool use_adjoint = false) {
+        std::vector<CFP_t> matrix_cu(matrix.size());
+        for (std::size_t i = 0; i < matrix.size(); i++) {
+            matrix_cu[i] =
+                cuUtil::complexToCu<std::complex<Precision>>(matrix[i]);
+        }
+
+        applyHostMatrixGate(matrix_cu, ctrls, tgts, use_adjoint);
+    }
+
     /**
      * @brief MPI dispatcher for the target and control gates at global qubits.
      *
