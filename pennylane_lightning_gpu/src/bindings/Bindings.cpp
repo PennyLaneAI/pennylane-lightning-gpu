@@ -1375,7 +1375,6 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
         .def("getRank", &MPIManager::getRank)
         .def("getSize", &MPIManager::getSize)
         .def("getSizeNode", &MPIManager::getSizeNode)
-        //.def("getComm", &MPIManager::getComm)
         .def("getTime", &MPIManager::getTime)
         .def("getVendor", &MPIManager::getVendor)
         .def("getVersion", &MPIManager::getVersion)
@@ -1404,14 +1403,11 @@ PYBIND11_MODULE(lightning_gpu_qubit_ops, // NOLINT: No control over
                     send_ptr, recv_ptr, recvBuf.request().size, root);
             },
             "MPI Scatter.");
-#endif
-
-    StateVectorCudaManaged_class_bindings<float, float>(m);
-    StateVectorCudaManaged_class_bindings<double, double>(m);
-#ifdef ENABLE_MPI
     StateVectorCudaMPI_class_bindings<float, float>(m);
     StateVectorCudaMPI_class_bindings<double, double>(m);
 #endif
+    StateVectorCudaManaged_class_bindings<float, float>(m);
+    StateVectorCudaManaged_class_bindings<double, double>(m);
 }
 
 } // namespace

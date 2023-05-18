@@ -14,6 +14,7 @@
 #include "cuda_helpers.hpp"
 
 #include "StateVectorCudaMPI.hpp"
+#include "StateVectorCudaManaged.hpp"
 #include "StateVectorRawCPU.hpp"
 
 #include "MPIManager.hpp"
@@ -24,10 +25,2451 @@ using namespace Pennylane;
 using namespace Pennylane::MPI;
 using namespace CUDA;
 
+#define num_qubits 8
+#define lsb_1qbit                                                              \
+    { 0 }
+#define msb_1qbit                                                              \
+    { num_qubits - 1 }
+
+#define lsb_2qbit                                                              \
+    { 0, 1 }
+#define msb_2qbit                                                              \
+    { num_qubits - 2, num_qubits - 1 }
+#define mlsb_2qbit                                                             \
+    { 0, num_qubits - 1 }
+
+#define lsb_3qbit                                                              \
+    { 0, 1, 2 }
+#define msb_3qbit                                                              \
+    { num_qubits - 3, num_qubits - 2, num_qubits - 1 }
+#define mlsb_3qbit                                                             \
+    { 0, num_qubits - 2, num_qubits - 1 }
+
+#define lsb_4qbit                                                              \
+    { 0, 1, 2, 3 }
+#define msb_4qbit                                                              \
+    { num_qubits - 4, num_qubits - 3, num_qubits - 2, num_qubits - 1 }
+#define mlsb_4qbit                                                             \
+    { 0, 1, num_qubits - 2, num_qubits - 1 }
+
+#define angle_1param                                                           \
+    { 0.4 }
+#define angle_3param                                                           \
+    { 0.4, 0.3, 0.2 }
+
+#define PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, NUM_QUBITS, GATE_METHOD,       \
+                                      GATE_NAME, WIRE, ANGLE)                  \
+    {                                                                          \
+        using cp_t = std::complex<TestType>;                                   \
+        using PrecisionT = TestType;                                           \
+        MPIManager mpi_manager(MPI_COMM_WORLD);                                \
+        int nGlobalIndexBits =                                                 \
+            std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - \
+            1;                                                                 \
+        int nLocalIndexBits = NUM_QUBITS - nGlobalIndexBits;                   \
+        int subSvLength = 1 << nLocalIndexBits;                                \
+        int svLength = 1 << NUM_QUBITS;                                        \
+        mpi_manager.Barrier();                                                 \
+        std::vector<cp_t> init_sv(svLength);                                   \
+        std::vector<cp_t> expected_sv(svLength);                               \
+        if (mpi_manager.getRank() == 0) {                                      \
+            std::mt19937 re{1337};                                             \
+            auto random_sv = createRandomState<PrecisionT>(re, NUM_QUBITS);    \
+            init_sv = random_sv;                                               \
+        }                                                                      \
+        auto local_state = mpi_manager.scatter(init_sv, 0);                    \
+        mpi_manager.Barrier();                                                 \
+        int nDevices = 0;                                                      \
+        cudaGetDeviceCount(&nDevices);                                         \
+        int deviceId = mpi_manager.getRank() % nDevices;                       \
+        cudaSetDevice(deviceId);                                               \
+        mpi_manager.Barrier();                                                 \
+        SECTION("Apply directly") {                                            \
+            SECTION("Operation on target") {                                   \
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits, \
+                                                nLocalIndexBits);              \
+                sv.CopyHostDataToGpu(local_state, false);                      \
+                sv.GATE_METHOD(WIRE, false, ANGLE);                            \
+                sv.CopyGpuDataToHost(local_state.data(),                       \
+                                     static_cast<std::size_t>(subSvLength));   \
+                SVDataGPU<TestType> svdat{NUM_QUBITS, init_sv};                \
+                if (mpi_manager.getRank() == 0) {                              \
+                    svdat.cuda_sv.GATE_METHOD(WIRE, false, ANGLE);             \
+                    svdat.cuda_sv.CopyGpuDataToHost(                           \
+                        expected_sv.data(),                                    \
+                        static_cast<std::size_t>(svLength));                   \
+                }                                                              \
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);  \
+                CHECK(local_state == Pennylane::approx(expected_local_sv));    \
+            }                                                                  \
+        }                                                                      \
+        SECTION("Apply using dispatcher") {                                    \
+            SECTION("Operation on target") {                                   \
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits, \
+                                                nLocalIndexBits);              \
+                sv.CopyHostDataToGpu(local_state, false);                      \
+                sv.applyOperation(GATE_NAME, WIRE, false, ANGLE);              \
+                sv.CopyGpuDataToHost(local_state.data(),                       \
+                                     static_cast<std::size_t>(subSvLength));   \
+                SVDataGPU<TestType> svdat{NUM_QUBITS, init_sv};                \
+                if (mpi_manager.getRank() == 0) {                              \
+                    svdat.cuda_sv.applyOperation(GATE_NAME, WIRE, false,       \
+                                                 ANGLE);                       \
+                    svdat.cuda_sv.CopyGpuDataToHost(                           \
+                        expected_sv.data(),                                    \
+                        static_cast<std::size_t>(svLength));                   \
+                }                                                              \
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);  \
+                CHECK(local_state == Pennylane::approx(expected_local_sv));    \
+            }                                                                  \
+        }                                                                      \
+    }
+
+TEMPLATE_TEST_CASE("StateVectorCudaMPI::GateOpsParam",
+                   "[StateVectorCudaMPI_Param]", float, double) {
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyRX, "RX",
+                                  lsb_1qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyRX, "RX",
+                                  msb_1qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyRY, "RY",
+                                  lsb_1qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyRY, "RY",
+                                  msb_1qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyRZ, "RZ",
+                                  lsb_1qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyRZ, "RZ",
+                                  msb_1qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyPhaseShift,
+                                  "PhaseShift", lsb_1qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyPhaseShift,
+                                  "PhaseShift", msb_1qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyRot, "Rot",
+                                  lsb_1qbit, angle_3param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyRot, "Rot",
+                                  msb_1qbit, angle_3param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyIsingXX, "IsingXX",
+                                  lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyIsingXX, "IsingXX",
+                                  mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyIsingXX, "IsingXX",
+                                  msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyIsingYY, "IsingYY",
+                                  lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyIsingYY, "IsingYY",
+                                  mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyIsingYY, "IsingYY",
+                                  msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyIsingZZ, "IsingZZ",
+                                  lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyIsingZZ, "IsingZZ",
+                                  mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyIsingZZ, "IsingZZ",
+                                  msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applyControlledPhaseShift, "ControlledPhaseShift",
+        lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applyControlledPhaseShift, "ControlledPhaseShift",
+        mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applyControlledPhaseShift, "ControlledPhaseShift",
+        msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRX, "CRX",
+                                  lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRX, "CRX",
+                                  mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRX, "CRX",
+                                  msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRY, "CRY",
+                                  lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRY, "CRY",
+                                  mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRY, "CRY",
+                                  msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRZ, "CRZ",
+                                  lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRZ, "CRZ",
+                                  mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRZ, "CRZ",
+                                  msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRot, "CRot",
+                                  lsb_2qbit, angle_3param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRot, "CRot",
+                                  mlsb_2qbit, angle_3param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyCRot, "CRot",
+                                  msb_2qbit, angle_3param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applySingleExcitation,
+                                  "SingleExcitation", lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applySingleExcitation,
+                                  "SingleExcitation", mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applySingleExcitation,
+                                  "SingleExcitation", msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applySingleExcitationMinus,
+        "SingleExcitationMinus", lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applySingleExcitationMinus,
+        "SingleExcitationMinus", mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applySingleExcitationMinus,
+        "SingleExcitationMinus", msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applySingleExcitationPlus, "SingleExcitationPlus",
+        lsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applySingleExcitationPlus, "SingleExcitationPlus",
+        mlsb_2qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applySingleExcitationPlus, "SingleExcitationPlus",
+        msb_2qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyDoubleExcitation,
+                                  "DoubleExcitation", lsb_4qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyDoubleExcitation,
+                                  "DoubleExcitation", mlsb_4qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(TestType, num_qubits, applyDoubleExcitation,
+                                  "DoubleExcitation", msb_4qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applyDoubleExcitationMinus,
+        "DoubleExcitationMinus", lsb_4qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applyDoubleExcitationMinus,
+        "DoubleExcitationMinus", mlsb_4qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applyDoubleExcitationMinus,
+        "DoubleExcitationMinus", msb_4qbit, angle_1param);
+
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applyDoubleExcitationPlus, "DoubleExcitationPlus",
+        lsb_4qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applyDoubleExcitationPlus, "DoubleExcitationPlus",
+        mlsb_4qbit, angle_1param);
+    PLGPU_MPI_TEST_GATE_OPS_PARAM(
+        TestType, num_qubits, applyDoubleExcitationPlus, "DoubleExcitationPlus",
+        msb_4qbit, angle_1param);
+}
+/*
+TEMPLATE_TEST_CASE("StateVectorCudaMPI::GateOps_Param",
+                   "[StateVectorCudaMPI_Param]", float, double) {
+    using cp_t = std::complex<TestType>;
+    using PrecisionT = TestType;
+    const std::size_t num_qubits = 6;
+
+    MPIManager mpi_manager(MPI_COMM_WORLD);
+
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
+    int nLocalIndexBits = num_qubits - nGlobalIndexBits;
+    int subSvLength = 1 << nLocalIndexBits;
+    int svLength = 1 << num_qubits;
+    mpi_manager.Barrier();
+
+    std::vector<cp_t> init_sv(svLength);
+    std::vector<cp_t> expected_sv(svLength);
+
+    if (mpi_manager.getRank() == 0) {
+        std::mt19937 re{1337};
+        auto random_sv = createRandomState<PrecisionT>(re, num_qubits);
+        init_sv = random_sv;
+    }
+
+    auto local_state = mpi_manager.scatter(init_sv, 0);
+    mpi_manager.Barrier();
+
+    int nDevices = 0; // Number of GPU devices per node
+    cudaGetDeviceCount(&nDevices);
+    int deviceId = mpi_manager.getRank() % nDevices;
+    cudaSetDevice(deviceId);
+    mpi_manager.Barrier();
+
+    const std::vector<PrecisionT> angles{0.4, 0.3, 0.2};
+
+    SECTION("Gate: RX") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyRX({0}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyRX({0}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyRX({num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyRX({num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("RX", {0}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("RX", {0}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("RX", {num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("RX", {num_qubits - 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: RY") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyRY({0}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyRY({0}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyRY({num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyRY({num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("RY", {0}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("RY", {0}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("RY", {num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("RY", {num_qubits - 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: RZ") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyRZ({0}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyRZ({0}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyRZ({num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyRZ({num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("RZ", {0}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("RZ", {0}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("RZ", {num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("RZ", {num_qubits - 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: PhaseShift") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyPhaseShift({0}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyPhaseShift({0}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyPhaseShift({num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyPhaseShift({num_qubits - 1}, false,
+                                                  {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("PhaseShift", {0}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("PhaseShift", {0}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("PhaseShift", {num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("PhaseShift", {num_qubits - 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: Rot") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyRot({0}, false, {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyRot({0}, false,
+                                           {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyRot({num_qubits - 1}, false,
+                            {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyRot({num_qubits - 1}, false,
+                                           {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("Rot", {0}, false,
+                                  {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "Rot", {0}, false, {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("Rot", {num_qubits - 1}, false,
+                                  {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "Rot", {num_qubits - 1}, false,
+                        {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: IsingXX") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyIsingXX({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyIsingXX({0, 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyIsingXX({0, num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyIsingXX({0, num_qubits - 1}, false,
+                                               {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyIsingXX({num_qubits - 2, num_qubits - 1}, false,
+                                {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyIsingXX({num_qubits - 2, num_qubits - 1},
+                                               false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("IsingXX", {0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("IsingXX", {0, 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("IsingXX", {0, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("IsingXX", {0, num_qubits - 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("IsingXX", {num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "IsingXX", {num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: IsingYY") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyIsingYY({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyIsingYY({0, 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyIsingYY({0, num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyIsingYY({0, num_qubits - 1}, false,
+                                               {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyIsingYY({num_qubits - 2, num_qubits - 1}, false,
+                                {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyIsingYY({num_qubits - 2, num_qubits - 1},
+                                               false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("IsingYY", {0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("IsingYY", {0, 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("IsingYY", {0, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("IsingYY", {0, num_qubits - 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("IsingYY", {num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "IsingYY", {num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: IsingZZ") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyIsingZZ({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyIsingZZ({0, 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyIsingZZ({0, num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyIsingZZ({0, num_qubits - 1}, false,
+                                               {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyIsingZZ({num_qubits - 2, num_qubits - 1}, false,
+                                {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyIsingZZ({num_qubits - 2, num_qubits - 1},
+                                               false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("IsingZZ", {0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("IsingZZ", {0, 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("IsingZZ", {0, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("IsingZZ", {0, num_qubits - 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("IsingZZ", {num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "IsingZZ", {num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: ControlledPhaseShift") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyControlledPhaseShift({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyControlledPhaseShift({0, 1}, false,
+                                                            {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyControlledPhaseShift({0, num_qubits - 1}, false,
+                                             {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyControlledPhaseShift({0, num_qubits - 1},
+                                                            false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyControlledPhaseShift({num_qubits - 2, num_qubits - 1},
+                                             false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyControlledPhaseShift(
+                        {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("ControlledPhaseShift", {0, 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("ControlledPhaseShift", {0, 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("ControlledPhaseShift", {0, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("ControlledPhaseShift",
+                                                 {0, num_qubits - 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("ControlledPhaseShift",
+                                  {num_qubits - 2, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "ControlledPhaseShift",
+                        {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: CRX") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRX({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRX({0, 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRX({0, num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRX({0, num_qubits - 1}, false,
+                                           {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRX({num_qubits - 2, num_qubits - 1}, false,
+                            {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRX({num_qubits - 2, num_qubits - 1},
+                                           false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRX", {0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("CRX", {0, 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRX", {0, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("CRX", {0, num_qubits - 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRX", {num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "CRX", {num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: CRY") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRY({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRY({0, 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRY({0, num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRY({0, num_qubits - 1}, false,
+                                           {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRY({num_qubits - 2, num_qubits - 1}, false,
+                            {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRY({num_qubits - 2, num_qubits - 1},
+                                           false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRY", {0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("CRY", {0, 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRY", {0, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("CRY", {0, num_qubits - 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRY", {num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "CRY", {num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: CRZ") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRZ({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRZ({0, 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRZ({0, num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRZ({0, num_qubits - 1}, false,
+                                           {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRZ({num_qubits - 2, num_qubits - 1}, false,
+                            {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRZ({num_qubits - 2, num_qubits - 1},
+                                           false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRZ", {0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("CRZ", {0, 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRZ", {0, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("CRZ", {0, num_qubits - 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRZ", {num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "CRZ", {num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: CRot") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRot({0, 1}, false, {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRot({0, 1}, false,
+                                            {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRot({0, num_qubits - 1}, false,
+                             {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRot({0, num_qubits - 1}, false,
+                                            {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyCRot({num_qubits - 2, num_qubits - 1}, false,
+                             {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyCRot({num_qubits - 2, num_qubits - 1},
+                                            false,
+                                            {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRot", {0, 1}, false,
+                                  {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "CRot", {0, 1}, false,
+                        {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRot", {0, num_qubits - 1}, false,
+                                  {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "CRot", {0, num_qubits - 1}, false,
+                        {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("CRot", {num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0], angles[1], angles[2]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "CRot", {num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0], angles[1], angles[2]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: SingleExcitation") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applySingleExcitation({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applySingleExcitation({0, 1}, false,
+                                                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applySingleExcitation({0, num_qubits - 1}, false,
+                                         {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applySingleExcitation({0, num_qubits - 1},
+                                                        false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applySingleExcitation({num_qubits - 2, num_qubits - 1},
+                                         false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applySingleExcitation(
+                        {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("SingleExcitation", {0, 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("SingleExcitation", {0, 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("SingleExcitation", {0, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("SingleExcitation",
+                                                 {0, num_qubits - 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("SingleExcitation",
+                                  {num_qubits - 2, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "SingleExcitation", {num_qubits - 2, num_qubits - 1},
+                        false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: SingleExcitationMinus") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applySingleExcitationMinus({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applySingleExcitationMinus({0, 1}, false,
+                                                             {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applySingleExcitationMinus({0, num_qubits - 1}, false,
+                                              {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applySingleExcitationMinus(
+                        {0, num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applySingleExcitationMinus({num_qubits - 2, num_qubits - 1},
+                                              false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applySingleExcitationMinus(
+                        {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("SingleExcitationMinus", {0, 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("SingleExcitationMinus",
+                                                 {0, 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("SingleExcitationMinus", {0, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("SingleExcitationMinus",
+                                                 {0, num_qubits - 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("SingleExcitationMinus",
+                                  {num_qubits - 2, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "SingleExcitationMinus",
+                        {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: SingleExcitationPlus") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applySingleExcitationPlus({0, 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applySingleExcitationPlus({0, 1}, false,
+                                                            {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applySingleExcitationPlus({0, num_qubits - 1}, false,
+                                             {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applySingleExcitationPlus({0, num_qubits - 1},
+                                                            false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applySingleExcitationPlus({num_qubits - 2, num_qubits - 1},
+                                             false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applySingleExcitationPlus(
+                        {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("SingleExcitationPlus", {0, 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("SingleExcitationPlus", {0, 1},
+                                                 false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("SingleExcitationPlus", {0, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("SingleExcitationPlus",
+                                                 {0, num_qubits - 1}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("SingleExcitationPlus",
+                                  {num_qubits - 2, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "SingleExcitationPlus",
+                        {num_qubits - 2, num_qubits - 1}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: DoubleExcitation") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyDoubleExcitation({0, 1, 2, 3}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyDoubleExcitation({0, 1, 2, 3}, false,
+                                                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyDoubleExcitation({0, 1, num_qubits - 2, num_qubits - 1},
+                                         false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyDoubleExcitation(
+                        {0, 1, num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyDoubleExcitation({num_qubits - 4, num_qubits - 3,
+                                          num_qubits - 2, num_qubits - 1},
+                                         false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyDoubleExcitation(
+                        {num_qubits - 4, num_qubits - 3, num_qubits - 2,
+                         num_qubits - 1},
+                        false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("DoubleExcitation", {0, 1, 2, 3}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "DoubleExcitation", {0, 1, 2, 3}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("DoubleExcitation",
+                                  {0, 1, num_qubits - 2, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "DoubleExcitation",
+                        {0, 1, num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("DoubleExcitation",
+                                  {num_qubits - 4, num_qubits - 3,
+                                   num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "DoubleExcitation",
+                        {num_qubits - 4, num_qubits - 3, num_qubits - 2,
+                         num_qubits - 1},
+                        false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: DoubleExcitationMinus") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyDoubleExcitationMinus({0, 1, 2, 3}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyDoubleExcitationMinus(
+                        {0, 1, 2, 3}, false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyDoubleExcitationMinus(
+                    {0, 1, num_qubits - 2, num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyDoubleExcitationMinus(
+                        {0, 1, num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyDoubleExcitationMinus({num_qubits - 4, num_qubits - 3,
+                                               num_qubits - 2, num_qubits - 1},
+                                              false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyDoubleExcitationMinus(
+                        {num_qubits - 4, num_qubits - 3, num_qubits - 2,
+                         num_qubits - 1},
+                        false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("DoubleExcitationMinus", {0, 1, 2, 3}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("DoubleExcitationMinus",
+                                                 {0, 1, 2, 3}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("DoubleExcitationMinus",
+                                  {0, 1, num_qubits - 2, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "DoubleExcitationMinus",
+                        {0, 1, num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("DoubleExcitationMinus",
+                                  {num_qubits - 4, num_qubits - 3,
+                                   num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "DoubleExcitationMinus",
+                        {num_qubits - 4, num_qubits - 3, num_qubits - 2,
+                         num_qubits - 1},
+                        false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+
+    SECTION("Gate: DoubleExcitationPlus") {
+        SECTION("Apply directly") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyDoubleExcitationPlus({0, 1, 2, 3}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyDoubleExcitationPlus({0, 1, 2, 3}, false,
+                                                            {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and local Qubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyDoubleExcitationPlus(
+                    {0, 1, num_qubits - 2, num_qubits - 1}, false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyDoubleExcitationPlus(
+                        {0, 1, num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyDoubleExcitationPlus({num_qubits - 4, num_qubits - 3,
+                                              num_qubits - 2, num_qubits - 1},
+                                             false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyDoubleExcitationPlus(
+                        {num_qubits - 4, num_qubits - 3, num_qubits - 2,
+                         num_qubits - 1},
+                        false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+
+        SECTION("Apply using dispatcher") {
+            SECTION("Operation on globalQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("DoubleExcitationPlus", {0, 1, 2, 3}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation("DoubleExcitationPlus",
+                                                 {0, 1, 2, 3}, false,
+                                                 {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on global and localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("DoubleExcitationPlus",
+                                  {0, 1, num_qubits - 2, num_qubits - 1}, false,
+                                  {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "DoubleExcitationPlus",
+                        {0, 1, num_qubits - 2, num_qubits - 1}, false,
+                        {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+
+            SECTION("Operation on localQubits") {
+                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits,
+                                                nLocalIndexBits);
+                sv.CopyHostDataToGpu(local_state, false);
+                sv.applyOperation("DoubleExcitationPlus",
+                                  {num_qubits - 4, num_qubits - 3,
+                                   num_qubits - 2, num_qubits - 1},
+                                  false, {angles[0]});
+                sv.CopyGpuDataToHost(local_state.data(),
+                                     static_cast<std::size_t>(subSvLength));
+                SVDataGPU<TestType> svdat{num_qubits, init_sv};
+                if (mpi_manager.getRank() == 0) {
+                    svdat.cuda_sv.applyOperation(
+                        "DoubleExcitationPlus",
+                        {num_qubits - 4, num_qubits - 3, num_qubits - 2,
+                         num_qubits - 1},
+                        false, {angles[0]});
+                    svdat.cuda_sv.CopyGpuDataToHost(
+                        expected_sv.data(), static_cast<std::size_t>(svLength));
+                }
+                auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);
+                CHECK(local_state == Pennylane::approx(expected_local_sv));
+            }
+        }
+    }
+}
+*/
 /*******************************************************************************
  * Single-qubit gates
  ******************************************************************************/
-
+/*
 TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyRX", "[StateVectorCudaMPI_Param]",
                    float, double) {
     using PrecisionT = TestType;
@@ -1802,6 +4244,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRZ", "[StateVectorCudaMPI_Param]",
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
+
 // CRot Gate
 TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRot",
                    "[StateVectorCudaMPI_Param]", float, double) {
@@ -1966,6 +4409,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyCRot",
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
+
 // SingleExcitation Gate
 TEMPLATE_TEST_CASE("StateVectorCudaMPI::applySingleExcitation",
                    "[StateVectorCudaMPI_Param]", float, double) {
@@ -3180,3 +5624,4 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::applyMultiRZ",
         CHECK(localstate == Pennylane::approx(expected_localstate2));
     }
 }
+*/

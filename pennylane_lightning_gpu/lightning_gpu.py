@@ -105,10 +105,10 @@ except (ModuleNotFoundError, ImportError, ValueError, PLException) as e:
     CPP_BINARY_AVAILABLE = False
 
 
-def _gpu_dtype(dtype, mpi_comm=None):
+def _gpu_dtype(dtype, mpi=False):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    if mpi_comm is None:
+    if mpi == False:
         return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
     else:
         return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
@@ -217,7 +217,7 @@ if CPP_BINARY_AVAILABLE:
             self,
             wires,
             *,
-            mpi_comm: [bool] = None,
+            mpi: [bool] = False,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -234,20 +234,20 @@ if CPP_BINARY_AVAILABLE:
 
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
-            self.init_helper(mpi_comm, self.num_wires)
-            if mpi_comm is None:
+            self.init_helper(mpi, self.num_wires)
+            if mpi == False:
                 self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
                 self._batch_obs = batch_obs
             else:
-                self._gpu_state = _gpu_dtype(c_dtype, mpi_comm)(
+                self._gpu_state = _gpu_dtype(c_dtype, mpi)(
                     self._mpi_manager, self._num_global_wires, self._num_local_wires
                 )
                 self._batch_obs = False
             self._create_basis_state_GPU(0)
             self._sync = sync
 
-        def init_helper(self, mpi_comm, num_wires):
-            if mpi_comm is None:
+        def init_helper(self, mpi, num_wires):
+            if mpi == False:
                 self._num_local_wires = num_wires
                 return
             else:

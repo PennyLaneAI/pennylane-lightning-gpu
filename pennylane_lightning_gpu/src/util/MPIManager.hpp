@@ -38,43 +38,66 @@ template <typename T> auto cppTypeToString() -> const std::string {
     return typestr;
 }
 
+/**
+ * @brief MPI operation class. Maintains MPI related operations.
+ */
 class MPIManager {
   private:
     bool isExternalComm_;
-    int rank_;
-    int size_per_node_;
-    int size_;
-    MPI_Comm communiator_;
+    size_t rank_;
+    size_t size_per_node_;
+    size_t size_;
+    MPI_Comm communicator_;
 
     std::string vendor_;
-    int version_;
-    int subversion_;
+    size_t version_;
+    size_t subversion_;
 
   public:
-    MPIManager() : communiator_(MPI_COMM_WORLD) {
+    MPIManager() : communicator_(MPI_COMM_WORLD) {
         isExternalComm_ = true;
-        PL_MPI_IS_SUCCESS(MPI_Comm_rank(communiator_, &rank_));
-        PL_MPI_IS_SUCCESS(MPI_Comm_size(communiator_, &size_));
+        int rank_int;
+        int size_int;
+        PL_MPI_IS_SUCCESS(MPI_Comm_rank(communicator_, &rank_int));
+        PL_MPI_IS_SUCCESS(MPI_Comm_size(communicator_, &size_int));
+
+        rank_ = static_cast<size_t>(rank_int);
+        size_ = static_cast<size_t>(size_int);
+
         findVendor();
         findVersion();
         getNumProcsPerNode();
+        check_mpi_config();
     }
 
-    MPIManager(MPI_Comm communicator) : communiator_(communicator) {
+    MPIManager(MPI_Comm communicator) : communicator_(communicator) {
         isExternalComm_ = true;
-        PL_MPI_IS_SUCCESS(MPI_Comm_rank(communiator_, &rank_));
-        PL_MPI_IS_SUCCESS(MPI_Comm_size(communiator_, &size_));
+        int rank_int;
+        int size_int;
+        PL_MPI_IS_SUCCESS(MPI_Comm_rank(communicator_, &rank_int));
+        PL_MPI_IS_SUCCESS(MPI_Comm_size(communicator_, &size_int));
+
+        rank_ = static_cast<size_t>(rank_int);
+        size_ = static_cast<size_t>(size_int);
+
         findVendor();
         findVersion();
         getNumProcsPerNode();
+        check_mpi_config();
     }
 
     MPIManager(int argc, char **argv) {
         PL_MPI_IS_SUCCESS(MPI_Init(&argc, &argv));
         isExternalComm_ = false;
-        communiator_ = MPI_COMM_WORLD;
-        PL_MPI_IS_SUCCESS(MPI_Comm_rank(communiator_, &rank_));
-        PL_MPI_IS_SUCCESS(MPI_Comm_size(communiator_, &size_));
+        communicator_ = MPI_COMM_WORLD;
+        int rank_int;
+        int size_int;
+        PL_MPI_IS_SUCCESS(MPI_Comm_rank(communicator_, &rank_int));
+        PL_MPI_IS_SUCCESS(MPI_Comm_size(communicator_, &size_int));
+
+        rank_ = static_cast<size_t>(rank_int);
+        size_ = static_cast<size_t>(size_int);
+
         findVendor();
         findVersion();
         getNumProcsPerNode();
@@ -85,7 +108,7 @@ class MPIManager {
         isExternalComm_ = true;
         rank_ = other.rank_;
         size_ = other.size_;
-        communiator_ = other.communiator_;
+        communicator_ = other.communicator_;
         vendor_ = other.vendor_;
         version_ = other.version_;
         subversion_ = other.subversion_;
@@ -123,7 +146,7 @@ class MPIManager {
     /**
      * @brief Get the communicator.
      */
-    MPI_Comm getComm() { return communiator_; }
+    MPI_Comm getComm() { return communicator_; }
 
     /**
      * @brief Get an elapsed time.
@@ -138,7 +161,7 @@ class MPIManager {
     /**
      * @brief Get the MPI version.
      */
-    auto getVersion() -> std::tuple<int, int> {
+    auto getVersion() -> std::tuple<size_t, size_t> {
         return {version_, subversion_};
     }
 
@@ -167,7 +190,10 @@ class MPIManager {
      * @brief Find the MPI version.
      */
     void findVersion() {
-        PL_MPI_IS_SUCCESS(MPI_Get_version(&version_, &subversion_));
+        int version_int, subversion_int;
+        PL_MPI_IS_SUCCESS(MPI_Get_version(&version_int, &subversion_int));
+        version_ = static_cast<size_t>(version_int);
+        subversion_ = static_cast<size_t>(subversion_int);
     }
 
     /**
@@ -175,10 +201,12 @@ class MPIManager {
      */
     void getNumProcsPerNode() {
         MPI_Comm node_comm;
+        int size_per_node_int;
         PL_MPI_IS_SUCCESS(
             MPI_Comm_split_type(this->getComm(), MPI_COMM_TYPE_SHARED,
                                 this->getRank(), MPI_INFO_NULL, &node_comm));
-        PL_MPI_IS_SUCCESS(MPI_Comm_size(node_comm, &size_per_node_));
+        PL_MPI_IS_SUCCESS(MPI_Comm_size(node_comm, &size_per_node_int));
+        size_per_node_ = static_cast<size_t>(size_per_node_int);
         this->Barrier();
     }
 
@@ -200,18 +228,27 @@ class MPIManager {
      * @brief MPI_Allgather wrapper.
      *
      * @tparam T C++ data type.
-     *
      * @param sendBuf Send buffer.
      * @param recvBuf Receive buffer vector.
-     * @param sendCound Number of elements received from any process.
+     * @param sendCount Number of elements received from any process.
      */
     template <typename T>
-    void Allgather(T &sendBuf, std::vector<T> &recvBuf, int sendCount = 1) {
+    void Allgather(T &sendBuf, std::vector<T> &recvBuf, size_t sendCount = 1) {
         MPI_Datatype datatype = getMPIDatatype<T>();
-        PL_ABORT_IF(recvBuf.size() != static_cast<size_t>(this->getSize()),
+        if (sendCount != 1) {
+            if (cppTypeToString<T>() != cppTypeToString<cudaIpcMemHandle_t>() &&
+                cppTypeToString<T>() !=
+                    cppTypeToString<cudaIpcEventHandle_t>()) {
+                std::cerr << "Unsupported MPI DataType implementation.\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        PL_ABORT_IF(recvBuf.size() != this->getSize(),
                     "Incompatible size of sendBuf and recvBuf.");
-        PL_MPI_IS_SUCCESS(MPI_Allgather(&sendBuf, sendCount, datatype,
-                                        recvBuf.data(), sendCount, datatype,
+
+        int sendCountInt = static_cast<int>(sendCount);
+        PL_MPI_IS_SUCCESS(MPI_Allgather(&sendBuf, sendCountInt, datatype,
+                                        recvBuf.data(), sendCountInt, datatype,
                                         this->getComm()));
     }
 
@@ -219,19 +256,15 @@ class MPIManager {
      * @brief MPI_Allgather wrapper.
      *
      * @tparam T C++ data type.
-     *
      * @param sendBuf Send buffer.
-     * @param sendCound Number of elements received from any process.
-     *
+     * @param sendCount Number of elements received from any process.
      * @return recvBuf Vector of receive buffer.
      */
-    template <typename T>
-    auto allgather(T &sendBuf, int sendCount = 1) -> std::vector<T> {
+    template <typename T> auto allgather(T &sendBuf) -> std::vector<T> {
         MPI_Datatype datatype = getMPIDatatype<T>();
-        std::vector<T> recvBuf(this->getSize() * sendCount);
-        PL_MPI_IS_SUCCESS(MPI_Allgather(&sendBuf, sendCount, datatype,
-                                        recvBuf.data(), sendCount, datatype,
-                                        this->getComm()));
+        std::vector<T> recvBuf(this->getSize());
+        PL_MPI_IS_SUCCESS(MPI_Allgather(&sendBuf, 1, datatype, recvBuf.data(),
+                                        1, datatype, this->getComm()));
         return recvBuf;
     }
 
@@ -239,7 +272,6 @@ class MPIManager {
      * @brief MPI_Allgather wrapper.
      *
      * @tparam T C++ data type.
-     *
      * @param sendBuf Send buffer vector.
      * @param recvBuf Receive buffer vector.
      */
@@ -257,9 +289,7 @@ class MPIManager {
      * @brief MPI_Allgather wrapper.
      *
      * @tparam T C++ data type.
-     *
      * @param sendBuf Send buffer vector.
-     *
      * @return recvBuf Vector of receive buffer.
      */
     template <typename T>
@@ -276,7 +306,6 @@ class MPIManager {
      * @brief MPI_Allreduce wrapper.
      *
      * @tparam T C++ data type.
-     *
      * @param sendBuf Send buffer.
      * @param recvBuf Receive buffer.
      * @param op_str String of MPI_Op.
@@ -293,10 +322,8 @@ class MPIManager {
      * @brief MPI_Allreduce wrapper.
      *
      * @tparam T C++ data type.
-     *
      * @param sendBuf Send buffer.
      * @param op_str String of MPI_Op.
-     *
      * @return recvBuf Receive buffer.
      */
     template <typename T>
@@ -313,7 +340,6 @@ class MPIManager {
      * @brief MPI_Allreduce wrapper.
      *
      * @tparam T C++ data type.
-     *
      * @param sendBuf Send buffer vector.
      * @param recvBuf Receive buffer vector.
      * @param op_str String of MPI_Op.
@@ -321,6 +347,8 @@ class MPIManager {
     template <typename T>
     void Allreduce(std::vector<T> &sendBuf, std::vector<T> &recvBuf,
                    const std::string &op_str) {
+        PL_ABORT_IF(recvBuf.size() != sendBuf.size(),
+                    "Incompatible size of sendBuf and recvBuf.");
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Op op = getMPIOpType(op_str);
         PL_MPI_IS_SUCCESS(MPI_Allreduce(sendBuf.data(), recvBuf.data(),
@@ -332,10 +360,8 @@ class MPIManager {
      * @brief MPI_Allreduce wrapper.
      *
      * @tparam T C++ data type.
-     *
      * @param sendBuf Send buffer vector.
      * @param op_str String of MPI_Op.
-     *
      * @return recvBuf Receive buffer.
      */
     template <typename T>
@@ -361,10 +387,11 @@ class MPIManager {
      * @param sendBuf Send buffer.
      * @param root Rank of broadcast root.
      */
-    template <typename T> void Bcast(T &sendBuf, int root) {
+    template <typename T> void Bcast(T &sendBuf, size_t root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
+        int rootInt = static_cast<int>(root);
         PL_MPI_IS_SUCCESS(
-            MPI_Bcast(&sendBuf, 1, datatype, root, this->getComm()));
+            MPI_Bcast(&sendBuf, 1, datatype, rootInt, this->getComm()));
     }
 
     /**
@@ -374,10 +401,11 @@ class MPIManager {
      * @param sendBuf Send buffer vector.
      * @param root Rank of broadcast root.
      */
-    template <typename T> void Bcast(std::vector<T> &sendBuf, int root) {
+    template <typename T> void Bcast(std::vector<T> &sendBuf, size_t root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
+        int rootInt = static_cast<int>(root);
         PL_MPI_IS_SUCCESS(MPI_Bcast(sendBuf.data(), sendBuf.size(), datatype,
-                                    root, this->getComm()));
+                                    rootInt, this->getComm()));
     }
 
     /**
@@ -389,10 +417,11 @@ class MPIManager {
      * @param root Rank of scatter root.
      */
     template <typename T>
-    void Scatter(T *sendBuf, T *recvBuf, size_t dataSize, int root) {
+    void Scatter(T *sendBuf, T *recvBuf, size_t dataSize, size_t root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
+        int rootInt = static_cast<int>(root);
         PL_MPI_IS_SUCCESS(MPI_Scatter(sendBuf, dataSize, datatype, recvBuf,
-                                      dataSize, datatype, root,
+                                      dataSize, datatype, rootInt,
                                       this->getComm()));
     }
 
@@ -405,13 +434,15 @@ class MPIManager {
      * @param root Rank of scatter root.
      */
     template <typename T>
-    void Scatter(std::vector<T> &sendBuf, std::vector<T> &recvBuf, int root) {
+    void Scatter(std::vector<T> &sendBuf, std::vector<T> &recvBuf,
+                 size_t root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         PL_ABORT_IF(sendBuf.size() != recvBuf.size() * this->getSize(),
                     "Incompatible size of sendBuf and recvBuf.");
+        int rootInt = static_cast<int>(root);
         PL_MPI_IS_SUCCESS(MPI_Scatter(sendBuf.data(), recvBuf.size(), datatype,
                                       recvBuf.data(), recvBuf.size(), datatype,
-                                      root, this->getComm()));
+                                      rootInt, this->getComm()));
     }
 
     /**
@@ -420,22 +451,26 @@ class MPIManager {
      * @tparam T C++ data type.
      * @param sendBuf Send buffer vector.
      * @param root Rank of scatter root.
-     *
      * @return recvBuf Receive buffer vector.
      */
     template <typename T>
-    auto scatter(std::vector<T> &sendBuf, int root) -> std::vector<T> {
+    auto scatter(std::vector<T> &sendBuf, size_t root) -> std::vector<T> {
         MPI_Datatype datatype = getMPIDatatype<T>();
-        int recvBufSize = sendBuf.size() / this->getSize();
+        int recvBufSize;
+        if (this->getRank() == root) {
+            recvBufSize = sendBuf.size() / this->getSize();
+        }
+        this->Bcast<int>(recvBufSize, root);
         std::vector<T> recvBuf(recvBufSize);
+        int rootInt = static_cast<int>(root);
         PL_MPI_IS_SUCCESS(MPI_Scatter(sendBuf.data(), recvBuf.size(), datatype,
                                       recvBuf.data(), recvBuf.size(), datatype,
-                                      root, this->getComm()));
+                                      rootInt, this->getComm()));
         return recvBuf;
     }
 
     /**
-     * @brief MPI_Scatter wrapper.
+     * @brief MPI_Sendrecv wrapper.
      *
      * @tparam T C++ data type.
      * @param sendBuf Send buffer.
@@ -444,18 +479,20 @@ class MPIManager {
      * @param source Rank of source.
      */
     template <typename T>
-    void Sendrecv(T &sendBuf, int dest, T &recvBuf, int source) {
+    void Sendrecv(T &sendBuf, size_t dest, T &recvBuf, size_t source) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Status status;
         int sendtag = 0;
         int recvtag = 0;
-        PL_MPI_IS_SUCCESS(MPI_Sendrecv(&sendBuf, 1, datatype, dest, sendtag,
-                                       &recvBuf, 1, datatype, source, recvtag,
-                                       this->getComm(), &status));
+        int destInt = static_cast<int>(dest);
+        int sourceInt = static_cast<int>(source);
+        PL_MPI_IS_SUCCESS(MPI_Sendrecv(&sendBuf, 1, datatype, destInt, sendtag,
+                                       &recvBuf, 1, datatype, sourceInt,
+                                       recvtag, this->getComm(), &status));
     }
 
     /**
-     * @brief MPI_Scatter wrapper.
+     * @brief MPI_Sendrecv wrapper.
      *
      * @tparam T C++ data type.
      * @param sendBuf Send buffer vector.
@@ -464,15 +501,17 @@ class MPIManager {
      * @param source Rank of source.
      */
     template <typename T>
-    void Sendrecv(std::vector<T> &sendBuf, int dest, std::vector<T> &recvBuf,
-                  int source) {
+    void Sendrecv(std::vector<T> &sendBuf, size_t dest, std::vector<T> &recvBuf,
+                  size_t source) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Status status;
         int sendtag = 0;
         int recvtag = 0;
+        int destInt = static_cast<int>(dest);
+        int sourceInt = static_cast<int>(source);
         PL_MPI_IS_SUCCESS(MPI_Sendrecv(sendBuf.data(), sendBuf.size(), datatype,
-                                       dest, sendtag, recvBuf.data(),
-                                       recvBuf.size(), datatype, source,
+                                       destInt, sendtag, recvBuf.data(),
+                                       recvBuf.size(), datatype, sourceInt,
                                        recvtag, this->getComm(), &status));
     }
 
@@ -482,13 +521,14 @@ class MPIManager {
      * @param color Processes with the same color are in the same new
      * communicator.
      * @param key Rank assignment control.
-     *
      * @return new MPIManager object.
      */
-    auto split(int color, int key) -> MPIManager {
+    auto split(size_t color, size_t key) -> MPIManager {
         MPI_Comm newcomm;
+        int colorInt = static_cast<int>(color);
+        int keyInt = static_cast<int>(key);
         PL_MPI_IS_SUCCESS(
-            MPI_Comm_split(this->getComm(), color, key, &newcomm));
+            MPI_Comm_split(this->getComm(), colorInt, keyInt, &newcomm));
         return MPIManager(newcomm);
     }
 
@@ -566,7 +606,7 @@ class MPIManager {
         {cppTypeToString<std::complex<long double>>(),
          MPI_C_LONG_DOUBLE_COMPLEX},
         // cuda related types
-        {cppTypeToString<cudaIpcMemHandle_t>(), MPI_INT8_T},
-        {cppTypeToString<cudaIpcEventHandle_t>(), MPI_INT8_T}};
+        {cppTypeToString<cudaIpcMemHandle_t>(), MPI_UINT8_T},
+        {cppTypeToString<cudaIpcEventHandle_t>(), MPI_UINT8_T}};
 };
 } // namespace Pennylane::MPI

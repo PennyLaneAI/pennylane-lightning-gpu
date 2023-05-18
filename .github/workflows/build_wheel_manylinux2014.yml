@@ -56,7 +56,7 @@ jobs:
 
           CIBW_SKIP: "*-musllinux*"
 
-          CIBW_CONFIG_SETTINGS: --global-option=build_ext --global-option=--define="CMAKE_CXX_COMPILER=$(which g++-11); PLLGPU_ENABLE_MPI=ON;CMAKE_C_COMPILER=$(which gcc-11);LIGHTNING_RELEASE_TAG=master"
+          CIBW_CONFIG_SETTINGS: --global-option=build_ext --global-option=--define="CMAKE_CXX_COMPILER=$(which g++-11); CMAKE_C_COMPILER=$(which gcc-11);LIGHTNING_RELEASE_TAG=master"
 
           # Python build settings
           CIBW_BEFORE_BUILD: |
@@ -65,23 +65,8 @@ jobs:
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
             yum clean all
             yum -y install cuda-11-5 git openssh wget
-            cd /usr/local/src/
-            wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.4.tar.gz
-            tar xfz openmpi-4.1.4.tar.gz
-            cd openmpi-4.1.4 && ./configure --with-cuda=/usr/local/cuda-11.5 --with-cuda-libdir=/usr/local/cuda-11.5/lib64
-            make all -j4 && make install
-            cd /usr/local/src && rm -rf openmpi-4.1.4 
-          #cd /usr/local/src/
-          #wget http://www.mpich.org/static/downloads/4.0.2/mpich-4.0.2.tar.gz
-          #tar xf mpich-4.0.2.tar.gz
-          #rm mpich-4.0.2.tar.gz
-          #cd mpich-4.0.2
-          #./configure --with-cuda=/usr/local/cuda-11.5 --disable-fortran FFLAGS=-fallow-argument-mismatch FCFLAGS=-fallow-argument-mismatch --with-device=ch4:ofi
-          #make -j4 && make install
-          #cd /usr/local/src
-          #rm -rf mpich-4.0.2
           # ensure nvcc is available
-          CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin:/usr/local/include LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib:/usr/lib64:/usr/local/lib:/usr/local/lib64:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
+          CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
 
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: "./docker/auditwheel repair -w {dest_dir} {wheel}"
@@ -100,7 +85,7 @@ jobs:
           regex: '.*[0-9]+.[0-9]+.[0-9]+[-_]?rc[0-9]+'
 
       - uses: actions/upload-artifact@v2
-        #if: ${{ github.event_name == 'release' || github.ref == 'refs/heads/main' || steps.rc_build.outputs.match != ''}}
+        if: ${{ github.event_name == 'release' || github.ref == 'refs/heads/main' || steps.rc_build.outputs.match != ''}}
         with:
           name: ${{ runner.os }}-wheels
           path: ./wheelhouse/*.whl

@@ -56,6 +56,8 @@ option(PLLGPU_ENABLE_COVERAGE "Enable code coverage" OFF)
 option(PLLGPU_ENABLE_OPENMP "Enable OpenMP support" ON)
 option(PLLGPU_ENABLE_MPI "Enable MPI support" OFF)
 
+set(MPICH OFF)
+set(SYSTEM_NAME "Linux")
 message(STATUS "MPI SUPPORT ${PLLGPU_ENABLE_MPI}")
 
 # Build options
@@ -130,11 +132,15 @@ if(PLLGPU_ENABLE_MPI)
     endif()
 
     if(${SYSTEM_NAME} STREQUAL "CrayLinux")
-        find_library(MPI_GTL
-        NAMES libmpi_gtl_cuda.so libmpi_gtl_cuda.so.0 libmpi_gtl_cuda.so.0.0.0
-        HINTS ENV CRAY_LD_LIBRARY_PATH
-              ENV LD_LIBRARY_PATH
-        )
+        string(FIND "${MPI_CXX_LIBRARIES}" "mpich" subStrIndex)
+        if(NOT subStrIndex EQUAL -1)
+            find_library(MPI_GTL
+            NAMES libmpi_gtl_cuda.so libmpi_gtl_cuda.so.0 libmpi_gtl_cuda.so.0.0.0
+            HINTS ENV CRAY_LD_LIBRARY_PATH
+                  ENV LD_LIBRARY_PATH
+            )
+            set(MPICH ON)
+        endif()
     endif()
 endif()
 
@@ -192,7 +198,7 @@ target_link_libraries(pennylane_lightning_gpu INTERFACE pennylane_lightning
 target_include_directories(pennylane_lightning_gpu INTERFACE "pennylane_lightning_gpu/src")
 
 if(PLLGPU_ENABLE_MPI)
-    if(${SYSTEM_NAME} STREQUAL "CrayLinux")
+    if(${SYSTEM_NAME} STREQUAL "CrayLinux" AND MPICH)
         target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT} ${MPI_GTL})
     else()
         target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})

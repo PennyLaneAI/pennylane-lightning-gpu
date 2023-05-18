@@ -30,7 +30,6 @@ enum WireStatus { Default, Target, Control };
  * @param numTotalQubits Number of total qubits.
  * @param ctrls Vector of control wires.
  * @param tgts Vector of target wires.
- *
  * @return wirePairs Wire pairs to be passed to SV bit index swap worker.
  */
 inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
@@ -69,8 +68,8 @@ inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
     return wirePairs;
 }
 
-/*
- * Utility function object to tell std::shared_ptr how to
+/**
+ * @brief Utility function object to tell std::shared_ptr how to
  * release/destroy various custatevecSVSwapWorker related objects.
  */
 struct MPIWorkerDeleter {
@@ -132,10 +131,12 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     custatevecSVSwapWorkerDescriptor_t svSegSwapWorker = nullptr;
 
-    int nDevices = 0;
-    PL_CUDA_IS_SUCCESS(cudaGetDeviceCount(&nDevices));
+    int nDevices_int = 0;
+    PL_CUDA_IS_SUCCESS(cudaGetDeviceCount(&nDevices_int));
 
-    // Ensure the P2P devices is calulcated based on the numbe of MPI processes
+    size_t nDevices = static_cast<size_t>(nDevices_int);
+
+    // Ensure the P2P devices is calulcated based on the number of MPI processes
     // within the node
     nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()
                                                     : nDevices;

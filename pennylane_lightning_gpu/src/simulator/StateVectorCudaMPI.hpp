@@ -199,7 +199,7 @@ class StateVectorCudaMPI
         CFP_t value_cu = cuUtil::complexToCu<std::complex<Precision>>(value);
         auto stream_id = localStream_.get();
 
-        if (mpi_manager_.getRank() == static_cast<int>(rankId)) {
+        if (mpi_manager_.getRank() == rankId) {
             setBasisState_CUDA(BaseType::getData(), value_cu, local_index,
                                async, stream_id);
         }
@@ -232,7 +232,7 @@ class StateVectorCudaMPI
             size_t rankId =
                 static_cast<size_t>(index) >> BaseType::getNumQubits();
 
-            if (static_cast<int>(rankId) == mpi_manager_.getRank()) {
+            if (rankId == mpi_manager_.getRank()) {
                 int local_index = index ^ (rankId << BaseType::getNumQubits());
                 indices_local.push_back(local_index);
                 values_local.push_back(values[i]);
