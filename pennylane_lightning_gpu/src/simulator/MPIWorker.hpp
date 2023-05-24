@@ -159,22 +159,22 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         &localEvent, cudaEventInterprocess | cudaEventDisableTiming));
 
     custatevecCommunicatorType_t communicatorType;
-    std::string mpilibname;
     if (mpi_manager.getVendor() == "MPICH") {
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH;
-        mpilibname = "libmpi.so";
     }
-
     if (mpi_manager.getVendor() == "Open MPI") {
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
-        mpilibname = "";
     }
 
-    const char *soname = mpilibname.c_str();
-
-    mpi_manager.Barrier();
-    PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
-        handle, &communicator, communicatorType, soname));
+    const char *soname0 = nullptr;
+    auto err = custatevecCommunicatorCreate(handle, &communicator,
+                                            communicatorType, soname0);
+    if (err != CUSTATEVEC_STATUS_SUCCESS) {
+        communicator = nullptr;
+        const char *soname1 = "libmpi.so";
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
+            handle, &communicator, communicatorType, soname1));
+    }
     mpi_manager.Barrier();
 
     void *d_extraWorkspace = nullptr;
@@ -208,7 +208,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         /* size_t */ extraWorkspaceSize));
 
     size_t transferWorkspaceSize =
-        size_t(1) << (numLocalQubits < 26 ? (numLocalQubits) : 26);
+        size_t{1} << (numLocalQubits < 26 ? (numLocalQubits) : 26);
 
     transferWorkspaceSize =
         std::max(minTransferWorkspaceSize, transferWorkspaceSize);
@@ -235,7 +235,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         mpi_manager.Allgather<cudaIpcEventHandle_t>(
             eventHandle, ipcEventHandles, sizeof(eventHandle));
         //  get remove device pointers and events
-        size_t nSubSVsP2P = 1 << nP2PDeviceBits;
+        size_t nSubSVsP2P = size_t{1} << nP2PDeviceBits;
         size_t p2pSubSVIndexBegin =
             (mpi_manager.getRank() / nSubSVsP2P) * nSubSVsP2P;
         size_t p2pSubSVIndexEnd = p2pSubSVIndexBegin + nSubSVsP2P;
@@ -262,7 +262,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
             /* void** */ d_subSVsP2P.data(),
             /* const int32_t* */ subSVIndicesP2P.data(),
             /* cudaEvent_t */ remoteEvents.data(),
-            /* const uint32_t */ static_cast<int>(d_subSVsP2P.size())));
+            /* const uint32_t */ static_cast<uint32_t>(d_subSVsP2P.size())));
     }
 
     return {svSegSwapWorker,

@@ -131,17 +131,17 @@ class MPIManager {
     /**
      * @brief Get the process rank in the communicator.
      */
-    auto getRank() const { return rank_; }
+    auto getRank() const -> size_t { return rank_; }
 
     /**
      * @brief Get the process number in the communicator.
      */
-    auto getSize() const { return size_; }
+    auto getSize() const -> size_t { return size_; }
 
     /**
      * @brief Get the number of processes per node in the communicator.
      */
-    auto getSizeNode() const { return size_per_node_; }
+    auto getSizeNode() const -> size_t { return size_per_node_; }
 
     /**
      * @brief Get the communicator.
@@ -156,12 +156,12 @@ class MPIManager {
     /**
      * @brief Get the MPI vendor.
      */
-    auto getVendor() const { return vendor_; }
+    auto getVendor() const -> std::string { return vendor_; }
 
     /**
      * @brief Get the MPI version.
      */
-    auto getVersion() -> std::tuple<size_t, size_t> {
+    auto getVersion() const -> std::tuple<size_t, size_t> {
         return {version_, subversion_};
     }
 

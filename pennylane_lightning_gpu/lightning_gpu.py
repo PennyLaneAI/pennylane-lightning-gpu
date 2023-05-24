@@ -216,7 +216,7 @@ if CPP_BINARY_AVAILABLE:
             self,
             wires,
             *,
-            mpi: [bool] = False,
+            mpi: bool = False,
             sync=False,
             c_dtype=np.complex128,
             shots=None,

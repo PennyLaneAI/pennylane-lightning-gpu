@@ -83,13 +83,13 @@ ifndef CUQUANTUM_SDK
 	@test $(CUQUANTUM_SDK)
 endif
 	rm -rf ./BuildTests
-	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
+	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=$CUQUANTUM_SDK
 	cmake --build ./BuildTests
 	./BuildTests/pennylane_lightning_gpu/src/tests/runner_gpu
 
 test-cpp-mpi-cray:
 	rm -rf ./BuildTests
-	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DSYSTEM_NAME=CrayLinux -DPLLGPU_ENABLE_MPI=On
+	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$CUQUANTUM_SDK
 	cmake --build ./BuildTests
 	srun ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
 

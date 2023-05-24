@@ -146,24 +146,24 @@ class StateVectorCudaMPI
         mpi_manager_.Barrier();
     };
 
-    ~StateVectorCudaMPI(){};
+    ~StateVectorCudaMPI() = default;
 
     /**
      * @brief Get the total number of wires.
      */
-    auto getTotalNumQubits() const {
+    auto getTotalNumQubits() const -> size_t {
         return numGlobalQubits_ + numLocalQubits_;
     }
 
     /**
      * @brief Get the number of wires distributed across devices.
      */
-    auto getNumGlobalQubits() const { return numGlobalQubits_; }
+    auto getNumGlobalQubits() const -> size_t { return numGlobalQubits_; }
 
     /**
      * @brief Get the number of wires within the local devices.
      */
-    auto getNumLocalQubits() const { return numLocalQubits_; }
+    auto getNumLocalQubits() const -> size_t { return numLocalQubits_; }
 
     /**
      * @brief Get pointer to custatevecSVSwapWorkerDescriptor.
@@ -193,7 +193,11 @@ class StateVectorCudaMPI
                        const bool async = false) {
         size_t rankId = index >> BaseType::getNumQubits();
 
-        size_t local_index = (rankId << BaseType::getNumQubits()) ^ index;
+        size_t local_index =
+            static_cast<size_t>(rankId *
+                                std::pow(2.0, static_cast<long double>(
+                                                  BaseType::getNumQubits()))) ^
+            index;
         BaseType::getDataBuffer().zeroInit();
 
         CFP_t value_cu = cuUtil::complexToCu<std::complex<Precision>>(value);
@@ -233,7 +237,11 @@ class StateVectorCudaMPI
                 static_cast<size_t>(index) >> BaseType::getNumQubits();
 
             if (rankId == mpi_manager_.getRank()) {
-                int local_index = index ^ (rankId << BaseType::getNumQubits());
+                int local_index =
+                    static_cast<size_t>(
+                        rankId * std::pow(2.0, static_cast<long double>(
+                                                   BaseType::getNumQubits()))) ^
+                    index;
                 indices_local.push_back(local_index);
                 values_local.push_back(values[i]);
             }
@@ -1277,11 +1285,11 @@ class StateVectorCudaMPI
 
         std::transform(
             ctrls.begin(), ctrls.end(), ctrlsInt.begin(), [&](std::size_t x) {
-                return static_cast<int>(BaseType::getNumQubits() - 1 - x);
+                return static_cast<int>(this->getTotalNumQubits() - 1 - x);
             });
         std::transform(
             tgts.begin(), tgts.end(), tgtsInt.begin(), [&](std::size_t x) {
-                return static_cast<int>(BaseType::getNumQubits() - 1 - x);
+                return static_cast<int>(this->getTotalNumQubits() - 1 - x);
             });
 
         // Initialize a vector to store the status of wires and default its

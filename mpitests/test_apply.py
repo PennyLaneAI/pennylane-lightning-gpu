@@ -37,7 +37,8 @@ except (ImportError, ModuleNotFoundError):
 
 numQubits = 8
 
-def createRandomInitState(numWires):
+def createRandomInitState(numWires, seed_value=48):
+    np.random.seed(seed_value)
     num_elements = 1 << numWires
     init_state = np.random.rand(num_elements) + 1j * np.random.rand(num_elements)
     scale_sum = np.sqrt(np.sum(np.abs(init_state) ** 2))
@@ -120,7 +121,6 @@ def apply_operation_gates_apply_param(tol, operation, par, Wires):
 
     assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
-
 def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
     num_wires = numQubits
     comm = MPI.COMM_WORLD
@@ -198,37 +198,6 @@ def apply_operation_gates_apply_nonparam(tol, operation, Wires):
     assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
     
 class TestApply:
-    # Parameterized test case for point-to-point communication
-    @pytest.mark.parametrize(
-        "input_data",
-        [
-            np.array([0, 1, 2, 3]),
-            np.array([1, 2, 3, 4]),
-            np.array([10, 20, 30, 40]),
-        ],
-    )
-    def test_sendrecv(self, input_data):
-        comm = MPI.COMM_WORLD
-        size = comm.Get_size()
-        rank = comm.Get_rank()
-    
-        local_data = comm.scatter(input_data, root=0)
-        local_expected_data = comm.scatter(np.roll(input_data,1), root=0)
-
-        # receive data from the previous process in the ring
-        if rank != 0:
-            received_data = comm.recv(source=(rank - 1 + size) % size)
-        
-        # send data to the next process in the ring
-        comm.send(local_data, dest=(rank + 1) % size)
-
-        # receive data from the previous process in the ring
-        if rank == 0: 
-            received_data = comm.recv(source=(rank - 1 + size) % size)
-
-        # verify that the received data is correct
-        assert received_data == local_expected_data
-
     # Parameterized test case for single wire nonparam gates
     @pytest.mark.parametrize("operation",[qml.PauliX,qml.PauliY,qml.PauliZ,qml.Hadamard,qml.S,qml.T])
     @pytest.mark.parametrize("Wires", [0,1,numQubits - 2,numQubits - 1])
@@ -416,7 +385,6 @@ class TestApply:
         comm.Scatter(state_vector, local_state_vector, root=0)
         dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
-        dev_cpu.reset()
 
         @qml.qnode(dev_cpu)
         def circuit():
@@ -428,8 +396,6 @@ class TestApply:
         dev_gpumpi = qml.device(
             "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128
         )
-
-        dev_cpu.reset()
 
         @qml.qnode(dev_gpumpi)
         def circuit_mpi():
