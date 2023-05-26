@@ -69,6 +69,44 @@ inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
 }
 
 /**
+ * @brief Create wire pairs for bit index swap and transform all target wires to
+ * local ones.
+ *
+ * @param numLocalQubits Number of local qubits.
+ * @param numTotalQubits Number of total qubits.
+ * @param tgts Vector of target wires.
+ * @return wirePairs Wire pairs to be passed to SV bit index swap worker.
+ */
+inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
+                                         std::vector<int> &tgts,
+                                         std::vector<int> &statusWires) {
+    std::vector<int2> wirePairs;
+    int localbit = numLocalQubits - 1, globalbit = numLocalQubits;
+    while (localbit >= 0 && globalbit < numTotalQubits) {
+        if (statusWires[localbit] == 0 && statusWires[globalbit] != 0) {
+            int2 wirepair = make_int2(localbit, globalbit);
+            wirePairs.push_back(wirepair);
+            if (statusWires[globalbit] == WireStatus::Target) {
+                for (size_t k = 0; k < tgts.size(); k++) {
+                    if (tgts[k] == globalbit) {
+                        tgts[k] = localbit;
+                    }
+                }
+            }
+            std::swap(statusWires[localbit], statusWires[globalbit]);
+        } else {
+            if (statusWires[localbit] != 0) {
+                localbit--;
+            }
+            if (statusWires[globalbit] == 0) {
+                globalbit++;
+            }
+        }
+    }
+    return wirePairs;
+}
+
+/**
  * @brief Utility function object to tell std::shared_ptr how to
  * release/destroy various custatevecSVSwapWorker related objects.
  */
@@ -158,6 +196,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
     PL_CUDA_IS_SUCCESS(cudaEventCreateWithFlags(
         &localEvent, cudaEventInterprocess | cudaEventDisableTiming));
 
+    /*
     custatevecCommunicatorType_t communicatorType;
     std::string mpilibname;
     if (mpi_manager.getVendor() == "MPICH") {
@@ -171,11 +210,29 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
     }
 
     const char *soname = mpilibname.c_str();
+    */
+    custatevecCommunicatorType_t communicatorType;
+    if (mpi_manager.getVendor() == "MPICH") {
+        communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH;
+    }
+    if (mpi_manager.getVendor() == "Open MPI") {
+        communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
+    }
 
-    mpi_manager.Barrier();
-    PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
-        handle, &communicator, communicatorType, soname));
-    mpi_manager.Barrier();
+    // const char *soname0 = nullptr;
+    auto err = custatevecCommunicatorCreate(handle, &communicator,
+                                            communicatorType, nullptr);
+    if (err != CUSTATEVEC_STATUS_SUCCESS) {
+        communicator = nullptr;
+        const char *soname1 = "libmpi.so";
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
+            handle, &communicator, communicatorType, soname1));
+    }
+
+    // mpi_manager.Barrier();
+    // PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
+    //     handle, &communicator, communicatorType, soname));
+    // mpi_manager.Barrier();
 
     void *d_extraWorkspace = nullptr;
     void *d_transferWorkspace = nullptr;

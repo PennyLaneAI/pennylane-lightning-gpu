@@ -234,6 +234,7 @@ if CPP_BINARY_AVAILABLE:
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
             self.init_helper(mpi, self.num_wires)
+            self.mpi_ = mpi
             if mpi == False:
                 self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
                 self._batch_obs = batch_obs
@@ -775,35 +776,42 @@ if CPP_BINARY_AVAILABLE:
                 return np.squeeze(np.mean(samples, axis=0))
 
             if observable.name in ["SparseHamiltonian"]:
-                CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
-                return self._gpu_state.ExpectationValue(
-                    CSR_SparseHamiltonian.indptr,
-                    CSR_SparseHamiltonian.indices,
-                    CSR_SparseHamiltonian.data,
-                )
+                if self.mpi_ == False:
+                    CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
+                    return self._gpu_state.ExpectationValue(
+                        CSR_SparseHamiltonian.indptr,
+                        CSR_SparseHamiltonian.indices,
+                        CSR_SparseHamiltonian.data,
+                    )
+                else:
+                    raise RuntimeError(
+                        "LightningGPU-MPI does not currently support SparseHamiltonian."
+                    )
 
             if observable.name in ["Hamiltonian"]:
-                device_wires = self.map_wires(observable.wires)
-                # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
-                if len(device_wires) > 13:
-                    coeffs = observable.coeffs
-                    pauli_words = []
-                    word_wires = []
-                    for word in observable.ops:
-                        compressed_word = []
-                        if isinstance(word.name, list):
-                            for char in word.name:
-                                compressed_word.append(_name_map[char])
-                        else:
-                            compressed_word.append(_name_map[word.name])
-                        word_wires.append(word.wires.tolist())
-                        pauli_words.append("".join(compressed_word))
-                    return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
-
+                if self.mpi_ == False:
+                    device_wires = self.map_wires(observable.wires)
+                    # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
+                    if len(device_wires) > 13:
+                        coeffs = observable.coeffs
+                        pauli_words = []
+                        word_wires = []
+                        for word in observable.ops:
+                            compressed_word = []
+                            if isinstance(word.name, list):
+                                for char in word.name:
+                                    compressed_word.append(_name_map[char])
+                            else:
+                                compressed_word.append(_name_map[word.name])
+                            word_wires.append(word.wires.tolist())
+                            pauli_words.append("".join(compressed_word))
+                        return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
+                    else:
+                        return self._gpu_state.ExpectationValue(
+                            device_wires, qml.matrix(observable).ravel(order="C")
+                        )
                 else:
-                    return self._gpu_state.ExpectationValue(
-                        device_wires, qml.matrix(observable).ravel(order="C")
-                    )
+                    raise RuntimeError("LightningGPU-MPI does not currently support Hamiltonian.")
 
             par = (
                 observable.parameters
@@ -842,12 +850,12 @@ if CPP_BINARY_AVAILABLE:
                 )
 
             # Device returns as col-major orderings, so perform transpose on data for bit-index shuffle for now.
-            return (
-                self._gpu_state.Probability(device_wires)
-                .reshape([2] * len(wires))
-                .transpose()
-                .reshape(-1)
-            )
+            local_prob = self._gpu_state.Probability(device_wires)
+            if len(local_prob) > 0:
+                num_local_wires = len(local_prob).bit_length() - 1 if len(local_prob) > 0 else 0
+                return local_prob.reshape([2] * num_local_wires).transpose().reshape(-1)
+            else:
+                return local_prob
 
         def generate_samples(self):
             """Generate samples

@@ -59,6 +59,7 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
     state_vector = createRandomInitState(num_wires)
 
     comm.Scatter(state_vector, local_state_vector, root=0)
+    comm.Bcast(state_vector, root=0)
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
     @qml.qnode(dev_cpu)
@@ -97,6 +98,7 @@ def apply_operation_gates_apply_param(tol, operation, par, Wires):
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
     state_vector = createRandomInitState(num_wires)
+    comm.Bcast(state_vector, root=0)
 
     comm.Scatter(state_vector, local_state_vector, root=0)
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
@@ -134,6 +136,7 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
     state_vector = createRandomInitState(num_wires)
+    comm.Bcast(state_vector, root=0)
 
     comm.Scatter(state_vector, local_state_vector, root=0)
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
@@ -145,6 +148,7 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
         return qml.state()
 
     expected_output_cpu = circuit()
+
     comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
     dev_gpumpi = qml.device(
@@ -174,6 +178,7 @@ def apply_operation_gates_apply_nonparam(tol, operation, Wires):
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
     state_vector = createRandomInitState(num_wires)
+    comm.Bcast(state_vector, root=0)
 
     comm.Scatter(state_vector, local_state_vector, root=0)
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
@@ -196,39 +201,94 @@ def apply_operation_gates_apply_nonparam(tol, operation, Wires):
     dev_gpumpi.syncD2H(local_state_vector)
 
     assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
-    
-class TestApply:
-    # Parameterized test case for point-to-point communication
-    @pytest.mark.parametrize(
-        "input_data",
-        [
-            np.array([0, 1, 2, 3]),
-            np.array([1, 2, 3, 4]),
-            np.array([10, 20, 30, 40]),
-        ],
+
+def expval_single_wire_no_param(tol,obs):
+    num_wires = numQubits
+    comm = MPI.COMM_WORLD
+    commSize = comm.Get_size()
+    num_global_wires = commSize.bit_length() - 1
+    num_local_wires = num_wires - num_global_wires
+
+    state_vector = np.zeros(1 << num_wires).astype(np.complex128)
+    local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
+
+    state_vector = createRandomInitState(num_wires)
+    comm.Bcast(state_vector, root=0)
+
+    comm.Scatter(state_vector, local_state_vector, root=0)
+    dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+    @qml.qnode(dev_cpu)
+    def circuit():
+        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        return qml.expval(obs)
+
+    expected_output_cpu = circuit()
+    comm.Bcast(expected_output_cpu, root=0)
+
+    dev_gpumpi = qml.device(
+        "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128
     )
-    def test_sendrecv(self, input_data):
-        comm = MPI.COMM_WORLD
-        size = comm.Get_size()
-        rank = comm.Get_rank()
-    
-        local_data = comm.scatter(input_data, root=0)
-        local_expected_data = comm.scatter(np.roll(input_data,1), root=0)
 
-        # receive data from the previous process in the ring
-        if rank != 0:
-            received_data = comm.recv(source=(rank - 1 + size) % size)
-        
-        # send data to the next process in the ring
-        comm.send(local_data, dest=(rank + 1) % size)
+    @qml.qnode(dev_gpumpi)
+    def circuit_mpi():
+        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        return qml.expval(obs)
 
-        # receive data from the previous process in the ring
-        if rank == 0: 
-            received_data = comm.recv(source=(rank - 1 + size) % size)
+    expected_output_gpu = circuit_mpi()
 
-        # verify that the received data is correct
-        assert received_data == local_expected_data
+    assert np.allclose(expected_output_gpu, expected_output_cpu, atol=tol, rtol=0)
 
+
+def apply_probs(tol, Wires):
+    num_wires = numQubits
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    commSize = comm.Get_size()
+    num_global_wires = commSize.bit_length() - 1
+    num_local_wires = num_wires - num_global_wires
+
+    state_vector = np.zeros(1 << num_wires).astype(np.complex128)
+    state_vector = createRandomInitState(num_wires)
+    comm.Bcast(state_vector, root=0)
+
+    dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+    @qml.qnode(dev_cpu)
+    def circuit():
+        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        return qml.probs(wires = Wires)
+
+    probs_cpu = circuit()
+
+    dev_gpumpi = qml.device(
+        "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128
+    )
+
+    @qml.qnode(dev_gpumpi)
+    def circuit_mpi():
+        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        return qml.probs(wires = Wires)
+
+    local_probs = circuit_mpi()
+
+    recv_counts = comm.gather(len(local_probs),root=0)
+
+    comm.Barrier()
+
+    if rank == 0:
+        probs_mpi = np.zeros(1<<len(Wires))
+    else:
+        probs_mpi = None
+        probs_cpu = None
+
+    comm.Gatherv(local_probs,[probs_mpi,recv_counts],root=0)
+
+    if rank == 0:
+        assert np.allclose(probs_mpi, probs_cpu, atol=tol, rtol=0)
+
+
+class TestApply:
     # Parameterized test case for single wire nonparam gates
     @pytest.mark.parametrize("operation",[qml.PauliX,qml.PauliY,qml.PauliZ,qml.Hadamard,qml.S,qml.T])
     @pytest.mark.parametrize("Wires", [0,1,numQubits - 2,numQubits - 1])
@@ -437,3 +497,71 @@ class TestApply:
 
         local_state_vector = circuit_mpi()
         assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
+
+class TestExpval:
+    """Tests that expectation values are properly calculated or that the proper errors are raised."""
+
+    @pytest.mark.parametrize(
+        "operation", [qml.PauliX, qml.PauliY, qml.PauliZ, qml.Hadamard, qml.Identity,],
+    )
+    @pytest.mark.parametrize("wires",[0,1,2,numQubits - 3, numQubits - 2, numQubits - 1])
+    def test_expval_single_wire_no_parameters(
+        self, tol, operation, wires):
+        """Tests that expectation values are properly calculated for single-wire observables without parameters."""
+
+        obs = operation(wires)
+        expval_single_wire_no_param(tol,obs)
+
+class TestGenerateSample:
+    """Tests that samples are properly calculated."""
+
+    def test_sample_dimensions(self):
+        """Tests if the samples returned by sample have
+        the correct dimensions
+        """
+        dev = qml.device("lightning.gpu", wires=numQubits, mpi=True, shots=1000, c_dtype=np.complex128)
+
+        dev.apply([qml.RX(1.5708, wires=[0]), qml.RX(1.5708, wires=[1])])
+
+        dev.shots = 10
+        dev._wires_measured = {0}
+        dev._samples = dev.generate_samples()
+        s1 = dev.sample(qml.PauliZ(wires=[0]))
+        assert np.array_equal(s1.shape, (10,))
+
+        dev.reset()
+        dev.shots = 12
+        dev._wires_measured = {1}
+        dev._samples = dev.generate_samples()
+        s2 = dev.sample(qml.PauliZ(wires=[1]))
+        assert np.array_equal(s2.shape, (12,))
+
+        dev.reset()
+        dev.shots = 17
+        dev._wires_measured = {0, 1}
+        dev._samples = dev.generate_samples()
+        s3 = dev.sample(qml.PauliX(0) @ qml.PauliZ(1))
+        assert np.array_equal(s3.shape, (17,))
+    
+    def test_sample_values(self, tol):
+        """Tests if the samples returned by sample have
+        the correct values
+        """
+        dev = qml.device("lightning.gpu", wires=numQubits, mpi=True, shots=1000, c_dtype=np.complex128)
+        # Explicitly resetting is necessary as the internal
+        # state is set to None in __init__ and only properly
+        # initialized during reset
+        dev.apply([qml.RX(1.5708, wires=[0])])
+        dev._wires_measured = {0}
+        dev._samples = dev.generate_samples()
+
+        s1 = dev.sample(qml.PauliZ(0))
+
+        # s1 should only contain 1 and -1, which is guaranteed if
+        # they square to 1
+        assert np.allclose(s1**2, 1, atol=tol, rtol=0)
+
+class TestProbs: 
+    @pytest.mark.parametrize("Wires", [[0],[1],[0,1],[0,2],[0,numQubits-1],[numQubits-2,numQubits-1], range(numQubits)])
+    def test_prob(self, tol, Wires):
+        apply_probs(tol,Wires)

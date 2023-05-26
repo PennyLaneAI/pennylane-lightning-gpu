@@ -4,8 +4,10 @@
 #include <bit>
 #include <complex>
 #include <cstring>
+#include <cuComplex.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <custatevec.h>
 #include <mpi.h>
 #include <stdexcept>
 #include <string>
@@ -370,9 +372,44 @@ class MPIManager {
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Op op = getMPIOpType(op_str);
         std::vector<T> recvBuf(sendBuf.size());
-        PL_MPI_IS_SUCCESS(MPI_Allreduce(sendBuf.data(), recvBuf.data(), 1,
-                                        datatype, op, this->getComm()));
+        PL_MPI_IS_SUCCESS(MPI_Allreduce(sendBuf.data(), recvBuf.data(),
+                                        sendBuf.size(), datatype, op,
+                                        this->getComm()));
         return recvBuf;
+    }
+
+    template <typename T>
+    void Reduce(T &sendBuf, T &recvBuf, size_t root,
+                const std::string &op_str) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        MPI_Op op = getMPIOpType(op_str);
+        PL_MPI_IS_SUCCESS(MPI_Reduce(&sendBuf, &recvBuf, 1, datatype, op, root,
+                                     this->getComm()));
+    }
+
+    template <typename T>
+    void Reduce(std::vector<T> &sendBuf, std::vector<T> &recvBuf, size_t root,
+                const std::string &op_str) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        MPI_Op op = getMPIOpType(op_str);
+        PL_MPI_IS_SUCCESS(MPI_Reduce(sendBuf.data(), recvBuf.data(),
+                                     sendBuf.size(), datatype, op, root,
+                                     this->getComm()));
+    }
+
+    template <typename T>
+    void Gather(T &sendBuf, std::vector<T> &recvBuf, size_t root) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        PL_MPI_IS_SUCCESS(MPI_Gather(&sendBuf, 1, datatype, recvBuf.data(), 1,
+                                     datatype, root, this->getComm()));
+    }
+
+    template <typename T>
+    void Gather(std::vector<T> &sendBuf, std::vector<T> &recvBuf, size_t root) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        PL_MPI_IS_SUCCESS(MPI_Gather(sendBuf.data(), sendBuf.size(), datatype,
+                                     recvBuf.data(), sendBuf.size(), datatype,
+                                     root, this->getComm()));
     }
 
     /**
@@ -515,6 +552,15 @@ class MPIManager {
                                        recvtag, this->getComm(), &status));
     }
 
+    template <typename T>
+    void Scan(T &sendBuf, T &recvBuf, const std::string &op_str) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        MPI_Op op = getMPIOpType(op_str);
+
+        PL_MPI_IS_SUCCESS(
+            MPI_Scan(&sendBuf, &recvBuf, 1, datatype, op, this->getComm()));
+    }
+
     /**
      * @brief Creates new MPIManager based on colors and keys.
      *
@@ -605,6 +651,12 @@ class MPIManager {
         {cppTypeToString<std::complex<double>>(), MPI_C_DOUBLE_COMPLEX},
         {cppTypeToString<std::complex<long double>>(),
          MPI_C_LONG_DOUBLE_COMPLEX},
+        {cppTypeToString<float2>(), MPI_C_FLOAT_COMPLEX},
+        {cppTypeToString<cuComplex>(), MPI_C_FLOAT_COMPLEX},
+        {cppTypeToString<cuFloatComplex>(), MPI_C_FLOAT_COMPLEX},
+        {cppTypeToString<double2>(), MPI_C_DOUBLE_COMPLEX},
+        {cppTypeToString<cuDoubleComplex>(), MPI_C_DOUBLE_COMPLEX},
+        {cppTypeToString<custatevecIndex_t>(), MPI_INT64_T},
         // cuda related types
         {cppTypeToString<cudaIpcMemHandle_t>(), MPI_UINT8_T},
         {cppTypeToString<cudaIpcEventHandle_t>(), MPI_UINT8_T}};
