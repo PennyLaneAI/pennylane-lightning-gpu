@@ -136,8 +136,8 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     size_t nDevices = static_cast<size_t>(nDevices_int);
 
-    // Ensure the P2P devices is calulcated based on the number of MPI processes
-    // within the node
+    // Ensure the number of P2P devices is calulcated based on the number of MPI
+    // processes within the node
     nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()
                                                     : nDevices;
 
