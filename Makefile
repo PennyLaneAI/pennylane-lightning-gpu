@@ -67,8 +67,11 @@ clean-docs:
 .PHONY : test-python test-builtin test-suite
 test-python: test-builtin test-suite
 
-test-python-mpi-cray: 
-	srun $(PYTHON) -I $(MPITESTRUNNER)
+test-python-mpich-cray: 
+	srun $(PYTHON) $(MPITESTRUNNER)
+
+test-python-mpi: 
+	mpirun -np 2 $(PYTHON) $(MPITESTRUNNER)
 
 test-builtin:
 	$(PYTHON) -I $(TESTRUNNER)
@@ -83,15 +86,21 @@ ifndef CUQUANTUM_SDK
 	@test $(CUQUANTUM_SDK)
 endif
 	rm -rf ./BuildTests
-	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=$CUQUANTUM_SDK
+	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
 	cmake --build ./BuildTests
 	./BuildTests/pennylane_lightning_gpu/src/tests/runner_gpu
 
-test-cpp-mpi-cray:
+test-cpp-mpich-cray:
 	rm -rf ./BuildTests
-	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$CUQUANTUM_SDK
+	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
 	cmake --build ./BuildTests
 	srun ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
+
+test-cpp-mpi:
+	rm -rf ./BuildTests
+	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
+	cmake --build ./BuildTests
+	mpirun -np 2 ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
 
 coverage:
 	@echo "Generating coverage report..."

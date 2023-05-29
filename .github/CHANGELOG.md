@@ -2,6 +2,21 @@
 
 ### New features since last release
 
+* Add multi-node/multi-gpu support to gate operation.
+  [(#112)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/112)
+
+  This new feature allows users to run their large-scale applications by leveraging the computational power of multi-node and multi-gpus.
+  Note that both the number of overall `MPI` processes and the number of `MPI` processes per node should be power of `2`. Each `MPI` process is responsible for one GPU for the moment.
+
+  The workflow for the new API is:
+  ```python
+  from mpi4py import MPI
+  import pennylane as qml
+  comm = MPI.COMM_WORLD
+  dev = qml.device('lightning.gpu', wires=8, mpi=True)
+  dev.apply([qml.PauliX(wires=[0])])
+  ``` 
+
 ### Breaking changes
 
 * Update tests to be compliant with PennyLane v0.31.0 development changes and deprecations.

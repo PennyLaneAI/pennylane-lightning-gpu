@@ -166,14 +166,12 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
     }
 
-    const char *soname0 = nullptr;
     auto err = custatevecCommunicatorCreate(handle, &communicator,
-                                            communicatorType, soname0);
+                                            communicatorType, nullptr);
     if (err != CUSTATEVEC_STATUS_SUCCESS) {
         communicator = nullptr;
-        const char *soname1 = "libmpi.so";
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
-            handle, &communicator, communicatorType, soname1));
+            handle, &communicator, communicatorType, "libmpi.so"));
     }
     mpi_manager.Barrier();
 

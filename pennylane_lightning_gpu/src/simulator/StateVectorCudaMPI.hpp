@@ -207,6 +207,7 @@ class StateVectorCudaMPI
             setBasisState_CUDA(BaseType::getData(), value_cu, local_index,
                                async, stream_id);
         }
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         mpi_manager_.Barrier();
     }
 
@@ -246,12 +247,9 @@ class StateVectorCudaMPI
                 values_local.push_back(values[i]);
             }
         }
-        mpi_manager_.Barrier();
 
         auto device_id = BaseType::getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
-
-        mpi_manager_.Barrier();
 
         index_type num_elements = indices_local.size();
 
@@ -265,9 +263,6 @@ class StateVectorCudaMPI
                                     async);
         d_values.CopyHostDataToGpu(values_local.data(), d_values.getLength(),
                                    async);
-
-        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
-        mpi_manager_.Barrier();
 
         setStateVector_CUDA(BaseType::getData(), num_elements,
                             d_values.getData(), d_indices.getData(),
@@ -1445,13 +1440,11 @@ class StateVectorCudaMPI
                 std::invoke(std::forward<F>(functor), this,
                             std::forward<Args>(args)...);
             }
+            // synchronize all operations on device
             PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
             PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
             mpi_manager_.Barrier();
         }
-        // synchronize all operations on device
-        PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
-        mpi_manager_.Barrier();
 
         PL_CUSTATEVEC_IS_SUCCESS(custatevecDistIndexBitSwapSchedulerDestroy(
             handle_.get(), scheduler));
