@@ -18,7 +18,13 @@
  rank = comm.Get_rank()
  numQubits = 8
  dev = qml.device('lightning.gpu', wires=numQubits, mpi=True)
- local_probs = dev.probability(wires = [0])
+
+ @qml.qnode(dev)
+ def mpi_circuit():
+   qml.Hadamard(wires=1)
+   return qml.probs(wires=[0, 1])
+
+ local_probs = mpi_circuit
  
  #For data collection across MPI processes.
  recv_counts = comm.gather(len(local_probs),root=0)
