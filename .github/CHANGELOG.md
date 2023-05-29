@@ -2,6 +2,36 @@
 
 ### New features since last release
 
+ * Add multi-node/multi-GPU support to measurement methods, including `expval`, `generate_samples` and `probability`.
+ [(#116)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/116)
+
+ Note that each MPI process will return the overall result of expectation value and sample generation. However, `probability` will 
+ return local probability results. Users should be responsible to collect probalibity results across the MPI processes.
+ 
+ The workflow for collecting probality results across the MPI processes:
+ ```python
+ from mpi4py import MPI
+ import pennylane as qml
+ import numpy as np
+
+ comm = MPI.COMM_WORLD
+ rank = comm.Get_rank()
+ numQubits = 8
+ dev = qml.device('lightning.gpu', wires=numQubits, mpi=True)
+ local_probs = dev.probability(wires = [0])
+ 
+ #For data collection across MPI processes.
+ recv_counts = comm.gather(len(local_probs),root=0)
+ if rank == 0:
+    probs = np.zeros(1<<numQubits)
+ else:
+    probs = None
+
+ comm.Gatherv(local_probs,[probs,recv_counts],root=0)
+ if rank == 0:
+    print(probs)
+ ```
+
 ### Breaking changes
 
 * Update tests to be compliant with PennyLane v0.31.0 development changes and deprecations.
