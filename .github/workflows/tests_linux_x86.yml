@@ -20,6 +20,8 @@ jobs:
   cpptests:
     runs-on:
       - self-hosted
+      - linux
+      - x64
       - ubuntu-22.04
       - gpu
 
@@ -132,11 +134,14 @@ jobs:
           rm -rf .git
           rm -rf .gitignore
           rm -rf .github
+          pip cache purge
 
 
   pythontests:
     runs-on:
       - self-hosted
+      - linux
+      - x64
       - ubuntu-22.04
       - gpu
 
@@ -221,3 +226,4 @@ jobs:
           rm -rf .git
           rm -rf .gitignore
           rm -rf .github
+          pip cache purge
