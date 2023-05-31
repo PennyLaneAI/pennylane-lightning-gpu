@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Set GPU Label
         id: gpu_label
-        run:
+        run: |
           if [[ "${{ env.MULTI_GPU_SUPPORT_REQUIRED }}" == "true" ]]; then
             echo "gpu_type=multi-gpu" >> $GITHUB_OUTPUT
           else
