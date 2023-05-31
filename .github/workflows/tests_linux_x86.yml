@@ -31,9 +31,9 @@ jobs:
             echo "gpu_type=gpu" >> $GITHUB_OUTPUT
           fi
 
-  output:
-    gpu_type: ${{ steps.gpu_label.outputs.gpu_type }}
-    runs-on: '["self-hosted", "linux", "x64", "ubuntu-22.04", "${{ steps.gpu_label.outputs.gpu_type }}"]'
+    output:
+      gpu_type: ${{ steps.gpu_label.outputs.gpu_type }}
+      runs-on: '["self-hosted", "linux", "x64", "ubuntu-22.04", "${{ steps.gpu_label.outputs.gpu_type }}"]'
 
   cpptests:
     needs:
