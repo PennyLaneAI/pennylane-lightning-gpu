@@ -11,19 +11,35 @@ env:
   GCC_VERSION: 11
   OMP_NUM_THREADS: "2"
   CI_CUDA_ARCH: 86
+  MULTI_GPU_SUPPORT_REQUIRED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:use-multi-gpu-runner') }}
 
 concurrency:
   group: gpu-test-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  set_runs_on_values:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set GPU Label
+        id: gpu_label
+        run:
+          if [[ "${{ env.MULTI_GPU_SUPPORT_REQUIRED }}" == "true" ]]; then
+            echo "gpu_type=multi-gpu" >> $GITHUB_OUTPUT
+          else
+            echo "gpu_type=gpu" >> $GITHUB_OUTPUT
+          fi
+
+  output:
+    gpu_type: ${{ steps.gpu_label.outputs.gpu_type }}
+    runs-on: '["self-hosted", "linux", "x64", "ubuntu-22.04", "${{ steps.gpu_label.outputs.gpu_type }}"]'
+
   cpptests:
-    runs-on:
-      - self-hosted
-      - linux
-      - x64
-      - ubuntu-22.04
-      - gpu
+    needs:
+      - set_runs_on_values
+
+    runs-on: ${{ fromJson(needs.set_runs_on_values.outputs.runs-on) }}
 
     strategy:
       max-parallel: 1
@@ -77,6 +93,23 @@ jobs:
         run: |
           nvidia-smi
           /usr/local/cuda/bin/nvcc --version
+
+      - name: Validate Multi-GPU packages
+        if: needs.set_runs_on_values.outputs.gpu_type == 'multi-gpu'
+        run: |
+          source /etc/profile.d/modules.sh
+
+          module use /opt/modules/
+
+          echo 'Checking for OpenMPI'
+          module load openmpi
+          mpirun --version
+          module unload openmpi
+
+          echo 'Checking for MPICH'
+          module load mpich
+          mpiexec --version
+          module unload mpich
 
       - name: Build and run unit tests
         run: |
@@ -138,12 +171,10 @@ jobs:
 
 
   pythontests:
-    runs-on:
-      - self-hosted
-      - linux
-      - x64
-      - ubuntu-22.04
-      - gpu
+    needs:
+      - set_runs_on_values
+
+    runs-on: ${{ fromJson(needs.set_runs_on_values.outputs.runs-on) }}
 
     strategy:
       max-parallel: 1
