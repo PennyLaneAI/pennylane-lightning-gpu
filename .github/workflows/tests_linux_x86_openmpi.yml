@@ -113,6 +113,7 @@ jobs:
 
       - name: Build and run unit tests with OpenMPI backend
         run: |
+            source /etc/profile.d/modules.sh
             module load openmpi
             cmake . -BBuild \
               -DPLLGPU_ENABLE_MPI=On \
@@ -138,6 +139,7 @@ jobs:
 
       - name: Build and run unit tests for code coverage for OpenMPI backend
         run: |
+            source /etc/profile.d/modules.sh
             module load openmpi
             cmake . -BBuildCov \
               -DPLLGPU_ENABLE_MPI=On \
@@ -227,6 +229,7 @@ jobs:
 
       - name: Install required packages (OpenMPI backend)
         run: |
+          source /etc/profile.d/modules.sh
           module load openmpi
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov mpi4py
