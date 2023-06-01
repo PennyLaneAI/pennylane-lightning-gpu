@@ -72,7 +72,7 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
     comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
     dev_gpumpi = qml.device(
-        "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128
+        "lightning.gpu", wires=num_wires, mpi=True,mpi_buffer_size=num_wires, c_dtype=np.complex128
     )
 
     @qml.qnode(dev_gpumpi)
@@ -112,7 +112,7 @@ def apply_operation_gates_apply_param(tol, operation, par, Wires):
     comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
     dev_gpumpi = qml.device(
-        "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128
+        "lightning.gpu", wires=num_wires, mpi=True, mpi_buffer_size=num_wires, c_dtype=np.complex128
     )
 
     dev_gpumpi.syncH2D(local_state_vector)
@@ -148,7 +148,7 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
     comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
     dev_gpumpi = qml.device(
-        "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128
+        "lightning.gpu", wires=num_wires, mpi=True,mpi_buffer_size=num_wires, c_dtype=np.complex128
     )
 
     @qml.qnode(dev_gpumpi)
@@ -188,7 +188,7 @@ def apply_operation_gates_apply_nonparam(tol, operation, Wires):
     comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
     dev_gpumpi = qml.device(
-        "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128
+        "lightning.gpu", wires=num_wires, mpi=True,mpi_buffer_size=num_wires, c_dtype=np.complex128
     )
 
     dev_gpumpi.syncH2D(local_state_vector)

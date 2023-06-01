@@ -894,7 +894,6 @@ void MPIManager_class_bindings(py::module &m) {
         .def("getTime", &MPIManager::getTime)
         .def("getVendor", &MPIManager::getVendor)
         .def("getVersion", &MPIManager::getVersion)
-        .def("checkMPIConfig", &MPIManager::check_mpi_config)
         .def(
             "Scatter",
             [](MPIManager &mpi_manager, np_arr_c64 &sendBuf,
