@@ -99,7 +99,7 @@ Build PennyLane-Lightning-GPU with multi-node/multi-gpu support
 ---------------------------------------------------------------
 Use of PennyLane-Lightning-GPU with multi-node/multi-gpu support also requires explicit installation of the NVIDIA cuQuantum SDK, ``mpi4py`` 
 and `CUDA-aware MPI` (Message Passing Interface). `CUDA-aware MPI` allows data exchange between GPU memory spaces of different nodes
-without the need for CPU. `MPICH` and `OpenMPI` libaraies are supported for the moment.
+without the need for CPU -mediated transfers. Both `MPICH` and `OpenMPI` libaries are supported, provided they are compiled with CUDA support.
 The NVIDIA cuQuantum library and MPI library directory may be provided on the ``LD_LIBRARY_PATH`` environment variable, or the NVIDIA cuQuantum SDK and ``mpi4py`` 
 Python package may be installed within the Python environment ``site-packages`` directory using ``pip`` or ``conda``. 
 Please see the `cuQuantum SDK <https://developer.nvidia.com/cuquantum-sdk>`_ , `mpi4py <https://mpi4py.readthedocs.io/en/stable/install.html>`_, 
@@ -154,14 +154,16 @@ repository:
 
 .. code-block:: console
 
-    make test-python-mpi
+    mpirun -np 2 python -m pytest mpitests --tb=short
 
 while the C++ code can be tested with
 
 .. code-block:: console
 
-    make test-cpp-mpi
-
+    rm -rf ./BuildTests
+    cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
+	cmake --build ./BuildTests
+	mpirun -np 2 ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
 
 .. installation-end-inclusion-marker-do-not-remove
 

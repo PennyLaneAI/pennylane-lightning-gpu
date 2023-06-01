@@ -63,12 +63,12 @@ using namespace CUDA;
         using cp_t = std::complex<TestType>;                                   \
         using PrecisionT = TestType;                                           \
         MPIManager mpi_manager(MPI_COMM_WORLD);                                \
-        int nGlobalIndexBits =                                                 \
-            std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - \
-            1;                                                                 \
-        int nLocalIndexBits = NUM_QUBITS - nGlobalIndexBits;                   \
-        int subSvLength = 1 << nLocalIndexBits;                                \
-        int svLength = 1 << NUM_QUBITS;                                        \
+        size_t mpi_buffersize = 26;                                            \
+        size_t nGlobalIndexBits =                                              \
+            std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;    \
+        size_t nLocalIndexBits = NUM_QUBITS - nGlobalIndexBits;                \
+        size_t subSvLength = 1 << nLocalIndexBits;                             \
+        size_t svLength = 1 << NUM_QUBITS;                                     \
         mpi_manager.Barrier();                                                 \
         std::vector<cp_t> init_sv(svLength);                                   \
         std::vector<cp_t> expected_sv(svLength);                               \
@@ -86,18 +86,17 @@ using namespace CUDA;
         mpi_manager.Barrier();                                                 \
         SECTION("Apply directly") {                                            \
             SECTION("Operation on target") {                                   \
-                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits, \
+                StateVectorCudaMPI<TestType> sv(mpi_manager, mpi_buffersize,   \
+                                                nGlobalIndexBits,              \
                                                 nLocalIndexBits);              \
                 sv.CopyHostDataToGpu(local_state, false);                      \
                 sv.GATE_METHOD(WIRE, false, ANGLE);                            \
-                sv.CopyGpuDataToHost(local_state.data(),                       \
-                                     static_cast<std::size_t>(subSvLength));   \
+                sv.CopyGpuDataToHost(local_state.data(), subSvLength);         \
                 SVDataGPU<TestType> svdat{NUM_QUBITS, init_sv};                \
                 if (mpi_manager.getRank() == 0) {                              \
                     svdat.cuda_sv.GATE_METHOD(WIRE, false, ANGLE);             \
-                    svdat.cuda_sv.CopyGpuDataToHost(                           \
-                        expected_sv.data(),                                    \
-                        static_cast<std::size_t>(svLength));                   \
+                    svdat.cuda_sv.CopyGpuDataToHost(expected_sv.data(),        \
+                                                    svLength);                 \
                 }                                                              \
                 auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);  \
                 CHECK(local_state == Pennylane::approx(expected_local_sv));    \
@@ -105,19 +104,18 @@ using namespace CUDA;
         }                                                                      \
         SECTION("Apply using dispatcher") {                                    \
             SECTION("Operation on target") {                                   \
-                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits, \
+                StateVectorCudaMPI<TestType> sv(mpi_manager, mpi_buffersize,   \
+                                                nGlobalIndexBits,              \
                                                 nLocalIndexBits);              \
                 sv.CopyHostDataToGpu(local_state, false);                      \
                 sv.applyOperation(GATE_NAME, WIRE, false, ANGLE);              \
-                sv.CopyGpuDataToHost(local_state.data(),                       \
-                                     static_cast<std::size_t>(subSvLength));   \
+                sv.CopyGpuDataToHost(local_state.data(), subSvLength);         \
                 SVDataGPU<TestType> svdat{NUM_QUBITS, init_sv};                \
                 if (mpi_manager.getRank() == 0) {                              \
                     svdat.cuda_sv.applyOperation(GATE_NAME, WIRE, false,       \
                                                  ANGLE);                       \
-                    svdat.cuda_sv.CopyGpuDataToHost(                           \
-                        expected_sv.data(),                                    \
-                        static_cast<std::size_t>(svLength));                   \
+                    svdat.cuda_sv.CopyGpuDataToHost(expected_sv.data(),        \
+                                                    svLength);                 \
                 }                                                              \
                 auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);  \
                 CHECK(local_state == Pennylane::approx(expected_local_sv));    \

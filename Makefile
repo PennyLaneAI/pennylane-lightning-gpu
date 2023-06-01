@@ -68,7 +68,7 @@ clean-docs:
 test-python: test-builtin test-suite
 
 test-python-mpich-cray: 
-	srun $(PYTHON) $(MPITESTRUNNER)
+	srun -n 2 $(PYTHON) $(MPITESTRUNNER)
 
 test-python-mpi: 
 	mpirun -np 2 $(PYTHON) $(MPITESTRUNNER)

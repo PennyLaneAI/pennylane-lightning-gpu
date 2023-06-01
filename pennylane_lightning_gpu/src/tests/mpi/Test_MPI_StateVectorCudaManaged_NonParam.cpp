@@ -49,10 +49,12 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetStateVector",
     using cp_t = std::complex<PrecisionT>;
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits =
-        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
-    int nLocalIndexBits = num_qubits - nGlobalIndexBits;
-    int subSvLength = 1 << nLocalIndexBits;
+    size_t mpi_buffersize = 26;
+
+    size_t nGlobalIndexBits =
+        std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
+    size_t nLocalIndexBits = num_qubits - nGlobalIndexBits;
+    size_t subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
 
     std::vector<cp_t> init_state(Pennylane::Util::exp2(num_qubits));
@@ -91,8 +93,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetStateVector",
     // state vector on the device.
     SECTION("Set state vector with values and their corresponding indices on "
             "the host") {
-        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nGlobalIndexBits,
-                                          nLocalIndexBits);
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, mpi_buffersize,
+                                          nGlobalIndexBits, nLocalIndexBits);
         // The setStates will shuffle the state vector values on the device with
         // the following indices and values setting on host. For example, the
         // values[i] is used to set the indices[i] th element of state vector on
@@ -117,10 +119,12 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
     using cp_t = std::complex<PrecisionT>;
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    int nGlobalIndexBits =
-        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
-    int nLocalIndexBits = num_qubits - nGlobalIndexBits;
-    int subSvLength = 1 << nLocalIndexBits;
+    size_t mpi_buffersize = 26;
+
+    size_t nGlobalIndexBits =
+        std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
+    size_t nLocalIndexBits = num_qubits - nGlobalIndexBits;
+    size_t subSvLength = 1 << nLocalIndexBits;
     mpi_manager.Barrier();
 
     int index;
@@ -147,8 +151,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
 
     SECTION(
         "Set Ith element of the state state on device with data on the host") {
-        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, nLocalIndexBits,
-                                          nLocalIndexBits);
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, mpi_buffersize,
+                                          nLocalIndexBits, nLocalIndexBits);
         std::complex<PrecisionT> values = {1.0, 0};
         sv.setBasisState(values, index, false);
 
@@ -166,12 +170,12 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
         using cp_t = std::complex<TestType>;                                   \
         using PrecisionT = TestType;                                           \
         MPIManager mpi_manager(MPI_COMM_WORLD);                                \
-        int nGlobalIndexBits =                                                 \
-            std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - \
-            1;                                                                 \
-        int nLocalIndexBits = (NUM_QUBITS)-nGlobalIndexBits;                   \
-        int subSvLength = 1 << nLocalIndexBits;                                \
-        int svLength = 1 << (NUM_QUBITS);                                      \
+        size_t mpi_buffersize = 26;                                            \
+        size_t nGlobalIndexBits =                                              \
+            std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;    \
+        size_t nLocalIndexBits = (NUM_QUBITS)-nGlobalIndexBits;                \
+        size_t subSvLength = 1 << nLocalIndexBits;                             \
+        size_t svLength = 1 << (NUM_QUBITS);                                   \
         mpi_manager.Barrier();                                                 \
         std::vector<cp_t> init_sv(svLength);                                   \
         std::vector<cp_t> expected_sv(svLength);                               \
@@ -189,7 +193,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
         mpi_manager.Barrier();                                                 \
         SECTION("Apply directly") {                                            \
             SECTION("Operation on target wire") {                              \
-                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits, \
+                StateVectorCudaMPI<TestType> sv(mpi_manager, mpi_buffersize,   \
+                                                nGlobalIndexBits,              \
                                                 nLocalIndexBits);              \
                 sv.CopyHostDataToGpu(local_state, false);                      \
                 sv.GATE_METHOD(WIRE, false);                                   \
@@ -199,9 +204,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
                 SVDataGPU<TestType> svdat{(NUM_QUBITS), init_sv};              \
                 if (mpi_manager.getRank() == 0) {                              \
                     svdat.cuda_sv.GATE_METHOD(WIRE, false);                    \
-                    svdat.cuda_sv.CopyGpuDataToHost(                           \
-                        expected_sv.data(),                                    \
-                        static_cast<std::size_t>(svLength));                   \
+                    svdat.cuda_sv.CopyGpuDataToHost(expected_sv.data(),        \
+                                                    svLength);                 \
                 }                                                              \
                 auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);  \
                 CHECK(local_state == Pennylane::approx(expected_local_sv));    \
@@ -209,7 +213,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
         }                                                                      \
         SECTION("Apply using dispatcher") {                                    \
             SECTION("Operation on target wire") {                              \
-                StateVectorCudaMPI<TestType> sv(mpi_manager, nGlobalIndexBits, \
+                StateVectorCudaMPI<TestType> sv(mpi_manager, mpi_buffersize,   \
+                                                nGlobalIndexBits,              \
                                                 nLocalIndexBits);              \
                 sv.CopyHostDataToGpu(local_state, false);                      \
                 sv.applyOperation(GATE_NAME, WIRE, false);                     \
@@ -218,9 +223,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
                 SVDataGPU<TestType> svdat{(NUM_QUBITS), init_sv};              \
                 if (mpi_manager.getRank() == 0) {                              \
                     svdat.cuda_sv.applyOperation(GATE_NAME, WIRE, false);      \
-                    svdat.cuda_sv.CopyGpuDataToHost(                           \
-                        expected_sv.data(),                                    \
-                        static_cast<std::size_t>(svLength));                   \
+                    svdat.cuda_sv.CopyGpuDataToHost(expected_sv.data(),        \
+                                                    svLength);                 \
                 }                                                              \
                 auto expected_local_sv = mpi_manager.scatter(expected_sv, 0);  \
                 CHECK(local_state == Pennylane::approx(expected_local_sv));    \

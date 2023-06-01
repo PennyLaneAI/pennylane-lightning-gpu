@@ -63,12 +63,12 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
     @qml.qnode(dev_cpu)
-    def circuit():
+    def circuit(*params):
         qml.QubitStateVector(state_vector, wires=range(num_wires))
-        operation(*par, wires=Wires)
+        operation(*params, wires=Wires)
         return qml.state()
 
-    expected_output_cpu = circuit()
+    expected_output_cpu = circuit(*par)
     comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
     dev_gpumpi = qml.device(
@@ -76,12 +76,12 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
     )
 
     @qml.qnode(dev_gpumpi)
-    def circuit_mpi():
+    def circuit_mpi(*params):
         qml.QubitStateVector(state_vector, wires=range(num_wires))
-        operation(*par, wires=Wires)
+        operation(*params, wires=Wires)
         return qml.state()
 
-    local_state_vector = circuit_mpi()
+    local_state_vector = circuit_mpi(*par)
 
     assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
     
@@ -103,12 +103,12 @@ def apply_operation_gates_apply_param(tol, operation, par, Wires):
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
     @qml.qnode(dev_cpu)
-    def circuit():
+    def circuit(*params):
         qml.QubitStateVector(state_vector, wires=range(num_wires))
-        operation(*par, wires=Wires)
+        operation(*params, wires=Wires)
         return qml.state()
 
-    expected_output_cpu = circuit()
+    expected_output_cpu = circuit(*par)
     comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
     dev_gpumpi = qml.device(
@@ -385,9 +385,11 @@ class TestApply:
         comm.Scatter(state_vector, local_state_vector, root=0)
         dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
-
+        dev_cpu.reset()
         @qml.qnode(dev_cpu)
         def circuit():
+            qml.PauliX(wires=[0])
+            qml.PauliX(wires=[0])
             return qml.state()
 
         expected_output_cpu = circuit()
@@ -396,10 +398,13 @@ class TestApply:
         dev_gpumpi = qml.device(
             "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128
         )
-
+        dev_gpumpi.reset()
         @qml.qnode(dev_gpumpi)
         def circuit_mpi():
+            qml.PauliX(wires=[0])
+            qml.PauliX(wires=[0])
             return qml.state()
+        dev_gpumpi.reset()
 
         local_state_vector = circuit_mpi()
         assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)

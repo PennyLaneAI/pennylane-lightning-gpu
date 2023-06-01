@@ -32,7 +32,8 @@ enum WireStatus { Default, Target, Control };
  * @param tgts Vector of target wires.
  * @return wirePairs Wire pairs to be passed to SV bit index swap worker.
  */
-inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
+inline std::vector<int2> createWirePairs(const int numLocalQubits,
+                                         const int numTotalQubits,
                                          std::vector<int> &ctrls,
                                          std::vector<int> &tgts,
                                          std::vector<int> &statusWires) {
@@ -57,10 +58,10 @@ inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
             }
             std::swap(statusWires[localbit], statusWires[globalbit]);
         } else {
-            if (statusWires[localbit] != 0) {
+            if (statusWires[localbit] != WireStatus::Default) {
                 localbit--;
             }
-            if (statusWires[globalbit] == 0) {
+            if (statusWires[globalbit] == WireStatus::Default) {
                 globalbit++;
             }
         }
@@ -124,10 +125,10 @@ inline SharedLocalStream make_shared_local_stream() {
  */
 
 template <typename CFP_t>
-inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
-                                              MPIManager &mpi_manager,
-                                              CFP_t *sv, size_t numLocalQubits,
-                                              cudaStream_t localStream) {
+inline SharedMPIWorker
+make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
+                       const size_t mpi_buffer_size, CFP_t *sv,
+                       const size_t numLocalQubits, cudaStream_t localStream) {
 
     custatevecSVSwapWorkerDescriptor_t svSegSwapWorker = nullptr;
 
@@ -136,13 +137,12 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     size_t nDevices = static_cast<size_t>(nDevices_int);
 
-    // Ensure the number of P2P devices is calulcated based on the number of MPI
+    // Ensure the number of P2P devices is calculated based on the number of MPI
     // processes within the node
     nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()
                                                     : nDevices;
 
-    size_t nP2PDeviceBits =
-        std::bit_width(static_cast<unsigned int>(nDevices)) - 1;
+    size_t nP2PDeviceBits = std::bit_width(nDevices) - 1;
 
     cudaDataType_t svDataType;
     if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
@@ -206,7 +206,8 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         /* size_t */ extraWorkspaceSize));
 
     size_t transferWorkspaceSize =
-        size_t{1} << (numLocalQubits < 26 ? (numLocalQubits) : 26);
+        size_t{1} << (numLocalQubits < mpi_buffer_size ? (numLocalQubits)
+                                                       : mpi_buffer_size);
 
     transferWorkspaceSize =
         std::max(minTransferWorkspaceSize, transferWorkspaceSize);

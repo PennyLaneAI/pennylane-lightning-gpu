@@ -217,6 +217,7 @@ if CPP_BINARY_AVAILABLE:
             wires,
             *,
             mpi: bool = False,
+            mpi_buffer_size: int = 26,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -233,49 +234,49 @@ if CPP_BINARY_AVAILABLE:
 
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
-            self.init_helper(mpi, self.num_wires)
             if mpi == False:
-                self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
+                self._num_local_wires = self.num_wires
+                self._gpu_state = _gpu_dtype(c_dtype)(self._num_local_wires)
                 self._batch_obs = batch_obs
             else:
+                self._mpi_init_helper(mpi, self.num_wires)
                 self._gpu_state = _gpu_dtype(c_dtype, mpi)(
-                    self._mpi_manager, self._num_global_wires, self._num_local_wires
+                    self._mpi_manager,
+                    mpi_buffer_size,
+                    self._num_global_wires,
+                    self._num_local_wires,
                 )
                 self._batch_obs = False
             self._create_basis_state_GPU(0)
             self._sync = sync
 
-        def init_helper(self, mpi, num_wires):
-            if mpi == False:
-                self._num_local_wires = num_wires
-                return
-            else:
-                if MPI_Support == False:
-                    raise ImportError("MPI related APIs not found.")
-                # initialize MPIManager and config check in the MPIManager ctor
-                self._mpi_manager = MPIManager()
-                self._dp = DevPool()
-                # check if number of GPUs per node is larger than
-                # number of processes per node
-                numDevices = self._dp.getTotalDevices()
-                numProcsNode = self._mpi_manager.getSizeNode()
-                if numDevices < numProcsNode:
-                    raise ValueError(
-                        "Number of devices should be larger than or equal to the number of processes on each node."
-                    )
-                # check if the process number is larger than number of statevector elements
-                if self._mpi_manager.getSize() > (1 << (num_wires - 1)):
-                    raise ValueError(
-                        "Number of processes should be smaller than the number of statevector elements."
-                    )
-                # set the number of global and local wires
-                commSize = self._mpi_manager.getSize()
-                self._num_global_wires = commSize.bit_length() - 1
-                self._num_local_wires = num_wires - self._num_global_wires
-                # set GPU device
-                rank = self._mpi_manager.getRank()
-                deviceid = rank % numProcsNode
-                self._dp.setDeviceID(deviceid)
+        def _mpi_init_helper(self, mpi, num_wires):
+            if MPI_Support == False:
+                raise ImportError("MPI related APIs not found.")
+            # initialize MPIManager and config check in the MPIManager ctor
+            self._mpi_manager = MPIManager()
+            self._dp = DevPool()
+            # check if number of GPUs per node is larger than
+            # number of processes per node
+            numDevices = self._dp.getTotalDevices()
+            numProcsNode = self._mpi_manager.getSizeNode()
+            if numDevices < numProcsNode:
+                raise ValueError(
+                    "Number of devices should be larger than or equal to the number of processes on each node."
+                )
+            # check if the process number is larger than number of statevector elements
+            if self._mpi_manager.getSize() > (1 << (num_wires - 1)):
+                raise ValueError(
+                    "Number of processes should be smaller than the number of statevector elements."
+                )
+            # set the number of global and local wires
+            commSize = self._mpi_manager.getSize()
+            self._num_global_wires = commSize.bit_length() - 1
+            self._num_local_wires = num_wires - self._num_global_wires
+            # set GPU device
+            rank = self._mpi_manager.getRank()
+            deviceid = rank % numProcsNode
+            self._dp.setDeviceID(deviceid)
 
         def reset(self):
             super().reset()
