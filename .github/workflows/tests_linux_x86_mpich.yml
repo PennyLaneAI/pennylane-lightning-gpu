@@ -119,13 +119,10 @@ jobs:
         run: |
             source /etc/profile.d/modules.sh
             module use /opt/modules/
-            module load openmpi
-            which mpicc
-            which mpirun
-            export CC=mpicc
-            export CXX=mpicxx
-            export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/openmpi/openmpi-4.1.5/include 
-            export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/openmpi/openmpi-4.1.5/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
+            module load mpich
+            module unload mpich
+            export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include 
+            export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
             cmake . -BBuild \
               -DPLLGPU_ENABLE_MPI=On \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -151,12 +148,11 @@ jobs:
       - name: Build and run unit tests for code coverage for OpenMPI backend
         run: |
             source /etc/profile.d/modules.sh
-            module load openmpi
             module use /opt/modules/
-            export CC=gcc
-            export CXX=g++
-            export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/openmpi/openmpi-4.1.5/include 
-            export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/openmpi/openmpi-4.1.5/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
+            module load mpich
+            module unload mpich
+            export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include 
+            export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
             cmake . -BBuildCov \
               -DPLLGPU_ENABLE_MPI=On \
               -DCMAKE_BUILD_TYPE=Debug \
@@ -247,13 +243,10 @@ jobs:
         run: |
           source /etc/profile.d/modules.sh
           module use /opt/modules/
-          module load openmpi
-          cc --version
-          gcc --version
-          export CC=mpicc
-          export CXX=mpicxx
-          export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/openmpi/openmpi-4.1.5/include 
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/openmpi/openmpi-4.1.5/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
+          module load mpich
+          module unload mpich
+          export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include 
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov mpi4py
           # Sync with latest master branches
@@ -269,6 +262,9 @@ jobs:
 
       - name: Run PennyLane-Lightning-GPU unit tests (OpenMPI backend)
         run: |
+          source /etc/profile.d/modules.sh
+          module use /opt/modules/
+          module load mpich
           mpirun -np 2 python -m pytest ./mpitests/ ${{ env.COVERAGE_FLAGS }}
           python -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
           mv coverage.xml coverage-${{ github.job }}.xml
