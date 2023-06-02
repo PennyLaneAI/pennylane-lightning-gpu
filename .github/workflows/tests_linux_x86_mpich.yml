@@ -121,9 +121,10 @@ jobs:
             module use /opt/modules/
             module load mpich
             module unload mpich
-            export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include 
+            export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include:/opt/mpi/mpich/bin
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
             cmake . -BBuild \
+              -DCMAKE_PREFIX_PATH=/opt/mpi/mpich/ \
               -DPLLGPU_ENABLE_MPI=On \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
@@ -151,9 +152,10 @@ jobs:
             module use /opt/modules/
             module load mpich
             module unload mpich
-            export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include 
+            export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include:/opt/mpi/mpich/bin 
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
             cmake . -BBuildCov \
+              -DCMAKE_PREFIX_PATH=/opt/mpi/mpich/ \
               -DPLLGPU_ENABLE_MPI=On \
               -DCMAKE_BUILD_TYPE=Debug \
               -DPLLGPU_BUILD_TESTS=ON \
@@ -245,7 +247,7 @@ jobs:
           module use /opt/modules/
           module load mpich
           module unload mpich
-          export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include 
+          export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include:/opt/mpi/mpich/bin 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov mpi4py
@@ -257,7 +259,7 @@ jobs:
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
-          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});PLLGPU_ENABLE_MPI=On;LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});CMAKE_PREFIX_PATH=/opt/mpi/mpich;PLLGPU_ENABLE_MPI=On;LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
           python -m pip install -e . --verbose
 
       - name: Run PennyLane-Lightning-GPU unit tests (OpenMPI backend)
