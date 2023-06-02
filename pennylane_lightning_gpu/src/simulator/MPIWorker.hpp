@@ -1,7 +1,6 @@
 #pragma once
 #include <algorithm>
 #include <bit>
-#include <cctype>
 #include <string>
 #include <vector>
 
@@ -119,6 +118,7 @@ inline SharedLocalStream make_shared_local_stream() {
  *
  * @param handle custatevecHandle.
  * @param mpi_manager MPI manager object.
+ * @param mpi_buffer_size Size to set MPI buffer.
  * @param sv Pointer to the data requires MPI operation.
  * @param numLocalQubits Number of local qubits.
  * @param localStream Local cuda stream.

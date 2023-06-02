@@ -17,7 +17,6 @@
   ```python
   from mpi4py import MPI
   import pennylane as qml
-  comm = MPI.COMM_WORLD
   dev = qml.device('lightning.gpu', wires=8, mpi=True, mpi_buffer_size=4)
   @qml.qnode(dev)
   def circuit_mpi():

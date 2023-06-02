@@ -334,7 +334,7 @@ class StateVectorCudaMPI
         }
     }
     /**
-     * @brief STL-fiendly variant of `applyOperation(
+     * @brief STL-friendly variant of `applyOperation(
         const std::string &opName, const std::vector<size_t> &wires,
         bool adjoint = false, const std::vector<Precision> &params = {0.0},
         [[maybe_unused]] const std::vector<CFP_t> &gate_matrix = {})`
@@ -387,7 +387,6 @@ class StateVectorCudaMPI
      * @param opNames
      * @param wires
      * @param adjoints
-     * @param params
      */
     void applyOperation(const std::vector<std::string> &opNames,
                         const std::vector<std::vector<size_t>> &wires,

@@ -97,9 +97,10 @@ For licensing information, please view ``docker/README.md``.
 
 Build PennyLane-Lightning-GPU with multi-node/multi-gpu support
 ---------------------------------------------------------------
+
 Use of PennyLane-Lightning-GPU with multi-node/multi-gpu support also requires explicit installation of the NVIDIA cuQuantum SDK, ``mpi4py`` 
 and `CUDA-aware MPI` (Message Passing Interface). `CUDA-aware MPI` allows data exchange between GPU memory spaces of different nodes
-without the need for CPU -mediated transfers. Both `MPICH` and `OpenMPI` libaries are supported, provided they are compiled with CUDA support.
+without the need for CPU -mediated transfers. Both `MPICH` and `OpenMPI` libraries are supported, provided they are compiled with CUDA support.
 The NVIDIA cuQuantum library and MPI library directory may be provided on the ``LD_LIBRARY_PATH`` environment variable, or the NVIDIA cuQuantum SDK and ``mpi4py`` 
 Python package may be installed within the Python environment ``site-packages`` directory using ``pip`` or ``conda``. 
 Please see the `cuQuantum SDK <https://developer.nvidia.com/cuquantum-sdk>`_ , `mpi4py <https://mpi4py.readthedocs.io/en/stable/install.html>`_, 
@@ -123,7 +124,7 @@ The built wheel can now be installed as:
     python -m pip install ./dist/PennyLane_Lightning_GPU-*.whl
 
 Testing
--------
+=======
 
 Test PennyLane-Lightning-GPU without multi-node/multi-gpu support
 -----------------------------------------------------------------
@@ -172,7 +173,7 @@ Contributing
 
 We welcome contributions - simply fork the repository of this plugin, and then make a
 `pull request <https://help.github.com/articles/about-pull-requests/>`_ containing your contribution.
-All contributers to this plugin will be listed as authors on the releases.
+All contributors to this plugin will be listed as authors on the releases.
 
 We also encourage bug reports, suggestions for new features and enhancements, and even links to cool projects
 or applications built on PennyLane.
