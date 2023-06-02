@@ -248,6 +248,8 @@ jobs:
           source /etc/profile.d/modules.sh
           module use /opt/modules/
           module load openmpi
+          cc --version
+          gcc --version
           export CC=mpicc
           export CXX=mpicxx
           export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/openmpi/openmpi-4.1.5/include 
