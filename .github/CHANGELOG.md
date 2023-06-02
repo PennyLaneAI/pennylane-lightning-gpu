@@ -8,14 +8,17 @@
   This new feature allows users to run their large-scale applications by leveraging the computational power of multi-node and multi-gpus.
   Note that both the number of overall `MPI` processes and the number of `MPI` processes per node should be power of `2`. Each `MPI` process
   is responsible for one GPU for the moment. Users need to set `mpi=True` to enable this new feature. Users are allowed to tune the `MPI` operations
-  performance by setting `mpi_buffer_size` and the buffer size for MPI operations will be `2^mpi_buffer_size` bytes.
+  performance by setting `mpi_buffer_size`, which will allocate memory can store `2^mpi_buffer_size` complex elements for `MPI` operation. 
+  Note that there will be a runtime warning if `mpi_buffer_size` is larger than the number of qubits of the local state vector. If the default value
+  (or `0`) of `mpi_buffer_size` is used, the memory allocated for MPI operation will be `2^num_local_wires` bytes if `num_local_wires` is less than
+  `26`, otherwise the memory allocated for MPI operation will be `2^26` bytes.
 
   The workflow for the new feature is:
   ```python
   from mpi4py import MPI
   import pennylane as qml
   comm = MPI.COMM_WORLD
-  dev = qml.device('lightning.gpu', wires=8, mpi=True, mpi_buffer_size=8)
+  dev = qml.device('lightning.gpu', wires=8, mpi=True, mpi_buffer_size=4)
   @qml.qnode(dev)
   def circuit_mpi():
     qml.PauliX(wires=[0])

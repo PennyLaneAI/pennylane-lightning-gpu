@@ -205,13 +205,25 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
         /* void* */ d_extraWorkspace,
         /* size_t */ extraWorkspaceSize));
 
-    size_t transferWorkspaceSize =
-        size_t{1} << (numLocalQubits < mpi_buffer_size ? (numLocalQubits)
-                                                       : mpi_buffer_size);
+    size_t transferWorkspaceSize;
+    if (mpi_buffer_size == 0) {
+        // Here 26 is based on the benchmark tests on the Perlmutter.
+        transferWorkspaceSize =
+            size_t{1} << (numLocalQubits < 26 ? (numLocalQubits) : 26);
+    } else {
+        transferWorkspaceSize = size_t{1} << mpi_buffer_size;
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            transferWorkspaceSize = transferWorkspaceSize * sizeof(double) * 2;
+        } else {
+            transferWorkspaceSize = transferWorkspaceSize * sizeof(float) * 2;
+        }
+    }
 
     transferWorkspaceSize =
         std::max(minTransferWorkspaceSize, transferWorkspaceSize);
     PL_CUDA_IS_SUCCESS(cudaMalloc(&d_transferWorkspace, transferWorkspaceSize));
+
     PL_CUSTATEVEC_IS_SUCCESS(custatevecSVSwapWorkerSetTransferWorkspace(
         /* custatevecHandle_t */ handle,
         /* custatevecSVSwapWorkerDescriptor_t */ svSegSwapWorker,
