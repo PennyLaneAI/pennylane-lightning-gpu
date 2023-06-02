@@ -120,6 +120,7 @@ jobs:
             source /etc/profile.d/modules.sh
             module use /opt/modules/
             module load mpich
+            module unload mpich
             export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include 
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
             cmake . -BBuild \
@@ -149,6 +150,7 @@ jobs:
             source /etc/profile.d/modules.sh
             module use /opt/modules/
             module load mpich
+            module unload mpich
             export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include 
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
             cmake . -BBuildCov \
@@ -242,6 +244,7 @@ jobs:
           source /etc/profile.d/modules.sh
           module use /opt/modules/
           module load mpich
+          module unload mpich
           export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
           python -m pip install pip~=22.0
