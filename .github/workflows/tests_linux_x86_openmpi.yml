@@ -122,8 +122,8 @@ jobs:
             module load openmpi
             which mpicc
             which mpirun
-            export CC=gcc
-            export CXX=g++
+            export CC=mpicc
+            export CXX=mpicxx
             export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/openmpi/openmpi-4.1.5/include 
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/openmpi/openmpi-4.1.5/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
             cmake . -BBuild \
@@ -248,8 +248,8 @@ jobs:
           source /etc/profile.d/modules.sh
           module use /opt/modules/
           module load openmpi
-          export CC=gcc
-          export CXX=g++
+          export CC=mpicc
+          export CXX=mpicxx
           export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/openmpi/openmpi-4.1.5/include 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/openmpi/openmpi-4.1.5/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
           python -m pip install pip~=22.0
