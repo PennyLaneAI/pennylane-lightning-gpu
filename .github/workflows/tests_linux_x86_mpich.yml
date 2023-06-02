@@ -35,7 +35,7 @@ jobs:
       gpu_type: ${{ steps.gpu_label.outputs.gpu_type }}
       runs-on: '["self-hosted", "linux", "x64", "ubuntu-22.04", "${{ steps.gpu_label.outputs.gpu_type }}"]'
 
-  cpptests:
+  cpp_mpich_tests:
     needs:
       - set_runs_on_values
 
@@ -190,7 +190,7 @@ jobs:
           pip cache purge
 
 
-  pythontests:
+  python_mpich_tests:
     needs:
       - set_runs_on_values
 
@@ -267,15 +267,8 @@ jobs:
           source /etc/profile.d/modules.sh
           module use /opt/modules/
           module load mpich
-          /opt/mpi/mpich/bin/mpirun -np 2 python -m pytest ./mpitests/ ${{ env.COVERAGE_FLAGS }}
-          python -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
-          mv coverage.xml coverage-${{ github.job }}.xml
-
-      - name: Upload code coverage results
-        uses: actions/upload-artifact@v3
-        with:
-          name: ubuntu-codecov-results-python
-          path: ./coverage-${{ github.job }}.xml
+          /opt/mpi/mpich/bin/mpirun -np 2 python -m pytest ./mpitests/ 
+          python -m pytest ./tests/ 
 
       - name: Cleanup
         if: always()
