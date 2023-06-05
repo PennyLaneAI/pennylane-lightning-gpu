@@ -1,4 +1,4 @@
-# Copyright 2018-2022 Xanadu Quantum Technologies Inc.
+# Copyright 2018-2023 Xanadu Quantum Technologies Inc.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ from pennylane import (
     Hermitian,
     Rot,
     QuantumFunctionError,
-    QubitStateVector,
 )
 from pennylane_lightning import LightningQubit
 from pennylane.operation import Tensor, Operation
@@ -80,9 +79,9 @@ try:
             MPIManager,
         )
 
-        MPI_Support = True
+        MPI_SUPPORT = True
     except:
-        MPI_Support = False
+        MPI_SUPPORT = False
 
     from ._serialize import _serialize_ob, _serialize_observables, _serialize_ops
     from ctypes.util import find_library
@@ -107,10 +106,9 @@ except (ModuleNotFoundError, ImportError, ValueError, PLException) as e:
 def _gpu_dtype(dtype, mpi=False):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    if mpi == False:
+    if mpi is False:
         return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
-    else:
-        return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
+    return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
 
 
 def _H_dtype(dtype):
@@ -234,12 +232,12 @@ if CPP_BINARY_AVAILABLE:
 
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
-            if mpi == False:
+            if mpi is False:
                 self._num_local_wires = self.num_wires
                 self._gpu_state = _gpu_dtype(c_dtype)(self._num_local_wires)
                 self._batch_obs = batch_obs
             else:
-                self._mpi_init_helper(mpi, self.num_wires)
+                self._mpi_init_helper(self.num_wires)
 
                 if log2_mpi_buf_counts > self._num_local_wires:
                     w_msg = "MPI buffer size is over the size of local state vector."
@@ -261,9 +259,9 @@ if CPP_BINARY_AVAILABLE:
             self._create_basis_state_GPU(0)
             self._sync = sync
 
-        def _mpi_init_helper(self, mpi, num_wires):
-            if MPI_Support == False:
-                raise ImportError("MPI related APIs not found.")
+        def _mpi_init_helper(self, num_wires):
+            if MPI_SUPPORT is False:
+                raise ImportError("MPI related APIs are not found.")
             # initialize MPIManager and config check in the MPIManager ctor
             self._mpi_manager = MPIManager()
             self._dp = DevPool()
@@ -391,12 +389,11 @@ if CPP_BINARY_AVAILABLE:
                 if self.num_wires == self._num_local_wires:
                     self.syncH2D(self._reshape(state, output_shape))
                     return
-                else:
-                    local_state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
-                    self._mpi_manager.Scatter(state, local_state, 0)
-                    # Initialize the entire device state with the input state
-                    self.syncH2D(self._reshape(local_state, output_shape))
-                    return
+                local_state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
+                self._mpi_manager.Scatter(state, local_state, 0)
+                # Initialize the entire device state with the input state
+                self.syncH2D(self._reshape(local_state, output_shape))
+                return
 
             # generate basis states on subset of qubits via the cartesian product
             basis_states = np.array(list(product([0, 1], repeat=len(device_wires))))

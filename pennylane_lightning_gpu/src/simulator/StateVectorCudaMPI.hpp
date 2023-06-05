@@ -1,4 +1,4 @@
-// Copyright 2022 Xanadu Quantum Technologies Inc.
+// Copyright 2022-2023 Xanadu Quantum Technologies Inc.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1011,7 +1011,6 @@ class StateVectorCudaMPI
     /**
      * @brief Apply parametric Pauli gates using custateVec calls.
      *
-     * @param angle Rotation angle.
      * @param pauli_words List of Pauli words representing operation.
      * @param ctrls Control wires
      * @param tgts target wires.
