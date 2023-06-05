@@ -3,6 +3,8 @@ PYTHON3 := $(shell which python3 2>/dev/null)
 PYTHON := python3
 COVERAGE := --cov=pennylane_lightning_gpu --cov-report term-missing --cov-report=html:coverage_html_report
 TESTRUNNER := -m pytest tests --tb=short
+MPILAUNCHER := mpirun
+NUMPROCS := 2
 MPITESTRUNNER :=  -m pytest mpitests --tb=short
 
 .PHONY: help
@@ -67,11 +69,8 @@ clean-docs:
 .PHONY : test-python test-builtin test-suite
 test-python: test-builtin test-suite
 
-test-python-mpich-cray: 
-	srun -n 2 $(PYTHON) $(MPITESTRUNNER)
-
 test-python-mpi: 
-	mpirun -np 2 $(PYTHON) $(MPITESTRUNNER)
+	$(MPILAUNCHER) -np $(NUMPROCS) $(PYTHON) $(MPITESTRUNNER)
 
 test-builtin:
 	$(PYTHON) -I $(TESTRUNNER)
@@ -90,17 +89,11 @@ endif
 	cmake --build ./BuildTests
 	./BuildTests/pennylane_lightning_gpu/src/tests/runner_gpu
 
-test-cpp-mpich-cray:
-	rm -rf ./BuildTests
-	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
-	cmake --build ./BuildTests
-	srun ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
-
 test-cpp-mpi:
 	rm -rf ./BuildTests
 	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
 	cmake --build ./BuildTests
-	mpirun -np 2 ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
+	$(MPILAUNCHER) -np $(NUMPROCS) ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
 
 coverage:
 	@echo "Generating coverage report..."
@@ -120,9 +113,9 @@ endif
 
 format-python:
 ifdef check
-	black -l 100 ./pennylane_lightning_gpu ./tests --check
+	black -l 100 ./pennylane_lightning_gpu ./tests ./mpitests --check
 else
-	black -l 100 ./pennylane_lightning_gpu ./tests
+	black -l 100 ./pennylane_lightning_gpu ./tests ./mpitests
 endif
 
 .PHONY: check-tidy

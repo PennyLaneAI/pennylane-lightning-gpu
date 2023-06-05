@@ -5,19 +5,14 @@
 * Add multi-node/multi-gpu support to gate operation.
   [(#112)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/112)
 
-  This new feature allows users to run their large-scale applications by leveraging the computational power of multi-node and multi-gpus.
-  Note that both the number of overall `MPI` processes and the number of `MPI` processes per node should be power of `2`. Each `MPI` process
-  is responsible for one GPU for the moment. Users need to set `mpi=True` to enable this new feature. Users are allowed to tune the `MPI` operations
-  performance by setting `mpi_buffer_size`, which will allocate memory can store `2^mpi_buffer_size` complex elements for `MPI` operation. 
-  Note that there will be a runtime warning if `mpi_buffer_size` is larger than the number of qubits of the local state vector. If the default value
-  (or `0`) of `mpi_buffer_size` is used, the memory allocated for MPI operation will be `2^num_local_wires` bytes if `num_local_wires` is less than
-  `26`, otherwise the memory allocated for MPI operation will be `2^26` bytes.
-
+  This new feature empowers users to leverage the computational power of multi-node and multi-GPUs for running large-scale applications. It requires both the total number of overall `MPI` processes and the number of `MPI` processes per node to be power of `2`. Each `MPI` process is responsible for managing one GPU for the moment. 
+  To enable this feature, users can set `mpi=True`. Furthermore, users can fine-tune the performance of `MPI` operations by adjusting the `log2_mpi_buf_counts` parameter. This parameter determines the allocation of GPU memory for storing `2^log2_mpi_buf_counts` complex elements during `MPI` operations. Note that there will be a runtime warning if `log2_mpi_buf_counts` is larger than the number of qubits of the local state vector. 
+  By default (`log2_mpi_buf_counts=0`), the GPU memory allocation for MPI operations is based on `2^num_local_wires`, with a limit of `2^26` bytes.
   The workflow for the new feature is:
   ```python
   from mpi4py import MPI
   import pennylane as qml
-  dev = qml.device('lightning.gpu', wires=8, mpi=True, mpi_buffer_size=4)
+  dev = qml.device('lightning.gpu', wires=8, mpi=True, log2_mpi_buf_counts=2)
   @qml.qnode(dev)
   def circuit_mpi():
     qml.PauliX(wires=[0])

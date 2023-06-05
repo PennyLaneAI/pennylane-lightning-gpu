@@ -96,7 +96,7 @@ class StateVectorCudaMPI
 
     StateVectorCudaMPI() = delete;
 
-    StateVectorCudaMPI(MPIManager mpi_manager, size_t mpi_buffer_size,
+    StateVectorCudaMPI(MPIManager mpi_manager, size_t log2_mpi_buf_counts,
                        size_t num_global_qubits, size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
               num_local_qubits),
@@ -106,14 +106,14 @@ class StateVectorCudaMPI
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
-              handle_.get(), mpi_manager_, mpi_buffer_size, BaseType::getData(),
-              num_local_qubits, localStream_.get())),
+              handle_.get(), mpi_manager_, log2_mpi_buf_counts,
+              BaseType::getData(), num_local_qubits, localStream_.get())),
           gate_cache_(true) {
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
         mpi_manager_.Barrier();
     };
 
-    StateVectorCudaMPI(MPI_Comm mpi_communicator, size_t mpi_buffer_size,
+    StateVectorCudaMPI(MPI_Comm mpi_communicator, size_t log2_mpi_buf_counts,
                        size_t num_global_qubits, size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
               num_local_qubits),
@@ -123,14 +123,14 @@ class StateVectorCudaMPI
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
-              handle_.get(), mpi_manager_, mpi_buffer_size, BaseType::getData(),
-              num_local_qubits, localStream_.get())),
+              handle_.get(), mpi_manager_, log2_mpi_buf_counts,
+              BaseType::getData(), num_local_qubits, localStream_.get())),
           gate_cache_(true) {
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
         mpi_manager_.Barrier();
     };
 
-    StateVectorCudaMPI(size_t mpi_buffer_size, size_t num_global_qubits,
+    StateVectorCudaMPI(size_t log2_mpi_buf_counts, size_t num_global_qubits,
                        size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
               num_local_qubits),
@@ -140,8 +140,8 @@ class StateVectorCudaMPI
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
-              handle_.get(), mpi_manager_, mpi_buffer_size, BaseType::getData(),
-              num_local_qubits, localStream_.get())),
+              handle_.get(), mpi_manager_, log2_mpi_buf_counts,
+              BaseType::getData(), num_local_qubits, localStream_.get())),
           gate_cache_(true) {
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
         mpi_manager_.Barrier();
@@ -282,6 +282,7 @@ class StateVectorCudaMPI
      * @param wires Wires to apply gate to.
      * @param adjoint Indicates whether to use adjoint of gate.
      * @param params Optional parameter list for parametric gates.
+     * @param gate_matrix Matrix representation of gate.
      */
     void applyOperation(
         const std::string &opName, const std::vector<size_t> &wires,
@@ -961,6 +962,17 @@ class StateVectorCudaMPI
         return t_indices;
     }
 
+    /**
+     * @brief Apply parametric Pauli gates to local statevector using custateVec
+     * calls.
+     *
+     * @param pauli_words List of Pauli words representing operation.
+     * @param ctrls Control wires
+     * @param tgts target wires.
+     * @param param Gate parameter.
+     * @param use_adjoint Take adjoint of operation.
+     */
+
     void applyCuSVPauliGate(const std::vector<std::string> &pauli_words,
                             std::vector<int> &ctrls, std::vector<int> &tgts,
                             Precision param, bool use_adjoint = false) {
@@ -995,6 +1007,7 @@ class StateVectorCudaMPI
             /* const int32_t* */ nullptr,
             /* const uint32_t */ ctrls.size()));
     }
+
     /**
      * @brief Apply parametric Pauli gates using custateVec calls.
      *
@@ -1002,6 +1015,7 @@ class StateVectorCudaMPI
      * @param pauli_words List of Pauli words representing operation.
      * @param ctrls Control wires
      * @param tgts target wires.
+     * @param param Parametric gate parameter.
      * @param use_adjoint Take adjoint of operation.
      */
     void applyParametricPauliGate(const std::vector<std::string> &pauli_words,
@@ -1044,8 +1058,20 @@ class StateVectorCudaMPI
             applyCuSVPauliGate(pauli_words, ctrlsInt, tgtsInt, param,
                                use_adjoint);
         } else {
+            size_t counts_global_wires =
+                std::count_if(statusWires.begin(),
+                              statusWires.begin() + this->getNumLocalQubits(),
+                              [](int i) { return i != WireStatus::Default; });
+            size_t counts_local_wires =
+                ctrlsInt.size() + tgtsInt.size() - counts_global_wires;
+            PL_ABORT_IF(
+                counts_global_wires >
+                    (this->getNumLocalQubits() - counts_local_wires),
+                "There is not enough local wires for bit swap operation.");
+
             std::vector<int> localCtrls(ctrlsInt);
             std::vector<int> localTgts(tgtsInt);
+
             auto wirePairs = createWirePairs(
                 this->getNumLocalQubits(), this->getTotalNumQubits(),
                 localCtrls, localTgts, statusWires);
@@ -1060,6 +1086,18 @@ class StateVectorCudaMPI
         }
     }
 
+    /**
+     * @brief Apply a given host or device-stored array representing the gate
+     * `matrix` to the local statevector at qubit indices given by `tgts` and
+     * control-lines given by `ctrls`. The adjoint can be taken by setting
+     * `use_adjoint` to true.
+     *
+     * @param matrix Host- or device data array in row-major order representing
+     * a given gate.
+     * @param ctrls Control line qubits.
+     * @param tgts Target qubits.
+     * @param use_adjoint Use adjoint of given gate.
+     */
     void applyCuSVDeviceMatrixGate(const CFP_t *matrix,
                                    const std::vector<int> &ctrls,
                                    const std::vector<int> &tgts,
@@ -1121,6 +1159,7 @@ class StateVectorCudaMPI
         if (extraWorkspaceSizeInBytes)
             PL_CUDA_IS_SUCCESS(cudaFree(extraWorkspace));
     }
+
     /**
      * @brief Apply a given host or device-stored array representing the gate
      * `matrix` to the statevector at qubit indices given by `tgts` and
@@ -1172,6 +1211,17 @@ class StateVectorCudaMPI
         if (!StatusGlobalWires) {
             applyCuSVDeviceMatrixGate(matrix, ctrlsInt, tgtsInt, use_adjoint);
         } else {
+            size_t counts_global_wires =
+                std::count_if(statusWires.begin(),
+                              statusWires.begin() + this->getNumLocalQubits(),
+                              [](int i) { return i != WireStatus::Default; });
+            size_t counts_local_wires =
+                ctrlsInt.size() + tgtsInt.size() - counts_global_wires;
+            PL_ABORT_IF(
+                counts_global_wires >
+                    (this->getNumLocalQubits() - counts_local_wires),
+                "There is not enough local wires for bit swap operation.");
+
             std::vector<int> localCtrls = ctrlsInt;
             std::vector<int> localTgts = tgtsInt;
 
@@ -1190,9 +1240,9 @@ class StateVectorCudaMPI
     }
 
     /**
-     * @brief Apply a given host-matrix `matrix` to the state vector at qubit
-     * indices given by `tgts` and control-lines given by `ctrls`. The adjoint
-     * can be taken by setting `use_adjoint` to true.
+     * @brief Apply a given host-matrix `matrix` to the local state vector at
+     * qubit indices given by `tgts` and control-lines given by `ctrls`. The
+     * adjoint can be taken by setting `use_adjoint` to true.
      *
      * @param matrix Host-data vector in row-major order of a given gate.
      * @param ctrls Control line qubits.
@@ -1309,6 +1359,18 @@ class StateVectorCudaMPI
         if (!StatusGlobalWires) {
             applyCuSVHostMatrixGate(matrix, ctrlsInt, tgtsInt, use_adjoint);
         } else {
+            size_t counts_global_wires =
+                std::count_if(statusWires.begin(),
+                              statusWires.begin() + this->getNumLocalQubits(),
+                              [](int i) { return i != WireStatus::Default; });
+            size_t counts_local_wires =
+                ctrlsInt.size() + tgtsInt.size() - counts_global_wires;
+
+            PL_ABORT_IF(
+                counts_global_wires >
+                    (this->getNumLocalQubits() - counts_local_wires),
+                "There is not enough local wires for bit swap operation.");
+
             std::vector<int> localCtrls = ctrlsInt;
             std::vector<int> localTgts = tgtsInt;
 

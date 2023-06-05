@@ -217,7 +217,7 @@ if CPP_BINARY_AVAILABLE:
             wires,
             *,
             mpi: bool = False,
-            mpi_buffer_size: int = 0,
+            log2_mpi_buf_counts: int = 0,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -241,19 +241,19 @@ if CPP_BINARY_AVAILABLE:
             else:
                 self._mpi_init_helper(mpi, self.num_wires)
 
-                if mpi_buffer_size > self._num_local_wires:
+                if log2_mpi_buf_counts > self._num_local_wires:
                     w_msg = "MPI buffer size is over the size of local state vector."
                     warn(
                         w_msg,
                         RuntimeWarning,
                     )
 
-                if mpi_buffer_size < 0:
-                    raise TypeError(f"Unsupported mpi_buffer_size value: {mpi_buffer_size}")
+                if log2_mpi_buf_counts < 0:
+                    raise TypeError(f"Unsupported log2_mpi_buf_counts value: {log2_mpi_buf_counts}")
 
                 self._gpu_state = _gpu_dtype(c_dtype, mpi)(
                     self._mpi_manager,
-                    mpi_buffer_size,
+                    log2_mpi_buf_counts,
                     self._num_global_wires,
                     self._num_local_wires,
                 )

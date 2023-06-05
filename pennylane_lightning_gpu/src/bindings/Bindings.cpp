@@ -934,18 +934,18 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
     std::string class_name = "LightningGPUMPI_C" + bitsize;
 
     py::class_<StateVectorCudaMPI<PrecisionT>>(m, class_name.c_str())
-        .def(py::init([](MPIManager &mpi_manager, std::size_t mpi_buffer_size,
+        .def(py::init(
+            [](MPIManager &mpi_manager, std::size_t log2_mpi_buf_counts,
+               std::size_t num_global_qubits, std::size_t num_local_qubits) {
+                return new StateVectorCudaMPI<PrecisionT>(
+                    mpi_manager, log2_mpi_buf_counts, num_global_qubits,
+                    num_local_qubits);
+            })) // qubits, device
+        .def(py::init([](std::size_t log2_mpi_buf_counts,
                          std::size_t num_global_qubits,
                          std::size_t num_local_qubits) {
             return new StateVectorCudaMPI<PrecisionT>(
-                mpi_manager, mpi_buffer_size, num_global_qubits,
-                num_local_qubits);
-        })) // qubits, device
-        .def(py::init([](std::size_t mpi_buffer_size,
-                         std::size_t num_global_qubits,
-                         std::size_t num_local_qubits) {
-            return new StateVectorCudaMPI<PrecisionT>(
-                mpi_buffer_size, num_global_qubits, num_local_qubits);
+                log2_mpi_buf_counts, num_global_qubits, num_local_qubits);
         })) // qubits, device
         .def(
             "setBasisState",
