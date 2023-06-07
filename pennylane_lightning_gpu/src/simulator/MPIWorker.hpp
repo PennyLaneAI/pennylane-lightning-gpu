@@ -136,7 +136,6 @@ inline SharedLocalStream make_shared_local_stream() {
  * @param numLocalQubits Number of local qubits.
  * @param localStream Local cuda stream.
  */
-
 template <typename CFP_t>
 inline SharedMPIWorker
 make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,

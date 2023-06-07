@@ -972,7 +972,6 @@ class StateVectorCudaMPI
      * @param param Gate parameter.
      * @param use_adjoint Take adjoint of operation.
      */
-
     void applyCuSVPauliGate(const std::vector<std::string> &pauli_words,
                             std::vector<int> &ctrls, std::vector<int> &tgts,
                             Precision param, bool use_adjoint = false) {
