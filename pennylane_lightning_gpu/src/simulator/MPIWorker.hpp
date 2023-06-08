@@ -194,6 +194,24 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
 
     size_t nP2PDeviceBits = std::bit_width(nDevices) - 1;
 
+    // P2P access check
+    if (nP2PDeviceBits != 0) {
+        size_t local_device_id = mpi_manager.getRank() % nDevices;
+
+        for (size_t devId = 0; devId < nDevices; ++devId) {
+            if (devId != local_device_id) {
+                int accessEnabled;
+                PL_CUDA_IS_SUCCESS(cudaDeviceCanAccessPeer(
+                    &accessEnabled, static_cast<int>(devId),
+                    static_cast<int>(local_device_id)));
+
+                if (!accessEnabled) {
+                    nP2PDeviceBits = 0;
+                }
+            }
+        }
+    }
+
     cudaDataType_t svDataType;
     if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
                   std::is_same_v<CFP_t, double2>) {
