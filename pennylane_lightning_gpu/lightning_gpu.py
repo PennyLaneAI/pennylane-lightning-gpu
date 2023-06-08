@@ -233,10 +233,12 @@ if CPP_BINARY_AVAILABLE:
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
             if mpi is False:
+                self._mpi = False
                 self._num_local_wires = self.num_wires
                 self._gpu_state = _gpu_dtype(c_dtype)(self._num_local_wires)
                 self._batch_obs = batch_obs
             else:
+                self._mpi = True
                 self._mpi_init_helper(self.num_wires)
 
                 if log2_mpi_buf_counts > self._num_local_wires:
@@ -786,7 +788,7 @@ if CPP_BINARY_AVAILABLE:
                 return np.squeeze(np.mean(samples, axis=0))
 
             if observable.name in ["SparseHamiltonian"]:
-                if self.mpi_ == False:
+                if self._mpi == False:
                     CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
                     return self._gpu_state.ExpectationValue(
                         CSR_SparseHamiltonian.indptr,
@@ -799,7 +801,7 @@ if CPP_BINARY_AVAILABLE:
                     )
 
             if observable.name in ["Hamiltonian"]:
-                if self.mpi_ == False:
+                if self._mpi == False:
                     device_wires = self.map_wires(observable.wires)
                     # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
                     if len(device_wires) > 13:
