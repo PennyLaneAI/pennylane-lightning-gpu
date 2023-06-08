@@ -1,4 +1,4 @@
-# Copyright 2018-2022 Xanadu Quantum Technologies Inc.
+# Copyright 2018-2023 Xanadu Quantum Technologies Inc.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ from pennylane import (
     Hermitian,
     Rot,
     QuantumFunctionError,
-    QubitStateVector,
 )
 from pennylane_lightning import LightningQubit
 from pennylane.operation import Tensor, Operation
@@ -80,9 +79,9 @@ try:
             MPIManager,
         )
 
-        MPI_Support = True
+        MPI_SUPPORT = True
     except:
-        MPI_Support = False
+        MPI_SUPPORT = False
 
     from ._serialize import _serialize_ob, _serialize_observables, _serialize_ops
     from ctypes.util import find_library
@@ -107,10 +106,9 @@ except (ModuleNotFoundError, ImportError, ValueError, PLException) as e:
 def _gpu_dtype(dtype, mpi=False):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    if mpi == False:
+    if mpi is False:
         return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
-    else:
-        return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
+    return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
 
 
 def _H_dtype(dtype):
@@ -216,7 +214,8 @@ if CPP_BINARY_AVAILABLE:
             self,
             wires,
             *,
-            mpi: [bool] = False,
+            mpi: bool = False,
+            log2_mpi_buf_counts: int = 0,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -233,50 +232,62 @@ if CPP_BINARY_AVAILABLE:
 
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
-            self.init_helper(mpi, self.num_wires)
-            self.mpi_ = mpi
-            if mpi == False:
-                self._gpu_state = _gpu_dtype(c_dtype)(self.num_wires)
+            if mpi is False:
+                self._num_local_wires = self.num_wires
+                self._gpu_state = _gpu_dtype(c_dtype)(self._num_local_wires)
                 self._batch_obs = batch_obs
             else:
+                self._mpi_init_helper(self.num_wires)
+
+                if log2_mpi_buf_counts > self._num_local_wires:
+                    w_msg = "MPI buffer size is over the size of local state vector."
+                    warn(
+                        w_msg,
+                        RuntimeWarning,
+                    )
+
+                if log2_mpi_buf_counts < 0:
+                    raise TypeError(f"Unsupported log2_mpi_buf_counts value: {log2_mpi_buf_counts}")
+
                 self._gpu_state = _gpu_dtype(c_dtype, mpi)(
-                    self._mpi_manager, self._num_global_wires, self._num_local_wires
+                    self._mpi_manager,
+                    self._devtag,
+                    log2_mpi_buf_counts,
+                    self._num_global_wires,
+                    self._num_local_wires,
                 )
                 self._batch_obs = False
             self._create_basis_state_GPU(0)
             self._sync = sync
 
-        def init_helper(self, mpi, num_wires):
-            if mpi == False:
-                self._num_local_wires = num_wires
-                return
-            else:
-                if MPI_Support == False:
-                    raise ImportError("MPI related APIs not found.")
-                # initialize MPIManager and config check in the MPIManager ctor
-                self._mpi_manager = MPIManager()
-                self._dp = DevPool()
-                # check if number of GPUs per node is larger than
-                # number of processes per node
-                numDevices = self._dp.getTotalDevices()
-                numProcsNode = self._mpi_manager.getSizeNode()
-                if numDevices < numProcsNode:
-                    raise ValueError(
-                        "Number of devices should be larger than or equal to the number of processes on each node."
-                    )
-                # check if the process number is larger than number of statevector elements
-                if self._mpi_manager.getSize() > (1 << (num_wires - 1)):
-                    raise ValueError(
-                        "Number of processes should be smaller than the number of statevector elements."
-                    )
-                # set the number of global and local wires
-                commSize = self._mpi_manager.getSize()
-                self._num_global_wires = commSize.bit_length() - 1
-                self._num_local_wires = num_wires - self._num_global_wires
-                # set GPU device
-                rank = self._mpi_manager.getRank()
-                deviceid = rank % numProcsNode
-                self._dp.setDeviceID(deviceid)
+        def _mpi_init_helper(self, num_wires):
+            if MPI_SUPPORT is False:
+                raise ImportError("MPI related APIs are not found.")
+            # initialize MPIManager and config check in the MPIManager ctor
+            self._mpi_manager = MPIManager()
+            self._dp = DevPool()
+            # check if number of GPUs per node is larger than
+            # number of processes per node
+            numDevices = self._dp.getTotalDevices()
+            numProcsNode = self._mpi_manager.getSizeNode()
+            if numDevices < numProcsNode:
+                raise ValueError(
+                    "Number of devices should be larger than or equal to the number of processes on each node."
+                )
+            # check if the process number is larger than number of statevector elements
+            if self._mpi_manager.getSize() > (1 << (num_wires - 1)):
+                raise ValueError(
+                    "Number of processes should be smaller than the number of statevector elements."
+                )
+            # set the number of global and local wires
+            commSize = self._mpi_manager.getSize()
+            self._num_global_wires = commSize.bit_length() - 1
+            self._num_local_wires = num_wires - self._num_global_wires
+            # set GPU device
+            rank = self._mpi_manager.getRank()
+            deviceid = rank % numProcsNode
+            self._dp.setDeviceID(deviceid)
+            self._devtag = DevTag(deviceid)
 
         def reset(self):
             super().reset()
@@ -380,12 +391,11 @@ if CPP_BINARY_AVAILABLE:
                 if self.num_wires == self._num_local_wires:
                     self.syncH2D(self._reshape(state, output_shape))
                     return
-                else:
-                    local_state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
-                    self._mpi_manager.Scatter(state, local_state, 0)
-                    # Initialize the entire device state with the input state
-                    self.syncH2D(self._reshape(local_state, output_shape))
-                    return
+                local_state = np.zeros(1 << self._num_local_wires, dtype=self.C_DTYPE)
+                self._mpi_manager.Scatter(state, local_state, 0)
+                # Initialize the entire device state with the input state
+                self.syncH2D(self._reshape(local_state, output_shape))
+                return
 
             # generate basis states on subset of qubits via the cartesian product
             basis_states = np.array(list(product([0, 1], repeat=len(device_wires))))

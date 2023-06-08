@@ -56,10 +56,7 @@ option(PLLGPU_ENABLE_COVERAGE "Enable code coverage" OFF)
 option(PLLGPU_ENABLE_OPENMP "Enable OpenMP support" ON)
 option(PLLGPU_ENABLE_MPI "Enable MPI support" OFF)
 
-set(MPICH OFF)
-set(SYSTEM_NAME "Linux")
-message(STATUS "MPI SUPPORT ${PLLGPU_ENABLE_MPI}")
-
+set(CRAY_MPICH OFF)
 # Build options
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
@@ -100,8 +97,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-find_package(PythonInterp 3)
-
 # Add PennyLane-Lightning
 if (NOT DEFINED LIGHTNING_RELEASE_TAG)
   set(LIGHTNING_RELEASE_TAG "latest_release")
@@ -131,15 +126,15 @@ if(PLLGPU_ENABLE_MPI)
         message(FATAL_ERROR "MPI is NOT found.")
     endif()
 
-    if(${SYSTEM_NAME} STREQUAL "CrayLinux")
-        string(FIND "${MPI_CXX_LIBRARIES}" "mpich" subStrIndex)
-        if(NOT subStrIndex EQUAL -1)
+    string(FIND "${CMAKE_SYSTEM}" "cray" subStrIdx)
+    if(NOT subStrIdx EQUAL -1)
+        if(DEFINED ENV{CRAY_MPICH_VERSION} AND NOT "$ENV{CRAY_MPICH_VERSION}" STREQUAL "none")
             find_library(MPI_GTL
             NAMES libmpi_gtl_cuda.so libmpi_gtl_cuda.so.0 libmpi_gtl_cuda.so.0.0.0
             HINTS ENV CRAY_LD_LIBRARY_PATH
                   ENV LD_LIBRARY_PATH
             )
-            set(MPICH ON)
+            set(CRAY_MPICH ON)
         endif()
     endif()
 endif()
@@ -197,7 +192,7 @@ target_link_libraries(pennylane_lightning_gpu INTERFACE pennylane_lightning
                                                         lightning_gpu_algorithms)
 target_include_directories(pennylane_lightning_gpu INTERFACE "pennylane_lightning_gpu/src")
 
-if(PLLGPU_ENABLE_MPI AND ${SYSTEM_NAME} STREQUAL "CrayLinux" AND MPICH)
+if(PLLGPU_ENABLE_MPI AND ${CRAY_MPICH})
         target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT} ${MPI_GTL})
 else()
     target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})

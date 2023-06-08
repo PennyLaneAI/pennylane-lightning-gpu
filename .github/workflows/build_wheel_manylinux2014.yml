@@ -56,7 +56,7 @@ jobs:
 
           CIBW_SKIP: "*-musllinux*"
 
-          CIBW_CONFIG_SETTINGS: --global-option=build_ext --global-option=--define="CMAKE_CXX_COMPILER=$(which g++-11); CMAKE_C_COMPILER=$(which gcc-11);LIGHTNING_RELEASE_TAG=master"
+          CIBW_CONFIG_SETTINGS: --global-option=build_ext --global-option=--define="CMAKE_CXX_COMPILER=$(which g++-11);CMAKE_C_COMPILER=$(which gcc-11);LIGHTNING_RELEASE_TAG=master"
 
           # Python build settings
           CIBW_BEFORE_BUILD: |
@@ -65,6 +65,7 @@ jobs:
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
             yum clean all
             yum -y install cuda-11-5 git openssh wget
+
           # ensure nvcc is available
           CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
 

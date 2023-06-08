@@ -1,3 +1,17 @@
+// Copyright 2022-2023 Xanadu Quantum Technologies Inc.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <algorithm>
@@ -43,7 +57,7 @@ template <typename T> auto cppTypeToString() -> const std::string {
 /**
  * @brief MPI operation class. Maintains MPI related operations.
  */
-class MPIManager {
+class MPIManager final {
   private:
     bool isExternalComm_;
     size_t rank_;
@@ -54,6 +68,65 @@ class MPIManager {
     std::string vendor_;
     size_t version_;
     size_t subversion_;
+
+  private:
+    /**
+     * @brief Set the MPI vendor.
+     */
+    void setVendor() {
+        char version[MPI_MAX_LIBRARY_VERSION_STRING];
+        int resultlen;
+
+        PL_MPI_IS_SUCCESS(MPI_Get_library_version(version, &resultlen));
+
+        std::string version_str = version;
+
+        if (version_str.find("Open MPI") != std::string::npos) {
+            vendor_ = "Open MPI";
+        } else if (version_str.find("MPICH") != std::string::npos) {
+            vendor_ = "MPICH";
+        } else {
+            throw std::runtime_error("Unsupported MPI implementation.\n");
+        }
+    }
+
+    /**
+     * @brief Set the MPI version.
+     */
+    void setVersion() {
+        int version_int, subversion_int;
+        PL_MPI_IS_SUCCESS(MPI_Get_version(&version_int, &subversion_int));
+        version_ = static_cast<size_t>(version_int);
+        subversion_ = static_cast<size_t>(subversion_int);
+    }
+
+    /**
+     * @brief Set the number of processes per node in the communicator.
+     */
+    void setNumProcsPerNode() {
+        MPI_Comm node_comm;
+        int size_per_node_int;
+        PL_MPI_IS_SUCCESS(
+            MPI_Comm_split_type(this->getComm(), MPI_COMM_TYPE_SHARED,
+                                this->getRank(), MPI_INFO_NULL, &node_comm));
+        PL_MPI_IS_SUCCESS(MPI_Comm_size(node_comm, &size_per_node_int));
+        size_per_node_ = static_cast<size_t>(size_per_node_int);
+        this->Barrier();
+    }
+
+    /**
+     * @brief Check if the MPI configuration meets the cuQuantum.
+     */
+    void check_mpi_config() {
+        // check if number of processes is power of two.
+        // This is required by custatevec
+        PL_ABORT_IF(std::has_single_bit(
+                        static_cast<unsigned int>(this->getSize())) != true,
+                    "Processes number is not power of two.");
+        PL_ABORT_IF(std::has_single_bit(
+                        static_cast<unsigned int>(size_per_node_)) != true,
+                    "Number of processes per node is not power of two.");
+    }
 
   public:
     MPIManager() : communicator_(MPI_COMM_WORLD) {
@@ -66,9 +139,9 @@ class MPIManager {
         rank_ = static_cast<size_t>(rank_int);
         size_ = static_cast<size_t>(size_int);
 
-        findVendor();
-        findVersion();
-        getNumProcsPerNode();
+        setVendor();
+        setVersion();
+        setNumProcsPerNode();
         check_mpi_config();
     }
 
@@ -82,9 +155,9 @@ class MPIManager {
         rank_ = static_cast<size_t>(rank_int);
         size_ = static_cast<size_t>(size_int);
 
-        findVendor();
-        findVersion();
-        getNumProcsPerNode();
+        setVendor();
+        setVersion();
+        setNumProcsPerNode();
         check_mpi_config();
     }
 
@@ -100,9 +173,9 @@ class MPIManager {
         rank_ = static_cast<size_t>(rank_int);
         size_ = static_cast<size_t>(size_int);
 
-        findVendor();
-        findVersion();
-        getNumProcsPerNode();
+        setVendor();
+        setVersion();
+        setNumProcsPerNode();
         check_mpi_config();
     }
 
@@ -133,17 +206,17 @@ class MPIManager {
     /**
      * @brief Get the process rank in the communicator.
      */
-    auto getRank() const { return rank_; }
+    auto getRank() const -> size_t { return rank_; }
 
     /**
      * @brief Get the process number in the communicator.
      */
-    auto getSize() const { return size_; }
+    auto getSize() const -> size_t { return size_; }
 
     /**
      * @brief Get the number of processes per node in the communicator.
      */
-    auto getSizeNode() const { return size_per_node_; }
+    auto getSizeNode() const -> size_t { return size_per_node_; }
 
     /**
      * @brief Get the communicator.
@@ -153,77 +226,18 @@ class MPIManager {
     /**
      * @brief Get an elapsed time.
      */
-    auto getTime() const { return MPI_Wtime(); }
+    double getTime() { return MPI_Wtime(); }
 
     /**
      * @brief Get the MPI vendor.
      */
-    auto getVendor() const { return vendor_; }
+    auto getVendor() const -> const std::string & { return vendor_; }
 
     /**
      * @brief Get the MPI version.
      */
-    auto getVersion() -> std::tuple<size_t, size_t> {
+    auto getVersion() const -> std::tuple<size_t, size_t> {
         return {version_, subversion_};
-    }
-
-    /**
-     * @brief Find the MPI vendor.
-     */
-    void findVendor() {
-        char version[MPI_MAX_LIBRARY_VERSION_STRING];
-        int resultlen;
-
-        PL_MPI_IS_SUCCESS(MPI_Get_library_version(version, &resultlen));
-
-        std::string version_str = version;
-
-        if (version_str.find("Open MPI") != std::string::npos) {
-            vendor_ = "Open MPI";
-        } else if (version_str.find("MPICH") != std::string::npos) {
-            vendor_ = "MPICH";
-        } else {
-            std::cerr << "Unsupported MPI implementation.\n";
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    /**
-     * @brief Find the MPI version.
-     */
-    void findVersion() {
-        int version_int, subversion_int;
-        PL_MPI_IS_SUCCESS(MPI_Get_version(&version_int, &subversion_int));
-        version_ = static_cast<size_t>(version_int);
-        subversion_ = static_cast<size_t>(subversion_int);
-    }
-
-    /**
-     * @brief Get the number of processes per node in the communicator.
-     */
-    void getNumProcsPerNode() {
-        MPI_Comm node_comm;
-        int size_per_node_int;
-        PL_MPI_IS_SUCCESS(
-            MPI_Comm_split_type(this->getComm(), MPI_COMM_TYPE_SHARED,
-                                this->getRank(), MPI_INFO_NULL, &node_comm));
-        PL_MPI_IS_SUCCESS(MPI_Comm_size(node_comm, &size_per_node_int));
-        size_per_node_ = static_cast<size_t>(size_per_node_int);
-        this->Barrier();
-    }
-
-    /**
-     * @brief Check if the MPI configuration meets the cuQuantum.
-     */
-    void check_mpi_config() {
-        // check if number of processes is power of two.
-        // This is required by custatevec
-        PL_ABORT_IF(std::has_single_bit(
-                        static_cast<unsigned int>(this->getSize())) != true,
-                    "Processes number is not power of two.");
-        PL_ABORT_IF(std::has_single_bit(
-                        static_cast<unsigned int>(size_per_node_)) != true,
-                    "Number of processes per node is not power of two.");
     }
 
     /**
@@ -241,8 +255,8 @@ class MPIManager {
             if (cppTypeToString<T>() != cppTypeToString<cudaIpcMemHandle_t>() &&
                 cppTypeToString<T>() !=
                     cppTypeToString<cudaIpcEventHandle_t>()) {
-                std::cerr << "Unsupported MPI DataType implementation.\n";
-                exit(EXIT_FAILURE);
+                throw std::runtime_error(
+                    "Unsupported MPI DataType implementation.\n");
             }
         }
         PL_ABORT_IF(recvBuf.size() != this->getSize(),

@@ -1,7 +1,19 @@
+// Copyright 2022-2023 Xanadu Quantum Technologies Inc.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 #pragma once
 #include <algorithm>
 #include <bit>
-#include <cctype>
 #include <string>
 #include <vector>
 
@@ -32,7 +44,8 @@ enum WireStatus { Default, Target, Control };
  * @param tgts Vector of target wires.
  * @return wirePairs Wire pairs to be passed to SV bit index swap worker.
  */
-inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
+inline std::vector<int2> createWirePairs(const int numLocalQubits,
+                                         const int numTotalQubits,
                                          std::vector<int> &ctrls,
                                          std::vector<int> &tgts,
                                          std::vector<int> &statusWires) {
@@ -57,10 +70,10 @@ inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
             }
             std::swap(statusWires[localbit], statusWires[globalbit]);
         } else {
-            if (statusWires[localbit] != 0) {
+            if (statusWires[localbit] != WireStatus::Default) {
                 localbit--;
             }
-            if (statusWires[globalbit] == 0) {
+            if (statusWires[globalbit] == WireStatus::Default) {
                 globalbit++;
             }
         }
@@ -156,16 +169,16 @@ inline SharedLocalStream make_shared_local_stream() {
  *
  * @param handle custatevecHandle.
  * @param mpi_manager MPI manager object.
+ * @param log2_mpi_buf_counts Size to set MPI buffer.
  * @param sv Pointer to the data requires MPI operation.
  * @param numLocalQubits Number of local qubits.
  * @param localStream Local cuda stream.
  */
-
 template <typename CFP_t>
-inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
-                                              MPIManager &mpi_manager,
-                                              CFP_t *sv, size_t numLocalQubits,
-                                              cudaStream_t localStream) {
+inline SharedMPIWorker
+make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
+                       const size_t log2_mpi_buf_counts, CFP_t *sv,
+                       const size_t numLocalQubits, cudaStream_t localStream) {
 
     custatevecSVSwapWorkerDescriptor_t svSegSwapWorker = nullptr;
 
@@ -174,13 +187,12 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
 
     size_t nDevices = static_cast<size_t>(nDevices_int);
 
-    // Ensure the P2P devices is calulcated based on the number of MPI processes
-    // within the node
+    // Ensure the number of P2P devices is calculated based on the number of MPI
+    // processes within the node
     nDevices = mpi_manager.getSizeNode() < nDevices ? mpi_manager.getSizeNode()
                                                     : nDevices;
 
-    size_t nP2PDeviceBits =
-        std::bit_width(static_cast<unsigned int>(nDevices)) - 1;
+    size_t nP2PDeviceBits = std::bit_width(nDevices) - 1;
 
     cudaDataType_t svDataType;
     if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
@@ -196,21 +208,6 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
     PL_CUDA_IS_SUCCESS(cudaEventCreateWithFlags(
         &localEvent, cudaEventInterprocess | cudaEventDisableTiming));
 
-    /*
-    custatevecCommunicatorType_t communicatorType;
-    std::string mpilibname;
-    if (mpi_manager.getVendor() == "MPICH") {
-        communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH;
-        mpilibname = "libmpi.so";
-    }
-
-    if (mpi_manager.getVendor() == "Open MPI") {
-        communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
-        mpilibname = "";
-    }
-
-    const char *soname = mpilibname.c_str();
-    */
     custatevecCommunicatorType_t communicatorType;
     if (mpi_manager.getVendor() == "MPICH") {
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_MPICH;
@@ -219,20 +216,14 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         communicatorType = CUSTATEVEC_COMMUNICATOR_TYPE_OPENMPI;
     }
 
-    // const char *soname0 = nullptr;
     auto err = custatevecCommunicatorCreate(handle, &communicator,
                                             communicatorType, nullptr);
     if (err != CUSTATEVEC_STATUS_SUCCESS) {
         communicator = nullptr;
-        const char *soname1 = "libmpi.so";
         PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
-            handle, &communicator, communicatorType, soname1));
+            handle, &communicator, communicatorType, "libmpi.so"));
     }
-
-    // mpi_manager.Barrier();
-    // PL_CUSTATEVEC_IS_SUCCESS(custatevecCommunicatorCreate(
-    //     handle, &communicator, communicatorType, soname));
-    // mpi_manager.Barrier();
+    mpi_manager.Barrier();
 
     void *d_extraWorkspace = nullptr;
     void *d_transferWorkspace = nullptr;
@@ -264,12 +255,35 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         /* void* */ d_extraWorkspace,
         /* size_t */ extraWorkspaceSize));
 
-    size_t transferWorkspaceSize =
-        size_t(1) << (numLocalQubits < 26 ? (numLocalQubits) : 26);
+    size_t transferWorkspaceSize; // In bytes and its value should be power
+                                  // of 2.
+
+    if (log2_mpi_buf_counts == 0) {
+        transferWorkspaceSize = size_t{1} << numLocalQubits;
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            transferWorkspaceSize = transferWorkspaceSize * sizeof(double) * 2;
+        } else {
+            transferWorkspaceSize = transferWorkspaceSize * sizeof(float) * 2;
+        }
+        // Here 26 is based on the benchmark tests on the Perlmutter.
+        if (transferWorkspaceSize > (size_t{1} << 26)) {
+            transferWorkspaceSize = size_t{1} << 26;
+        }
+    } else {
+        transferWorkspaceSize = size_t{1} << log2_mpi_buf_counts;
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            transferWorkspaceSize = transferWorkspaceSize * sizeof(double) * 2;
+        } else {
+            transferWorkspaceSize = transferWorkspaceSize * sizeof(float) * 2;
+        }
+    }
 
     transferWorkspaceSize =
         std::max(minTransferWorkspaceSize, transferWorkspaceSize);
     PL_CUDA_IS_SUCCESS(cudaMalloc(&d_transferWorkspace, transferWorkspaceSize));
+
     PL_CUSTATEVEC_IS_SUCCESS(custatevecSVSwapWorkerSetTransferWorkspace(
         /* custatevecHandle_t */ handle,
         /* custatevecSVSwapWorkerDescriptor_t */ svSegSwapWorker,
@@ -292,7 +306,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
         mpi_manager.Allgather<cudaIpcEventHandle_t>(
             eventHandle, ipcEventHandles, sizeof(eventHandle));
         //  get remove device pointers and events
-        size_t nSubSVsP2P = 1 << nP2PDeviceBits;
+        size_t nSubSVsP2P = size_t{1} << nP2PDeviceBits;
         size_t p2pSubSVIndexBegin =
             (mpi_manager.getRank() / nSubSVsP2P) * nSubSVsP2P;
         size_t p2pSubSVIndexEnd = p2pSubSVIndexBegin + nSubSVsP2P;
@@ -319,7 +333,7 @@ inline SharedMPIWorker make_shared_mpi_worker(custatevecHandle_t handle,
             /* void** */ d_subSVsP2P.data(),
             /* const int32_t* */ subSVIndicesP2P.data(),
             /* cudaEvent_t */ remoteEvents.data(),
-            /* const uint32_t */ static_cast<int>(d_subSVsP2P.size())));
+            /* const uint32_t */ static_cast<uint32_t>(d_subSVsP2P.size())));
     }
 
     return {svSegSwapWorker,
