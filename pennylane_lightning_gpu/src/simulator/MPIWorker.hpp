@@ -155,8 +155,8 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
                                                     : nDevices;
 
     size_t nP2PDeviceBits = std::bit_width(nDevices) - 1;
-    
-    //P2P access check guard
+
+    // P2P access check
     if (nP2PDeviceBits != 0) {
         size_t local_device_id = mpi_manager.getRank() % nDevices;
 
@@ -166,16 +166,7 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
                 PL_CUDA_IS_SUCCESS(cudaDeviceCanAccessPeer(
                     &accessEnabled, static_cast<int>(devId),
                     static_cast<int>(local_device_id)));
-                // Enable peer access first
-                if (!accessEnabled) {
-                    PL_CUDA_IS_SUCCESS(cudaDeviceEnablePeerAccess(
-                        static_cast<int>(devId),
-                        static_cast<int>(local_device_id)));
-                }
-                // Double check if peer access works
-                PL_CUDA_IS_SUCCESS(cudaDeviceCanAccessPeer(
-                    &accessEnabled, static_cast<int>(devId),
-                    static_cast<int>(local_device_id)));
+
                 if (!accessEnabled) {
                     nP2PDeviceBits = 0;
                 }
