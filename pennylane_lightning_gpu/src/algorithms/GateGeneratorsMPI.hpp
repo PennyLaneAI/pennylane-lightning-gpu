@@ -17,12 +17,8 @@
 
 #pragma once
 
-#include "StateVectorCudaManaged.hpp"
-#include "cuda_helpers.hpp"
-
-#ifdef ENABLE_MPI
 #include "StateVectorCudaMPI.hpp"
-#endif 
+#include "cuda_helpers.hpp"
 
 /// @cond DEV
 namespace {
@@ -45,7 +41,7 @@ static constexpr auto getP1111_CU() -> std::vector<CFP_t> {
 } // namespace
 /// @endcond
 
-namespace Pennylane::CUDA::Generators {
+namespace Pennylane::CUDA::GeneratorsMPI {
 
 /**
  * @brief Gradient generator function associated with the RX gate.

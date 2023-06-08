@@ -146,7 +146,64 @@ class StateVectorCudaMPI
         mpi_manager_.Barrier();
     };
 
+    StateVectorCudaMPI(
+        size_t num_global_qubits, size_t num_local_qubits, const CFP_t *gpu_data,
+        MPI_Comm mpi_communicator,
+        SharedCusvHandle handle_in = make_shared_cusv_handle(),
+        SharedCublasCaller cublascaller_in = make_shared_cublas_caller(),
+        SharedLocalStream localStream_in = make_shared_local_stream())
+        :StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
+            num_local_qubits),
+          numGlobalQubits_(num_global_qubits),
+          numLocalQubits_(num_local_qubits),
+          mpi_manager_(mpi_communicator),
+          handle_(std::move(handle_in)),
+          cublascaller_(std::move(cublascaller_in)),
+          localStream_(std::move(localStream_in)),
+          svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
+              handle_.get(), mpi_manager_, BaseType::getData(),
+              num_local_qubits, localStream_.get())),gate_cache_(true){
+        size_t length = 1 << numLocalQubits_;
+        BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
+        mpi_manager_.Barrier();
+    }
+    /*
+    StateVectorCudaMPI(
+        size_t num_global_qubits, size_t num_local_qubits,
+        SharedCusvHandle cusvhandle_in = make_shared_cusv_handle(),
+        SharedCublasCaller cublascaller_in = make_shared_cublas_caller(),
+        SharedLocalStream localStream_in = make_shared_local_stream())
+        : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
+              num_local_qubits),
+          handle_(std::move(cusvhandle_in)),
+          cublascaller_(std::move(cublascaller_in)),
+          localStream_(std::move(localStream_in)),
+          gate_cache_(true) {
+        //BaseType::initSV();
+        initSV_MPI();
+    };
+    */
+
+    StateVectorCudaMPI(const StateVectorCudaMPI &other)
+        : BaseType(other.getNumQubits(), other.getDataBuffer().getDevTag()),
+          numGlobalQubits_(other.numGlobalQubits_),
+          numLocalQubits_(other.numLocalQubits_),
+          mpi_manager_(other.mpi_manager_), handle_(other.handle_),
+          cublascaller_(other.cublascaller_), localStream_(other.localStream_),
+          svSegSwapWorker_(other.svSegSwapWorker_), gate_cache_(true) {
+        BaseType::CopyGpuDataToGpuIn(other);
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
+    }
+
     ~StateVectorCudaMPI(){};
+
+    /**
+     * @brief Get MPI manager
+     */
+    auto getMPIManager() const {
+        return mpi_manager_;
+    }
 
     /**
      * @brief Get the total number of wires.

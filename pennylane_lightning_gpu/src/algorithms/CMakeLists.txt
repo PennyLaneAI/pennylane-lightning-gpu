@@ -2,6 +2,11 @@ project(lightning_gpu_algorithms LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 set(GPU_ALGORITHM_FILES AdjointDiffGPU.hpp AdjointDiffGPU.cpp GateGenerators.hpp ObservablesGPU.hpp CACHE INTERNAL "" FORCE)
+
+if(PLGPU_ENABLE_MPI)
+    list(APPEND SIMULATOR_FILES AdjointDiffGPUMPI.hpp AdjointDiffGPUMPI.cpp GateGeneratorsMPI.hpp ObservablesGPUMPI.hpp)
+endif()
+
 add_library(lightning_gpu_algorithms STATIC ${GPU_ALGORITHM_FILES})
 
 target_include_directories(lightning_gpu_algorithms PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
