@@ -108,10 +108,10 @@ inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
             }
             std::swap(statusWires[localbit], statusWires[globalbit]);
         } else {
-            if (statusWires[localbit] != 0) {
+            if (statusWires[localbit] != WireStatus::Default) {
                 localbit--;
             }
-            if (statusWires[globalbit] == 0) {
+            if (statusWires[globalbit] == WireStatus::Default) {
                 globalbit++;
             }
         }
