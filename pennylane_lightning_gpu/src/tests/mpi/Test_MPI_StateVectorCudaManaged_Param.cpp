@@ -83,12 +83,13 @@ using namespace CUDA;
         cudaGetDeviceCount(&nDevices);                                         \
         int deviceId = mpi_manager.getRank() % nDevices;                       \
         cudaSetDevice(deviceId);                                               \
+        DevTag<int> dt_local(deviceId, 0);                                     \
         mpi_manager.Barrier();                                                 \
         SECTION("Apply directly") {                                            \
             SECTION("Operation on target") {                                   \
-                StateVectorCudaMPI<TestType> sv(mpi_manager, mpi_buffersize,   \
-                                                nGlobalIndexBits,              \
-                                                nLocalIndexBits);              \
+                StateVectorCudaMPI<TestType> sv(                               \
+                    mpi_manager, dt_local, mpi_buffersize, nGlobalIndexBits,   \
+                    nLocalIndexBits);                                          \
                 sv.CopyHostDataToGpu(local_state, false);                      \
                 sv.GATE_METHOD(WIRE, false, ANGLE);                            \
                 sv.CopyGpuDataToHost(local_state.data(), subSvLength);         \
@@ -104,9 +105,9 @@ using namespace CUDA;
         }                                                                      \
         SECTION("Apply using dispatcher") {                                    \
             SECTION("Operation on target") {                                   \
-                StateVectorCudaMPI<TestType> sv(mpi_manager, mpi_buffersize,   \
-                                                nGlobalIndexBits,              \
-                                                nLocalIndexBits);              \
+                StateVectorCudaMPI<TestType> sv(                               \
+                    mpi_manager, dt_local, mpi_buffersize, nGlobalIndexBits,   \
+                    nLocalIndexBits);                                          \
                 sv.CopyHostDataToGpu(local_state, false);                      \
                 sv.applyOperation(GATE_NAME, WIRE, false, ANGLE);              \
                 sv.CopyGpuDataToHost(local_state.data(), subSvLength);         \

@@ -251,6 +251,7 @@ if CPP_BINARY_AVAILABLE:
 
                 self._gpu_state = _gpu_dtype(c_dtype, mpi)(
                     self._mpi_manager,
+                    self._devtag,
                     log2_mpi_buf_counts,
                     self._num_global_wires,
                     self._num_local_wires,
@@ -286,6 +287,7 @@ if CPP_BINARY_AVAILABLE:
             rank = self._mpi_manager.getRank()
             deviceid = rank % numProcsNode
             self._dp.setDeviceID(deviceid)
+            self._devtag = DevTag(deviceid)
 
         def reset(self):
             super().reset()

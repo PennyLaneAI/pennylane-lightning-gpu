@@ -935,18 +935,20 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
 
     py::class_<StateVectorCudaMPI<PrecisionT>>(m, class_name.c_str())
         .def(py::init(
-            [](MPIManager &mpi_manager, std::size_t log2_mpi_buf_counts,
+            [](MPIManager &mpi_manager, const DevTag<int> devtag_local,
+               std::size_t log2_mpi_buf_counts, std::size_t num_global_qubits,
+               std::size_t num_local_qubits) {
+                return new StateVectorCudaMPI<PrecisionT>(
+                    mpi_manager, devtag_local, log2_mpi_buf_counts,
+                    num_global_qubits, num_local_qubits);
+            })) // qubits, device
+        .def(py::init(
+            [](const DevTag<int> devtag_local, std::size_t log2_mpi_buf_counts,
                std::size_t num_global_qubits, std::size_t num_local_qubits) {
                 return new StateVectorCudaMPI<PrecisionT>(
-                    mpi_manager, log2_mpi_buf_counts, num_global_qubits,
+                    devtag_local, log2_mpi_buf_counts, num_global_qubits,
                     num_local_qubits);
             })) // qubits, device
-        .def(py::init([](std::size_t log2_mpi_buf_counts,
-                         std::size_t num_global_qubits,
-                         std::size_t num_local_qubits) {
-            return new StateVectorCudaMPI<PrecisionT>(
-                log2_mpi_buf_counts, num_global_qubits, num_local_qubits);
-        })) // qubits, device
         .def(
             "setBasisState",
             [](StateVectorCudaMPI<PrecisionT> &sv, const size_t index,

@@ -88,12 +88,13 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetStateVector",
     cudaGetDeviceCount(&nDevices);
     int deviceId = mpi_manager.getRank() % nDevices;
     cudaSetDevice(deviceId);
+    DevTag<int> dt_local(deviceId, 0);
 
     //`values[i]` on the host will be copy the `indices[i]`th element of the
     // state vector on the device.
     SECTION("Set state vector with values and their corresponding indices on "
             "the host") {
-        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, mpi_buffersize,
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
                                           nGlobalIndexBits, nLocalIndexBits);
         // The setStates will shuffle the state vector values on the device with
         // the following indices and values setting on host. For example, the
@@ -148,10 +149,11 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
     cudaGetDeviceCount(&nDevices);
     int deviceId = mpi_manager.getRank() % nDevices;
     cudaSetDevice(deviceId);
+    DevTag<int> dt_local(deviceId, 0);
 
     SECTION(
         "Set Ith element of the state state on device with data on the host") {
-        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, mpi_buffersize,
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
                                           nLocalIndexBits, nLocalIndexBits);
         std::complex<PrecisionT> values = {1.0, 0};
         sv.setBasisState(values, index, false);
@@ -190,12 +192,13 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
         cudaGetDeviceCount(&nDevices);                                         \
         int deviceId = mpi_manager.getRank() % nDevices;                       \
         cudaSetDevice(deviceId);                                               \
+        DevTag<int> dt_local(deviceId, 0);                                     \
         mpi_manager.Barrier();                                                 \
         SECTION("Apply directly") {                                            \
             SECTION("Operation on target wire") {                              \
-                StateVectorCudaMPI<TestType> sv(mpi_manager, mpi_buffersize,   \
-                                                nGlobalIndexBits,              \
-                                                nLocalIndexBits);              \
+                StateVectorCudaMPI<TestType> sv(                               \
+                    mpi_manager, dt_local, mpi_buffersize, nGlobalIndexBits,   \
+                    nLocalIndexBits);                                          \
                 sv.CopyHostDataToGpu(local_state, false);                      \
                 sv.GATE_METHOD(WIRE, false);                                   \
                 sv.CopyGpuDataToHost(local_state.data(),                       \
@@ -213,9 +216,9 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
         }                                                                      \
         SECTION("Apply using dispatcher") {                                    \
             SECTION("Operation on target wire") {                              \
-                StateVectorCudaMPI<TestType> sv(mpi_manager, mpi_buffersize,   \
-                                                nGlobalIndexBits,              \
-                                                nLocalIndexBits);              \
+                StateVectorCudaMPI<TestType> sv(                               \
+                    mpi_manager, dt_local, mpi_buffersize, nGlobalIndexBits,   \
+                    nLocalIndexBits);                                          \
                 sv.CopyHostDataToGpu(local_state, false);                      \
                 sv.applyOperation(GATE_NAME, WIRE, false);                     \
                 sv.CopyGpuDataToHost(local_state.data(),                       \
