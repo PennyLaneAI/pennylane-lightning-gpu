@@ -194,6 +194,7 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
 
     size_t nP2PDeviceBits = std::bit_width(nDevices) - 1;
 
+    size_t p2pEnabled_local = 1;
     // P2P access check
     if (nP2PDeviceBits != 0) {
         size_t local_device_id = mpi_manager.getRank() % nDevices;
@@ -206,9 +207,17 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
                     static_cast<int>(local_device_id)));
 
                 if (!accessEnabled) {
-                    nP2PDeviceBits = 0;
+                    p2pEnabled_local = 0;
                 }
             }
+        }
+
+        auto isP2PEnabled =
+            mpi_manager.allreduce<size_t>(p2pEnabled_local, "min");
+        // P2PDeviceBits is set as 0 for all MPI processes if P2P access is not
+        // supported by any pair of devices of any node
+        if (!isP2PEnabled) {
+            nP2PDeviceBits = 0;
         }
     }
 

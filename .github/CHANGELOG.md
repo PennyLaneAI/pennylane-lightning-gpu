@@ -40,7 +40,7 @@
 * Add multi-node/multi-gpu support to gate operation.
   [(#112)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/112)
 
-  This new feature empowers users to leverage the computational power of multi-node and multi-GPUs for running large-scale applications. It requires both the total number of overall `MPI` processes and the number of `MPI` processes per node to be power of `2`. Each `MPI` process is responsible for managing one GPU for the moment. 
+  This new feature empowers users to leverage the computational power of multi-node and multi-GPUs for running large-scale applications. It requires both the total number of overall `MPI` processes and the number of `MPI` processes of each node to be the same and power of `2`. Each `MPI` process is responsible for managing one GPU for the moment. 
   To enable this feature, users can set `mpi=True`. Furthermore, users can fine-tune the performance of `MPI` operations by adjusting the `log2_mpi_buf_counts` parameter. This parameter determines the allocation of GPU memory for storing `2^log2_mpi_buf_counts` complex elements during `MPI` operations. Note that there will be a runtime warning if `log2_mpi_buf_counts` is larger than the number of qubits of the local state vector. 
   By default (`log2_mpi_buf_counts=0`), the GPU memory allocation for MPI operations is based on `2^num_local_wires`, with a limit of `2^26` bytes.
   The workflow for the new feature is:
