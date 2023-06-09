@@ -47,8 +47,9 @@ TEST_CASE("AdjointJacobianGPUMPI::AdjointJacobianGPUMPI Op=[RX,RX,RX], Obs=[Z,Z,
     cudaGetDeviceCount(&nDevices);
     int deviceId = mpi_manager.getRank() % nDevices;
     cudaSetDevice(deviceId);
+    DevTag<int> dt_local(deviceId, 0);
     {
-        StateVectorCudaMPI<double> sv_ref(mpi_manager, nGlobalIndexBits,
+        StateVectorCudaMPI<double> sv_ref(mpi_manager, dt_local, 0, nGlobalIndexBits,
                                           nLocalIndexBits);
         sv_ref.initSV_MPI();
 
@@ -62,7 +63,7 @@ TEST_CASE("AdjointJacobianGPUMPI::AdjointJacobianGPUMPI Op=[RX,RX,RX], Obs=[Z,Z,
                                      {{param[0]}, {param[1]}, {param[2]}},
                                      {{0}, {1}, {2}}, {false, false, false});
 
-        //adj.adjointJacobian(sv_ref, jacobian, {obs1, obs2, obs3}, ops, tp, true);
+        adj.adjointJacobian(sv_ref, jacobian, {obs1, obs2, obs3}, ops, tp, true, dt_local);
 
         //CAPTURE(jacobian);
         mpi_manager.Barrier();

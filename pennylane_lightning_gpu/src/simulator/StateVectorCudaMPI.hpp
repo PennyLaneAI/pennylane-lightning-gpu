@@ -150,7 +150,7 @@ class StateVectorCudaMPI
     };
 
     StateVectorCudaMPI(
-        const DevTag<int> &dev_tag, size_t num_local_qubits, size_t num_global_qubits, size_t num_local_qubits, const CFP_t *gpu_data,
+        const DevTag<int> &dev_tag, size_t num_global_qubits, size_t num_local_qubits, const CFP_t *gpu_data,
         MPI_Comm mpi_communicator,
         SharedCusvHandle handle_in = make_shared_cusv_handle(),
         SharedCublasCaller cublascaller_in = make_shared_cublas_caller(),
@@ -164,8 +164,8 @@ class StateVectorCudaMPI
           cublascaller_(std::move(cublascaller_in)),
           localStream_(std::move(localStream_in)),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
-              handle_.get(), mpi_manager_, BaseType::getData(),
-              num_local_qubits, localStream_.get())),gate_cache_(true){
+              handle_.get(), mpi_manager_, 0, BaseType::getData(),
+              num_local_qubits, localStream_.get())),gate_cache_(true, dev_tag){
         size_t length = 1 << numLocalQubits_;
         BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
@@ -194,7 +194,7 @@ class StateVectorCudaMPI
           numLocalQubits_(other.numLocalQubits_),
           mpi_manager_(other.mpi_manager_), handle_(other.handle_),
           cublascaller_(other.cublascaller_), localStream_(other.localStream_),
-          svSegSwapWorker_(other.svSegSwapWorker_), gate_cache_(true) {
+          svSegSwapWorker_(other.svSegSwapWorker_), gate_cache_(true, other.getDataBuffer().getDevTag()) {
         BaseType::CopyGpuDataToGpuIn(other);
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
     }

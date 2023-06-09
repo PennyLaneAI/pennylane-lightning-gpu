@@ -349,7 +349,8 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
                     const std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> &obs,
                     const Pennylane::Algorithms::OpsData<T> &ops,
                     const std::vector<size_t> &trainableParams,
-                    bool apply_operations = false) {
+                    bool apply_operations = false,
+                    CUDA::DevTag<int> dev_tag = {0, 0}) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 
@@ -366,14 +367,14 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
         auto tp_it = trainableParams.rbegin();
         const auto tp_rend = trainableParams.rend();
 
-        //DevTag<int> dt_local(std::move(dev_tag));
-        //dt_local.refresh();
+        DevTag<int> dt_local(std::move(dev_tag));
+        dt_local.refresh();
         // Create $U_{1:p}\vert \lambda \rangle$
         SharedCusvHandle cusvhandle = make_shared_cusv_handle();
         SharedCublasCaller cublascaller = make_shared_cublas_caller();
         SharedLocalStream localStream = make_shared_local_stream();
 
-        SVType<T> lambda(ref_sv.getNumGlobalQubits(), ref_sv.getNumLocalQubits(), ref_sv.getData(), ref_sv.getMPIManager().getComm(), cusvhandle, cublascaller, localStream);
+        SVType<T> lambda(dt_local, ref_sv.getNumGlobalQubits(), ref_sv.getNumLocalQubits(), ref_sv.getData(), ref_sv.getMPIManager().getComm(), cusvhandle, cublascaller, localStream);
         ref_sv.getMPIManager().Barrier();
         // Apply given operations to statevector if requested
         if (apply_operations) {
@@ -383,12 +384,12 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
         // Create observable-applied state-vectors
         std::vector<SVType<T>> H_lambda;
         for (size_t n = 0; n < num_observables; n++) {
-            H_lambda.emplace_back(lambda.getNumGlobalQubits(), lambda.getNumLocalQubits(), lambda.getData(), lambda.getMPIManager().getComm(),
+            H_lambda.emplace_back(dt_local,lambda.getNumGlobalQubits(), lambda.getNumLocalQubits(), lambda.getData(), lambda.getMPIManager().getComm(),
                                   cusvhandle, cublascaller, localStream);
         }
         applyObservables(H_lambda, lambda, obs);
 
-        SVType<T> mu(lambda.getNumGlobalQubits(), lambda.getNumLocalQubits(), lambda.getData(), lambda.getMPIManager().getComm(),
+        SVType<T> mu(dt_local,lambda.getNumGlobalQubits(), lambda.getNumLocalQubits(), lambda.getData(), lambda.getMPIManager().getComm(),
                                   cusvhandle, cublascaller, localStream);
 
         auto device_id = mu.getDataBuffer().getDevTag().getDeviceID();

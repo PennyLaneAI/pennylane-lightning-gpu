@@ -1636,7 +1636,7 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                      observables.size(),
                      std::vector<PrecisionT>(trainableParams.size(), 0));
 
-                 adj.adjointJacobian(sv, jac, observables, operations, trainableParams, false);
+                 adj.adjointJacobian(sv, jac, observables, operations, trainableParams, false, sv.getDataBuffer().getDevTag());
                  return py::array_t<ParamT>(py::cast(jac));
              });
 }
