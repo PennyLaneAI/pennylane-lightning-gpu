@@ -995,7 +995,7 @@ class StateVectorCudaMPI
      */
     auto generate_samples(size_t num_samples) -> std::vector<size_t> {
         double epsilon = 1e-15;
-        size_t nSubSvs = 1 << (this->getNumGlobalQubits());
+        size_t nSubSvs = 1UL << (this->getNumGlobalQubits());
         std::vector<double> rand_nums(num_samples);
         std::vector<size_t> samples(num_samples * this->getTotalNumQubits(), 0);
 
