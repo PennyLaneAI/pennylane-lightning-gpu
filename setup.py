@@ -79,15 +79,6 @@ if not os.getenv("READTHEDOCS"):
             if platform.system() != "Linux":
                 raise RuntimeError(f"Unsupported '{platform.system()}' platform")
 
-            if 'cray' in platform.release():
-                 configure_args += [
-                    "-DSYSTEM_NAME=CrayLinux",
-                 ]
-            else:
-                 configure_args += [
-                    "-DSYSTEM_NAME=Linux",
-                 ]
-
             if not Path(self.build_temp).exists():
                 os.makedirs(self.build_temp)
 

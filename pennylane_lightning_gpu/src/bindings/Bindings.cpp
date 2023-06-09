@@ -1,4 +1,4 @@
-// Copyright 2018-2022 Xanadu Quantum Technologies Inc.
+// Copyright 2022-2023 Xanadu Quantum Technologies Inc.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -896,7 +896,6 @@ void MPIManager_class_bindings(py::module &m) {
         .def("getTime", &MPIManager::getTime)
         .def("getVendor", &MPIManager::getVendor)
         .def("getVersion", &MPIManager::getVersion)
-        .def("checkMPIConfig", &MPIManager::check_mpi_config)
         .def(
             "Scatter",
             [](MPIManager &mpi_manager, np_arr_c64 &sendBuf,
@@ -939,15 +938,20 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
     std::string class_name = "LightningGPUMPI_C" + bitsize;
 
     py::class_<StateVectorCudaMPI<PrecisionT>>(m, class_name.c_str())
-        .def(py::init([](MPIManager &mpi_manager, std::size_t num_global_qubits,
-                         std::size_t num_local_qubits) {
-            return new StateVectorCudaMPI<PrecisionT>(
-                mpi_manager, num_global_qubits, num_local_qubits);
-        })) // qubits, device
         .def(py::init(
-            [](std::size_t num_global_qubits, std::size_t num_local_qubits) {
-                return new StateVectorCudaMPI<PrecisionT>(num_global_qubits,
-                                                          num_local_qubits);
+            [](MPIManager &mpi_manager, const DevTag<int> devtag_local,
+               std::size_t log2_mpi_buf_counts, std::size_t num_global_qubits,
+               std::size_t num_local_qubits) {
+                return new StateVectorCudaMPI<PrecisionT>(
+                    mpi_manager, devtag_local, log2_mpi_buf_counts,
+                    num_global_qubits, num_local_qubits);
+            })) // qubits, device
+        .def(py::init(
+            [](const DevTag<int> devtag_local, std::size_t log2_mpi_buf_counts,
+               std::size_t num_global_qubits, std::size_t num_local_qubits) {
+                return new StateVectorCudaMPI<PrecisionT>(
+                    devtag_local, log2_mpi_buf_counts, num_global_qubits,
+                    num_local_qubits);
             })) // qubits, device
         .def(
             "setBasisState",
