@@ -22,7 +22,7 @@
 
 #ifdef ENABLE_MPI
 #include "StateVectorCudaMPI.hpp"
-#endif 
+#endif
 
 /// @cond DEV
 namespace {

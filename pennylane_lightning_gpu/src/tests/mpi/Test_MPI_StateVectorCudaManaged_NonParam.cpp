@@ -369,7 +369,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::expval",
     PrecisionT mpi_result, result;
     std::vector<size_t> wire{0};
 
-    std::vector<cp_t> matrix(4, cp_t(1.0, 0.0));
+    std::vector<cp_t> matrix(4, cp_t{1.0, 0.0});
 
     matrix[1] = cp_t(0, 0);
     matrix[2] = cp_t(0, 0);

@@ -3,6 +3,6 @@
 
 // explicit instantiation
 template class Pennylane::Algorithms::AdjointJacobianGPUMPI<float,
-                                                         StateVectorCudaMPI>;
+                                                            StateVectorCudaMPI>;
 template class Pennylane::Algorithms::AdjointJacobianGPUMPI<double,
-                                                         StateVectorCudaMPI>;
+                                                            StateVectorCudaMPI>;

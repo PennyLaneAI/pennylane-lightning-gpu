@@ -29,7 +29,7 @@ namespace Pennylane::Algorithms {
  * @tparam T Floating point type
  */
 
-template <typename T, template<typename> class SVType>
+template <typename T, template <typename> class SVType>
 class ObservableGPUMPI
     : public std::enable_shared_from_this<ObservableGPUMPI<T, SVType>> {
   private:
@@ -55,7 +55,7 @@ class ObservableGPUMPI
     /**
      * @brief Apply the observable to the given statevector in place.
      */
-    virtual void applyInPlace(SVType<T> &sv) const = 0;
+    virtual inline void applyInPlace(SVType<T> &sv) const = 0;
 
     /**
      * @brief Get the name of the observable
@@ -89,7 +89,7 @@ class ObservableGPUMPI
  *
  * @tparam T Floating point type
  */
-template <typename T, template<typename> class SVType>
+template <typename T, template <typename> class SVType>
 class NamedObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
   private:
     std::string obs_name_;
@@ -98,7 +98,8 @@ class NamedObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
 
     [[nodiscard]] bool
     isEqual(const ObservableGPUMPI<T, SVType> &other) const override {
-        const auto &other_cast = static_cast<const NamedObsGPUMPI<T, SVType> &>(other);
+        const auto &other_cast =
+            static_cast<const NamedObsGPUMPI<T, SVType> &>(other);
 
         return (obs_name_ == other_cast.obs_name_) &&
                (wires_ == other_cast.wires_) && (params_ == other_cast.params_);
@@ -128,8 +129,12 @@ class NamedObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
         return wires_;
     }
 
-    void applyInPlace(SVType<T> &sv) const override {
+    inline void applyInPlace(SVType<T> &sv) const override {
+        sv.getMPIManager().Barrier();
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         sv.applyOperation(obs_name_, wires_, false, params_);
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        sv.getMPIManager().Barrier();
     }
 };
 
@@ -137,7 +142,7 @@ class NamedObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
  * @brief Class models arbitrary Hermitian observables
  *
  */
-template <typename T, template<typename> class SVType>
+template <typename T, template <typename> class SVType>
 class HermitianObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
   public:
     using MatrixT = std::vector<std::complex<T>>;
@@ -182,15 +187,17 @@ class HermitianObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
         return obs_stream.str();
     }
 
-    void applyInPlace(SVType<T> &sv) const override {
+    inline void applyInPlace(SVType<T> &sv) const override {
         sv.applyOperation_std(getObsName(), wires_, false, {}, matrix_);
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        sv.getMPIManager().Barrier();
     }
 };
 
 /**
  * @brief Class models Tensor product observables
  */
-template <typename T, template<typename> class SVType>
+template <typename T, template <typename> class SVType>
 class TensorProdObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
   private:
     std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> obs_;
@@ -275,7 +282,7 @@ class TensorProdObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
         return all_wires_;
     }
 
-    void applyInPlace(SVType<T> &sv) const override {
+    inline void applyInPlace(SVType<T> &sv) const override {
         for (const auto &ob : obs_) {
             ob->applyInPlace(sv);
         }
@@ -299,7 +306,7 @@ class TensorProdObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
  * @brief General Hamiltonian as a sum of observables.
  *
  */
-template <typename T, template<typename> class SVType>
+template <typename T, template <typename> class SVType>
 class HamiltonianGPUMPI final : public ObservableGPUMPI<T, SVType> {
   public:
     using PrecisionT = T;
@@ -348,16 +355,16 @@ class HamiltonianGPUMPI final : public ObservableGPUMPI<T, SVType> {
      * @param arg1 Argument to construct coefficients
      * @param arg2 Argument to construct terms
      */
-    static auto create(
-        std::initializer_list<T> arg1,
-        std::initializer_list<std::shared_ptr<ObservableGPUMPI<T, SVType>>> arg2)
-        -> std::shared_ptr<HamiltonianGPUMPI<T, SVType>> {
+    static auto
+    create(std::initializer_list<T> arg1,
+           std::initializer_list<std::shared_ptr<ObservableGPUMPI<T, SVType>>>
+               arg2) -> std::shared_ptr<HamiltonianGPUMPI<T, SVType>> {
         return std::shared_ptr<HamiltonianGPUMPI<T, SVType>>(
             new HamiltonianGPUMPI<T, SVType>{std::move(arg1), std::move(arg2)});
     }
 
     // to work with
-    void applyInPlace(SVType<T> &sv) const override {
+    inline void applyInPlace(SVType<T> &sv) const override {
         using CFP_t = typename SVType<T>::CFP_t;
         DataBuffer<CFP_t, int> buffer(sv.getDataBuffer().getLength(),
                                       sv.getDataBuffer().getDevTag());

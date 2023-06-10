@@ -67,8 +67,8 @@ try:
         HamiltonianGPU_C128,
         SparseHamiltonianGPU_C64,
         SparseHamiltonianGPU_C128,
-        #OpsStructGPU_C128,
-        #OpsStructGPU_C64,
+        # OpsStructGPU_C128,
+        # OpsStructGPU_C64,
         PLException,
     )
 

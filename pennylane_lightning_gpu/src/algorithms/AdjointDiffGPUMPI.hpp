@@ -46,7 +46,9 @@ namespace Pennylane::Algorithms {
  *
  * @tparam T Floating-point precision.
  */
-template <class T = double, template<typename> class SVType = StateVectorCudaMPI> class AdjointJacobianGPUMPI {
+template <class T = double,
+          template <typename> class SVType = StateVectorCudaMPI>
+class AdjointJacobianGPUMPI {
   private:
     using CFP_t = decltype(cuUtil::getCudaType(T{}));
     using scalar_type_t = T;
@@ -113,46 +115,31 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
      * @param scaling_coeff Generator coefficient for given gate derivative.
      * @param num_observables the number of observables of Jacobian to update.
      * @param param_index Parameter index position of Jacobian to update.
-     * @param device_buffer_jac_single_param_local a workspace buffer on the device of
-     * size num_observables elements. Data will be ignored and overwritten.
-     * @param host_buffer_jac_single_param_local a workspace buffer on the host of
-     * size num_observables elements. Data will be ignored and overwritten.
+     * @param device_buffer_jac_single_param_local a workspace buffer on the
+     * device of size num_observables elements. Data will be ignored and
+     * overwritten.
+     * @param host_buffer_jac_single_param_local a workspace buffer on the host
+     * of size num_observables elements. Data will be ignored and overwritten.
      */
-    inline void
-    updateJacobian(const std::vector<SVType<T>> &sv1s, const SVType<T> &sv2,
-                   std::vector<std::vector<T>> &jac, T scaling_coeff,
-                   size_t num_observables, size_t param_index,
-                   DataBuffer<CFP_t, int> &device_buffer_jac_single_param_local,
-                   std::vector<CFP_t> &host_buffer_jac_single_param_local) {
-        host_buffer_jac_single_param_local.clear();
-        for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++) {
-            const SVType<T> &sv1 = sv1s[obs_idx];
-            PL_ABORT_IF_NOT(sv1.getDataBuffer().getDevTag().getDeviceID() ==
-                                sv2.getDataBuffer().getDevTag().getDeviceID(),
-                            "Data exists on different GPUs. Aborting.");
-            innerProdC_CUDA_device(
-                sv1.getData(), sv2.getData(), sv1.getLength(),
-                sv1.getDataBuffer().getDevTag().getDeviceID(),
-                sv1.getDataBuffer().getDevTag().getStreamID(),
-                sv1.getCublasCaller(),
-                device_buffer_jac_single_param_local.getData() + obs_idx);
-        }
-        host_buffer_jac_single_param_local.resize(num_observables);
-        device_buffer_jac_single_param_local.CopyGpuDataToHost(
-            host_buffer_jac_single_param_local.data(),
-            host_buffer_jac_single_param_local.size(), false);
-        // MPI_operation is required here since each MPI process only
-        // calculation part of jac
-        std::vector<CFP_t> host_buffer_jac_single_param(num_observables);
-        host_buffer_jac_single_param.clear();
-        host_buffer_jac_single_param.resize(num_observables);
-        sv2.getMPIManager().template Allreduce<CFP_t>(host_buffer_jac_single_param_local,
-                                  host_buffer_jac_single_param, "sum");
+    inline void updateJacobian(const SVType<T> &sv1s, const SVType<T> &sv2,
+                               std::vector<std::vector<T>> &jac,
+                               T scaling_coeff, size_t obs_idx,
+                               size_t param_index) {
+        PL_ABORT_IF_NOT(sv1s.getDataBuffer().getDevTag().getDeviceID() ==
+                            sv2.getDataBuffer().getDevTag().getDeviceID(),
+                        "Data exists on different GPUs. Aborting.");
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        sv2.getMPIManager().Barrier();
+        CFP_t result;
+        innerProdC_CUDA_device(sv1s.getData(), sv2.getData(), sv1s.getLength(),
+                               sv1s.getDataBuffer().getDevTag().getDeviceID(),
+                               sv1s.getDataBuffer().getDevTag().getStreamID(),
+                               sv1s.getCublasCaller(), &result);
 
-        for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++) {
-            jac[obs_idx][param_index] =
-                -2 * scaling_coeff * host_buffer_jac_single_param[obs_idx].y;
-        }
+        auto jac_single_param =
+            sv2.getMPIManager().template allreduce<CFP_t>(result, "sum");
+
+        jac[obs_idx][param_index] = -2 * scaling_coeff * jac_single_param.y;
     }
 
     /**
@@ -174,6 +161,8 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
                                  operations.getOpsWires()[op_idx],
                                  operations.getOpsInverses()[op_idx] ^ adj,
                                  operations.getOpsParams()[op_idx]);
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+            state.getMPIManager().Barrier();
         }
     }
 
@@ -194,6 +183,8 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
                              operations.getOpsWires()[op_idx],
                              !operations.getOpsInverses()[op_idx],
                              operations.getOpsParams()[op_idx]);
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        state.getMPIManager().Barrier();
     }
 
     /**
@@ -210,76 +201,6 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
     }
 
     /**
-     * @brief OpenMP accelerated application of observables to given
-     * statevectors
-     *
-     * @param states Vector of statevector copies, one per observable.
-     * @param reference_state Reference statevector
-     * @param observables Vector of observables to apply to each statevector.
-     */
-    inline void applyObservables(
-        std::vector<SVType<T>> &states, const SVType<T> &reference_state,
-        const std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> &observables) {
-        // clang-format off
-        std::exception_ptr ex = nullptr;
-        size_t num_observables = observables.size();
-        for (size_t h_i = 0; h_i < num_observables; h_i++) {
-            try {
-                states[h_i].updateData(reference_state);
-                applyObservable(states[h_i], *observables[h_i]);
-            } catch (...) {
-                ex = std::current_exception();
-            }
-        }
-        if (ex) {
-            std::rethrow_exception(ex);
-        }
-        // clang-format on
-    }
-
-    /**
-     * @brief OpenMP accelerated application of adjoint operations to
-     * statevectors.
-     *
-     * @param states Vector of all statevectors; 1 per observable
-     * @param operations Operations list.
-     * @param op_idx Index of given operation within operations list to take
-     * adjoint of.
-     */
-    inline void
-    applyOperationsAdj(std::vector<SVType<T>> &states,
-                       const Pennylane::Algorithms::OpsData<T> &operations,
-                       size_t op_idx) {
-        // clang-format off
-        std::exception_ptr ex = nullptr;
-        size_t num_states = states.size();
-        for (size_t obs_idx = 0; obs_idx < num_states; obs_idx++) {
-            try {
-                applyOperationAdj(states[obs_idx], operations, op_idx);
-            } catch (...) {
-                ex = std::current_exception();
-            }
-        }
-        if (ex) {
-            std::rethrow_exception(ex);
-        }
-        // clang-format on
-    }
-
-    /**
-     * @brief Inline utility to assist with getting the Jacobian index offset.
-     *
-     * @param obs_index
-     * @param tp_index
-     * @param tp_size
-     * @return size_t
-     */
-    inline auto getJacIndex(size_t obs_index, size_t tp_index, size_t tp_size)
-        -> size_t {
-        return obs_index * tp_size + tp_index;
-    }
-
-    /**
      * @brief Applies the gate generator for a given parameteric gate. Returns
      * the associated scaling coefficient.
      *
@@ -293,6 +214,8 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
                                const std::vector<size_t> &wires, const bool adj)
         -> T {
         generator_map.at(op_name)(sv, wires, adj);
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        sv.getMPIManager().Barrier();
         return scaling_factors.at(op_name);
     }
 
@@ -344,13 +267,12 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void
-    adjointJacobian(const SVType<T>& ref_sv, std::vector<std::vector<T>> &jac,
-                    const std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> &obs,
-                    const Pennylane::Algorithms::OpsData<T> &ops,
-                    const std::vector<size_t> &trainableParams,
-                    bool apply_operations = false,
-                    CUDA::DevTag<int> dev_tag = {0, 0}) {
+    void adjointJacobian(
+        const SVType<T> &ref_sv, std::vector<std::vector<T>> &jac,
+        const std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> &obs,
+        const Pennylane::Algorithms::OpsData<T> &ops,
+        const std::vector<size_t> &trainableParams,
+        bool apply_operations = false) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 
@@ -360,89 +282,85 @@ template <class T = double, template<typename> class SVType = StateVectorCudaMPI
         const size_t tp_size = trainableParams.size();
         const size_t num_param_ops = ops.getNumParOps();
 
-        // Track positions within par and non-par operations
-        size_t trainableParamNumber = tp_size - 1;
-        size_t current_param_idx =
-            num_param_ops - 1; // total number of parametric ops
-        auto tp_it = trainableParams.rbegin();
-        const auto tp_rend = trainableParams.rend();
-
-        DevTag<int> dt_local(std::move(dev_tag));
+        DevTag<int> dt_local(ref_sv.getDataBuffer().getDevTag());
         dt_local.refresh();
         // Create $U_{1:p}\vert \lambda \rangle$
-        SharedCusvHandle cusvhandle = make_shared_cusv_handle();
-        SharedCublasCaller cublascaller = make_shared_cublas_caller();
-        SharedLocalStream localStream = make_shared_local_stream();
 
-        SVType<T> lambda(dt_local, ref_sv.getNumGlobalQubits(), ref_sv.getNumLocalQubits(), ref_sv.getData(), ref_sv.getMPIManager().getComm(), cusvhandle, cublascaller, localStream);
-        ref_sv.getMPIManager().Barrier();
+        SVType<T> lambda_ref(dt_local, ref_sv.getNumGlobalQubits(),
+                             ref_sv.getNumLocalQubits(), ref_sv.getData());
         // Apply given operations to statevector if requested
         if (apply_operations) {
-            applyOperations(lambda, ops);
+            applyOperations(lambda_ref, ops);
         }
 
-        // Create observable-applied state-vectors
-        std::vector<SVType<T>> H_lambda;
-        for (size_t n = 0; n < num_observables; n++) {
-            H_lambda.emplace_back(dt_local,lambda.getNumGlobalQubits(), lambda.getNumLocalQubits(), lambda.getData(), lambda.getMPIManager().getComm(),
-                                  cusvhandle, cublascaller, localStream);
-        }
-        applyObservables(H_lambda, lambda, obs);
+        SVType<T> mu(dt_local, lambda_ref.getNumGlobalQubits(),
+                     lambda_ref.getNumLocalQubits());
 
-        SVType<T> mu(dt_local,lambda.getNumGlobalQubits(), lambda.getNumLocalQubits(), lambda.getData(), lambda.getMPIManager().getComm(),
-                                  cusvhandle, cublascaller, localStream);
+        SVType<T> H_lambda(dt_local, lambda_ref.getNumGlobalQubits(),
+                           lambda_ref.getNumLocalQubits(),
+                           lambda_ref.getData());
 
-        auto device_id = mu.getDataBuffer().getDevTag().getDeviceID();
-        auto stream_id = mu.getDataBuffer().getDevTag().getStreamID();
+        SVType<T> lambda(dt_local, lambda_ref.getNumGlobalQubits(),
+                         lambda_ref.getNumLocalQubits(), lambda_ref.getData());
 
-        // The following buffers are only used as temporary workspace
-        // inside updateJacobian and do not carry any state beyond a
-        // single updateJacobian function call.
-        // We create the buffers here instead of inside updateJacobian
-        // to avoid expensive reallocations.
-        DataBuffer<CFP_t, int> device_buffer_jac_single_param_local{
-            static_cast<std::size_t>(num_observables), device_id, stream_id,
-            true};
-        std::vector<CFP_t> host_buffer_jac_single_param_local;
+        for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++) {
+            lambda.updateData(lambda_ref);
 
-        for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
-             op_idx--) {
-            PL_ABORT_IF(ops.getOpsParams()[op_idx].size() > 1,
-                        "The operation is not supported using the adjoint "
-                        "differentiation method");
-            if ((ops_name[op_idx] == "QubitStateVector") ||
-                (ops_name[op_idx] == "BasisState")) {
-                continue;
-            }
-            if (tp_it == tp_rend) {
-                break; // All done
-            }
-            mu.updateData(lambda);
-            applyOperationAdj(lambda, ops, op_idx);
-            ref_sv.getMPIManager().Barrier();
+            // Create observable-applied state-vectors
+            H_lambda.updateData(lambda_ref);
 
-            if (ops.hasParams(op_idx)) {
-                if (current_param_idx == *tp_it) {
-                    const T scalingFactor =
-                        applyGenerator(mu, ops.getOpsName()[op_idx],
-                                       ops.getOpsWires()[op_idx],
-                                       !ops.getOpsInverses()[op_idx]) *
-                        (ops.getOpsInverses()[op_idx] ? -1 : 1);
+            applyObservable(H_lambda, *obs[obs_idx]);
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
 
-                    updateJacobian(H_lambda, mu, jac, scalingFactor,
-                                   num_observables, trainableParamNumber,
-                                   device_buffer_jac_single_param_local,
-                                   host_buffer_jac_single_param_local);
+            // The following buffers are only used as temporary workspace
+            // inside updateJacobian and do not carry any state beyond a
+            // single updateJacobian function call.
+            // We create the buffers here instead of inside updateJacobian
+            // to avoid expensive reallocations.
 
-                    trainableParamNumber--;
-                    ++tp_it;
+            size_t trainableParamNumber = tp_size - 1;
+            // Track positions within par and non-par operations
+            // size_t trainableParamNumber = tp_size - 1;
+            size_t current_param_idx =
+                num_param_ops - 1; // total number of parametric ops
+            auto tp_it = trainableParams.rbegin();
+            const auto tp_rend = trainableParams.rend();
+
+            for (int op_idx = static_cast<int>(ops_name.size() - 1);
+                 op_idx >= 0; op_idx--) {
+                PL_ABORT_IF(ops.getOpsParams()[op_idx].size() > 1,
+                            "The operation is not supported using the adjoint "
+                            "differentiation method");
+                if ((ops_name[op_idx] == "QubitStateVector") ||
+                    (ops_name[op_idx] == "BasisState")) {
+                    continue;
                 }
-                current_param_idx--;
-            }
-            ref_sv.getMPIManager().Barrier();
-            applyOperationsAdj(H_lambda, ops, static_cast<size_t>(op_idx));
+                if (tp_it == tp_rend) {
+                    break; // All done
+                }
 
-            ref_sv.getMPIManager().Barrier();
+                mu.updateData(lambda);
+                applyOperationAdj(lambda, ops, op_idx);
+
+                if (ops.hasParams(op_idx)) {
+                    if (current_param_idx == *tp_it) {
+                        const T scalingFactor =
+                            applyGenerator(mu, ops.getOpsName()[op_idx],
+                                           ops.getOpsWires()[op_idx],
+                                           !ops.getOpsInverses()[op_idx]) *
+                            (ops.getOpsInverses()[op_idx] ? -1 : 1);
+                        updateJacobian(H_lambda, mu, jac, scalingFactor,
+                                       obs_idx, trainableParamNumber);
+                        trainableParamNumber--;
+                        ++tp_it;
+                    }
+                    current_param_idx--;
+                }
+                applyOperationAdj(H_lambda, ops, static_cast<size_t>(op_idx));
+            }
+
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+            mu.getMPIManager().Barrier();
         }
     }
 };

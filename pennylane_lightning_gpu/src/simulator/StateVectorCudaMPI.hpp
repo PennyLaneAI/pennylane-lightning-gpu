@@ -150,25 +150,51 @@ class StateVectorCudaMPI
     };
 
     StateVectorCudaMPI(
-        const DevTag<int> &dev_tag, size_t num_global_qubits, size_t num_local_qubits, const CFP_t *gpu_data,
-        MPI_Comm mpi_communicator,
+        const DevTag<int> &dev_tag, size_t num_global_qubits, size_t num_local_qubits, const CFP_t *gpu_data/*,
         SharedCusvHandle handle_in = make_shared_cusv_handle(),
         SharedCublasCaller cublascaller_in = make_shared_cublas_caller(),
-        SharedLocalStream localStream_in = make_shared_local_stream())
+        SharedLocalStream localStream_in = make_shared_local_stream()*/)
         :StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
             num_local_qubits, dev_tag, true),
           numGlobalQubits_(num_global_qubits),
           numLocalQubits_(num_local_qubits),
-          mpi_manager_(mpi_communicator),
-          handle_(std::move(handle_in)),
-          cublascaller_(std::move(cublascaller_in)),
-          localStream_(std::move(localStream_in)),
+          mpi_manager_(MPI_COMM_WORLD),
+          handle_(make_shared_cusv_handle()),
+          cublascaller_(make_shared_cublas_caller()),
+          localStream_(make_shared_local_stream()),
+          //handle_(std::move(handle_in)),
+          //cublascaller_(std::move(cublascaller_in)),
+          //localStream_(std::move(localStream_in)),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
               handle_.get(), mpi_manager_, 0, BaseType::getData(),
               num_local_qubits, localStream_.get())),gate_cache_(true, dev_tag){
         size_t length = 1 << numLocalQubits_;
         BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
+        mpi_manager_.Barrier();
+    }
+
+    StateVectorCudaMPI(
+        const DevTag<int> &dev_tag, size_t num_global_qubits, size_t num_local_qubits/*,
+        SharedCusvHandle handle_in = make_shared_cusv_handle(),
+        SharedCublasCaller cublascaller_in = make_shared_cublas_caller(),
+        SharedLocalStream localStream_in = make_shared_local_stream()*/)
+        :StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
+            num_local_qubits, dev_tag, true),
+          numGlobalQubits_(num_global_qubits),
+          numLocalQubits_(num_local_qubits),
+          mpi_manager_(MPI_COMM_WORLD),
+          handle_(make_shared_cusv_handle()),
+          cublascaller_(make_shared_cublas_caller()),
+          localStream_(make_shared_local_stream()),
+          //handle_(std::move(handle_in)),
+          //cublascaller_(std::move(cublascaller_in)),
+          //localStream_(std::move(localStream_in)),
+          svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
+              handle_.get(), mpi_manager_, 0, BaseType::getData(),
+              num_local_qubits, localStream_.get())),gate_cache_(true, dev_tag){
+        initSV_MPI();
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         mpi_manager_.Barrier();
     }
     /*
@@ -194,7 +220,8 @@ class StateVectorCudaMPI
           numLocalQubits_(other.numLocalQubits_),
           mpi_manager_(other.mpi_manager_), handle_(other.handle_),
           cublascaller_(other.cublascaller_), localStream_(other.localStream_),
-          svSegSwapWorker_(other.svSegSwapWorker_), gate_cache_(true, other.getDataBuffer().getDevTag()) {
+          svSegSwapWorker_(other.svSegSwapWorker_),
+          gate_cache_(true, other.getDataBuffer().getDevTag()) {
         BaseType::CopyGpuDataToGpuIn(other);
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
     }
@@ -204,9 +231,7 @@ class StateVectorCudaMPI
     /**
      * @brief Get MPI manager
      */
-    auto getMPIManager() const {
-        return mpi_manager_;
-    }
+    auto getMPIManager() const { return mpi_manager_; }
 
     /**
      * @brief Get the total number of wires.
@@ -2114,6 +2139,11 @@ class StateVectorCudaMPI
             PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
             mpi_manager_.Barrier();
         }
+
+        // synchronize all operations on device
+        PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        mpi_manager_.Barrier();
 
         PL_CUSTATEVEC_IS_SUCCESS(custatevecDistIndexBitSwapSchedulerDestroy(
             handle_.get(), scheduler));
