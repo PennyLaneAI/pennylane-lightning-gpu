@@ -52,7 +52,7 @@ inline std::vector<int2> createWirePairs(const int numLocalQubits,
     std::vector<int2> wirePairs;
     int localbit = numLocalQubits - 1, globalbit = numLocalQubits;
     while (localbit >= 0 && globalbit < numTotalQubits) {
-        if (statusWires[localbit] == 0 && statusWires[globalbit] != 0) {
+        if (statusWires[localbit] == WireStatus::Default && statusWires[globalbit] != WireStatus::Default) {
             int2 wirepair = make_int2(localbit, globalbit);
             wirePairs.push_back(wirepair);
             if (statusWires[globalbit] == WireStatus::Control) {
@@ -96,7 +96,7 @@ inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
     std::vector<int2> wirePairs;
     int localbit = numLocalQubits - 1, globalbit = numLocalQubits;
     while (localbit >= 0 && globalbit < numTotalQubits) {
-        if (statusWires[localbit] == 0 && statusWires[globalbit] != 0) {
+        if (statusWires[localbit] == WireStatus::Default && statusWires[globalbit] != WireStatus::Default) {
             int2 wirepair = make_int2(localbit, globalbit);
             wirePairs.push_back(wirepair);
             if (statusWires[globalbit] == WireStatus::Target) {

@@ -156,7 +156,6 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
         return qml.state()
 
     expected_output_cpu = circuit()
-
     comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
     dev_gpumpi = qml.device(
