@@ -53,3 +53,21 @@ if(PLLGPU_ENABLE_NATIVE)
 endif()
 
 catch_discover_tests(runner_gpu)
+
+if(PLLGPU_ENABLE_MPI)
+    add_executable(mpi_runner ./mpi/mpi_runner_main.cpp)
+    find_package(MPI REQUIRED)
+    target_link_libraries(mpi_runner PUBLIC MPI::MPI_CXX)
+    target_link_libraries(mpi_runner PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
+    target_sources(mpi_runner PRIVATE ./mpi/Test_MPI_StateVectorCudaManaged_Param.cpp 
+                                      ./mpi/Test_MPI_StateVectorCudaManaged_NonParam.cpp
+                                      ./mpi/Test_MPIManager.cpp
+    )
+    target_compile_options(mpi_runner PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")
+
+    if(PLLGPU_ENABLE_NATIVE)
+        message(STATUS "ENABLE_NATIVE is ON. Use -march=native for cpptests.")
+        target_compile_options(mpi_runner PRIVATE -march=native)
+    endif()
+    catch_discover_tests(mpi_runner)
+endif()

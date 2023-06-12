@@ -19,6 +19,7 @@ doc/__pycache__/
 
 # build system
 build/
+Build/
 dist/
 BuildTests/
 

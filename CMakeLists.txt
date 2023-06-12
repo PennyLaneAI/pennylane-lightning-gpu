@@ -54,7 +54,9 @@ option(PLLGPU_ENABLE_PYTHON "Build Python bindings" ON)
 option(PLLGPU_ENABLE_SANITIZER "Enable address sanitizer" OFF)
 option(PLLGPU_ENABLE_COVERAGE "Enable code coverage" OFF)
 option(PLLGPU_ENABLE_OPENMP "Enable OpenMP support" ON)
+option(PLLGPU_ENABLE_MPI "Enable MPI support" OFF)
 
+set(CRAY_MPICH OFF)
 # Build options
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
@@ -116,6 +118,27 @@ find_package(CUDAToolkit REQUIRED)
 
 find_package (Python COMPONENTS Interpreter Development)
 
+if(PLLGPU_ENABLE_MPI)
+    find_package(MPI REQUIRED)
+    if(MPI_FOUND)
+        message(STATUS "MPI found.")
+    else()
+        message(FATAL_ERROR "MPI is NOT found.")
+    endif()
+
+    string(FIND "${CMAKE_SYSTEM}" "cray" subStrIdx)
+    if(NOT subStrIdx EQUAL -1)
+        if(DEFINED ENV{CRAY_MPICH_VERSION} AND NOT "$ENV{CRAY_MPICH_VERSION}" STREQUAL "none")
+            find_library(MPI_GTL
+            NAMES libmpi_gtl_cuda.so libmpi_gtl_cuda.so.0 libmpi_gtl_cuda.so.0.0.0
+            HINTS ENV CRAY_LD_LIBRARY_PATH
+                  ENV LD_LIBRARY_PATH
+            )
+            set(CRAY_MPICH ON)
+        endif()
+    endif()
+endif()
+
 find_library(CUSTATEVEC_LIB
     NAMES   libcustatevec.so.1 custatevec.so.1
     HINTS   /usr/lib
@@ -168,7 +191,12 @@ target_link_libraries(pennylane_lightning_gpu INTERFACE pennylane_lightning
                                                         lightning_gpu_simulator
                                                         lightning_gpu_algorithms)
 target_include_directories(pennylane_lightning_gpu INTERFACE "pennylane_lightning_gpu/src")
-target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})
+
+if(PLLGPU_ENABLE_MPI AND ${CRAY_MPICH})
+        target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT} ${MPI_GTL})
+else()
+    target_link_libraries(pennylane_lightning_gpu INTERFACE ${CUSTATEVEC_LIB} ${CUDA_SHARED_RT})
+endif()
 
 # Create binding module
 if(PLLGPU_ENABLE_PYTHON)
@@ -178,6 +206,10 @@ if(PLLGPU_ENABLE_PYTHON)
     set_target_properties(lightning_gpu_qubit_ops PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
     target_compile_options(lightning_gpu_qubit_ops PRIVATE "$<$<CONFIG:RELEASE>:-W>")
     target_compile_definitions(lightning_gpu_qubit_ops PRIVATE VERSION_INFO=${VERSION_STRING})
+    if(PLLGPU_ENABLE_MPI)
+        option(ENABLE_MPI "Enable MPI support" ON)
+        target_compile_definitions(lightning_gpu_qubit_ops PRIVATE ENABLE_MPI)
+    endif()
     target_include_directories(lightning_gpu_qubit_ops PRIVATE ${CUDA_TOOLKIT_ROOT_DIR}/include)
     target_link_libraries(lightning_gpu_qubit_ops PRIVATE CUDA::cudart)
 endif()
@@ -192,6 +224,12 @@ if(PLLGPU_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
 	target_link_libraries(pennylane_lightning_gpu INTERFACE OpenMP::OpenMP_CXX)
 endif()
+
+if(PLLGPU_ENABLE_MPI)
+    find_package(MPI REQUIRED)
+	target_link_libraries(pennylane_lightning_gpu INTERFACE MPI::MPI_CXX)
+endif()
+
 if(PLLGPU_DISABLE_CUDA_SAFETY)
     target_compile_options(pennylane_lightning_gpu INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-DCUDA_UNSAFE>)
 endif()

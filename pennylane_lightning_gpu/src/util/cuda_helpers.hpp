@@ -60,8 +60,9 @@
  * @param err cuQuantum function error-code.
  */
 #define PL_CUSTATEVEC_IS_SUCCESS(err)                                          \
-    PL_ABORT_IF_NOT(err == CUSTATEVEC_STATUS_SUCCESS,                          \
-                    GetCuStateVecErrorString(err).c_str())
+    PL_ABORT_IF_NOT(                                                           \
+        err == CUSTATEVEC_STATUS_SUCCESS,                                      \
+        Pennylane::CUDA::Util::GetCuStateVecErrorString(err).c_str())
 
 #else
 #define PL_CUDA_IS_SUCCESS(err)                                                \
