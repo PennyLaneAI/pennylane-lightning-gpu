@@ -128,8 +128,6 @@ class AdjointJacobianGPUMPI {
         PL_ABORT_IF_NOT(sv1s.getDataBuffer().getDevTag().getDeviceID() ==
                             sv2.getDataBuffer().getDevTag().getDeviceID(),
                         "Data exists on different GPUs. Aborting.");
-        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
-        sv2.getMPIManager().Barrier();
         CFP_t result;
         innerProdC_CUDA_device(sv1s.getData(), sv2.getData(), sv1s.getLength(),
                                sv1s.getDataBuffer().getDevTag().getDeviceID(),
@@ -161,8 +159,6 @@ class AdjointJacobianGPUMPI {
                                  operations.getOpsWires()[op_idx],
                                  operations.getOpsInverses()[op_idx] ^ adj,
                                  operations.getOpsParams()[op_idx]);
-            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
-            state.getMPIManager().Barrier();
         }
     }
 
@@ -183,8 +179,6 @@ class AdjointJacobianGPUMPI {
                              operations.getOpsWires()[op_idx],
                              !operations.getOpsInverses()[op_idx],
                              operations.getOpsParams()[op_idx]);
-        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
-        state.getMPIManager().Barrier();
     }
 
     /**
@@ -214,8 +208,6 @@ class AdjointJacobianGPUMPI {
                                const std::vector<size_t> &wires, const bool adj)
         -> T {
         generator_map.at(op_name)(sv, wires, adj);
-        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
-        sv.getMPIManager().Barrier();
         return scaling_factors.at(op_name);
     }
 
@@ -310,7 +302,6 @@ class AdjointJacobianGPUMPI {
             H_lambda.updateData(lambda_ref);
 
             applyObservable(H_lambda, *obs[obs_idx]);
-            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
 
             // The following buffers are only used as temporary workspace
             // inside updateJacobian and do not carry any state beyond a
@@ -358,10 +349,103 @@ class AdjointJacobianGPUMPI {
                 }
                 applyOperationAdj(H_lambda, ops, static_cast<size_t>(op_idx));
             }
-
-            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
-            mu.getMPIManager().Barrier();
         }
+    }
+
+    void adjointJacobian_HP(
+        const SVType<T> &ref_sv, std::vector<std::vector<T>> &jac,
+        const std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> &obs,
+        const Pennylane::Algorithms::OpsData<T> &ops,
+        const std::vector<size_t> &trainableParams,
+        bool apply_operations = false) {
+        PL_ABORT_IF(trainableParams.empty(),
+                    "No trainable parameters provided.");
+
+        const std::vector<std::string> &ops_name = ops.getOpsName();
+        const size_t num_observables = obs.size();
+
+        const size_t tp_size = trainableParams.size();
+        const size_t num_param_ops = ops.getNumParOps();
+
+        // Track positions within par and non-par operations
+        size_t trainableParamNumber = tp_size - 1;
+        size_t current_param_idx =
+            num_param_ops - 1; // total number of parametric ops
+        auto tp_it = trainableParams.rbegin();
+        const auto tp_rend = trainableParams.rend();
+
+        DevTag<int> dt_local(ref_sv.getDataBuffer().getDevTag());
+        dt_local.refresh();
+        // Create $U_{1:p}\vert \lambda \rangle$
+        SVType<T> lambda(dt_local, ref_sv.getNumGlobalQubits(),
+                         ref_sv.getNumLocalQubits(), ref_sv.getData());
+
+        // Apply given operations to statevector if requested
+        if (apply_operations) {
+            applyOperations(lambda, ops);
+        }
+
+        lambda.getMPIManager().Barrier();
+
+        // Create observable-applied state-vectors
+        SVType<T> **H_lambda = new SVType<T> *[num_observables];
+
+        for (size_t h_i = 0; h_i < num_observables; h_i++) {
+            H_lambda[h_i] =
+                new SVType<T>(dt_local, lambda.getNumGlobalQubits(),
+                              lambda.getNumLocalQubits(), lambda.getData());
+            applyObservable(*H_lambda[h_i], *obs[h_i]);
+        }
+
+        SVType<T> mu(dt_local, lambda.getNumGlobalQubits(),
+                     lambda.getNumLocalQubits());
+
+        // The following buffers are only used as temporary workspace
+        // inside updateJacobian and do not carry any state beyond a
+        // single updateJacobian function call.
+        // We create the buffers here instead of inside updateJacobian
+        // to avoid expensive reallocations.
+
+        for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
+             op_idx--) {
+            PL_ABORT_IF(ops.getOpsParams()[op_idx].size() > 1,
+                        "The operation is not supported using the adjoint "
+                        "differentiation method");
+            if ((ops_name[op_idx] == "QubitStateVector") ||
+                (ops_name[op_idx] == "BasisState")) {
+                continue;
+            }
+            if (tp_it == tp_rend) {
+                break; // All done
+            }
+            mu.updateData(lambda);
+            applyOperationAdj(lambda, ops, op_idx);
+
+            if (ops.hasParams(op_idx)) {
+                if (current_param_idx == *tp_it) {
+                    const T scalingFactor =
+                        applyGenerator(mu, ops.getOpsName()[op_idx],
+                                       ops.getOpsWires()[op_idx],
+                                       !ops.getOpsInverses()[op_idx]) *
+                        (ops.getOpsInverses()[op_idx] ? -1 : 1);
+
+                    for (size_t obs_idx = 0; obs_idx < num_observables;
+                         obs_idx++) {
+                        updateJacobian(*H_lambda[obs_idx], mu, jac,
+                                       scalingFactor, obs_idx,
+                                       trainableParamNumber);
+                    }
+
+                    trainableParamNumber--;
+                    ++tp_it;
+                }
+                current_param_idx--;
+            }
+            for (size_t obs_idx = 0; obs_idx < num_observables; obs_idx++) {
+                applyOperationAdj(*H_lambda[obs_idx], ops, op_idx);
+            }
+        }
+        delete[] H_lambda;
     }
 };
 

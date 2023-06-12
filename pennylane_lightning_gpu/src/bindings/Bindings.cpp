@@ -38,9 +38,9 @@
 #include "pybind11/stl.h"
 
 #ifdef ENABLE_MPI
+#include "AdjointDiffGPUMPI.hpp"
 #include "MPIManager.hpp"
 #include "StateVectorCudaMPI.hpp"
-#include "AdjointDiffGPUMPI.hpp"
 #endif
 
 /// @cond DEV
@@ -1585,34 +1585,7 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
             "Compare two observables");
 
     //***********************************************************************//
-    //                              Operations
-    //***********************************************************************//
-    /*
-    class_name = "OpsStructGPU_C" + bitsize;
-    py::class_<OpsData<PrecisionT>>(m, class_name.c_str(), py::module_local())
-        .def(py::init<
-             const std::vector<std::string> &,
-             const std::vector<std::vector<ParamT>> &,
-             const std::vector<std::vector<size_t>> &,
-             const std::vector<bool> &,
-             const std::vector<std::vector<std::complex<PrecisionT>>> &>())
-        .def("__repr__", [](const OpsData<PrecisionT> &ops) {
-            using namespace Pennylane::Util;
-            std::ostringstream ops_stream;
-            for (size_t op = 0; op < ops.getSize(); op++) {
-                ops_stream << "{'name': " << ops.getOpsName()[op];
-                ops_stream << ", 'params': " << ops.getOpsParams()[op];
-                ops_stream << ", 'inv': " << ops.getOpsInverses()[op];
-                ops_stream << "}";
-                if (op < ops.getSize() - 1) {
-                    ops_stream << ",";
-                }
-            }
-            return "Operations: [" + ops_stream.str() + "]";
-        });
-    */
-    //***********************************************************************//
-    //                              Adj Jac
+    //                              MPI Adj Jac
     //***********************************************************************//
 
     class_name = "AdjointJacobianGPUMPI_C" + bitsize;
