@@ -106,7 +106,7 @@ except (ModuleNotFoundError, ImportError, ValueError, PLException) as e:
 def _gpu_dtype(dtype, mpi=False):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    if mpi is False:
+    if not mpi:
         return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
     return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
 
@@ -788,7 +788,7 @@ if CPP_BINARY_AVAILABLE:
                 return np.squeeze(np.mean(samples, axis=0))
 
             if observable.name in ["SparseHamiltonian"]:
-                if self._mpi == False:
+                if not self._mpi:
                     CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
                     return self._gpu_state.ExpectationValue(
                         CSR_SparseHamiltonian.indptr,
@@ -801,7 +801,7 @@ if CPP_BINARY_AVAILABLE:
                     )
 
             if observable.name in ["Hamiltonian"]:
-                if self._mpi == False:
+                if not self._mpi:
                     device_wires = self.map_wires(observable.wires)
                     # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
                     if len(device_wires) > 13:

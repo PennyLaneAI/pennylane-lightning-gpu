@@ -16,16 +16,12 @@ Unit tests for the :mod:`pennylane_lightning_gpu.LightningGPU` device (MPI).
 """
 # pylint: disable=protected-access,cell-var-from-loop
 from mpi4py import MPI
-import math
 import numpy as np
 import pennylane as qml
 import pytest
-from pennylane import DeviceError
 
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
-    from pennylane_lightning_gpu import LightningGPU
-    import pennylane_lightning_gpu as plg
 
     if not CPP_BINARY_AVAILABLE:
         raise ImportError("PennyLane-Lightning-GPU binary is not found on this platform")
@@ -38,7 +34,7 @@ except (ImportError, ModuleNotFoundError):
 numQubits = 8
 
 
-def createRandomInitState(numWires, seed_value=48):
+def create_random_init_state(numWires, seed_value=48):
     np.random.seed(seed_value)
     num_elements = 1 << numWires
     init_state = np.random.rand(num_elements) + 1j * np.random.rand(num_elements)
@@ -59,7 +55,7 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
     local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
-    state_vector = createRandomInitState(num_wires)
+    state_vector = create_random_init_state(num_wires)
 
     comm.Scatter(state_vector, local_state_vector, root=0)
     comm.Bcast(state_vector, root=0)
@@ -105,7 +101,7 @@ def apply_operation_gates_apply_param(tol, operation, par, Wires):
     local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
-    state_vector = createRandomInitState(num_wires)
+    state_vector = create_random_init_state(num_wires)
     comm.Bcast(state_vector, root=0)
 
     comm.Scatter(state_vector, local_state_vector, root=0)
@@ -147,7 +143,7 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
     local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
-    state_vector = createRandomInitState(num_wires)
+    state_vector = create_random_init_state(num_wires)
     comm.Bcast(state_vector, root=0)
 
     comm.Scatter(state_vector, local_state_vector, root=0)
@@ -194,7 +190,7 @@ def apply_operation_gates_apply_nonparam(tol, operation, Wires):
     local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
-    state_vector = createRandomInitState(num_wires)
+    state_vector = create_random_init_state(num_wires)
     comm.Bcast(state_vector, root=0)
 
     comm.Scatter(state_vector, local_state_vector, root=0)
@@ -234,7 +230,7 @@ def expval_single_wire_no_param(tol, obs):
     state_vector = np.zeros(1 << num_wires).astype(np.complex128)
     local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
 
-    state_vector = createRandomInitState(num_wires)
+    state_vector = create_random_init_state(num_wires)
     comm.Bcast(state_vector, root=0)
 
     comm.Scatter(state_vector, local_state_vector, root=0)
@@ -265,11 +261,9 @@ def apply_probs(tol, Wires):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     commSize = comm.Get_size()
-    num_global_wires = commSize.bit_length() - 1
-    num_local_wires = num_wires - num_global_wires
 
     state_vector = np.zeros(1 << num_wires).astype(np.complex128)
-    state_vector = createRandomInitState(num_wires)
+    state_vector = create_random_init_state(num_wires)
     comm.Bcast(state_vector, root=0)
 
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
@@ -425,7 +419,7 @@ class TestApply:
         local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
         local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
-        state_vector = createRandomInitState(num_wires)
+        state_vector = create_random_init_state(num_wires)
 
         comm.Scatter(state_vector, local_state_vector, root=0)
         dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
@@ -486,7 +480,7 @@ class TestApply:
         local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
         local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
-        state_vector = createRandomInitState(num_wires)
+        state_vector = create_random_init_state(num_wires)
 
         comm.Scatter(state_vector, local_state_vector, root=0)
         dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
@@ -509,12 +503,8 @@ class TestApply:
         local_state_vector = circuit_mpi()
         assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
-    test_dev_reset = [
-        (qml.QubitStateVector, np.array([1 / np.sqrt(2), 1 / np.sqrt(2)]), [0]),
-    ]
 
-    @pytest.mark.parametrize("operation, par, Wires", test_dev_reset)
-    def test_dev_reset(self, tol, operation, par, Wires):
+    def test_dev_reset(self, tol):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
         commSize = comm.Get_size()
@@ -526,7 +516,7 @@ class TestApply:
         local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
         local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
 
-        state_vector = createRandomInitState(num_wires)
+        state_vector = create_random_init_state(num_wires)
 
         comm.Scatter(state_vector, local_state_vector, root=0)
         dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
