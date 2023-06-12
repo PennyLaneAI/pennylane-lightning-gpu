@@ -343,15 +343,15 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::expval",
 
     size_t mpi_buffersize = 26;
 
-    int nGlobalIndexBits =
-        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
-    int nLocalIndexBits = (num_qubits)-nGlobalIndexBits;
-    int svLength = 1 << (num_qubits);
+    size_t nGlobalIndexBits =
+        std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
+    size_t nLocalIndexBits = num_qubits - nGlobalIndexBits;
+    size_t svLength = 1 << num_qubits;
     mpi_manager.Barrier();
     std::vector<cp_t> init_sv(svLength);
     if (mpi_manager.getRank() == 0) {
         std::mt19937 re{1337};
-        auto random_sv = createRandomState<PrecisionT>(re, (num_qubits));
+        auto random_sv = createRandomState<PrecisionT>(re, num_qubits);
         init_sv = random_sv;
     }
     auto local_state = mpi_manager.scatter(init_sv, 0);
@@ -369,14 +369,14 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::expval",
     PrecisionT mpi_result, result;
     std::vector<size_t> wire{0};
 
-    std::vector<cp_t> matrix(4, cp_t(1.0, 0.0));
+    std::vector<cp_t> matrix(4, cp_t{0.0, 0.0});
 
-    matrix[1] = cp_t(0, 0);
-    matrix[2] = cp_t(0, 0);
+    matrix[1] = cp_t{1.0, 0.0};
+    matrix[2] = cp_t{1.0, 0.0};
 
     mpi_result = sv.expval(wire, matrix).x;
 
-    SVDataGPU<TestType> svdat{(num_qubits), init_sv};
+    SVDataGPU<TestType> svdat{num_qubits, init_sv};
     if (mpi_manager.getRank() == 0) {
         result = svdat.cuda_sv.expval(wire, matrix).x;
     }
@@ -390,9 +390,8 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::probability",
     const std::size_t numqubits = 4;
     MPIManager mpi_manager(MPI_COMM_WORLD);
     size_t mpi_buffersize = 26;
-    int nGlobalIndexBits =
-        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
-    int nLocalIndexBits = numqubits - nGlobalIndexBits;
+    size_t nGlobalIndexBits = std::bit_width(mpi_manager.getSize()) - 1;
+    size_t nLocalIndexBits = numqubits - nGlobalIndexBits;
 
     std::vector<cp_t> init_sv{{0.1653855288944372, 0.08360762242222763},
                               {0.0731293375604395, 0.13209080879903976},
@@ -494,9 +493,9 @@ TEMPLATE_TEST_CASE("Sample", "[LightningGPUMPI_NonParam]", double) {
     const std::size_t numqubits = 4;
     MPIManager mpi_manager(MPI_COMM_WORLD);
     size_t mpi_buffersize = 26;
-    int nGlobalIndexBits =
-        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
-    int nLocalIndexBits = numqubits - nGlobalIndexBits;
+    size_t nGlobalIndexBits =
+        std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
+    size_t nLocalIndexBits = numqubits - nGlobalIndexBits;
 
     std::vector<cp_t> init_sv{{0.1653855288944372, 0.08360762242222763},
                               {0.0731293375604395, 0.13209080879903976},
