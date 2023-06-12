@@ -232,7 +232,7 @@ if CPP_BINARY_AVAILABLE:
 
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
-            if mpi is False:
+            if not mpi:
                 self._mpi = False
                 self._num_local_wires = self.num_wires
                 self._gpu_state = _gpu_dtype(c_dtype)(self._num_local_wires)
@@ -263,7 +263,7 @@ if CPP_BINARY_AVAILABLE:
             self._sync = sync
 
         def _mpi_init_helper(self, num_wires):
-            if MPI_SUPPORT is False:
+            if not MPI_SUPPORT:
                 raise ImportError("MPI related APIs are not found.")
             # initialize MPIManager and config check in the MPIManager ctor
             self._mpi_manager = MPIManager()
