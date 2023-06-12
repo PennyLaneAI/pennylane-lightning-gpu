@@ -503,7 +503,6 @@ class TestApply:
         local_state_vector = circuit_mpi()
         assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
-
     def test_dev_reset(self, tol):
         num_wires = numQubits
         comm = MPI.COMM_WORLD
