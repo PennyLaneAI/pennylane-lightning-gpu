@@ -565,7 +565,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::expval_Hardmard",
     PrecisionT mpi_result, result;
     std::vector<size_t> wire{0};
 
-    std::vector<cp_t> matrix(4, cp_t{1.0/sqrt(2.0), 0.0});
+    std::vector<cp_t> matrix(4, cp_t{1.0 / sqrt(2.0), 0.0});
 
     matrix[3] = -matrix[3];
 
