@@ -150,10 +150,7 @@ class StateVectorCudaMPI
     };
 
     StateVectorCudaMPI(
-        const DevTag<int> &dev_tag, size_t num_global_qubits, size_t num_local_qubits, const CFP_t *gpu_data/*,
-        SharedCusvHandle handle_in = make_shared_cusv_handle(),
-        SharedCublasCaller cublascaller_in = make_shared_cublas_caller(),
-        SharedLocalStream localStream_in = make_shared_local_stream()*/)
+        const DevTag<int> &dev_tag, size_t num_global_qubits, size_t num_local_qubits, const CFP_t *gpu_data)
         :StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
             num_local_qubits, dev_tag, true),
           numGlobalQubits_(num_global_qubits),
@@ -162,9 +159,6 @@ class StateVectorCudaMPI
           handle_(make_shared_cusv_handle()),
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
-          //handle_(std::move(handle_in)),
-          //cublascaller_(std::move(cublascaller_in)),
-          //localStream_(std::move(localStream_in)),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
               handle_.get(), mpi_manager_, 0, BaseType::getData(),
               num_local_qubits, localStream_.get())),gate_cache_(true, dev_tag){
@@ -175,10 +169,7 @@ class StateVectorCudaMPI
     }
 
     StateVectorCudaMPI(
-        const DevTag<int> &dev_tag, size_t num_global_qubits, size_t num_local_qubits/*,
-        SharedCusvHandle handle_in = make_shared_cusv_handle(),
-        SharedCublasCaller cublascaller_in = make_shared_cublas_caller(),
-        SharedLocalStream localStream_in = make_shared_local_stream()*/)
+        const DevTag<int> &dev_tag, size_t num_global_qubits, size_t num_local_qubits)
         :StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
             num_local_qubits, dev_tag, true),
           numGlobalQubits_(num_global_qubits),
@@ -187,9 +178,6 @@ class StateVectorCudaMPI
           handle_(make_shared_cusv_handle()),
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
-          //handle_(std::move(handle_in)),
-          //cublascaller_(std::move(cublascaller_in)),
-          //localStream_(std::move(localStream_in)),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
               handle_.get(), mpi_manager_, 0, BaseType::getData(),
               num_local_qubits, localStream_.get())),gate_cache_(true, dev_tag){
@@ -197,22 +185,6 @@ class StateVectorCudaMPI
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         mpi_manager_.Barrier();
     }
-    /*
-    StateVectorCudaMPI(
-        size_t num_global_qubits, size_t num_local_qubits,
-        SharedCusvHandle cusvhandle_in = make_shared_cusv_handle(),
-        SharedCublasCaller cublascaller_in = make_shared_cublas_caller(),
-        SharedLocalStream localStream_in = make_shared_local_stream())
-        : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
-              num_local_qubits),
-          handle_(std::move(cusvhandle_in)),
-          cublascaller_(std::move(cublascaller_in)),
-          localStream_(std::move(localStream_in)),
-          gate_cache_(true) {
-        //BaseType::initSV();
-        initSV_MPI();
-    };
-    */
 
     StateVectorCudaMPI(const StateVectorCudaMPI &other)
         : BaseType(other.getNumQubits(), other.getDataBuffer().getDevTag()),
@@ -2139,11 +2111,6 @@ class StateVectorCudaMPI
             PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
             mpi_manager_.Barrier();
         }
-
-        // synchronize all operations on device
-        PL_CUDA_IS_SUCCESS(cudaStreamSynchronize(localStream_.get()));
-        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
-        mpi_manager_.Barrier();
 
         PL_CUSTATEVEC_IS_SUCCESS(custatevecDistIndexBitSwapSchedulerDestroy(
             handle_.get(), scheduler));
