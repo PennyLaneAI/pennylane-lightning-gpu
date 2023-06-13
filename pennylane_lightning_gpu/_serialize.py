@@ -220,7 +220,9 @@ def _serialize_ob(ob, wires_map, use_csingle, use_mpi: bool = False, use_splitti
     elif isinstance(ob, (PauliX, PauliY, PauliZ, Identity, Hadamard)):
         return _serialize_named_ob(ob, wires_map, use_csingle, use_mpi)
     elif ob._pauli_rep is not None:
-        return _serialize_pauli_sentence(ob._pauli_rep, wires_map, use_csingle, use_mpi, use_splitting)
+        return _serialize_pauli_sentence(
+            ob._pauli_rep, wires_map, use_csingle, use_mpi, use_splitting
+        )
     elif ob.name == "Hermitian":
         raise TypeError(
             "Hermitian observables are not currently supported for adjoint differentiation. Please use Pauli-words only."

@@ -645,7 +645,7 @@ if CPP_BINARY_AVAILABLE:
                 ket = ket.astype(np.complex64)
 
             obs_serialized, obs_offsets = _serialize_observables(
-                tape, self.wire_map, use_csingle=self.use_csingle, use_mpi = self._mpi
+                tape, self.wire_map, use_csingle=self.use_csingle, use_mpi=self._mpi
             )
 
             ops_serialized, use_sp = _serialize_ops(

@@ -63,7 +63,7 @@ TEST_CASE(
                                      {{0}, {1}, {2}}, {false, false, false});
 
         adj.adjointJacobian(sv_ref, jacobian, {obs1, obs2, obs3}, ops, tp,
-                               true);
+                            true);
 
         CAPTURE(jacobian);
 
@@ -115,7 +115,7 @@ TEST_CASE(
                                      {{0}, {1}, {2}}, {false, false, false});
 
         adj.adjointJacobian(sv_ref, jacobian, {obs1, obs2, obs3}, ops, tp,
-                               true);
+                            true);
 
         CAPTURE(jacobian);
 

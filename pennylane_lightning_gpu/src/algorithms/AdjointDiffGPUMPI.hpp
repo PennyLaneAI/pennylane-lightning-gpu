@@ -17,12 +17,12 @@
 
 #pragma once
 
-#include <memory>
 #include "DevTag.hpp"
 #include "GateGenerators.hpp"
 #include "JacobianTape.hpp"
 #include "ObservablesGPUMPI.hpp"
 #include "StateVectorCudaMPI.hpp"
+#include <memory>
 
 /// @cond DEV
 namespace {
@@ -388,8 +388,8 @@ class AdjointJacobianGPUMPI {
 
         for (size_t h_i = 0; h_i < num_observables; h_i++) {
             H_lambda[h_i] = std::make_unique<SVType<T>>(
-            dt_local, lambda.getNumGlobalQubits(), lambda.getNumLocalQubits(),
-            lambda.getData());
+                dt_local, lambda.getNumGlobalQubits(),
+                lambda.getNumLocalQubits(), lambda.getData());
             applyObservable(*H_lambda[h_i], *obs[h_i]);
         }
 
@@ -435,7 +435,7 @@ class AdjointJacobianGPUMPI {
                 applyOperationAdj(*H_lambda[obs_idx], ops, op_idx);
             }
         }
-        //delete[] H_lambda;
+        // delete[] H_lambda;
     }
 };
 
