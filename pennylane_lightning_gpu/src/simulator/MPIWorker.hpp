@@ -94,34 +94,8 @@ inline std::vector<int2> createWirePairs(const int numLocalQubits,
 inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
                                          std::vector<int> &tgts,
                                          std::vector<int> &statusWires) {
-    /*
-    std::vector<int2> wirePairs;
-    int localbit = numLocalQubits - 1, globalbit = numLocalQubits;
-    while (localbit >= 0 && globalbit < numTotalQubits) {
-        if (statusWires[localbit] == WireStatus::Default &&
-            statusWires[globalbit] != WireStatus::Default) {
-            int2 wirepair = make_int2(localbit, globalbit);
-            wirePairs.push_back(wirepair);
-            if (statusWires[globalbit] == WireStatus::Target) {
-                for (size_t k = 0; k < tgts.size(); k++) {
-                    if (tgts[k] == globalbit) {
-                        tgts[k] = localbit;
-                    }
-                }
-            }
-            std::swap(statusWires[localbit], statusWires[globalbit]);
-        } else {
-            if (statusWires[localbit] != WireStatus::Default) {
-                localbit--;
-            }
-            if (statusWires[globalbit] == WireStatus::Default) {
-                globalbit++;
-            }
-        }
-    }
-    return wirePairs;
-    */
-    return createWirePairs(numLocalQubits, numTotalQubits, {}, tgts, statusWires);
+    std::vector<int> ctrls;
+    return createWirePairs(numLocalQubits, numTotalQubits, ctrls, tgts, statusWires);
 }
 
 /**
