@@ -50,7 +50,6 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
     num_global_wires = commSize.bit_length() - 1
     num_local_wires = num_wires - num_global_wires
 
-    state_vector = np.zeros(1 << num_wires).astype(np.complex128)
     expected_output_cpu = np.zeros(1 << num_wires).astype(np.complex128)
     local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
@@ -96,7 +95,6 @@ def apply_operation_gates_apply_param(tol, operation, par, Wires):
     num_global_wires = commSize.bit_length() - 1
     num_local_wires = num_wires - num_global_wires
 
-    state_vector = np.zeros(1 << num_wires).astype(np.complex128)
     expected_output_cpu = np.zeros(1 << num_wires).astype(np.complex128)
     local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
@@ -138,7 +136,6 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
     num_global_wires = commSize.bit_length() - 1
     num_local_wires = num_wires - num_global_wires
 
-    state_vector = np.zeros(1 << num_wires).astype(np.complex128)
     expected_output_cpu = np.zeros(1 << num_wires).astype(np.complex128)
     local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
@@ -184,7 +181,6 @@ def apply_operation_gates_apply_nonparam(tol, operation, Wires):
     num_global_wires = commSize.bit_length() - 1
     num_local_wires = num_wires - num_global_wires
 
-    state_vector = np.zeros(1 << num_wires).astype(np.complex128)
     expected_output_cpu = np.zeros(1 << num_wires).astype(np.complex128)
     local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
     local_expected_output_cpu = np.zeros(1 << num_local_wires).astype(np.complex128)
@@ -226,12 +222,10 @@ def expval_single_wire_no_param(tol, obs):
     num_global_wires = commSize.bit_length() - 1
     num_local_wires = num_wires - num_global_wires
 
-    state_vector = np.zeros(1 << num_wires).astype(np.complex128)
-    local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
-
     state_vector = create_random_init_state(num_wires)
     comm.Bcast(state_vector, root=0)
 
+    local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
     comm.Scatter(state_vector, local_state_vector, root=0)
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
@@ -261,7 +255,6 @@ def apply_probs(tol, Wires):
     rank = comm.Get_rank()
     commSize = comm.Get_size()
 
-    state_vector = np.zeros(1 << num_wires).astype(np.complex128)
     state_vector = create_random_init_state(num_wires)
     comm.Bcast(state_vector, root=0)
 
@@ -565,6 +558,90 @@ class TestExpval:
         obs = operation(wires)
         expval_single_wire_no_param(tol, obs)
 
+    @pytest.mark.parametrize(
+        "obs",
+        [
+            qml.PauliX(0) @ qml.PauliZ(1),
+            qml.PauliX(0) @ qml.PauliZ(numQubits - 1),
+            qml.PauliX(numQubits - 2) @ qml.PauliZ(numQubits - 1),
+            qml.PauliZ(0) @ qml.PauliZ(1),
+            qml.PauliZ(0) @ qml.PauliZ(numQubits - 1),
+            qml.PauliZ(numQubits - 2) @ qml.PauliZ(numQubits - 1),
+        ],
+    )
+    def test_expval_multiple_obs(self, obs, tol):
+        """Test expval with Hamiltonian"""
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        commSize = comm.Get_size()
+
+        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+        @qml.qnode(dev_cpu)
+        def circuit():
+            qml.RX(0.4, wires=[0])
+            qml.RY(-0.2, wires=[numQubits - 1])
+            return qml.expval(obs)
+
+        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+
+        @qml.qnode(dev_gpumpi)
+        def circuit_mpi():
+            qml.RX(0.4, wires=[0])
+            qml.RY(-0.2, wires=[numQubits - 1])
+            return qml.expval(obs)
+
+        assert np.allclose(circuit(), circuit_mpi(), atol=tol, rtol=0)
+
+    @pytest.mark.parametrize(
+        "obs, coeffs",
+        [
+            ([qml.PauliX(0) @ qml.PauliZ(1)], [1.0]),
+            ([qml.PauliX(0) @ qml.PauliZ(numQubits - 1)], [1.0]),
+            ([qml.PauliZ(0) @ qml.PauliZ(1)], [1.0]),
+            ([qml.PauliZ(0) @ qml.PauliZ(numQubits - 1)], [1.0]),
+            ([qml.PauliX(0) @ qml.PauliZ(1), qml.PauliZ(0) @ qml.PauliZ(1)], [1.0, 0.2]),
+            (
+                [qml.PauliX(0) @ qml.PauliZ(numQubits - 1), qml.PauliZ(0) @ qml.PauliZ(1)],
+                [1.0, 0.2],
+            ),
+            (
+                [
+                    qml.PauliX(numQubits - 2) @ qml.PauliZ(numQubits - 1),
+                    qml.PauliZ(0) @ qml.PauliZ(1),
+                ],
+                [1.0, 0.2],
+            ),
+        ],
+    )
+    def test_expval_hamiltonian(self, obs, coeffs, tol):
+        """Test expval with Hamiltonian"""
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        commSize = comm.Get_size()
+
+        ham = qml.Hamiltonian(coeffs, obs)
+
+        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+        @qml.qnode(dev_cpu)
+        def circuit():
+            qml.RX(0.4, wires=[0])
+            qml.RY(-0.2, wires=[numQubits - 1])
+            return qml.expval(ham)
+
+        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+
+        @qml.qnode(dev_gpumpi)
+        def circuit_mpi():
+            qml.RX(0.4, wires=[0])
+            qml.RY(-0.2, wires=[numQubits - 1])
+            return qml.expval(ham)
+
+        assert np.allclose(circuit(), circuit_mpi(), atol=tol, rtol=0)
+
 
 class TestGenerateSample:
     """Tests that samples are properly calculated."""
@@ -573,6 +650,11 @@ class TestGenerateSample:
         """Tests if the samples returned by sample have
         the correct dimensions
         """
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        commSize = comm.Get_size()
+
         dev = qml.device(
             "lightning.gpu", wires=numQubits, mpi=True, shots=1000, c_dtype=np.complex128
         )
@@ -603,6 +685,11 @@ class TestGenerateSample:
         """Tests if the samples returned by sample have
         the correct values
         """
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        commSize = comm.Get_size()
+
         dev = qml.device(
             "lightning.gpu", wires=numQubits, mpi=True, shots=1000, c_dtype=np.complex128
         )
@@ -618,6 +705,30 @@ class TestGenerateSample:
         # s1 should only contain 1 and -1, which is guaranteed if
         # they square to 1
         assert np.allclose(s1**2, 1, atol=tol, rtol=0)
+
+    def test_sample_values_qnode(self, tol):
+        """Tests if the samples returned by sample have
+        the correct values
+        """
+        num_wires = numQubits
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        commSize = comm.Get_size()
+        dev_gpumpi = qml.device(
+            "lightning.gpu", wires=numQubits, mpi=True, shots=1000, c_dtype=np.complex128
+        )
+        # Explicitly resetting is necessary as the internal
+        # state is set to None in __init__ and only properly
+        # initialized during reset
+
+        @qml.qnode(dev_gpumpi)
+        def circuit():
+            qml.RX(1.5708, wires=0)
+            return qml.sample(qml.PauliZ(0))
+
+        # s1 should only contain 1 and -1, which is guaranteed if
+        # they square to 1
+        assert np.allclose(circuit() ** 2, 1, atol=tol, rtol=0)
 
 
 class TestProbs:

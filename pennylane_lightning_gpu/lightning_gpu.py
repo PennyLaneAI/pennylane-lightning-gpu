@@ -823,7 +823,10 @@ if CPP_BINARY_AVAILABLE:
                             device_wires, qml.matrix(observable).ravel(order="C")
                         )
                 else:
-                    raise RuntimeError("LightningGPU-MPI does not currently support Hamiltonian.")
+                    device_wires = self.map_wires(observable.wires)
+                    return self._gpu_state.ExpectationValue(
+                        device_wires, qml.matrix(observable).ravel(order="C")
+                    )
 
             par = (
                 observable.parameters
