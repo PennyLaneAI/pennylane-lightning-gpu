@@ -94,6 +94,7 @@ inline std::vector<int2> createWirePairs(const int numLocalQubits,
 inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
                                          std::vector<int> &tgts,
                                          std::vector<int> &statusWires) {
+    /*
     std::vector<int2> wirePairs;
     int localbit = numLocalQubits - 1, globalbit = numLocalQubits;
     while (localbit >= 0 && globalbit < numTotalQubits) {
@@ -119,6 +120,8 @@ inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
         }
     }
     return wirePairs;
+    */
+    return createWirePairs(numLocalQubits, numTotalQubits, {}, tgts, statusWires);
 }
 
 /**
