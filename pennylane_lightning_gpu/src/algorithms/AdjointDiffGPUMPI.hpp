@@ -17,14 +17,8 @@
 
 #pragma once
 
-#include <chrono>
-#include <future>
-#include <omp.h>
-#include <thread>
-#include <variant>
-
+#include <memory>
 #include "DevTag.hpp"
-#include "DevicePool.hpp"
 #include "GateGenerators.hpp"
 #include "JacobianTape.hpp"
 #include "ObservablesGPUMPI.hpp"
@@ -45,6 +39,7 @@ namespace Pennylane::Algorithms {
  * arXiV:2009.02823
  *
  * @tparam T Floating-point precision.
+ * @tparam SVType State-vector class.
  */
 template <class T = double,
           template <typename> class SVType = StateVectorCudaMPI>
@@ -108,18 +103,12 @@ class AdjointJacobianGPUMPI {
      * @brief Utility method to update the Jacobian at a given index by
      * calculating the overlap between two given states.
      *
-     * @param sv1s vector of statevector <sv1| (one for each observable). Data
-     * will be conjugated.
+     * @param sv1s Statevector <sv1|. Data will be conjugated.
      * @param sv2 Statevector |sv2>
      * @param jac Jacobian receiving the values.
      * @param scaling_coeff Generator coefficient for given gate derivative.
-     * @param num_observables the number of observables of Jacobian to update.
+     * @param obs_idx The index of observables of Jacobian to update.
      * @param param_index Parameter index position of Jacobian to update.
-     * @param device_buffer_jac_single_param_local a workspace buffer on the
-     * device of size num_observables elements. Data will be ignored and
-     * overwritten.
-     * @param host_buffer_jac_single_param_local a workspace buffer on the host
-     * of size num_observables elements. Data will be ignored and overwritten.
      */
     inline void updateJacobian(const SVType<T> &sv1s, const SVType<T> &sv2,
                                std::vector<std::vector<T>> &jac,
@@ -183,11 +172,11 @@ class AdjointJacobianGPUMPI {
 
     /**
      * @brief Utility method to apply a given operations from given
-     * `%ObservableGPU` object to
+     * `%ObservableGPUMPI` object to
      * `%SVType<T>`
      *
      * @param state Statevector to be updated.
-     * @param observable ObservableGPU to apply.
+     * @param observable ObservableGPUMPI to apply.
      */
     inline void applyObservable(SVType<T> &state,
                                 ObservableGPUMPI<T> &observable) {
@@ -237,29 +226,18 @@ class AdjointJacobianGPUMPI {
 
     /**
      * @brief Calculates the Jacobian for the statevector for the selected set
-     * of parametric gates.
+     * of parametric gates with less memory requirement.
      *
-     * For the statevector data associated with `psi` of length `num_elements`,
-     * we make internal copies to a `%SVType<T>` object, with
-     * one per required observable. The `operations` will be applied to the
-     * internal statevector copies, with the operation indices participating in
-     * the gradient calculations given in `trainableParams`, and the overall
-     * number of parameters for the gradient calculation provided within
-     * `num_params`. The resulting row-major ordered `jac` matrix representation
-     * will be of size `trainableParams.size() * observables.size()`. OpenMP is
-     * used to enable independent operations to be offloaded to threads.
-     *
-     * @param ref_data Pointer to the statevector data.
-     * @param length Length of the statevector data.
+     * @param ref_sv Reference to a `%SVType<T>` object.
      * @param jac Preallocated vector for Jacobian data results.
-     * @param obs ObservableGPUs for which to calculate Jacobian.
+     * @param obs ObservableGPUMPIs for which to calculate Jacobian.
      * @param ops Operations used to create given state.
      * @param trainableParams List of parameters participating in Jacobian
      * calculation.
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void adjointJacobian(
+    void adjointJacobian_LM(
         const SVType<T> &ref_sv, std::vector<std::vector<T>> &jac,
         const std::vector<std::shared_ptr<ObservableGPUMPI<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
@@ -302,12 +280,6 @@ class AdjointJacobianGPUMPI {
             H_lambda.updateData(lambda_ref);
 
             applyObservable(H_lambda, *obs[obs_idx]);
-
-            // The following buffers are only used as temporary workspace
-            // inside updateJacobian and do not carry any state beyond a
-            // single updateJacobian function call.
-            // We create the buffers here instead of inside updateJacobian
-            // to avoid expensive reallocations.
 
             size_t trainableParamNumber = tp_size - 1;
             // Track positions within par and non-par operations
@@ -352,7 +324,20 @@ class AdjointJacobianGPUMPI {
         }
     }
 
-    void adjointJacobian_HP(
+    /**
+     * @brief Calculates the Jacobian for the statevector for the selected set
+     * of parametric gates with better performance.
+     *
+     * @param ref_sv Reference to a `%SVType<T>` object.
+     * @param jac Preallocated vector for Jacobian data results.
+     * @param obs ObservableGPUMPIs for which to calculate Jacobian.
+     * @param ops Operations used to create given state.
+     * @param trainableParams List of parameters participating in Jacobian
+     * calculation.
+     * @param apply_operations Indicate whether to apply operations to psi prior
+     * to calculation.
+     */
+    void adjointJacobian(
         const SVType<T> &ref_sv, std::vector<std::vector<T>> &jac,
         const std::vector<std::shared_ptr<ObservableGPUMPI<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
@@ -388,6 +373,7 @@ class AdjointJacobianGPUMPI {
         lambda.getMPIManager().Barrier();
 
         // Create observable-applied state-vectors
+        /*
         SVType<T> **H_lambda = new SVType<T> *[num_observables];
 
         for (size_t h_i = 0; h_i < num_observables; h_i++) {
@@ -396,15 +382,19 @@ class AdjointJacobianGPUMPI {
                               lambda.getNumLocalQubits(), lambda.getData());
             applyObservable(*H_lambda[h_i], *obs[h_i]);
         }
+        */
+        using SVTypePtr = std::unique_ptr<SVType<T>>;
+        std::unique_ptr<SVTypePtr[]> H_lambda(new SVTypePtr[num_observables]);
+
+        for (size_t h_i = 0; h_i < num_observables; h_i++) {
+            H_lambda[h_i] = std::make_unique<SVType<T>>(
+            dt_local, lambda.getNumGlobalQubits(), lambda.getNumLocalQubits(),
+            lambda.getData());
+            applyObservable(*H_lambda[h_i], *obs[h_i]);
+        }
 
         SVType<T> mu(dt_local, lambda.getNumGlobalQubits(),
                      lambda.getNumLocalQubits());
-
-        // The following buffers are only used as temporary workspace
-        // inside updateJacobian and do not carry any state beyond a
-        // single updateJacobian function call.
-        // We create the buffers here instead of inside updateJacobian
-        // to avoid expensive reallocations.
 
         for (int op_idx = static_cast<int>(ops_name.size() - 1); op_idx >= 0;
              op_idx--) {
@@ -445,7 +435,7 @@ class AdjointJacobianGPUMPI {
                 applyOperationAdj(*H_lambda[obs_idx], ops, op_idx);
             }
         }
-        delete[] H_lambda;
+        //delete[] H_lambda;
     }
 };
 

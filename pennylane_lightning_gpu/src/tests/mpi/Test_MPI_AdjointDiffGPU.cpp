@@ -62,7 +62,7 @@ TEST_CASE(
                                      {{param[0]}, {param[1]}, {param[2]}},
                                      {{0}, {1}, {2}}, {false, false, false});
 
-        adj.adjointJacobian_HP(sv_ref, jacobian, {obs1, obs2, obs3}, ops, tp,
+        adj.adjointJacobian(sv_ref, jacobian, {obs1, obs2, obs3}, ops, tp,
                                true);
 
         CAPTURE(jacobian);
@@ -114,7 +114,7 @@ TEST_CASE(
                                      {{param[0]}, {param[1]}, {param[2]}},
                                      {{0}, {1}, {2}}, {false, false, false});
 
-        adj.adjointJacobian_HP(sv_ref, jacobian, {obs1, obs2, obs3}, ops, tp,
+        adj.adjointJacobian(sv_ref, jacobian, {obs1, obs2, obs3}, ops, tp,
                                true);
 
         CAPTURE(jacobian);
@@ -174,7 +174,7 @@ TEST_CASE("AdjointJacobianGPUMPI::adjointJacobianMPI Op=Mixed, Obs=[XXX]",
             {{0}, {0}, {0}, {0, 1}, {1, 2}, {1}, {1}, {1}},
             {false, false, false, false, false, false, false, false});
 
-        adj.adjointJacobian_HP(sv_ref, jacobian, {obs}, ops, tp, true);
+        adj.adjointJacobian(sv_ref, jacobian, {obs}, ops, tp, true);
 
         CAPTURE(jacobian);
 

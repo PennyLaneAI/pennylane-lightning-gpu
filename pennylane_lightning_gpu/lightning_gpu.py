@@ -643,17 +643,13 @@ if CPP_BINARY_AVAILABLE:
             adj = _adj_dtype(self.use_csingle, self._mpi)()
             if self.use_csingle:
                 ket = ket.astype(np.complex64)
-            # if self.use_csingle:
-            #    adj = AdjointJacobianGPU_C64()
-            #    ket = ket.astype(np.complex64)
-            # else:
-            #    adj = AdjointJacobianGPU_C128()
 
             obs_serialized, obs_offsets = _serialize_observables(
-                tape, self.wire_map, self._mpi, use_csingle=self.use_csingle
+                tape, self.wire_map, use_csingle=self.use_csingle, use_mpi = self._mpi
             )
+
             ops_serialized, use_sp = _serialize_ops(
-                tape, self.wire_map, self._mpi, use_csingle=self.use_csingle
+                tape, self.wire_map, use_csingle=self.use_csingle
             )
             ops_serialized = adj.create_ops_list(*ops_serialized)
 
@@ -843,7 +839,6 @@ if CPP_BINARY_AVAILABLE:
                     return self._gpu_state.ExpectationValue(
                         device_wires, qml.matrix(observable).ravel(order="C")
                     )
-                    # raise RuntimeError("LightningGPU-MPI does not currently support Hamiltonian.")
 
             par = (
                 observable.parameters

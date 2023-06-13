@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Tests for the ``adjoint_jacobian`` method of LightningGPU.
+Tests for the ``adjoint_jacobian`` method of LightningGPU with MPI support.
 """
 from mpi4py import MPI
 import itertools as it
