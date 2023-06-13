@@ -95,7 +95,8 @@ inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
                                          std::vector<int> &tgts,
                                          std::vector<int> &statusWires) {
     std::vector<int> ctrls;
-    return createWirePairs(numLocalQubits, numTotalQubits, ctrls, tgts, statusWires);
+    return createWirePairs(numLocalQubits, numTotalQubits, ctrls, tgts,
+                           statusWires);
 }
 
 /**
