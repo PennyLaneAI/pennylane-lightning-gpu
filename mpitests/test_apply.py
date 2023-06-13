@@ -60,15 +60,6 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
     comm.Bcast(state_vector, root=0)
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
-    @qml.qnode(dev_cpu)
-    def circuit(*params):
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
-        operation(*params, wires=Wires)
-        return qml.state()
-
-    expected_output_cpu = circuit(*par)
-    comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
-
     dev_gpumpi = qml.device(
         "lightning.gpu",
         wires=num_wires,
@@ -77,13 +68,17 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
         c_dtype=np.complex128,
     )
 
-    @qml.qnode(dev_gpumpi)
-    def circuit_mpi(*params):
+    def circuit(*params):
         qml.QubitStateVector(state_vector, wires=range(num_wires))
         operation(*params, wires=Wires)
         return qml.state()
 
-    local_state_vector = circuit_mpi(*par)
+    cpu_qnode = qml.QNode(circuit, dev_cpu)
+    expected_output_cpu = cpu_qnode(*par)
+    comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
+
+    gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
+    local_state_vector = gpumpi_qnode(*par)
 
     assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
@@ -146,15 +141,6 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
     comm.Scatter(state_vector, local_state_vector, root=0)
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
-    @qml.qnode(dev_cpu)
-    def circuit():
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
-        operation(wires=Wires)
-        return qml.state()
-
-    expected_output_cpu = circuit()
-    comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
-
     dev_gpumpi = qml.device(
         "lightning.gpu",
         wires=num_wires,
@@ -163,13 +149,17 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
         c_dtype=np.complex128,
     )
 
-    @qml.qnode(dev_gpumpi)
-    def circuit_mpi():
+    def circuit():
         qml.QubitStateVector(state_vector, wires=range(num_wires))
         operation(wires=Wires)
         return qml.state()
 
-    local_state_vector = circuit_mpi()
+    cpu_qnode = qml.QNode(circuit, dev_cpu)
+    expected_output_cpu = cpu_qnode()
+    comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
+
+    gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
+    local_state_vector = gpumpi_qnode()
 
     assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
@@ -229,22 +219,18 @@ def expval_single_wire_no_param(tol, obs):
     comm.Scatter(state_vector, local_state_vector, root=0)
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
-    @qml.qnode(dev_cpu)
+    dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+
     def circuit():
         qml.QubitStateVector(state_vector, wires=range(num_wires))
         return qml.expval(obs)
 
-    expected_output_cpu = circuit()
+    cpu_qnode = qml.QNode(circuit, dev_cpu)
+    expected_output_cpu = cpu_qnode()
     comm.Bcast(expected_output_cpu, root=0)
 
-    dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
-
-    @qml.qnode(dev_gpumpi)
-    def circuit_mpi():
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
-        return qml.expval(obs)
-
-    expected_output_gpu = circuit_mpi()
+    gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
+    expected_output_gpu = gpumpi_qnode()
 
     assert np.allclose(expected_output_gpu, expected_output_cpu, atol=tol, rtol=0)
 
@@ -260,21 +246,17 @@ def apply_probs(tol, Wires):
 
     dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
 
-    @qml.qnode(dev_cpu)
+    dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+
     def circuit():
         qml.QubitStateVector(state_vector, wires=range(num_wires))
         return qml.probs(wires=Wires)
 
-    probs_cpu = circuit()
+    cpu_qnode = qml.QNode(circuit, dev_cpu)
+    probs_cpu = cpu_qnode()
 
-    dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
-
-    @qml.qnode(dev_gpumpi)
-    def circuit_mpi():
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
-        return qml.probs(wires=Wires)
-
-    local_probs = circuit_mpi()
+    gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
+    local_probs = gpumpi_qnode()
 
     recv_counts = comm.gather(len(local_probs), root=0)
 
@@ -415,23 +397,19 @@ class TestApply:
 
         comm.Scatter(state_vector, local_state_vector, root=0)
         dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
-        @qml.qnode(dev_cpu)
         def circuit():
             operation(par, wires=range(numQubits))
             return qml.state()
 
-        expected_output_cpu = circuit()
+        cpu_qnode = qml.QNode(circuit, dev_cpu)
+        gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
+
+        expected_output_cpu = cpu_qnode()
         comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
-        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
-
-        @qml.qnode(dev_gpumpi)
-        def circuit_mpi():
-            operation(par, wires=range(numQubits))
-            return qml.state()
-
-        local_state_vector = circuit_mpi()
+        local_state_vector = gpumpi_qnode()
 
         assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
@@ -476,23 +454,20 @@ class TestApply:
 
         comm.Scatter(state_vector, local_state_vector, root=0)
         dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
-        @qml.qnode(dev_cpu)
         def circuit():
             qml.QubitStateVector(par, wires=Wires)
             return qml.state()
 
-        expected_output_cpu = circuit()
+        cpu_qnode = qml.QNode(circuit, dev_cpu)
+        gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
+
+        expected_output_cpu = cpu_qnode()
         comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
-        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+        local_state_vector = gpumpi_qnode()
 
-        @qml.qnode(dev_gpumpi)
-        def circuit_mpi():
-            qml.QubitStateVector(par, wires=Wires)
-            return qml.state()
-
-        local_state_vector = circuit_mpi()
         assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
     def test_dev_reset(self, tol):
@@ -514,27 +489,23 @@ class TestApply:
 
         dev_cpu.reset()
 
-        @qml.qnode(dev_cpu)
         def circuit():
             qml.PauliX(wires=[0])
             qml.PauliX(wires=[0])
             return qml.state()
 
-        expected_output_cpu = circuit()
+        cpu_qnode = qml.QNode(circuit, dev_cpu)
+
+        expected_output_cpu = cpu_qnode()
         comm.Scatter(expected_output_cpu, local_expected_output_cpu, root=0)
 
         dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
         dev_gpumpi.reset()
 
-        @qml.qnode(dev_gpumpi)
-        def circuit_mpi():
-            qml.PauliX(wires=[0])
-            qml.PauliX(wires=[0])
-            return qml.state()
-
+        gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
         dev_gpumpi.reset()
 
-        local_state_vector = circuit_mpi()
+        local_state_vector = gpumpi_qnode()
         assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
 
@@ -577,22 +548,17 @@ class TestExpval:
         commSize = comm.Get_size()
 
         dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
-        @qml.qnode(dev_cpu)
         def circuit():
             qml.RX(0.4, wires=[0])
             qml.RY(-0.2, wires=[numQubits - 1])
             return qml.expval(obs)
 
-        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+        cpu_qnode = qml.QNode(circuit, dev_cpu)
+        gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
 
-        @qml.qnode(dev_gpumpi)
-        def circuit_mpi():
-            qml.RX(0.4, wires=[0])
-            qml.RY(-0.2, wires=[numQubits - 1])
-            return qml.expval(obs)
-
-        assert np.allclose(circuit(), circuit_mpi(), atol=tol, rtol=0)
+        assert np.allclose(cpu_qnode(), gpumpi_qnode(), atol=tol, rtol=0)
 
     @pytest.mark.parametrize(
         "obs, coeffs",
@@ -625,22 +591,17 @@ class TestExpval:
         ham = qml.Hamiltonian(coeffs, obs)
 
         dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
-        @qml.qnode(dev_cpu)
         def circuit():
             qml.RX(0.4, wires=[0])
             qml.RY(-0.2, wires=[numQubits - 1])
             return qml.expval(ham)
 
-        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+        cpu_qnode = qml.QNode(circuit, dev_cpu)
+        gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
 
-        @qml.qnode(dev_gpumpi)
-        def circuit_mpi():
-            qml.RX(0.4, wires=[0])
-            qml.RY(-0.2, wires=[numQubits - 1])
-            return qml.expval(ham)
-
-        assert np.allclose(circuit(), circuit_mpi(), atol=tol, rtol=0)
+        assert np.allclose(cpu_qnode(), gpumpi_qnode(), atol=tol, rtol=0)
 
 
 class TestGenerateSample:
