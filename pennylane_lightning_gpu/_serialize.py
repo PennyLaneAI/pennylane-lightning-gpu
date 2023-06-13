@@ -50,6 +50,28 @@ try:
         HermitianObsGPU_C64,
         HermitianObsGPU_C128,
     )
+
+    try:
+        from .lightning_gpu_qubit_ops import (
+            LightningGPUMPI_C128,
+            LightningGPUMPI_C64,
+            AdjointJacobianGPUMPI_C128,
+            AdjointJacobianGPUMPI_C64,
+            MPIManager,
+            NamedObsGPUMPI_C64,
+            NamedObsGPUMPI_C128,
+            TensorProdObsGPUMPI_C64,
+            TensorProdObsGPUMPI_C128,
+            HamiltonianGPUMPI_C64,
+            HamiltonianGPUMPI_C128,
+            HermitianObsGPUMPI_C64,
+            HermitianObsGPUMPI_C128,
+        )
+
+        MPI_SUPPORT = True
+    except:
+        MPI_SUPPORT = False
+
 except ImportError as e:
     print(e)
 
@@ -61,36 +83,68 @@ pauli_name_map = {
 }
 
 
-def _serialize_named_ob(o, wires_map: dict, use_csingle: bool):
+def _named_ob_dtype(use_csingle, mpi: bool):
+    if not mpi:
+        return NamedObsGPU_C64 if use_csingle else NamedObsGPU_C128
+    return NamedObsGPUMPI_C64 if use_csingle else NamedObsGPUMPI_C128
+
+
+def _tensor_ob_dtype(use_csingle, mpi: bool):
+    if not mpi:
+        return TensorProdObsGPU_C64 if use_csingle else TensorProdObsGPU_C128
+    return TensorProdObsGPUMPI_C64 if use_csingle else TensorProdObsGPUMPI_C128
+
+
+def _hermitian_ob_dtype(use_csingle, mpi: bool):
+    if not mpi:
+        return (
+            [HermitianObsGPU_C64, np.float32] if use_csingle else [HermitianObsGPU_C128, np.float64]
+        )
+    return (
+        [HermitianObsGPUMPI_C64, np.float32]
+        if use_csingle
+        else [HermitianObsGPUMPI_C128, np.float64]
+    )
+
+
+def _hamiltonian_ob_dtype(use_csingle, mpi: bool):
+    if not mpi:
+        return (
+            [HamiltonianGPU_C64, np.float32] if use_csingle else [HamiltonianGPU_C128, np.float64]
+        )
+    return (
+        [HamiltonianGPUMPI_C64, np.float32] if use_csingle else [HamiltonianGPUMPI_C128, np.float64]
+    )
+
+
+def _sv_py_dtype(use_csingle, mpi: bool):
+    if not mpi:
+        return LightningGPU_C64 if use_csingle else LightningGPU_C128
+    return LightningGPUMPI_C64 if use_csingle else LightningGPUMPI_C128
+
+
+def _serialize_named_ob(o, wires_map: dict, use_csingle: bool, mpi: bool):
     """Serializes an observable (Named)"""
-    named_obs = NamedObsGPU_C64 if use_csingle else NamedObsGPU_C128
+    named_obs = _named_ob_dtype(use_csingle, mpi)
     wires = [wires_map[w] for w in o.wires]
     if o.name == "Identity":
         wires = wires[:1]
     return named_obs(o.name, wires)
 
 
-def _serialize_tensor_ob(ob, wires_map: dict, use_csingle: bool):
+def _serialize_tensor_ob(ob, wires_map: dict, use_csingle: bool, mpi: bool):
     """Serialize a tensor observable"""
     assert isinstance(ob, Tensor)
-
-    if use_csingle:
-        tensor_obs = TensorProdObsGPU_C64
-    else:
-        tensor_obs = TensorProdObsGPU_C128
-    return tensor_obs([_serialize_ob(o, wires_map, use_csingle) for o in ob.obs])
+    tensor_obs = _tensor_ob_dtype(use_csingle, mpi)
+    return tensor_obs([_serialize_ob(o, wires_map, use_csingle, mpi) for o in ob.obs])
 
 
-def _serialize_hamiltonian(ob, wires_map: dict, use_csingle: bool, split_terms: bool = True):
-    if use_csingle:
-        rtype = np.float32
-        hamiltonian_obs = HamiltonianGPU_C64
-    else:
-        rtype = np.float64
-        hamiltonian_obs = HamiltonianGPU_C128
-
+def _serialize_hamiltonian(
+    ob, wires_map: dict, use_csingle: bool, mpi: bool, split_terms: bool = True
+):
+    hamiltonian_obs, rtype = _hamiltonian_ob_dtype(use_csingle, mpi)
     coeffs = np.array(ob.coeffs).astype(rtype)
-    terms = [_serialize_ob(t, wires_map, use_csingle) for t in ob.ops]
+    terms = [_serialize_ob(t, wires_map, use_csingle, mpi, _serialize_ob) for t in ob.ops]
 
     if split_terms:
         return [hamiltonian_obs([c], [t]) for (c, t) in zip(coeffs, terms)]
@@ -119,26 +173,17 @@ def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool):
     return sparsehamiltonian_obs(data, indices, offsets, wires)
 
 
-def _serialize_hermitian(ob, wires_map: dict, use_csingle: bool):
-    if use_csingle:
-        rtype = np.float32
-        hermitian_obs = HermitianObsGPU_C64
-    else:
-        rtype = np.float64
-        hermitian_obs = HermitianObsGPU_C128
+def _serialize_hermitian(ob, wires_map: dict, use_csingle: bool, mpi: bool):
+    hermitian_obs, rtype = _hermitian_ob_dtype(use_csingle, mpi)
 
     data = qml.matrix(ob).astype(rtype).ravel(order="C")
     return hermitian_obs(data, ob.wires.tolist())
 
 
-def _serialize_pauli_word(ob, wires_map: dict, use_csingle: bool):
+def _serialize_pauli_word(ob, wires_map: dict, use_csingle: bool, mpi: bool):
     """Serialize a :class:`pennylane.pauli.PauliWord` into a Named or Tensor observable."""
-    if use_csingle:
-        named_obs = NamedObsGPU_C64
-        tensor_obs = TensorProdObsGPU_C64
-    else:
-        named_obs = NamedObsGPU_C128
-        tensor_obs = TensorProdObsGPU_C128
+    named_obs = _named_ob_dtype(use_csingle, mpi)
+    tensor_obs = _tensor_ob_dtype(use_csingle, mpi)
 
     if len(ob) == 1:
         wire, pauli = list(ob.items())[0]
@@ -149,34 +194,33 @@ def _serialize_pauli_word(ob, wires_map: dict, use_csingle: bool):
     )
 
 
-def _serialize_pauli_sentence(ob, wires_map: dict, use_csingle: bool, split_terms: bool = True):
+def _serialize_pauli_sentence(
+    ob, wires_map: dict, use_csingle: bool, mpi: bool, split_terms: bool = True
+):
     """Serialize a :class:`pennylane.pauli.PauliSentence` into a Hamiltonian."""
-    if use_csingle:
-        rtype = np.float32
-        hamiltonian_obs = HamiltonianGPU_C64
-    else:
-        rtype = np.float64
-        hamiltonian_obs = HamiltonianGPU_C128
+    hamiltonian_obs, rtype = _hamiltonian_ob_dtype(use_csingle, mpi)
 
     pwords, coeffs = zip(*ob.items())
-    terms = [_serialize_pauli_word(pw, wires_map, use_csingle) for pw in pwords]
+    terms = [_serialize_pauli_word(pw, wires_map, use_csingle, mpi) for pw in pwords]
     coeffs = np.array(coeffs).astype(rtype)
     if split_terms:
         return [hamiltonian_obs([c], [t]) for (c, t) in zip(coeffs, terms)]
     return hamiltonian_obs(coeffs, terms)
 
 
-def _serialize_ob(ob, wires_map, use_csingle, use_splitting: bool = True):
+def _serialize_ob(ob, wires_map, use_csingle, mpi: bool = False, use_splitting: bool = True):
     if isinstance(ob, Tensor):
-        return _serialize_tensor_ob(ob, wires_map, use_csingle)
+        return _serialize_tensor_ob(ob, wires_map, use_csingle, mpi)
     elif ob.name == "Hamiltonian":
-        return _serialize_hamiltonian(ob, wires_map, use_csingle, use_splitting)
+        return _serialize_hamiltonian(ob, wires_map, use_csingle, mpi, use_splitting)
     elif ob.name == "SparseHamiltonian":
+        if mpi:
+            raise TypeError("SparseHamiltonian is not supported for MPI backend.")
         return _serialize_sparsehamiltonian(ob, wires_map, use_csingle)
     elif isinstance(ob, (PauliX, PauliY, PauliZ, Identity, Hadamard)):
-        return _serialize_named_ob(ob, wires_map, use_csingle)
+        return _serialize_named_ob(ob, wires_map, use_csingle, mpi)
     elif ob._pauli_rep is not None:
-        return _serialize_pauli_sentence(ob._pauli_rep, wires_map, use_csingle, use_splitting)
+        return _serialize_pauli_sentence(ob._pauli_rep, wires_map, use_csingle, mpi, use_splitting)
     elif ob.name == "Hermitian":
         raise TypeError(
             "Hermitian observables are not currently supported for adjoint differentiation. Please use Pauli-words only."
@@ -185,7 +229,9 @@ def _serialize_ob(ob, wires_map, use_csingle, use_splitting: bool = True):
         raise TypeError(f"Unknown observable found: {ob}. Please use Pauli-words only.")
 
 
-def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool = False) -> List:
+def _serialize_observables(
+    tape: QuantumTape, wires_map: dict, mpi: bool, use_csingle: bool = False
+) -> List:
     """Serializes the observables of an input tape.
 
     Args:
@@ -200,7 +246,7 @@ def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool
     offsets = [0]
 
     for ob in tape.observables:
-        ser_ob = _serialize_ob(ob, wires_map, use_csingle)
+        ser_ob = _serialize_ob(ob, wires_map, use_csingle, mpi)
         if isinstance(ser_ob, list):
             output.extend(ser_ob)
             offsets.append(offsets[-1] + len(ser_ob))
@@ -211,7 +257,7 @@ def _serialize_observables(tape: QuantumTape, wires_map: dict, use_csingle: bool
 
 
 def _serialize_ops(
-    tape: QuantumTape, wires_map: dict, use_csingle: bool = False
+    tape: QuantumTape, wires_map: dict, mpi: bool, use_csingle: bool = False
 ) -> Tuple[List[List[str]], List[np.ndarray], List[List[int]], List[bool], List[np.ndarray]]:
     """Serializes the operations of an input tape.
 

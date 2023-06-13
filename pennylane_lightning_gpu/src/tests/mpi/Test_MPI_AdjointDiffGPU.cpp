@@ -52,15 +52,12 @@ TEST_CASE(
                                           nGlobalIndexBits, nLocalIndexBits);
         sv_ref.initSV_MPI();
 
-        const auto obs1 =
-            std::make_shared<NamedObsGPUMPI<double, StateVectorCudaMPI>>(
-                "PauliZ", std::vector<size_t>{0});
-        const auto obs2 =
-            std::make_shared<NamedObsGPUMPI<double, StateVectorCudaMPI>>(
-                "PauliZ", std::vector<size_t>{1});
-        const auto obs3 =
-            std::make_shared<NamedObsGPUMPI<double, StateVectorCudaMPI>>(
-                "PauliZ", std::vector<size_t>{2});
+        const auto obs1 = std::make_shared<NamedObsGPUMPI<double>>(
+            "PauliZ", std::vector<size_t>{0});
+        const auto obs2 = std::make_shared<NamedObsGPUMPI<double>>(
+            "PauliZ", std::vector<size_t>{1});
+        const auto obs3 = std::make_shared<NamedObsGPUMPI<double>>(
+            "PauliZ", std::vector<size_t>{2});
         auto ops = adj.createOpsData({"RX", "RX", "RX"},
                                      {{param[0]}, {param[1]}, {param[2]}},
                                      {{0}, {1}, {2}}, {false, false, false});
@@ -107,15 +104,12 @@ TEST_CASE(
                                           nGlobalIndexBits, nLocalIndexBits);
         sv_ref.initSV_MPI();
 
-        const auto obs1 =
-            std::make_shared<NamedObsGPUMPI<double, StateVectorCudaMPI>>(
-                "PauliZ", std::vector<size_t>{0});
-        const auto obs2 =
-            std::make_shared<NamedObsGPUMPI<double, StateVectorCudaMPI>>(
-                "PauliZ", std::vector<size_t>{1});
-        const auto obs3 =
-            std::make_shared<NamedObsGPUMPI<double, StateVectorCudaMPI>>(
-                "PauliZ", std::vector<size_t>{2});
+        const auto obs1 = std::make_shared<NamedObsGPUMPI<double>>(
+            "PauliZ", std::vector<size_t>{0});
+        const auto obs2 = std::make_shared<NamedObsGPUMPI<double>>(
+            "PauliZ", std::vector<size_t>{1});
+        const auto obs3 = std::make_shared<NamedObsGPUMPI<double>>(
+            "PauliZ", std::vector<size_t>{2});
         auto ops = adj.createOpsData({"RX", "RX", "RX"},
                                      {{param[0]}, {param[1]}, {param[2]}},
                                      {{0}, {1}, {2}}, {false, false, false});
@@ -160,14 +154,13 @@ TEST_CASE("AdjointJacobianGPUMPI::adjointJacobianMPI Op=Mixed, Obs=[XXX]",
                                           nGlobalIndexBits, nLocalIndexBits);
         sv_ref.initSV_MPI();
 
-        const auto obs =
-            std::make_shared<TensorProdObsGPUMPI<double, StateVectorCudaMPI>>(
-                std::make_shared<NamedObsGPUMPI<double, StateVectorCudaMPI>>(
-                    "PauliX", std::vector<size_t>{0}),
-                std::make_shared<NamedObsGPUMPI<double, StateVectorCudaMPI>>(
-                    "PauliX", std::vector<size_t>{1}),
-                std::make_shared<NamedObsGPUMPI<double, StateVectorCudaMPI>>(
-                    "PauliX", std::vector<size_t>{2}));
+        const auto obs = std::make_shared<TensorProdObsGPUMPI<double>>(
+            std::make_shared<NamedObsGPUMPI<double>>("PauliX",
+                                                     std::vector<size_t>{0}),
+            std::make_shared<NamedObsGPUMPI<double>>("PauliX",
+                                                     std::vector<size_t>{1}),
+            std::make_shared<NamedObsGPUMPI<double>>("PauliX",
+                                                     std::vector<size_t>{2}));
         auto ops = adj.createOpsData(
             {"RZ", "RY", "RZ", "CNOT", "CNOT", "RZ", "RY", "RZ"},
             {{param[0]},

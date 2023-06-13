@@ -190,7 +190,7 @@ class AdjointJacobianGPUMPI {
      * @param observable ObservableGPU to apply.
      */
     inline void applyObservable(SVType<T> &state,
-                                ObservableGPUMPI<T, SVType> &observable) {
+                                ObservableGPUMPI<T> &observable) {
         observable.applyInPlace(state);
     }
 
@@ -261,7 +261,7 @@ class AdjointJacobianGPUMPI {
      */
     void adjointJacobian(
         const SVType<T> &ref_sv, std::vector<std::vector<T>> &jac,
-        const std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> &obs,
+        const std::vector<std::shared_ptr<ObservableGPUMPI<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
         const std::vector<size_t> &trainableParams,
         bool apply_operations = false) {
@@ -354,7 +354,7 @@ class AdjointJacobianGPUMPI {
 
     void adjointJacobian_HP(
         const SVType<T> &ref_sv, std::vector<std::vector<T>> &jac,
-        const std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> &obs,
+        const std::vector<std::shared_ptr<ObservableGPUMPI<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
         const std::vector<size_t> &trainableParams,
         bool apply_operations = false) {

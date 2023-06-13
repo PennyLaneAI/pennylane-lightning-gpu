@@ -29,9 +29,9 @@ namespace Pennylane::Algorithms {
  * @tparam T Floating point type
  */
 
-template <typename T, template <typename> class SVType>
+template <typename T>
 class ObservableGPUMPI
-    : public std::enable_shared_from_this<ObservableGPUMPI<T, SVType>> {
+    : public std::enable_shared_from_this<ObservableGPUMPI<T>> {
   private:
     /**
      * @brief Polymorphic function comparing this to another Observable
@@ -40,7 +40,7 @@ class ObservableGPUMPI
      * @param Another instance of subclass of Observable<T> to compare
      */
     [[nodiscard]] virtual bool
-    isEqual(const ObservableGPUMPI<T, SVType> &other) const = 0;
+    isEqual(const ObservableGPUMPI<T> &other) const = 0;
 
   protected:
     ObservableGPUMPI() = default;
@@ -55,7 +55,7 @@ class ObservableGPUMPI
     /**
      * @brief Apply the observable to the given statevector in place.
      */
-    virtual inline void applyInPlace(SVType<T> &sv) const = 0;
+    virtual inline void applyInPlace(StateVectorCudaMPI<T> &sv) const = 0;
 
     /**
      * @brief Get the name of the observable
@@ -70,16 +70,14 @@ class ObservableGPUMPI
     /**
      * @brief Test whether this object is equal to another object
      */
-    [[nodiscard]] bool
-    operator==(const ObservableGPUMPI<T, SVType> &other) const {
+    [[nodiscard]] bool operator==(const ObservableGPUMPI<T> &other) const {
         return typeid(*this) == typeid(other) && isEqual(other);
     }
 
     /**
      * @brief Test whether this object is different from another object.
      */
-    [[nodiscard]] bool
-    operator!=(const ObservableGPUMPI<T, SVType> &other) const {
+    [[nodiscard]] bool operator!=(const ObservableGPUMPI<T> &other) const {
         return !(*this == other);
     }
 };
@@ -89,17 +87,15 @@ class ObservableGPUMPI
  *
  * @tparam T Floating point type
  */
-template <typename T, template <typename> class SVType>
-class NamedObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
+template <typename T> class NamedObsGPUMPI final : public ObservableGPUMPI<T> {
   private:
     std::string obs_name_;
     std::vector<size_t> wires_;
     std::vector<T> params_;
 
     [[nodiscard]] bool
-    isEqual(const ObservableGPUMPI<T, SVType> &other) const override {
-        const auto &other_cast =
-            static_cast<const NamedObsGPUMPI<T, SVType> &>(other);
+    isEqual(const ObservableGPUMPI<T> &other) const override {
+        const auto &other_cast = static_cast<const NamedObsGPUMPI<T> &>(other);
 
         return (obs_name_ == other_cast.obs_name_) &&
                (wires_ == other_cast.wires_) && (params_ == other_cast.params_);
@@ -129,7 +125,7 @@ class NamedObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
         return wires_;
     }
 
-    inline void applyInPlace(SVType<T> &sv) const override {
+    inline void applyInPlace(StateVectorCudaMPI<T> &sv) const override {
         sv.applyOperation(obs_name_, wires_, false, params_);
     }
 };
@@ -138,8 +134,8 @@ class NamedObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
  * @brief Class models arbitrary Hermitian observables
  *
  */
-template <typename T, template <typename> class SVType>
-class HermitianObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
+template <typename T>
+class HermitianObsGPUMPI final : public ObservableGPUMPI<T> {
   public:
     using MatrixT = std::vector<std::complex<T>>;
 
@@ -149,9 +145,9 @@ class HermitianObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
     inline static const MatrixHasher mh;
 
     [[nodiscard]] bool
-    isEqual(const ObservableGPUMPI<T, SVType> &other) const override {
+    isEqual(const ObservableGPUMPI<T> &other) const override {
         const auto &other_cast =
-            static_cast<const HermitianObsGPUMPI<T, SVType> &>(other);
+            static_cast<const HermitianObsGPUMPI<T> &>(other);
 
         return (matrix_ == other_cast.matrix_) && (wires_ == other_cast.wires_);
     }
@@ -183,7 +179,7 @@ class HermitianObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
         return obs_stream.str();
     }
 
-    inline void applyInPlace(SVType<T> &sv) const override {
+    inline void applyInPlace(StateVectorCudaMPI<T> &sv) const override {
         sv.applyOperation_std(getObsName(), wires_, false, {}, matrix_);
     }
 };
@@ -191,16 +187,16 @@ class HermitianObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
 /**
  * @brief Class models Tensor product observables
  */
-template <typename T, template <typename> class SVType>
-class TensorProdObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
+template <typename T>
+class TensorProdObsGPUMPI final : public ObservableGPUMPI<T> {
   private:
-    std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> obs_;
+    std::vector<std::shared_ptr<ObservableGPUMPI<T>>> obs_;
     std::vector<size_t> all_wires_;
 
     [[nodiscard]] bool
-    isEqual(const ObservableGPUMPI<T, SVType> &other) const override {
+    isEqual(const ObservableGPUMPI<T> &other) const override {
         const auto &other_cast =
-            static_cast<const TensorProdObsGPUMPI<T, SVType> &>(other);
+            static_cast<const TensorProdObsGPUMPI<T> &>(other);
 
         if (obs_.size() != other_cast.obs_.size()) {
             return false;
@@ -246,17 +242,16 @@ class TensorProdObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
      *
      * @param obs List of observables
      */
-    static auto create(
-        std::initializer_list<std::shared_ptr<ObservableGPUMPI<T, SVType>>> obs)
-        -> std::shared_ptr<TensorProdObsGPUMPI<T, SVType>> {
-        return std::shared_ptr<TensorProdObsGPUMPI<T, SVType>>{
+    static auto
+    create(std::initializer_list<std::shared_ptr<ObservableGPUMPI<T>>> obs)
+        -> std::shared_ptr<TensorProdObsGPUMPI<T>> {
+        return std::shared_ptr<TensorProdObsGPUMPI<T>>{
             new TensorProdObsGPUMPI(std::move(obs))};
     }
 
-    static auto
-    create(std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> obs)
-        -> std::shared_ptr<TensorProdObsGPUMPI<T, SVType>> {
-        return std::shared_ptr<TensorProdObsGPUMPI<T, SVType>>{
+    static auto create(std::vector<std::shared_ptr<ObservableGPUMPI<T>>> obs)
+        -> std::shared_ptr<TensorProdObsGPUMPI<T>> {
+        return std::shared_ptr<TensorProdObsGPUMPI<T>>{
             new TensorProdObsGPUMPI(std::move(obs))};
     }
 
@@ -276,7 +271,7 @@ class TensorProdObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
         return all_wires_;
     }
 
-    inline void applyInPlace(SVType<T> &sv) const override {
+    inline void applyInPlace(StateVectorCudaMPI<T> &sv) const override {
         for (const auto &ob : obs_) {
             ob->applyInPlace(sv);
         }
@@ -300,19 +295,19 @@ class TensorProdObsGPUMPI final : public ObservableGPUMPI<T, SVType> {
  * @brief General Hamiltonian as a sum of observables.
  *
  */
-template <typename T, template <typename> class SVType>
-class HamiltonianGPUMPI final : public ObservableGPUMPI<T, SVType> {
+template <typename T>
+class HamiltonianGPUMPI final : public ObservableGPUMPI<T> {
   public:
     using PrecisionT = T;
 
   private:
     std::vector<T> coeffs_;
-    std::vector<std::shared_ptr<ObservableGPUMPI<T, SVType>>> obs_;
+    std::vector<std::shared_ptr<ObservableGPUMPI<T>>> obs_;
 
     [[nodiscard]] bool
-    isEqual(const ObservableGPUMPI<T, SVType> &other) const override {
+    isEqual(const ObservableGPUMPI<T> &other) const override {
         const auto &other_cast =
-            static_cast<const HamiltonianGPUMPI<T, SVType> &>(other);
+            static_cast<const HamiltonianGPUMPI<T> &>(other);
 
         if (coeffs_ != other_cast.coeffs_) {
             return false;
@@ -351,21 +346,21 @@ class HamiltonianGPUMPI final : public ObservableGPUMPI<T, SVType> {
      */
     static auto
     create(std::initializer_list<T> arg1,
-           std::initializer_list<std::shared_ptr<ObservableGPUMPI<T, SVType>>>
-               arg2) -> std::shared_ptr<HamiltonianGPUMPI<T, SVType>> {
-        return std::shared_ptr<HamiltonianGPUMPI<T, SVType>>(
-            new HamiltonianGPUMPI<T, SVType>{std::move(arg1), std::move(arg2)});
+           std::initializer_list<std::shared_ptr<ObservableGPUMPI<T>>> arg2)
+        -> std::shared_ptr<HamiltonianGPUMPI<T>> {
+        return std::shared_ptr<HamiltonianGPUMPI<T>>(
+            new HamiltonianGPUMPI<T>{std::move(arg1), std::move(arg2)});
     }
 
     // to work with
-    inline void applyInPlace(SVType<T> &sv) const override {
-        using CFP_t = typename SVType<T>::CFP_t;
+    inline void applyInPlace(StateVectorCudaMPI<T> &sv) const override {
+        using CFP_t = typename StateVectorCudaMPI<T>::CFP_t;
         DataBuffer<CFP_t, int> buffer(sv.getDataBuffer().getLength(),
                                       sv.getDataBuffer().getDevTag());
         buffer.zeroInit();
 
         for (size_t term_idx = 0; term_idx < coeffs_.size(); term_idx++) {
-            SVType<T> tmp(sv);
+            StateVectorCudaMPI<T> tmp(sv);
             obs_[term_idx]->applyInPlace(tmp);
             scaleAndAddC_CUDA(std::complex<T>{coeffs_[term_idx], 0.0},
                               tmp.getData(), buffer.getData(), tmp.getLength(),
@@ -404,6 +399,5 @@ class HamiltonianGPUMPI final : public ObservableGPUMPI<T, SVType> {
         return ss.str();
     }
 };
-
 
 } // namespace Pennylane::Algorithms

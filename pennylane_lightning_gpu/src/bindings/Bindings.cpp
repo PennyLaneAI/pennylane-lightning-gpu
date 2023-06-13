@@ -768,7 +768,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     //***********************************************************************//
     //                              Operations
     //***********************************************************************//
-    /*
+
     class_name = "OpsStructGPU_C" + bitsize;
     py::class_<OpsData<PrecisionT>>(m, class_name.c_str(), py::module_local())
         .def(py::init<
@@ -791,7 +791,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             }
             return "Operations: [" + ops_stream.str() + "]";
         });
-    */
+
     //***********************************************************************//
     //                              Adj Jac
     //***********************************************************************//
@@ -1444,47 +1444,39 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
     //***********************************************************************//
 
     class_name = "ObservableGPUMPI_C" + bitsize;
-    py::class_<
-        ObservableGPUMPI<PrecisionT, StateVectorCudaMPI>,
-        std::shared_ptr<ObservableGPUMPI<PrecisionT, StateVectorCudaMPI>>>(
+    py::class_<ObservableGPUMPI<PrecisionT>,
+               std::shared_ptr<ObservableGPUMPI<PrecisionT>>>(
         m, class_name.c_str(), py::module_local());
 
     class_name = "NamedObsGPUMPI_C" + bitsize;
-    py::class_<NamedObsGPUMPI<PrecisionT, StateVectorCudaMPI>,
-               std::shared_ptr<NamedObsGPUMPI<PrecisionT, StateVectorCudaMPI>>,
-               ObservableGPUMPI<PrecisionT, StateVectorCudaMPI>>(
-        m, class_name.c_str(), py::module_local())
-        .def(py::init([](const std::string &name,
-                         const std::vector<size_t> &wires) {
-            return NamedObsGPUMPI<PrecisionT, StateVectorCudaMPI>(name, wires);
-        }))
-        .def("__repr__",
-             &NamedObsGPUMPI<PrecisionT, StateVectorCudaMPI>::getObsName)
-        .def("get_wires",
-             &NamedObsGPUMPI<PrecisionT, StateVectorCudaMPI>::getWires,
+    py::class_<NamedObsGPUMPI<PrecisionT>,
+               std::shared_ptr<NamedObsGPUMPI<PrecisionT>>,
+               ObservableGPUMPI<PrecisionT>>(m, class_name.c_str(),
+                                             py::module_local())
+        .def(py::init(
+            [](const std::string &name, const std::vector<size_t> &wires) {
+                return NamedObsGPUMPI<PrecisionT>(name, wires);
+            }))
+        .def("__repr__", &NamedObsGPUMPI<PrecisionT>::getObsName)
+        .def("get_wires", &NamedObsGPUMPI<PrecisionT>::getWires,
              "Get wires of observables")
         .def(
             "__eq__",
-            [](const NamedObsGPUMPI<PrecisionT, StateVectorCudaMPI> &self,
+            [](const NamedObsGPUMPI<PrecisionT> &self,
                py::handle other) -> bool {
-                if (!py::isinstance<
-                        NamedObsGPUMPI<PrecisionT, StateVectorCudaMPI>>(
-                        other)) {
+                if (!py::isinstance<NamedObsGPUMPI<PrecisionT>>(other)) {
                     return false;
                 }
-                auto other_cast =
-                    other
-                        .cast<NamedObsGPUMPI<PrecisionT, StateVectorCudaMPI>>();
+                auto other_cast = other.cast<NamedObsGPUMPI<PrecisionT>>();
                 return self == other_cast;
             },
             "Compare two observables");
 
     class_name = "HermitianObsGPUMPI_C" + bitsize;
-    py::class_<
-        HermitianObsGPUMPI<PrecisionT, StateVectorCudaMPI>,
-        std::shared_ptr<HermitianObsGPUMPI<PrecisionT, StateVectorCudaMPI>>,
-        ObservableGPUMPI<PrecisionT, StateVectorCudaMPI>>(m, class_name.c_str(),
-                                                          py::module_local())
+    py::class_<HermitianObsGPUMPI<PrecisionT>,
+               std::shared_ptr<HermitianObsGPUMPI<PrecisionT>>,
+               ObservableGPUMPI<PrecisionT>>(m, class_name.c_str(),
+                                             py::module_local())
         .def(py::init([](const np_arr_c &matrix,
                          const std::vector<size_t> &wires) {
             const auto m_buffer = matrix.request();
@@ -1495,95 +1487,101 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                 conv_matrix = std::vector<std::complex<PrecisionT>>{
                     m_ptr, m_ptr + m_buffer.size};
             }
-            return HermitianObsGPUMPI<PrecisionT, StateVectorCudaMPI>(
-                conv_matrix, wires);
+            return HermitianObsGPUMPI<PrecisionT>(conv_matrix, wires);
         }))
-        .def("__repr__",
-             &HermitianObsGPUMPI<PrecisionT, StateVectorCudaMPI>::getObsName)
-        .def("get_wires",
-             &HermitianObsGPUMPI<PrecisionT, StateVectorCudaMPI>::getWires,
+        .def("__repr__", &HermitianObsGPUMPI<PrecisionT>::getObsName)
+        .def("get_wires", &HermitianObsGPUMPI<PrecisionT>::getWires,
              "Get wires of observables")
         .def(
             "__eq__",
-            [](const HermitianObsGPUMPI<PrecisionT, StateVectorCudaMPI> &self,
+            [](const HermitianObsGPUMPI<PrecisionT> &self,
                py::handle other) -> bool {
-                if (!py::isinstance<
-                        HermitianObsGPUMPI<PrecisionT, StateVectorCudaMPI>>(
-                        other)) {
+                if (!py::isinstance<HermitianObsGPUMPI<PrecisionT>>(other)) {
                     return false;
                 }
-                auto other_cast = other.cast<
-                    HermitianObsGPUMPI<PrecisionT, StateVectorCudaMPI>>();
+                auto other_cast = other.cast<HermitianObsGPUMPI<PrecisionT>>();
                 return self == other_cast;
             },
             "Compare two observables");
 
     class_name = "TensorProdObsGPUMPI_C" + bitsize;
-    py::class_<
-        TensorProdObsGPUMPI<PrecisionT, StateVectorCudaMPI>,
-        std::shared_ptr<TensorProdObsGPUMPI<PrecisionT, StateVectorCudaMPI>>,
-        ObservableGPUMPI<PrecisionT, StateVectorCudaMPI>>(m, class_name.c_str(),
-                                                          py::module_local())
+    py::class_<TensorProdObsGPUMPI<PrecisionT>,
+               std::shared_ptr<TensorProdObsGPUMPI<PrecisionT>>,
+               ObservableGPUMPI<PrecisionT>>(m, class_name.c_str(),
+                                             py::module_local())
         .def(py::init(
-            [](const std::vector<std::shared_ptr<
-                   ObservableGPUMPI<PrecisionT, StateVectorCudaMPI>>> &obs) {
-                return TensorProdObsGPUMPI<PrecisionT, StateVectorCudaMPI>(obs);
-            }))
-        .def("__repr__",
-             &TensorProdObsGPUMPI<PrecisionT, StateVectorCudaMPI>::getObsName)
-        .def("get_wires",
-             &TensorProdObsGPUMPI<PrecisionT, StateVectorCudaMPI>::getWires,
+            [](const std::vector<std::shared_ptr<ObservableGPUMPI<PrecisionT>>>
+                   &obs) { return TensorProdObsGPUMPI<PrecisionT>(obs); }))
+        .def("__repr__", &TensorProdObsGPUMPI<PrecisionT>::getObsName)
+        .def("get_wires", &TensorProdObsGPUMPI<PrecisionT>::getWires,
              "Get wires of observables")
         .def(
             "__eq__",
-            [](const TensorProdObsGPUMPI<PrecisionT, StateVectorCudaMPI> &self,
+            [](const TensorProdObsGPUMPI<PrecisionT> &self,
                py::handle other) -> bool {
-                if (!py::isinstance<
-                        TensorProdObsGPUMPI<PrecisionT, StateVectorCudaMPI>>(
-                        other)) {
+                if (!py::isinstance<TensorProdObsGPUMPI<PrecisionT>>(other)) {
                     return false;
                 }
-                auto other_cast = other.cast<
-                    TensorProdObsGPUMPI<PrecisionT, StateVectorCudaMPI>>();
+                auto other_cast = other.cast<TensorProdObsGPUMPI<PrecisionT>>();
                 return self == other_cast;
             },
             "Compare two observables");
 
     class_name = "HamiltonianGPUMPI_C" + bitsize;
-    using ObsPtr =
-        std::shared_ptr<ObservableGPUMPI<PrecisionT, StateVectorCudaMPI>>;
-    py::class_<
-        HamiltonianGPUMPI<PrecisionT, StateVectorCudaMPI>,
-        std::shared_ptr<HamiltonianGPUMPI<PrecisionT, StateVectorCudaMPI>>,
-        ObservableGPUMPI<PrecisionT, StateVectorCudaMPI>>(m, class_name.c_str(),
-                                                          py::module_local())
+    using ObsPtr = std::shared_ptr<ObservableGPUMPI<PrecisionT>>;
+    py::class_<HamiltonianGPUMPI<PrecisionT>,
+               std::shared_ptr<HamiltonianGPUMPI<PrecisionT>>,
+               ObservableGPUMPI<PrecisionT>>(m, class_name.c_str(),
+                                             py::module_local())
         .def(py::init(
             [](const np_arr_r &coeffs, const std::vector<ObsPtr> &obs) {
                 auto buffer = coeffs.request();
                 const auto ptr = static_cast<const ParamT *>(buffer.ptr);
-                return HamiltonianGPUMPI<PrecisionT, StateVectorCudaMPI>{
+                return HamiltonianGPUMPI<PrecisionT>{
                     std::vector(ptr, ptr + buffer.size), obs};
             }))
-        .def("__repr__",
-             &HamiltonianGPUMPI<PrecisionT, StateVectorCudaMPI>::getObsName)
-        .def("get_wires",
-             &HamiltonianGPUMPI<PrecisionT, StateVectorCudaMPI>::getWires,
+        .def("__repr__", &HamiltonianGPUMPI<PrecisionT>::getObsName)
+        .def("get_wires", &HamiltonianGPUMPI<PrecisionT>::getWires,
              "Get wires of observables")
         .def(
             "__eq__",
-            [](const HamiltonianGPUMPI<PrecisionT, StateVectorCudaMPI> &self,
+            [](const HamiltonianGPUMPI<PrecisionT> &self,
                py::handle other) -> bool {
-                if (!py::isinstance<
-                        HamiltonianGPUMPI<PrecisionT, StateVectorCudaMPI>>(
-                        other)) {
+                if (!py::isinstance<HamiltonianGPUMPI<PrecisionT>>(other)) {
                     return false;
                 }
-                auto other_cast = other.cast<
-                    HamiltonianGPUMPI<PrecisionT, StateVectorCudaMPI>>();
+                auto other_cast = other.cast<HamiltonianGPUMPI<PrecisionT>>();
                 return self == other_cast;
             },
             "Compare two observables");
 
+    //***********************************************************************//
+    //                              Operations
+    //***********************************************************************//
+    /*
+    class_name = "OpsStructGPU_C" + bitsize;
+    py::class_<OpsData<PrecisionT>>(m, class_name.c_str(), py::module_local())
+        .def(py::init<
+             const std::vector<std::string> &,
+             const std::vector<std::vector<ParamT>> &,
+             const std::vector<std::vector<size_t>> &,
+             const std::vector<bool> &,
+             const std::vector<std::vector<std::complex<PrecisionT>>> &>())
+        .def("__repr__", [](const OpsData<PrecisionT> &ops) {
+            using namespace Pennylane::Util;
+            std::ostringstream ops_stream;
+            for (size_t op = 0; op < ops.getSize(); op++) {
+                ops_stream << "{'name': " << ops.getOpsName()[op];
+                ops_stream << ", 'params': " << ops.getOpsParams()[op];
+                ops_stream << ", 'inv': " << ops.getOpsInverses()[op];
+                ops_stream << "}";
+                if (op < ops.getSize() - 1) {
+                    ops_stream << ",";
+                }
+            }
+            return "Operations: [" + ops_stream.str() + "]";
+        });
+    */
     //***********************************************************************//
     //                              MPI Adj Jac
     //***********************************************************************//
@@ -1632,8 +1630,8 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
         .def("adjoint_jacobian",
              [](AdjointJacobianGPUMPI<PrecisionT, StateVectorCudaMPI> &adj,
                 const StateVectorCudaMPI<PrecisionT> &sv,
-                const std::vector<std::shared_ptr<ObservableGPUMPI<
-                    PrecisionT, StateVectorCudaMPI>>> &observables,
+                const std::vector<std::shared_ptr<ObservableGPUMPI<PrecisionT>>>
+                    &observables,
                 const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
                 const std::vector<size_t> &trainableParams) {
                  std::vector<std::vector<PrecisionT>> jac(

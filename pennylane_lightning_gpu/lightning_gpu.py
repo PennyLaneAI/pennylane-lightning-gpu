@@ -76,7 +76,15 @@ try:
         from .lightning_gpu_qubit_ops import (
             LightningGPUMPI_C128,
             LightningGPUMPI_C64,
+            AdjointJacobianGPUMPI_C128,
+            AdjointJacobianGPUMPI_C64,
             MPIManager,
+            NamedObsGPUMPI_C64,
+            NamedObsGPUMPI_C128,
+            TensorProdObsGPUMPI_C64,
+            TensorProdObsGPUMPI_C128,
+            HamiltonianGPUMPI_C64,
+            HamiltonianGPUMPI_C128,
         )
 
         MPI_SUPPORT = True
@@ -106,7 +114,7 @@ except (ModuleNotFoundError, ImportError, ValueError, PLException) as e:
 def _gpu_dtype(dtype, mpi=False):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    if mpi is False:
+    if not mpi:
         return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
     return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
 
@@ -116,6 +124,12 @@ def _H_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
     return HamiltonianGPU_C128 if dtype == np.complex128 else HamiltonianGPU_C64
+
+
+def _adj_dtype(use_csingle, mpi=False):
+    if not mpi:
+        return AdjointJacobianGPU_C64 if use_csingle else AdjointJacobianGPU_C128
+    return AdjointJacobianGPUMPI_C64 if use_csingle else AdjointJacobianGPUMPI_C128
 
 
 _name_map = {"PauliX": "X", "PauliY": "Y", "PauliZ": "Z", "Identity": "I"}
@@ -232,7 +246,7 @@ if CPP_BINARY_AVAILABLE:
 
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
-            if mpi is False:
+            if not mpi:
                 self._mpi = False
                 self._num_local_wires = self.num_wires
                 self._gpu_state = _gpu_dtype(c_dtype)(self._num_local_wires)
@@ -263,7 +277,7 @@ if CPP_BINARY_AVAILABLE:
             self._sync = sync
 
         def _mpi_init_helper(self, num_wires):
-            if MPI_SUPPORT is False:
+            if not MPI_SUPPORT:
                 raise ImportError("MPI related APIs are not found.")
             # initialize MPIManager and config check in the MPIManager ctor
             self._mpi_manager = MPIManager()
@@ -626,18 +640,20 @@ if CPP_BINARY_AVAILABLE:
                 if not use_device_state:
                     self.reset()
                     self.execute(tape)
-
+            adj = _adj_dtype(self.use_csingle, self._mpi)()
             if self.use_csingle:
-                adj = AdjointJacobianGPU_C64()
                 ket = ket.astype(np.complex64)
-            else:
-                adj = AdjointJacobianGPU_C128()
+            # if self.use_csingle:
+            #    adj = AdjointJacobianGPU_C64()
+            #    ket = ket.astype(np.complex64)
+            # else:
+            #    adj = AdjointJacobianGPU_C128()
 
             obs_serialized, obs_offsets = _serialize_observables(
-                tape, self.wire_map, use_csingle=self.use_csingle
+                tape, self.wire_map, self._mpi, use_csingle=self.use_csingle
             )
             ops_serialized, use_sp = _serialize_ops(
-                tape, self.wire_map, use_csingle=self.use_csingle
+                tape, self.wire_map, self._mpi, use_csingle=self.use_csingle
             )
             ops_serialized = adj.create_ops_list(*ops_serialized)
 
@@ -671,7 +687,7 @@ if CPP_BINARY_AVAILABLE:
             - Allocate at most `n` observables per GPU (`batch_obs=n`): Providing an integer value restricts each available GPU to at most `n` copies of the statevector, and hence `n` given observables for a given batch. This will iterate over the data in chnuks of size `n*num_gpus`.
             """
 
-            if self._batch_obs:
+            if self._batch_obs and not self._mpi:
                 num_obs = len(obs_serialized)
                 batch_size = (
                     num_obs
@@ -788,7 +804,7 @@ if CPP_BINARY_AVAILABLE:
                 return np.squeeze(np.mean(samples, axis=0))
 
             if observable.name in ["SparseHamiltonian"]:
-                if self._mpi == False:
+                if not self._mpi:
                     CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
                     return self._gpu_state.ExpectationValue(
                         CSR_SparseHamiltonian.indptr,
@@ -801,7 +817,7 @@ if CPP_BINARY_AVAILABLE:
                     )
 
             if observable.name in ["Hamiltonian"]:
-                if self._mpi == False:
+                if not self._mpi:
                     device_wires = self.map_wires(observable.wires)
                     # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
                     if len(device_wires) > 13:
@@ -823,7 +839,11 @@ if CPP_BINARY_AVAILABLE:
                             device_wires, qml.matrix(observable).ravel(order="C")
                         )
                 else:
-                    raise RuntimeError("LightningGPU-MPI does not currently support Hamiltonian.")
+                    device_wires = self.map_wires(observable.wires)
+                    return self._gpu_state.ExpectationValue(
+                        device_wires, qml.matrix(observable).ravel(order="C")
+                    )
+                    # raise RuntimeError("LightningGPU-MPI does not currently support Hamiltonian.")
 
             par = (
                 observable.parameters
