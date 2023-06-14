@@ -187,3 +187,56 @@ TEST_CASE("AdjointJacobianGPUMPI::adjointJacobianMPI Op=Mixed, Obs=[XXX]",
         CHECK(0.323846156 == Approx(jacobian[0][5]).margin(1e-7));
     }
 }
+
+TEST_CASE("AdjointJacobianGPUMPI::AdjointJacobianGPUMPI Op=[RX,RX,RX], "
+          "Obs=Ham[Z0+Z1+Z2], "
+          "TParams=[0,2]",
+          "[AdjointJacobianGPUMPI]") {
+    std::vector<double> param{-M_PI / 7, M_PI / 5, 2 * M_PI / 3};
+    std::vector<size_t> tp{0, 2};
+
+    const size_t num_qubits = 3;
+    const size_t num_obs = 1;
+    std::vector<std::vector<double>> jacobian(
+        num_obs, std::vector<double>(tp.size(), 0));
+
+    MPIManager mpi_manager(MPI_COMM_WORLD);
+
+    int nGlobalIndexBits =
+        std::bit_width(static_cast<unsigned int>(mpi_manager.getSize())) - 1;
+    int nLocalIndexBits = num_qubits - nGlobalIndexBits;
+    mpi_manager.Barrier();
+
+    int nDevices = 0; // Number of GPU devices per node
+    cudaGetDeviceCount(&nDevices);
+    int deviceId = mpi_manager.getRank() % nDevices;
+    cudaSetDevice(deviceId);
+    DevTag<int> dt_local(deviceId, 0);
+    AdjointJacobianGPUMPI<double, StateVectorCudaMPI> adj;
+    {
+        StateVectorCudaMPI<double> sv_ref(mpi_manager, dt_local, 4,
+                                          nGlobalIndexBits, nLocalIndexBits);
+        sv_ref.initSV_MPI();
+
+        auto obs1 = std::make_shared<NamedObsGPUMPI<double>>(
+            "PauliZ", std::vector<size_t>{0});
+        auto obs2 = std::make_shared<NamedObsGPUMPI<double>>(
+            "PauliZ", std::vector<size_t>{1});
+        auto obs3 = std::make_shared<NamedObsGPUMPI<double>>(
+            "PauliZ", std::vector<size_t>{2});
+
+        auto ham = HamiltonianGPUMPI<double>::create({0.47, 0.32, 0.96},
+                                                     {obs1, obs2, obs3});
+
+        auto ops = adj.createOpsData({"RX", "RX", "RX"},
+                                     {{param[0]}, {param[1]}, {param[2]}},
+                                     {{0}, {1}, {2}}, {false, false, false});
+
+        adj.adjointJacobian_LM(sv_ref, jacobian, {ham}, ops, tp, true);
+
+        CAPTURE(jacobian);
+
+        CHECK((-0.47 * sin(param[0]) == Approx(jacobian[0][0]).margin(1e-7)));
+        CHECK((-0.96 * sin(param[2]) == Approx(jacobian[0][1]).margin(1e-7)));
+    }
+}

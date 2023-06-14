@@ -144,7 +144,7 @@ def _serialize_hamiltonian(
 ):
     hamiltonian_obs, rtype = _hamiltonian_ob_dtype(use_csingle, use_mpi)
     coeffs = np.array(ob.coeffs).astype(rtype)
-    terms = [_serialize_ob(t, wires_map, use_csingle, use_mpi, _serialize_ob) for t in ob.ops]
+    terms = [_serialize_ob(t, wires_map, use_csingle, use_mpi) for t in ob.ops]
 
     if split_terms:
         return [hamiltonian_obs([c], [t]) for (c, t) in zip(coeffs, terms)]

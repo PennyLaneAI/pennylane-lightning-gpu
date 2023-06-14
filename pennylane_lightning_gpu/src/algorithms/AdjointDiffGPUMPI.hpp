@@ -383,6 +383,7 @@ class AdjointJacobianGPUMPI {
             applyObservable(*H_lambda[h_i], *obs[h_i]);
         }
         */
+
         using SVTypePtr = std::unique_ptr<SVType<T>>;
         std::unique_ptr<SVTypePtr[]> H_lambda(new SVTypePtr[num_observables]);
 

@@ -186,18 +186,6 @@ class StateVectorCudaMPI
         mpi_manager_.Barrier();
     }
 
-    StateVectorCudaMPI(const StateVectorCudaMPI &other)
-        : BaseType(other.getNumQubits(), other.getDataBuffer().getDevTag()),
-          numGlobalQubits_(other.numGlobalQubits_),
-          numLocalQubits_(other.numLocalQubits_),
-          mpi_manager_(other.mpi_manager_), handle_(other.handle_),
-          cublascaller_(other.cublascaller_), localStream_(other.localStream_),
-          svSegSwapWorker_(other.svSegSwapWorker_),
-          gate_cache_(true, other.getDataBuffer().getDevTag()) {
-        BaseType::CopyGpuDataToGpuIn(other);
-        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
-    }
-
     ~StateVectorCudaMPI() = default;
 
     /**

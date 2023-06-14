@@ -23,7 +23,6 @@ import pytest
 from scipy.stats import unitary_group
 
 
-
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
 
@@ -73,12 +72,8 @@ class TestAdjointJacobianQNode:
             return qml.expval(qml.PauliX(0))
 
         qnode1 = QNode(circuit, dev_gpumpi, diff_method="adjoint")
-        #spy = mocker.spy(dev_gpumpi, "adjoint_jacobian")
-
         grad_fn = qml.grad(qnode1)
         grad_A = grad_fn(*args)
-
-        #spy.assert_called()
 
         qnode2 = QNode(circuit, dev_gpumpi, diff_method="parameter-shift")
         grad_fn = qml.grad(qnode2)
@@ -113,12 +108,8 @@ class TestAdjointJacobianQNode:
             return qml.expval(qml.PauliX(0) @ qml.PauliZ(1))
 
         qnode1 = QNode(circuit, dev_gpumpi, diff_method="adjoint")
-        #spy = mocker.spy(dev_gpumpi, "adjoint_jacobian")
-
         grad_fn = qml.grad(qnode1)
         grad_A = grad_fn(*args)
-
-        #spy.assert_called()
 
         qnode2 = QNode(circuit, dev_gpumpi, diff_method="parameter-shift")
         grad_fn = qml.grad(qnode2)
@@ -157,18 +148,15 @@ class TestAdjointJacobianQNode:
             return qml.expval(H)
 
         qnode1 = QNode(circuit, dev_gpumpi, diff_method="adjoint")
-        #spy = mocker.spy(dev_gpumpi, "adjoint_jacobian")
-
         grad_fn = qml.grad(qnode1)
         grad_A = grad_fn(*args)
-
-        #spy.assert_called()
 
         qnode2 = QNode(circuit, dev_gpumpi, diff_method="parameter-shift")
         grad_fn = qml.grad(qnode2)
         grad_PS = grad_fn(*args)
 
         assert np.allclose(grad_A, grad_PS, atol=tol, rtol=0)
+
 
 def circuit_ansatz(params, wires):
     """Circuit ansatz containing all the parametrized gates"""
@@ -225,7 +213,7 @@ def circuit_ansatz(params, wires):
         (qml.PauliX(0) @ qml.PauliY(3),),
         (qml.PauliY(0) @ qml.PauliY(2) @ qml.PauliY(3),),
         (qml.PauliZ(0) @ qml.PauliZ(1) @ qml.PauliZ(2),),
-        #(0.5 * qml.PauliZ(0) @ qml.PauliZ(2),),
+        (0.5 * qml.PauliZ(0) @ qml.Hadamard(2),),
     ],
 )
 def test_integration(returns):

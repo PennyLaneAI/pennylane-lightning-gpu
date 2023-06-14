@@ -360,7 +360,10 @@ class HamiltonianGPUMPI final : public ObservableGPUMPI<T> {
         buffer.zeroInit();
 
         for (size_t term_idx = 0; term_idx < coeffs_.size(); term_idx++) {
-            StateVectorCudaMPI<T> tmp(sv);
+            DevTag<int> dt_local(sv.getDataBuffer().getDevTag());
+            dt_local.refresh();
+            StateVectorCudaMPI<T> tmp(dt_local, sv.getNumGlobalQubits(),
+                                      sv.getNumLocalQubits(), sv.getData());
             obs_[term_idx]->applyInPlace(tmp);
             scaleAndAddC_CUDA(std::complex<T>{coeffs_[term_idx], 0.0},
                               tmp.getData(), buffer.getData(), tmp.getLength(),
@@ -368,6 +371,7 @@ class HamiltonianGPUMPI final : public ObservableGPUMPI<T> {
                               tmp.getDataBuffer().getDevTag().getStreamID(),
                               tmp.getCublasCaller());
         }
+
         sv.CopyGpuDataToGpuIn(buffer.getData(), buffer.getLength());
     }
 
