@@ -936,7 +936,7 @@ def circuit_ansatz(params, wires):
 def test_integration(returns):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations"""
-    num_wires = 4
+    num_wires = 8
     comm = MPI.COMM_WORLD
     dev_default = qml.device("default.qubit", wires=range(num_wires))
     dev_gpu = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
@@ -964,7 +964,7 @@ def test_integration(returns):
     assert np.allclose(j_gpu, j_default, atol=1e-7)
 
 
-custom_wires = ["alice", 3.14, -1, 0]
+custom_wires = ["alice", 3.14, -1, 0, "bob", "l", "m", "n"]
 
 
 @pytest.mark.parametrize(
