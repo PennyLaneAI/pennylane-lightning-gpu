@@ -6,9 +6,9 @@
  [(#116)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/116)
 
  Note that each MPI process will return the overall result of expectation value and sample generation. However, `probability` will 
- return local probability results. Users should be responsible to collect probalibity results across the MPI processes.
+ return local probability results. Users should be responsible to collect probability results across the MPI processes.
  
- The workflow for collecting probality results across the MPI processes:
+ The workflow for collecting probability results across the MPI processes:
  ```python
  from mpi4py import MPI
  import pennylane as qml
