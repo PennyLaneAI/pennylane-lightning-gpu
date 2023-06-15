@@ -1144,11 +1144,12 @@ def test_adjoint_SparseHamiltonian(returns):
     ],
 )
 @pytest.mark.parametrize("use_csingle", [True, False])
-def test_obs_returns_expected_type(obs, obs_type_c64, obs_type_c128, use_csingle):
+@pytest.mark.parametrize("use_mpi", [False])
+def test_obs_returns_expected_type(obs, obs_type_c64, obs_type_c128, use_csingle, use_mpi):
     """Tests that observables get serialized to the expected type."""
     obs_type = obs_type_c64 if use_csingle else obs_type_c128
     assert isinstance(
-        _serialize_ob(obs, dict(enumerate(obs.wires)), use_csingle, False, False), obs_type
+        _serialize_ob(obs, dict(enumerate(obs.wires)), use_csingle, use_mpi, False), obs_type
     )
 
 

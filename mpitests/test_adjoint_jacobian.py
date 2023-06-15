@@ -24,6 +24,18 @@ from scipy.stats import unitary_group
 import itertools as it
 import math
 
+from pennylane_lightning_gpu.lightning_gpu_qubit_ops import (
+    DevPool,
+    NamedObsGPUMPI_C64,
+    NamedObsGPUMPI_C128,
+    TensorProdObsGPUMPI_C64,
+    TensorProdObsGPUMPI_C128,
+    HamiltonianGPUMPI_C64,
+    HamiltonianGPUMPI_C128,
+)
+from pennylane_lightning_gpu._serialize import _serialize_ob
+
+
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
 
@@ -479,7 +491,7 @@ class TestAdjointJacobianQNode:
     def test_finite_shots_warning(self, isBatch_obs):
         """Tests that a warning is raised when computing the adjoint diff on a device with finite shots"""
 
-        dev = qml.device("lightning.gpu", wires=1, mpi=True, shots=1, batch_obs=isBatch_obs)
+        dev = qml.device("lightning.gpu", wires=2, mpi=True, shots=1, batch_obs=isBatch_obs)
         param = qml.numpy.array(0.1)
 
         with pytest.warns(
@@ -669,173 +681,6 @@ class TestAdjointJacobianQNode:
         assert np.allclose(grad_adjoint, grad_ps, atol=1e-7)
 
 
-@pytest.mark.parametrize("isBatch_obs", [False, True])
-def test_qchem_expvalcost_correct(isBatch_obs):
-    """EvpvalCost with qchem Hamiltonian work corectly"""
-    from pennylane import qchem
-
-    symbols = ["Li", "H"]
-    geometry = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 2.969280527])
-    H, qubits = qchem.molecular_hamiltonian(
-        symbols, geometry, active_electrons=2, active_orbitals=5
-    )
-    active_electrons = 2
-    hf_state = qchem.hf_state(active_electrons, qubits)
-
-    # dev_lig = qml.device("lightning.gpu", wires=qubits)
-    dev_lig = qml.device(
-        "lightning.gpu", wires=qubits, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
-    )
-
-    @qml.qnode(dev_lig, diff_method="adjoint")
-    def circuit_1(params, wires):
-        qml.BasisState(hf_state, wires=wires)
-        qml.RX(params[0], wires=0)
-        qml.RY(params[0], wires=1)
-        qml.RZ(params[0], wires=2)
-        qml.Hadamard(wires=1)
-        return qml.expval(H)
-
-    params = np.array([0.123], requires_grad=True)
-    grads_lig = qml.grad(circuit_1)(params, wires=range(qubits))
-
-    dev_def = qml.device(
-        "default.qubit",
-        wires=qubits,
-        c_dtype=np.complex128,
-    )
-
-    @qml.qnode(dev_def, diff_method="parameter-shift")
-    def circuit_2(params, wires):
-        qml.BasisState(hf_state, wires=wires)
-        qml.RX(params[0], wires=0)
-        qml.RY(params[0], wires=1)
-        qml.RZ(params[0], wires=2)
-        qml.Hadamard(wires=1)
-        return qml.expval(H)
-
-    params = np.array([0.123], requires_grad=True)
-    grads_def = qml.grad(circuit_2)(params, wires=range(qubits))
-
-    assert np.allclose(grads_lig, grads_def)
-
-
-'''
-    @pytest.mark.parametrize("isBatch_obs", [False,True])
-    def test_qnode_name_obs_adj_mpi(self, isBatch_obs, mocker, tol):
-        """Test that specifying diff_method allows the adjoint method to be selected"""
-
-        num_wires = 3
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()
-        commSize = comm.Get_size()
-
-        args = np.array([0.54, 0.1, 0.5], requires_grad=True)
-
-        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs)
-
-        def circuit(x, y, z):
-            qml.Hadamard(wires=0)
-            qml.RX(0.543, wires=0)
-            qml.CNOT(wires=[0, 1])
-
-            qml.Rot(x, y, z, wires=0)
-
-            qml.Rot(1.3, -2.3, 0.5, wires=[0])
-            qml.RZ(-0.5, wires=0)
-            qml.RY(0.5, wires=1)
-            qml.CNOT(wires=[0, 1])
-
-            return qml.expval(qml.PauliX(0))
-
-        qnode1 = QNode(circuit, dev_gpumpi, diff_method="adjoint")
-        grad_fn = qml.grad(qnode1)
-        grad_A = grad_fn(*args)
-
-        qnode2 = QNode(circuit, dev_gpumpi, diff_method="parameter-shift")
-        grad_fn = qml.grad(qnode2)
-        grad_PS = grad_fn(*args)
-
-        assert np.allclose(grad_A, grad_PS, atol=tol, rtol=0)
-
-    def test_qnode_tensor_obs(self, mocker, tol):
-        """Test that specifying diff_method allows the adjoint method to be selected"""
-
-        num_wires = 3
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()
-        commSize = comm.Get_size()
-
-        args = np.array([0.54, 0.1, 0.5], requires_grad=True)
-
-        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
-
-        def circuit(x, y, z):
-            qml.Hadamard(wires=0)
-            qml.RX(0.543, wires=0)
-            qml.CNOT(wires=[0, 1])
-
-            qml.Rot(x, y, z, wires=0)
-
-            qml.Rot(1.3, -2.3, 0.5, wires=[0])
-            qml.RZ(-0.5, wires=0)
-            qml.RY(0.5, wires=1)
-            qml.CNOT(wires=[0, 1])
-
-            return qml.expval(qml.PauliX(0) @ qml.PauliZ(1))
-
-        qnode1 = QNode(circuit, dev_gpumpi, diff_method="adjoint")
-        grad_fn = qml.grad(qnode1)
-        grad_A = grad_fn(*args)
-
-        qnode2 = QNode(circuit, dev_gpumpi, diff_method="parameter-shift")
-        grad_fn = qml.grad(qnode2)
-        grad_PS = grad_fn(*args)
-
-        assert np.allclose(grad_A, grad_PS, atol=tol, rtol=0)
-
-    def test_qnode_ham_obs(self, mocker, tol):
-        """Test that specifying diff_method allows the adjoint method to be selected"""
-
-        num_wires = 3
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()
-        commSize = comm.Get_size()
-
-        args = np.array([0.54, 0.1, 0.5], requires_grad=True)
-
-        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
-
-        obs = qml.PauliX(1) @ qml.PauliY(2)
-        obs1 = qml.Identity(1)
-        H = qml.Hamiltonian([1.0, 1.0], [obs1, obs])
-
-        def circuit(x, y, z):
-            qml.Hadamard(wires=0)
-            qml.RX(0.543, wires=0)
-            qml.CNOT(wires=[0, 1])
-
-            qml.Rot(x, y, z, wires=0)
-
-            qml.Rot(1.3, -2.3, 0.5, wires=[0])
-            qml.RZ(-0.5, wires=0)
-            qml.RY(0.5, wires=1)
-            qml.CNOT(wires=[0, 1])
-
-            return qml.expval(H)
-
-        qnode1 = QNode(circuit, dev_gpumpi, diff_method="adjoint")
-        grad_fn = qml.grad(qnode1)
-        grad_A = grad_fn(*args)
-
-        qnode2 = QNode(circuit, dev_gpumpi, diff_method="parameter-shift")
-        grad_fn = qml.grad(qnode2)
-        grad_PS = grad_fn(*args)
-
-        assert np.allclose(grad_A, grad_PS, atol=tol, rtol=0)
-'''
-
-
 def circuit_ansatz(params, wires):
     """Circuit ansatz containing all the parametrized gates"""
     qml.QubitStateVector(unitary_group.rvs(2**6, random_state=0)[0], wires=wires)
@@ -855,6 +700,8 @@ def circuit_ansatz(params, wires):
     qml.IsingXX(params[13], wires=[wires[1], wires[0]])
     qml.IsingYY(params[14], wires=[wires[3], wires[2]])
     qml.IsingZZ(params[15], wires=[wires[2], wires[1]])
+
+    qml.adjoint(qml.CRot(params[21], params[22], params[23], wires=[wires[1], wires[2]]))
     qml.SingleExcitation(params[24], wires=[wires[2], wires[0]])
     qml.DoubleExcitation(params[25], wires=[wires[2], wires[0], wires[1], wires[3]])
 
@@ -894,13 +741,20 @@ def circuit_ansatz(params, wires):
         (0.5 * qml.PauliZ(0) @ qml.Hadamard(2),),
     ],
 )
-def test_integration(returns):
+@pytest.mark.parametrize("isBatch_obs", [False, True])
+def test_integration(returns, isBatch_obs):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations"""
     num_wires = 6
     comm = MPI.COMM_WORLD
     dev_default = qml.device("default.qubit", wires=range(num_wires))
-    dev_gpu = qml.device("lightning.gpu", wires=range(num_wires), mpi=True, c_dtype=np.complex128)
+    dev_gpu = qml.device(
+        "lightning.gpu",
+        wires=range(num_wires),
+        mpi=True,
+        c_dtype=np.complex128,
+        batch_obs=isBatch_obs,
+    )
 
     def circuit(params):
         circuit_ansatz(params, wires=range(num_wires))
@@ -940,12 +794,15 @@ custom_wires = ["alice", 3.14, -1, 0, "bob", "luc"]
         qml.PauliY(custom_wires[0]) @ qml.PauliY(custom_wires[2]) @ qml.PauliY(custom_wires[3]),
     ],
 )
-def test_integration_custom_wires(returns):
+@pytest.mark.parametrize("isBatch_obs", [False, True])
+def test_integration_custom_wires(returns, isBatch_obs):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations and when using custom wire labels"""
     comm = MPI.COMM_WORLD
     dev_lightning = qml.device("lightning.qubit", wires=custom_wires)
-    dev_gpu = qml.device("lightning.gpu", wires=custom_wires, mpi=True, c_dtype=np.complex128)
+    dev_gpu = qml.device(
+        "lightning.gpu", wires=custom_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+    )
 
     def circuit(params):
         circuit_ansatz(params, wires=custom_wires)
@@ -970,125 +827,6 @@ def test_integration_custom_wires(returns):
     assert np.allclose(j_gpu, j_lightning, atol=1e-7)
 
 
-@pytest.mark.parametrize(
-    "returns",
-    [
-        (qml.PauliZ(custom_wires[0]),),
-        (qml.PauliZ(custom_wires[0]), qml.PauliZ(custom_wires[1])),
-        (qml.PauliZ(custom_wires[0]), qml.PauliZ(custom_wires[1]), qml.PauliZ(custom_wires[3])),
-        (
-            qml.PauliZ(custom_wires[0]),
-            qml.PauliZ(custom_wires[1]),
-            qml.PauliZ(custom_wires[3]),
-            qml.PauliZ(custom_wires[2]),
-        ),
-        (
-            qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]),
-            qml.PauliZ(custom_wires[1]) @ qml.PauliY(custom_wires[2]),
-        ),
-        (qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]), qml.PauliZ(custom_wires[1])),
-    ],
-)
-def test_integration_custom_wires_adj_lm(returns):
-    """Integration tests that compare to default.qubit for a large circuit containing parametrized
-    operations and when using custom wire labels"""
-
-    dev_lightning = qml.device("lightning.qubit", wires=custom_wires)
-    dev_gpu = qml.device("lightning.gpu", wires=custom_wires, mpi=True, batch_obs=True)
-
-    def circuit(params):
-        circuit_ansatz(params, wires=custom_wires)
-        return [qml.expval(r) for r in returns] + [qml.expval(qml.PauliY(custom_wires[1]))]
-
-    n_params = 30
-    np.random.seed(1337)
-    params = np.random.rand(n_params)
-
-    qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
-    qnode_lightning = qml.QNode(circuit, dev_lightning, diff_method="adjoint")
-
-    def convert_to_array_gpu(params):
-        return np.hstack(qnode_gpu(params))
-
-    def convert_to_array_lightning(params):
-        return np.hstack(qnode_lightning(params))
-
-    j_gpu = qml.jacobian(convert_to_array_gpu)(params)
-    j_lightning = qml.jacobian(convert_to_array_lightning)(params)
-
-    assert np.allclose(j_gpu, j_lightning, atol=1e-7)
-
-
-@pytest.mark.parametrize(
-    "returns",
-    [
-        (0.5 * qml.PauliZ(custom_wires[0]),),
-        (0.5 * qml.PauliZ(custom_wires[0]), qml.PauliZ(custom_wires[1])),
-        (
-            qml.PauliZ(custom_wires[0]),
-            0.5 * qml.PauliZ(custom_wires[1]),
-            qml.PauliZ(custom_wires[3]),
-        ),
-        (
-            qml.PauliZ(custom_wires[0]),
-            qml.PauliZ(custom_wires[1]),
-            qml.PauliZ(custom_wires[3]),
-            0.5 * qml.PauliZ(custom_wires[2]),
-        ),
-        (
-            qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]),
-            0.5 * qml.PauliZ(custom_wires[1]) @ qml.PauliY(custom_wires[2]),
-        ),
-        (
-            qml.PauliZ(custom_wires[0]) @ qml.PauliY(custom_wires[3]),
-            0.5 * qml.PauliZ(custom_wires[1]),
-        ),
-        (
-            0.0 * qml.PauliZ(custom_wires[0]) @ qml.PauliZ(custom_wires[1]),
-            1.0 * qml.Identity(10),
-            1.2 * qml.PauliZ(custom_wires[2]) @ qml.PauliZ(custom_wires[3]),
-        ),
-    ],
-)
-def test_adj_lm_H(returns):
-    """Integration tests that compare to default.qubit for a large circuit containing parametrized
-    operations and when using custom wire labels"""
-
-    dev_cpu = qml.device("lightning.qubit", wires=custom_wires + [10, 72])
-    dev_gpu = qml.device("lightning.gpu", wires=custom_wires + [10, 72], mpi=True, batch_obs=True)
-    dev_gpu_default = qml.device(
-        "lightning.gpu", wires=custom_wires + [10, 72], mpi=True, batch_obs=False
-    )
-
-    def circuit(params):
-        circuit_ansatz(params, wires=custom_wires)
-        return np.array([qml.expval(r) for r in returns])
-
-    n_params = 30
-    np.random.seed(1337)
-    params = np.random.rand(n_params)
-
-    qnode_cpu = qml.QNode(circuit, dev_cpu, diff_method="parameter-shift")
-    qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
-    qnode_gpu_default = qml.QNode(circuit, dev_gpu_default, diff_method="adjoint")
-
-    def convert_to_array_cpu(params):
-        return np.hstack(qnode_cpu(params))
-
-    def convert_to_array_gpu(params):
-        return np.hstack(qnode_gpu(params))
-
-    def convert_to_array_gpu_default(params):
-        return np.hstack(qnode_gpu_default(params))
-
-    j_cpu = qml.jacobian(qnode_cpu)(params)
-    j_gpu = qml.jacobian(qnode_gpu)(params)
-    j_gpu_default = qml.jacobian(qnode_gpu_default)(params)
-
-    assert np.allclose(j_cpu, j_gpu)
-    assert np.allclose(j_gpu, j_gpu_default)
-
-
 @pytest.fixture(scope="session")
 def create_xyz_file(tmp_path_factory):
     directory = tmp_path_factory.mktemp("tmp")
@@ -1099,10 +837,11 @@ def create_xyz_file(tmp_path_factory):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "dev_compare, batches",
-    list(it.product(["default.qubit", "lightning.qubit"], [False, True])),
+    "dev_compare",
+    list(it.product(["default.qubit", "lightning.qubit"])),
 )
-def test_integration_H2_Hamiltonian_adj_lm(create_xyz_file, dev_compare, batches):
+@pytest.mark.parametrize("isBatch_obs", [False, True])
+def test_integration_H2_Hamiltonian(create_xyz_file, dev_compare, isBatch_obs):
     skipp_condn = pytest.importorskip("openfermionpyscf")
     n_electrons = 2
     np.random.seed(1337)
@@ -1122,7 +861,9 @@ def test_integration_H2_Hamiltonian_adj_lm(create_xyz_file, dev_compare, batches
     singles, doubles = qml.qchem.excitations(n_electrons, qubits)
 
     # Choose different batching supports here
-    dev = qml.device("lightning.gpu", wires=qubits, mpi=True, batch_obs=batches)
+    dev = qml.device(
+        "lightning.gpu", wires=qubits, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+    )
     dev_comp = qml.device(dev_compare, wires=qubits)
 
     @qml.qnode(dev, diff_method="adjoint")
@@ -1154,3 +895,114 @@ def test_integration_H2_Hamiltonian_adj_lm(create_xyz_file, dev_compare, batches
     jacs_comp = jac_func_comp(params, excitations=doubles)
 
     assert np.allclose(jacs, jacs_comp)
+
+
+@pytest.mark.parametrize(
+    "returns",
+    [
+        qml.Hermitian(np.array([[0, 1], [1, 0]], requires_grad=False), wires=custom_wires[0]),
+        qml.Hermitian(
+            np.kron(qml.PauliY.compute_matrix(), qml.PauliZ.compute_matrix()),
+            wires=[custom_wires[3], custom_wires[2]],
+        ),
+        qml.Hermitian(np.array([[0, 1], [1, 0]], requires_grad=False), wires=custom_wires[0])
+        @ qml.PauliZ(custom_wires[2]),
+    ],
+)
+@pytest.mark.parametrize("isBatch_obs", [False, True])
+def test_fail_adjoint_Hermitian(returns, isBatch_obs):
+    """Integration tests that compare to default.qubit for a large circuit containing parametrized
+    operations and when using custom wire labels"""
+
+    dev_gpu = qml.device(
+        "lightning.gpu", wires=custom_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+    )
+
+    def circuit(params):
+        circuit_ansatz(params, wires=custom_wires)
+        return qml.expval(returns)
+
+    n_params = 30
+    np.random.seed(1337)
+    params = np.random.rand(n_params)
+
+    qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
+
+    with pytest.raises(
+        qml._device.DeviceError,
+        match="Observable Hermitian not supported on device",
+    ):
+        j_gpu = qml.jacobian(qnode_gpu)(params)
+
+
+@pytest.mark.parametrize(
+    "returns",
+    [
+        0.6
+        * qml.Hermitian(np.array([[0, 1], [1, 0]], requires_grad=False), wires=custom_wires[0])
+        @ qml.PauliX(wires=custom_wires[1]),
+    ],
+)
+@pytest.mark.parametrize("isBatch_obs", [False, True])
+def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns, isBatch_obs):
+    """Integration tests that compare to default.qubit for a large circuit containing parametrized
+    operations and when using custom wire labels"""
+
+    dev_gpu = qml.device(
+        "lightning.gpu", wires=custom_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+    )
+
+    def circuit(params):
+        circuit_ansatz(params, wires=custom_wires)
+        return qml.expval(returns)
+
+    n_params = 30
+    np.random.seed(1337)
+    params = np.random.rand(n_params)
+
+    qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
+
+    with pytest.raises((TypeError, ValueError)):
+        j_gpu = qml.jacobian(qnode_gpu)(params)
+
+
+@pytest.mark.parametrize(
+    "obs,obs_type_c64,obs_type_c128",
+    [
+        (qml.PauliZ(0), NamedObsGPUMPI_C64, NamedObsGPUMPI_C128),
+        (qml.PauliZ(0) @ qml.PauliZ(1), TensorProdObsGPUMPI_C64, TensorProdObsGPUMPI_C128),
+        (qml.Hadamard(0), NamedObsGPUMPI_C64, NamedObsGPUMPI_C128),
+        (qml.Hamiltonian([1], [qml.PauliZ(0)]), HamiltonianGPUMPI_C64, HamiltonianGPUMPI_C128),
+        (
+            qml.PauliZ(0) @ qml.Hadamard(1) @ (0.1 * (qml.PauliZ(2) + qml.PauliX(3))),
+            HamiltonianGPUMPI_C64,
+            HamiltonianGPUMPI_C128,
+        ),
+    ],
+)
+@pytest.mark.parametrize("use_csingle", [True, False])
+@pytest.mark.parametrize("use_mpi", [True])
+def test_obs_returns_expected_type(obs, obs_type_c64, obs_type_c128, use_csingle, use_mpi):
+    """Tests that observables get serialized to the expected type."""
+    obs_type = obs_type_c64 if use_csingle else obs_type_c128
+    assert isinstance(
+        _serialize_ob(obs, dict(enumerate(obs.wires)), use_csingle, use_mpi, False), obs_type
+    )
+
+
+@pytest.mark.parametrize(
+    "bad_obs",
+    [
+        qml.Hermitian(np.eye(2), wires=0),
+        qml.sum(qml.PauliZ(0), qml.Hadamard(1)),
+        qml.Projector([0], wires=0),
+        qml.PauliZ(0) @ qml.Projector([0], wires=1),
+        qml.sum(qml.Hadamard(0), qml.PauliX(1)),
+    ],
+)
+@pytest.mark.parametrize("use_csingle", [True, False])
+@pytest.mark.parametrize("use_mpi", [True])
+def test_obs_not_supported_for_adjoint_diff(bad_obs, use_csingle, use_mpi):
+    """Tests observables that can't be serialized for adjoint-differentiation."""
+    with pytest.raises(TypeError, match="Please use Pauli-words only."):
+        _serialize_ob(bad_obs, dict(enumerate(bad_obs.wires)), use_csingle, use_mpi)
