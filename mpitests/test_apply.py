@@ -564,21 +564,21 @@ class TestExpval:
     @pytest.mark.parametrize(
         "obs, coeffs",
         [
-            ([qml.PauliX(0) @ qml.PauliZ(1)], [1.0]),
-            ([qml.PauliX(0) @ qml.PauliZ(numQubits - 1)], [1.0]),
-            ([qml.PauliZ(0) @ qml.PauliZ(1)], [1.0]),
-            ([qml.PauliZ(0) @ qml.PauliZ(numQubits - 1)], [1.0]),
-            ([qml.PauliX(0) @ qml.PauliZ(1), qml.PauliZ(0) @ qml.PauliZ(1)], [1.0, 0.2]),
+            ([qml.PauliX(0) @ qml.PauliZ(1)], [0.314]),
+            ([qml.PauliX(0) @ qml.PauliZ(numQubits - 1)], [0.314]),
+            ([qml.PauliZ(0) @ qml.PauliZ(1)], [0.314]),
+            ([qml.PauliZ(0) @ qml.PauliZ(numQubits - 1)], [0.314]),
+            ([qml.PauliX(0) @ qml.PauliZ(1), qml.PauliZ(0) @ qml.PauliZ(1)], [0.314, 0.2]),
             (
                 [qml.PauliX(0) @ qml.PauliZ(numQubits - 1), qml.PauliZ(0) @ qml.PauliZ(1)],
-                [1.0, 0.2],
+                [0.314, 0.2],
             ),
             (
                 [
                     qml.PauliX(numQubits - 2) @ qml.PauliZ(numQubits - 1),
                     qml.PauliZ(0) @ qml.PauliZ(1),
                 ],
-                [1.0, 0.2],
+                [0.314, 0.2],
             ),
         ],
     )
@@ -985,7 +985,7 @@ def test_integration_custom_wires(returns):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations and when using custom wire labels"""
     comm = MPI.COMM_WORLD
-    dev_lightning = qml.device("lightning.qubit", wires=custom_wires)
+    dev_lightning = qml.device("default.qubit", wires=custom_wires)
     dev_gpu = qml.device("lightning.gpu", wires=custom_wires, mpi=True, c_dtype=np.complex128)
 
     def circuit(params):
