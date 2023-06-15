@@ -20,6 +20,8 @@ import numpy as np
 import pennylane as qml
 import pytest
 
+from scipy.stats import unitary_group
+
 try:
     from pennylane_lightning_gpu.lightning_gpu import CPP_BINARY_AVAILABLE
 
@@ -878,7 +880,7 @@ class TestProbs:
 
 def circuit_ansatz(params, wires):
     """Circuit ansatz containing all the parametrized gates"""
-    qml.QubitStateVector(unitary_group.rvs(2**4, random_state=0)[0], wires=wires)
+    qml.QubitStateVector(unitary_group.rvs(2**numQubits, random_state=0)[0], wires=wires)
     qml.RX(params[0], wires=wires[0])
     qml.RY(params[1], wires=wires[1])
     qml.adjoint(qml.RX(params[2], wires=wires[2]))
@@ -937,7 +939,7 @@ def circuit_ansatz(params, wires):
 def test_integration(returns):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations"""
-    num_wires = 6
+    num_wires = numQubits
     comm = MPI.COMM_WORLD
     dev_default = qml.device("default.qubit", wires=range(num_wires))
     dev_gpu = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
@@ -965,7 +967,7 @@ def test_integration(returns):
     assert np.allclose(j_gpu, j_default, atol=1e-7)
 
 
-custom_wires = ["alice", 3.14, -1, 0, "bob", "luc"]
+custom_wires = ["alice", 3.14, -1, 0, "bob", "l", "m", "n"]
 
 
 @pytest.mark.parametrize(
