@@ -272,7 +272,7 @@ if CPP_BINARY_AVAILABLE:
                     self._num_global_wires,
                     self._num_local_wires,
                 )
-                self._batch_obs = False
+                self._batch_obs = batch_obs
             self._create_basis_state_GPU(0)
             self._sync = sync
 
@@ -683,23 +683,33 @@ if CPP_BINARY_AVAILABLE:
             - Allocate at most `n` observables per GPU (`batch_obs=n`): Providing an integer value restricts each available GPU to at most `n` copies of the statevector, and hence `n` given observables for a given batch. This will iterate over the data in chnuks of size `n*num_gpus`.
             """
 
-            if self._batch_obs and not self._mpi:
-                num_obs = len(obs_serialized)
-                batch_size = (
-                    num_obs
-                    if isinstance(self._batch_obs, bool)
-                    else self._batch_obs * self._dp.getTotalDevices()
-                )
-                jac = []
-                for chunk in range(0, num_obs, batch_size):
-                    obs_chunk = obs_serialized[chunk : chunk + batch_size]
-                    jac_chunk = adj.adjoint_jacobian_batched(
-                        self._gpu_state,
-                        obs_chunk,
-                        ops_serialized,
-                        tp_shift,
+            if self._batch_obs:
+                if not self._mpi:
+                    num_obs = len(obs_serialized)
+                    batch_size = (
+                        num_obs
+                        if isinstance(self._batch_obs, bool)
+                        else self._batch_obs * self._dp.getTotalDevices()
                     )
-                    jac.extend(jac_chunk)
+                    jac = []
+                    for chunk in range(0, num_obs, batch_size):
+                        obs_chunk = obs_serialized[chunk : chunk + batch_size]
+                        jac_chunk = adj.adjoint_jacobian_batched(
+                            self._gpu_state,
+                            obs_chunk,
+                            ops_serialized,
+                            tp_shift,
+                        )
+                        jac.extend(jac_chunk)
+                else:
+                    if self._batch_obs == 1:
+                        jac = adj.adjoint_jacobian_LM(
+                            self._gpu_state,
+                            obs_serialized,
+                            ops_serialized,
+                            tp_shift,
+                        )
+
             else:
                 jac = adj.adjoint_jacobian(
                     self._gpu_state,

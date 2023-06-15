@@ -1,7 +1,22 @@
 # Release 0.31.0-dev
 
 ### New features since last release
+ * Add multi-node/multi-GPU support to adjoint methods. 
+ [(#119)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/119)
+ 
+ Note each MPI process will return the overall result of the adjoint method.
+ 
+ The workflow for the adjoint method with MPI support:
+ ```python
 
+ ```
+
+ The workflow for the Default method (Memory-Optimized Method):
+  ```python
+
+ ```
+
+ 
  * Add multi-node/multi-GPU support to measurement methods, including `expval`, `generate_samples` and `probability`.
  [(#116)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/116)
 
