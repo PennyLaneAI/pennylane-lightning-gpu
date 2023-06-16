@@ -681,6 +681,51 @@ class TestAdjointJacobianQNode:
         assert np.allclose(grad_adjoint, grad_ps, atol=1e-7)
 
 
+def test_qchem_expvalcost_correct():
+    """EvpvalCost with qchem Hamiltonian work corectly"""
+    from pennylane import qchem
+
+    symbols = ["Li", "H"]
+    geometry = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 2.969280527])
+    H, qubits = qchem.molecular_hamiltonian(
+        symbols, geometry, active_electrons=2, active_orbitals=5
+    )
+    active_electrons = 2
+    hf_state = qchem.hf_state(active_electrons, qubits)
+
+    dev_lig = qml.device("lightning.gpu",
+        wires=range(qubits),
+        mpi=True,
+        c_dtype=np.complex128,)
+
+    @qml.qnode(dev_lig, diff_method="adjoint")
+    def circuit_1(params, wires):
+        qml.BasisState(hf_state, wires=wires)
+        qml.RX(params[0], wires=0)
+        qml.RY(params[0], wires=1)
+        qml.RZ(params[0], wires=2)
+        qml.Hadamard(wires=1)
+        return qml.expval(H)
+
+    params = np.array([0.123], requires_grad=True)
+    grads_lig = qml.grad(circuit_1)(params, wires=range(qubits))
+
+    dev_def = qml.device("default.qubit", wires=qubits)
+
+    @qml.qnode(dev_def, diff_method="backprop")
+    def circuit_2(params, wires):
+        qml.BasisState(hf_state, wires=wires)
+        qml.RX(params[0], wires=0)
+        qml.RY(params[0], wires=1)
+        qml.RZ(params[0], wires=2)
+        qml.Hadamard(wires=1)
+        return qml.expval(H)
+
+    params = np.array([0.123], requires_grad=True)
+    grads_def = qml.grad(circuit_2)(params, wires=range(qubits))
+
+    assert np.allclose(grads_lig, grads_def)
+
 def circuit_ansatz(params, wires):
     """Circuit ansatz containing all the parametrized gates"""
     qml.QubitStateVector(unitary_group.rvs(2**6, random_state=0)[0], wires=wires)
@@ -704,7 +749,6 @@ def circuit_ansatz(params, wires):
     qml.adjoint(qml.CRot(params[21], params[22], params[23], wires=[wires[1], wires[2]]))
     qml.SingleExcitation(params[24], wires=[wires[2], wires[0]])
     qml.DoubleExcitation(params[25], wires=[wires[2], wires[0], wires[1], wires[3]])
-
 
 @pytest.mark.parametrize(
     "returns",
