@@ -239,7 +239,7 @@ def expval_single_wire_no_param(tol, obs):
     assert np.allclose(expected_output_gpu, expected_output_cpu, atol=tol, rtol=0)
 
 
-def apply_probs(tol, Wires):
+def apply_probs_nonparam(tol, operation, GateWires, Wires):
     num_wires = numQubits
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -254,6 +254,47 @@ def apply_probs(tol, Wires):
 
     def circuit():
         qml.QubitStateVector(state_vector, wires=range(num_wires))
+        operation(wires=GateWires)
+        return qml.probs(wires=Wires)
+
+    cpu_qnode = qml.QNode(circuit, dev_cpu)
+    probs_cpu = cpu_qnode()
+
+    gpumpi_qnode = qml.QNode(circuit, dev_gpumpi)
+    local_probs = gpumpi_qnode()
+
+    recv_counts = comm.gather(len(local_probs), root=0)
+
+    comm.Barrier()
+
+    if rank == 0:
+        probs_mpi = np.zeros(1 << len(Wires))
+    else:
+        probs_mpi = None
+        probs_cpu = None
+
+    comm.Gatherv(local_probs, [probs_mpi, recv_counts], root=0)
+
+    if rank == 0:
+        assert np.allclose(probs_mpi, probs_cpu, atol=tol, rtol=0)
+
+
+def apply_probs_param(tol, operation, par, GateWires, Wires):
+    num_wires = numQubits
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    commSize = comm.Get_size()
+
+    state_vector = create_random_init_state(num_wires)
+    comm.Bcast(state_vector, root=0)
+
+    dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
+
+    dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+
+    def circuit():
+        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        operation(*par, wires=GateWires)
         return qml.probs(wires=Wires)
 
     cpu_qnode = qml.QNode(circuit, dev_cpu)
@@ -565,21 +606,21 @@ class TestExpval:
     @pytest.mark.parametrize(
         "obs, coeffs",
         [
-            ([qml.PauliX(0) @ qml.PauliZ(1)], [1.0]),
-            ([qml.PauliX(0) @ qml.PauliZ(numQubits - 1)], [1.0]),
-            ([qml.PauliZ(0) @ qml.PauliZ(1)], [1.0]),
-            ([qml.PauliZ(0) @ qml.PauliZ(numQubits - 1)], [1.0]),
-            ([qml.PauliX(0) @ qml.PauliZ(1), qml.PauliZ(0) @ qml.PauliZ(1)], [1.0, 0.2]),
+            ([qml.PauliX(0) @ qml.PauliZ(1)], [0.314]),
+            ([qml.PauliX(0) @ qml.PauliZ(numQubits - 1)], [0.314]),
+            ([qml.PauliZ(0) @ qml.PauliZ(1)], [0.314]),
+            ([qml.PauliZ(0) @ qml.PauliZ(numQubits - 1)], [0.314]),
+            ([qml.PauliX(0) @ qml.PauliZ(1), qml.PauliZ(0) @ qml.PauliZ(1)], [0.314, 0.2]),
             (
                 [qml.PauliX(0) @ qml.PauliZ(numQubits - 1), qml.PauliZ(0) @ qml.PauliZ(1)],
-                [1.0, 0.2],
+                [0.314, 0.2],
             ),
             (
                 [
                     qml.PauliX(numQubits - 2) @ qml.PauliZ(numQubits - 1),
                     qml.PauliZ(0) @ qml.PauliZ(1),
                 ],
-                [1.0, 0.2],
+                [0.314, 0.2],
             ),
         ],
     )
@@ -863,6 +904,10 @@ class TestTensorVar:
 
 class TestProbs:
     @pytest.mark.parametrize(
+        "operation", [qml.PauliX, qml.PauliY, qml.PauliZ, qml.Hadamard, qml.S, qml.T]
+    )
+    @pytest.mark.parametrize("GateWires", [[0], [numQubits - 1]])
+    @pytest.mark.parametrize(
         "Wires",
         [
             [0],
@@ -874,8 +919,169 @@ class TestProbs:
             range(numQubits),
         ],
     )
-    def test_prob(self, tol, Wires):
-        apply_probs(tol, Wires)
+    def test_prob_single_wire_nonparam(self, tol, operation, GateWires, Wires):
+        apply_probs_nonparam(tol, operation, GateWires, Wires)
+
+    @pytest.mark.parametrize("operation", [qml.CNOT, qml.SWAP, qml.CY, qml.CZ])
+    @pytest.mark.parametrize(
+        "GateWires", [[0, 1], [numQubits - 2, numQubits - 1], [0, numQubits - 1]]
+    )
+    @pytest.mark.parametrize(
+        "Wires",
+        [
+            [0],
+            [1],
+            [0, 1],
+            [0, 2],
+            [0, numQubits - 1],
+            [numQubits - 2, numQubits - 1],
+            range(numQubits),
+        ],
+    )
+    def test_prob_two_wire_nonparam(self, tol, operation, GateWires, Wires):
+        apply_probs_nonparam(tol, operation, GateWires, Wires)
+
+    @pytest.mark.parametrize("operation", [qml.CSWAP, qml.Toffoli])
+    @pytest.mark.parametrize(
+        "GateWires",
+        [
+            [0, 1, 2],
+            [numQubits - 3, numQubits - 2, numQubits - 1],
+            [0, 1, numQubits - 1],
+            [0, numQubits - 2, numQubits - 1],
+        ],
+    )
+    @pytest.mark.parametrize(
+        "Wires",
+        [
+            [0],
+            [1],
+            [0, 1],
+            [0, 2],
+            [0, numQubits - 1],
+            [numQubits - 2, numQubits - 1],
+            range(numQubits),
+        ],
+    )
+    def test_prob_three_wire_nonparam(self, tol, operation, GateWires, Wires):
+        apply_probs_nonparam(tol, operation, GateWires, Wires)
+
+    @pytest.mark.parametrize("operation", [qml.PhaseShift, qml.RX, qml.RY, qml.RZ])
+    @pytest.mark.parametrize("par", [[0.1], [0.2], [0.3]])
+    @pytest.mark.parametrize("GateWires", [0, numQubits - 1])
+    @pytest.mark.parametrize(
+        "Wires",
+        [
+            [0],
+            [1],
+            [0, 1],
+            [0, 2],
+            [0, numQubits - 1],
+            [numQubits - 2, numQubits - 1],
+            range(numQubits),
+        ],
+    )
+    def test_prob_single_wire_param(self, tol, operation, par, GateWires, Wires):
+        apply_probs_param(tol, operation, par, GateWires, Wires)
+
+    @pytest.mark.parametrize("operation", [qml.Rot])
+    @pytest.mark.parametrize("par", [[0.1, 0.2, 0.3], [0.2, 0.3, 0.4]])
+    @pytest.mark.parametrize("GateWires", [0, numQubits - 1])
+    @pytest.mark.parametrize(
+        "Wires",
+        [
+            [0],
+            [1],
+            [0, 1],
+            [0, 2],
+            [0, numQubits - 1],
+            [numQubits - 2, numQubits - 1],
+            range(numQubits),
+        ],
+    )
+    def test_prob_single_wire_3param(self, tol, operation, par, GateWires, Wires):
+        apply_probs_param(tol, operation, par, GateWires, Wires)
+
+    @pytest.mark.parametrize("operation", [qml.CRot])
+    @pytest.mark.parametrize("par", [[0.1, 0.2, 0.3], [0.2, 0.3, 0.4]])
+    @pytest.mark.parametrize(
+        "GateWires", [[0, numQubits - 1], [0, 1], [numQubits - 2, numQubits - 1]]
+    )
+    @pytest.mark.parametrize(
+        "Wires",
+        [
+            [0],
+            [1],
+            [0, 1],
+            [0, 2],
+            [0, numQubits - 1],
+            [numQubits - 2, numQubits - 1],
+            range(numQubits),
+        ],
+    )
+    def test_prob_two_wire_3param(self, tol, operation, par, GateWires, Wires):
+        apply_probs_param(tol, operation, par, GateWires, Wires)
+
+    @pytest.mark.parametrize(
+        "operation",
+        [
+            qml.CRX,
+            qml.CRY,
+            qml.CRZ,
+            qml.ControlledPhaseShift,
+            qml.SingleExcitation,
+            qml.SingleExcitationMinus,
+            qml.SingleExcitationPlus,
+            qml.IsingXX,
+            qml.IsingYY,
+            qml.IsingZZ,
+        ],
+    )
+    @pytest.mark.parametrize("par", [[0.1], [0.2], [0.3]])
+    @pytest.mark.parametrize(
+        "GateWires", [[0, numQubits - 1], [0, 1], [numQubits - 2, numQubits - 1]]
+    )
+    @pytest.mark.parametrize(
+        "Wires",
+        [
+            [0],
+            [1],
+            [0, 1],
+            [0, 2],
+            [0, numQubits - 1],
+            [numQubits - 2, numQubits - 1],
+            range(numQubits),
+        ],
+    )
+    def test_prob_two_wire_param(self, tol, operation, par, GateWires, Wires):
+        apply_probs_param(tol, operation, par, GateWires, Wires)
+
+    @pytest.mark.parametrize(
+        "operation", [qml.DoubleExcitation, qml.DoubleExcitationMinus, qml.DoubleExcitationPlus]
+    )
+    @pytest.mark.parametrize("par", [[0.13], [0.2], [0.3]])
+    @pytest.mark.parametrize(
+        "GateWires",
+        [
+            [0, 1, numQubits - 2, numQubits - 1],
+            [0, 1, 2, 3],
+            [numQubits - 4, numQubits - 3, numQubits - 2, numQubits - 1],
+        ],
+    )
+    @pytest.mark.parametrize(
+        "Wires",
+        [
+            [0],
+            [1],
+            [0, 1],
+            [0, 2],
+            [0, numQubits - 1],
+            [numQubits - 2, numQubits - 1],
+            range(numQubits),
+        ],
+    )
+    def test_prob_four_wire_param(self, tol, operation, par, GateWires, Wires):
+        apply_probs_param(tol, operation, par, GateWires, Wires)
 
 
 def circuit_ansatz(params, wires):
@@ -944,6 +1150,8 @@ def test_integration(returns):
     dev_default = qml.device("default.qubit", wires=range(num_wires))
     dev_gpu = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
+    qml.enable_return()
+
     def circuit(params):
         circuit_ansatz(params, wires=range(num_wires))
         return [qml.expval(r) for r in returns]
@@ -986,7 +1194,7 @@ def test_integration_custom_wires(returns):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations and when using custom wire labels"""
     comm = MPI.COMM_WORLD
-    dev_lightning = qml.device("lightning.qubit", wires=custom_wires)
+    dev_lightning = qml.device("default.qubit", wires=custom_wires)
     dev_gpu = qml.device("lightning.gpu", wires=custom_wires, mpi=True, c_dtype=np.complex128)
 
     def circuit(params):

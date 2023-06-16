@@ -49,7 +49,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetStateVector",
     using cp_t = std::complex<PrecisionT>;
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    size_t mpi_buffersize = 26;
+    size_t mpi_buffersize = num_qubits;
 
     size_t nGlobalIndexBits =
         std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
@@ -120,7 +120,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
     using cp_t = std::complex<PrecisionT>;
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    size_t mpi_buffersize = 26;
+    size_t mpi_buffersize = num_qubits;
 
     size_t nGlobalIndexBits =
         std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
@@ -172,7 +172,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
         using cp_t = std::complex<TestType>;                                   \
         using PrecisionT = TestType;                                           \
         MPIManager mpi_manager(MPI_COMM_WORLD);                                \
-        size_t mpi_buffersize = 26;                                            \
+        size_t mpi_buffersize = 8;                                             \
         size_t nGlobalIndexBits =                                              \
             std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;    \
         size_t nLocalIndexBits = (NUM_QUBITS)-nGlobalIndexBits;                \
@@ -341,7 +341,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::expval_Identity",
     using PrecisionT = TestType;
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    size_t mpi_buffersize = 26;
+    size_t mpi_buffersize = num_qubits;
 
     size_t nGlobalIndexBits =
         std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
@@ -390,7 +390,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::expval_PauliX",
     using PrecisionT = TestType;
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    size_t mpi_buffersize = 26;
+    size_t mpi_buffersize = num_qubits;
 
     size_t nGlobalIndexBits =
         std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
@@ -439,7 +439,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::expval_PauliY",
     using PrecisionT = TestType;
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    size_t mpi_buffersize = 26;
+    size_t mpi_buffersize = num_qubits;
 
     size_t nGlobalIndexBits =
         std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
@@ -488,7 +488,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::expval_PauliZ",
     using PrecisionT = TestType;
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    size_t mpi_buffersize = 26;
+    size_t mpi_buffersize = num_qubits;
 
     size_t nGlobalIndexBits =
         std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
@@ -537,7 +537,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::expval_Hardmard",
     using PrecisionT = TestType;
     MPIManager mpi_manager(MPI_COMM_WORLD);
 
-    size_t mpi_buffersize = 26;
+    size_t mpi_buffersize = num_qubits;
 
     size_t nGlobalIndexBits =
         std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
@@ -584,7 +584,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::probability",
     using cp_t = std::complex<TestType>;
     const std::size_t numqubits = 4;
     MPIManager mpi_manager(MPI_COMM_WORLD);
-    size_t mpi_buffersize = 26;
+    size_t mpi_buffersize = num_qubits;
     size_t nGlobalIndexBits = std::bit_width(mpi_manager.getSize()) - 1;
     size_t nLocalIndexBits = numqubits - nGlobalIndexBits;
 
