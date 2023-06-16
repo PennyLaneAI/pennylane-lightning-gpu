@@ -250,7 +250,7 @@ jobs:
           export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/mpich/include:/opt/mpi/mpich/bin 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/mpich/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
           python -m pip install pip~=22.0
-          python -m pip install cmake custatevec-cu11 flaky mpi4py ninja pytest pytest-cov pytest-mock pytest-mpi
+          python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov mpi4py
           # Sync with latest master branches
           python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
@@ -267,7 +267,7 @@ jobs:
           source /etc/profile.d/modules.sh
           module use /opt/modules/
           module load mpich
-          /opt/mpi/mpich/bin/mpirun -np 2 python -m pytest --with-mpi ./mpitests/ 
+          /opt/mpi/mpich/bin/mpirun -np 2 python -m pytest ./mpitests/ 
           python -m pytest ./tests/ 
 
       - name: Cleanup

@@ -112,7 +112,8 @@ class MPIManager final {
         PL_MPI_IS_SUCCESS(MPI_Comm_size(node_comm, &size_per_node_int));
         size_per_node_ = static_cast<size_t>(size_per_node_int);
         int compare;
-        PL_MPI_IS_SUCCESS(MPI_Comm_compare(MPI_COMM_WORLD, node_comm, &compare));
+        PL_MPI_IS_SUCCESS(
+            MPI_Comm_compare(MPI_COMM_WORLD, node_comm, &compare));
         if (compare != MPI_IDENT)
             PL_MPI_IS_SUCCESS(MPI_Comm_free(&node_comm));
         this->Barrier();
@@ -205,11 +206,11 @@ class MPIManager final {
             }
         } else {
             int compare;
-            PL_MPI_IS_SUCCESS(MPI_Comm_compare(MPI_COMM_WORLD, communicator_, &compare));
+            PL_MPI_IS_SUCCESS(
+                MPI_Comm_compare(MPI_COMM_WORLD, communicator_, &compare));
             if (compare != MPI_IDENT)
                 PL_MPI_IS_SUCCESS(MPI_Comm_free(&communicator_));
         }
-
     }
 
     // General MPI operations
