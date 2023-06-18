@@ -1361,6 +1361,7 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                 py::buffer_info numpyArrayInfo = coeffs.request();
                 auto *coeffs_ptr =
                     static_cast<complex<PrecisionT> *>(numpyArrayInfo.ptr);
+
                 return sv.getExpectationValuePauliWords(
                     pauli_words, target_wires, coeffs_ptr);
             },
