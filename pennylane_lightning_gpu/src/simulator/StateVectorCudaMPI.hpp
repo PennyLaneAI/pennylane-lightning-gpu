@@ -1026,6 +1026,62 @@ class StateVectorCudaMPI
     }
 
     /**
+     * @brief Get expectation value for a sum of Pauli words.
+     *
+     * @param pauli_words Vector of Pauli-words to evaluate expectation value.
+     * @param tgts Coupled qubit index to apply each Pauli term.
+     * @param coeffs Numpy array buffer of size |pauli_words|
+     * @return auto Expectation value.
+     */
+    auto getExpectationValuePauliWords(
+        const std::vector<std::string> &pauli_words,
+        const std::vector<std::vector<std::size_t>> &tgts,
+        const std::complex<Precision> *coeffs) {
+
+        std::vector<double> expect_local(pauli_words.size());
+        for (size_t i = 0; i < pauli_words.size(); i++) {
+            auto opsNames = pauliStringToOpNames(pauli_words[i]);
+            StateVectorCudaMPI<Precision> tmp(
+                this->getDataBuffer().getDevTag(), this->getNumGlobalQubits(),
+                this->getNumLocalQubits(), this->getData());
+
+            for (size_t opsIdx = 0; opsIdx < tgts[i].size(); opsIdx++) {
+                std::vector<size_t> wires = {tgts[i][opsIdx]};
+                tmp.applyOperation({opsNames[opsIdx]}, {tgts[i][opsIdx]},
+                                   {true});
+            }
+
+            expect_local[i] =
+                innerProdC_CUDA(
+                    tmp.getData(), BaseType::getData(), BaseType::getLength(),
+                    BaseType::getDataBuffer().getDevTag().getDeviceID(),
+                    BaseType::getDataBuffer().getDevTag().getStreamID(),
+                    this->getCublasCaller())
+                    .x;
+        }
+        auto expect = mpi_manager_.allreduce<double>(expect_local, "sum");
+
+        std::complex<Precision> result{0, 0};
+
+        if constexpr (std::is_same_v<Precision, double>) {
+            for (std::size_t idx = 0; idx < expect.size(); idx++) {
+                result += expect[idx] * coeffs[idx];
+            }
+            return std::real(result);
+        } else {
+            std::vector<Precision> expect_cast(expect.size());
+            std::transform(expect.begin(), expect.end(), expect_cast.begin(),
+                           [](double x) { return static_cast<float>(x); });
+
+            for (std::size_t idx = 0; idx < expect_cast.size(); idx++) {
+                result += expect_cast[idx] * coeffs[idx];
+            }
+
+            return std::real(result);
+        }
+    }
+
+    /**
      * @brief Utility method for samples.
      *
      * @param num_samples Number of Samples

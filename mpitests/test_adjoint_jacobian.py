@@ -693,10 +693,12 @@ def test_qchem_expvalcost_correct():
     active_electrons = 2
     hf_state = qchem.hf_state(active_electrons, qubits)
 
-    dev_lig = qml.device("lightning.gpu",
+    dev_lig = qml.device(
+        "lightning.gpu",
         wires=range(qubits),
         mpi=True,
-        c_dtype=np.complex128,)
+        c_dtype=np.complex128,
+    )
 
     @qml.qnode(dev_lig, diff_method="adjoint")
     def circuit_1(params, wires):
@@ -726,6 +728,7 @@ def test_qchem_expvalcost_correct():
 
     assert np.allclose(grads_lig, grads_def)
 
+
 def circuit_ansatz(params, wires):
     """Circuit ansatz containing all the parametrized gates"""
     qml.QubitStateVector(unitary_group.rvs(2**6, random_state=0)[0], wires=wires)
@@ -749,6 +752,7 @@ def circuit_ansatz(params, wires):
     qml.adjoint(qml.CRot(params[21], params[22], params[23], wires=[wires[1], wires[2]]))
     qml.SingleExcitation(params[24], wires=[wires[2], wires[0]])
     qml.DoubleExcitation(params[25], wires=[wires[2], wires[0], wires[1], wires[3]])
+
 
 @pytest.mark.parametrize(
     "returns",
@@ -782,7 +786,7 @@ def circuit_ansatz(params, wires):
         (qml.PauliX(0) @ qml.PauliY(3),),
         (qml.PauliY(0) @ qml.PauliY(2) @ qml.PauliY(3),),
         (qml.PauliZ(0) @ qml.PauliZ(1) @ qml.PauliZ(2),),
-        (0.5 * qml.PauliZ(0) @ qml.Hadamard(2),),
+        (0.5 * qml.PauliZ(0) @ qml.PauliZ(2),),
     ],
 )
 @pytest.mark.parametrize("isBatch_obs", [False, True])

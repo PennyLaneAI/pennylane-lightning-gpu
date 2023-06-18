@@ -1150,7 +1150,7 @@ class StateVectorCudaManaged
                            [](double x) { return static_cast<float>(x); });
 
             for (std::size_t idx = 0; idx < expect_cast.size(); idx++) {
-                result += expect_cast[idx] * expect_cast[idx];
+                result += expect_cast[idx] * coeffs[idx];
             }
 
             return std::real(result);

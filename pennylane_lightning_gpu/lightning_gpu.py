@@ -823,32 +823,31 @@ if CPP_BINARY_AVAILABLE:
                     )
 
             if observable.name in ["Hamiltonian"]:
-                if not self._mpi:
-                    device_wires = self.map_wires(observable.wires)
-                    # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
-                    if len(device_wires) > 13:
-                        coeffs = observable.coeffs
-                        pauli_words = []
-                        word_wires = []
-                        for word in observable.ops:
-                            compressed_word = []
-                            if isinstance(word.name, list):
-                                for char in word.name:
-                                    compressed_word.append(_name_map[char])
-                            else:
-                                compressed_word.append(_name_map[word.name])
-                            word_wires.append(word.wires.tolist())
-                            pauli_words.append("".join(compressed_word))
-                        return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
-                    else:
-                        return self._gpu_state.ExpectationValue(
-                            device_wires, qml.matrix(observable).ravel(order="C")
-                        )
-                else:
-                    device_wires = self.map_wires(observable.wires)
+                device_wires = self.map_wires(observable.wires)
+                if not self._mpi and len(device_wires) < 14:
                     return self._gpu_state.ExpectationValue(
                         device_wires, qml.matrix(observable).ravel(order="C")
                     )
+                else:
+                    coeffs = observable.coeffs
+                    pauli_words = []
+                    word_wires = []
+                    for word in observable.ops:
+                        compressed_word = []
+                        if isinstance(word.name, list):
+                            for char in word.name:
+                                if char in _name_map:
+                                    compressed_word.append(_name_map[char])
+                                else:
+                                    raise ValueError("{char} is not supported in Hamiltionian.")
+                        else:
+                            if word.name in _name_map:
+                                compressed_word.append(_name_map[word.name])
+                            else:
+                                raise ValueError("{word.name} is not supported in Hamiltionian.")
+                        word_wires.append(word.wires.tolist())
+                        pauli_words.append("".join(compressed_word))
+                    return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
 
             par = (
                 observable.parameters

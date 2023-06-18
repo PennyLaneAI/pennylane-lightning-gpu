@@ -1353,6 +1353,20 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
             "Calculate the expectation value of the Hamiltonian observable "
             "with custatevecComputeExpectation.")
         .def(
+            "ExpectationValue",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::string> &pauli_words,
+               const std::vector<std::vector<std::size_t>> &target_wires,
+               const np_arr_c &coeffs) {
+                py::buffer_info numpyArrayInfo = coeffs.request();
+                auto *coeffs_ptr =
+                    static_cast<complex<PrecisionT> *>(numpyArrayInfo.ptr);
+                return sv.getExpectationValuePauliWords(
+                    pauli_words, target_wires, coeffs_ptr);
+            },
+            "Calculate the expectation value of a Hamiltonian composed solely "
+            "from sums of Pauli-words")
+        .def(
             "Probability",
             [](StateVectorCudaMPI<PrecisionT> &sv,
                const std::vector<std::size_t> &wires) {
