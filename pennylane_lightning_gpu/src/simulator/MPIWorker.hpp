@@ -149,7 +149,7 @@ inline SharedLocalStream make_shared_local_stream() {
  *
  * @param handle custatevecHandle.
  * @param mpi_manager MPI manager object.
- * @param log2_mpi_buf_counts Size to set MPI buffer.
+ * @param mpi_buf_size Size to set MPI buffer in MB(megabytes).
  * @param sv Pointer to the data requires MPI operation.
  * @param numLocalQubits Number of local qubits.
  * @param localStream Local cuda stream.
@@ -157,7 +157,7 @@ inline SharedLocalStream make_shared_local_stream() {
 template <typename CFP_t>
 inline SharedMPIWorker
 make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
-                       const size_t log2_mpi_buf_counts, CFP_t *sv,
+                       const size_t mpi_buf_size, CFP_t *sv,
                        const size_t numLocalQubits, cudaStream_t localStream) {
 
     custatevecSVSwapWorkerDescriptor_t svSegSwapWorker = nullptr;
@@ -265,7 +265,7 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
     size_t transferWorkspaceSize; // In bytes and its value should be power
                                   // of 2.
 
-    if (log2_mpi_buf_counts == 0) {
+    if (mpi_buf_size == 0) {
         transferWorkspaceSize = size_t{1} << numLocalQubits;
         if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
                       std::is_same_v<CFP_t, double2>) {
@@ -273,18 +273,14 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
         } else {
             transferWorkspaceSize = transferWorkspaceSize * sizeof(float) * 2;
         }
-        // Here 26 is based on the benchmark tests on the Perlmutter.
+        // 26 her is based on the benchmark tests on the Perlmutter and
+        // transferWorkspaceSize is 64 MB.
         if (transferWorkspaceSize > (size_t{1} << 26)) {
             transferWorkspaceSize = size_t{1} << 26;
         }
     } else {
-        transferWorkspaceSize = size_t{1} << log2_mpi_buf_counts;
-        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
-                      std::is_same_v<CFP_t, double2>) {
-            transferWorkspaceSize = transferWorkspaceSize * sizeof(double) * 2;
-        } else {
-            transferWorkspaceSize = transferWorkspaceSize * sizeof(float) * 2;
-        }
+        transferWorkspaceSize =
+            size_t{1} << (mpi_buf_size + 20); // size_t{1} << 20 is 1MB
     }
 
     transferWorkspaceSize =
