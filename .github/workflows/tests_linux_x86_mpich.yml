@@ -14,7 +14,7 @@ on:
   push:
     branches:
       - main
-  #pull_request:
+  pull_request:
 
 env:
   COVERAGE_FLAGS: "--cov=pennylane_lightning_gpu --cov-report=term-missing --cov-report=xml:./coverage.xml --no-flaky-report -p no:warnings --tb=native" 
@@ -27,10 +27,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  event_name:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ${{ github.event_name }}
   cpp_mpich_tests:
     if: contains(github.event.pull_request.labels.*.name, 'ci:use-multi-gpu-runner') || github.event_name == 'workflow_call'
 
