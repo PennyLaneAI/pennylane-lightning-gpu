@@ -34,6 +34,14 @@ namespace Pennylane::MPI {
 
 enum WireStatus { Default, Target, Control };
 
+inline size_t megabytesToBytes(const size_t megabytes) {
+    return megabytes * size_t{1024 * 1024};
+}
+
+inline double bytesToMegabytes(const size_t bytes) {
+    return static_cast<double>(bytes) / (1024.0 * 1024.0);
+}
+
 /**
  * @brief Create wire pairs for bit index swap and transform all control and
  * target wires to local ones.
@@ -273,14 +281,16 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
         } else {
             transferWorkspaceSize = transferWorkspaceSize * sizeof(float) * 2;
         }
-        // 26 her is based on the benchmark tests on the Perlmutter and
-        // transferWorkspaceSize is 64 MB.
-        if (transferWorkspaceSize > (size_t{1} << 26)) {
-            transferWorkspaceSize = size_t{1} << 26;
+        // With the default setting, transfer work space is limited to 64 MB
+        // based on the benchmark tests on the Perlmutter.
+        size_t buffer_limit = 64;
+        double transferWorkspaceSizeInMB =
+            bytesToMegabytes(transferWorkspaceSize);
+        if (transferWorkspaceSizeInMB > static_cast<double>(buffer_limit)) {
+            transferWorkspaceSize = megabytesToBytes(buffer_limit);
         }
     } else {
-        transferWorkspaceSize =
-            size_t{1} << (mpi_buf_size + 20); // size_t{1} << 20 is 1MB
+        transferWorkspaceSize = megabytesToBytes(mpi_buf_size);
     }
 
     transferWorkspaceSize =

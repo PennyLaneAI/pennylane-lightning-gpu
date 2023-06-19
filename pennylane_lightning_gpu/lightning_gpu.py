@@ -118,6 +118,10 @@ def _H_dtype(dtype):
     return HamiltonianGPU_C128 if dtype == np.complex128 else HamiltonianGPU_C64
 
 
+def _megabytesToBytes(megabytes):
+    return megabytes * 1024 * 1024
+
+
 _name_map = {"PauliX": "X", "PauliY": "Y", "PauliZ": "Z", "Identity": "I"}
 
 allowed_operations = {
@@ -253,11 +257,9 @@ if CPP_BINARY_AVAILABLE:
                         )
 
                 if not mpi_buf_size:
-                    if c_dtype is np.complex64:
-                        sv_memsize = self._num_local_wires + 3
-                    else:
-                        sv_memsize = self._num_local_wires + 4
-                    if (mpi_buf_size.bit_length() - 1) > (self._num_local_wires - 20):
+                    # Memory size in bytes
+                    sv_memsize = np.dtype(c_dtype).itemsize * (1 << self._num_local_wires)
+                    if _megabytesToBytes(mpi_buf_size) > sv_memsize:
                         w_msg = "MPI buffer size is over the size of local state vector."
                         warn(
                             w_msg,
