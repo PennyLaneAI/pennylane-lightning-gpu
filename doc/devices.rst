@@ -118,8 +118,6 @@ By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will 
 The workflow for the new feature is:
 .. code-block:: python
 
-    import pennylane as qml
-    dev = qml.device("lightning.gpu", wires=27, batch_obs=1)
     from mpi4py import MPI
     import pennylane as qml
     dev = qml.device('lightning.gpu', wires=8, mpi=True, mpi_buf_size=1)
