@@ -12,6 +12,7 @@
  ```python
   from mpi4py import MPI
   import pennylane as qml
+  import numpy as np
 
   n_wires = 20
   n_layers = 2
@@ -19,7 +20,7 @@
   @qml.qnode(dev, diff_method="adjoint")
   def circuit_adj(weights):
     qml.StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
-    return [qml.expval(qml.PauliZ(i)) for i in range(n_wires)]
+    return qml.math.hstack([qml.expval(qml.PauliZ(i)) for i in range(n_wires)])
   
   params = np.random.random(qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
   jac = qml.jacobian(circuit_adj)(params)
@@ -29,16 +30,17 @@
   ```python
   from mpi4py import MPI
   import pennylane as qml
+  import numpy as np
 
   n_wires = 20
   n_layers = 2
   dev = qml.device('lightning.gpu', wires= n_wires, mpi=True, mpi_buf_size=1, batch_obs=True)
   @qml.qnode(dev, diff_method="adjoint")
   def circuit_adj(weights):
-    StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
-    return [qml.expval(qml.PauliZ(i)) for i in range(n_wires)]
+    qml.StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
+    return qml.math.hstack([qml.expval(qml.PauliZ(i)) for i in range(n_wires)])
   
-  params = np.random.random(StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
+  params = np.random.random(qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
   jac = qml.jacobian(circuit_adj)(params)
  ```
 
