@@ -188,7 +188,9 @@ class MPIManager final {
         isExternalComm_ = true;
         rank_ = other.rank_;
         size_ = other.size_;
-        communicator_ = other.communicator_;
+        MPI_Comm_dup(
+            other.communicator_,
+            &communicator_); // Avoid freeing other.communicator_ in ~MPIManager
         vendor_ = other.vendor_;
         version_ = other.version_;
         subversion_ = other.subversion_;

@@ -97,7 +97,7 @@ class StateVectorCudaMPI
     StateVectorCudaMPI() = delete;
 
     StateVectorCudaMPI(MPIManager mpi_manager, const DevTag<int> &dev_tag,
-                       size_t log2_mpi_buf_counts, size_t num_global_qubits,
+                       size_t mpi_buf_size, size_t num_global_qubits,
                        size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
               num_local_qubits, dev_tag, true),
@@ -107,15 +107,15 @@ class StateVectorCudaMPI
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
-              handle_.get(), mpi_manager_, log2_mpi_buf_counts,
-              BaseType::getData(), num_local_qubits, localStream_.get())),
+              handle_.get(), mpi_manager_, mpi_buf_size, BaseType::getData(),
+              num_local_qubits, localStream_.get())),
           gate_cache_(true, dev_tag) {
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         mpi_manager_.Barrier();
     };
 
     StateVectorCudaMPI(MPI_Comm mpi_communicator, const DevTag<int> &dev_tag,
-                       size_t log2_mpi_buf_counts, size_t num_global_qubits,
+                       size_t mpi_buf_size, size_t num_global_qubits,
                        size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
               num_local_qubits, dev_tag, true),
@@ -125,14 +125,14 @@ class StateVectorCudaMPI
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
-              handle_.get(), mpi_manager_, log2_mpi_buf_counts,
-              BaseType::getData(), num_local_qubits, localStream_.get())),
+              handle_.get(), mpi_manager_, mpi_buf_size, BaseType::getData(),
+              num_local_qubits, localStream_.get())),
           gate_cache_(true, dev_tag) {
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         mpi_manager_.Barrier();
     };
 
-    StateVectorCudaMPI(const DevTag<int> &dev_tag, size_t log2_mpi_buf_counts,
+    StateVectorCudaMPI(const DevTag<int> &dev_tag, size_t mpi_buf_size,
                        size_t num_global_qubits, size_t num_local_qubits)
         : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
               num_local_qubits, dev_tag, true),
@@ -142,8 +142,8 @@ class StateVectorCudaMPI
           cublascaller_(make_shared_cublas_caller()),
           localStream_(make_shared_local_stream()),
           svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
-              handle_.get(), mpi_manager_, log2_mpi_buf_counts,
-              BaseType::getData(), num_local_qubits, localStream_.get())),
+              handle_.get(), mpi_manager_, mpi_buf_size, BaseType::getData(),
+              num_local_qubits, localStream_.get())),
           gate_cache_(true, dev_tag) {
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         mpi_manager_.Barrier();

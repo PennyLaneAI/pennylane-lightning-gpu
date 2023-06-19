@@ -67,7 +67,7 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
         "lightning.gpu",
         wires=num_wires,
         mpi=True,
-        log2_mpi_buf_counts=num_wires,
+        mpi_buf_size=1,
         c_dtype=np.complex128,
     )
 
@@ -117,7 +117,7 @@ def apply_operation_gates_apply_param(tol, operation, par, Wires):
         "lightning.gpu",
         wires=num_wires,
         mpi=True,
-        log2_mpi_buf_counts=num_wires,
+        mpi_buf_size=1,
         c_dtype=np.complex128,
     )
 
@@ -149,7 +149,7 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
         "lightning.gpu",
         wires=num_wires,
         mpi=True,
-        log2_mpi_buf_counts=num_wires,
+        mpi_buf_size=1,
         c_dtype=np.complex128,
     )
 
@@ -198,7 +198,7 @@ def apply_operation_gates_apply_nonparam(tol, operation, Wires):
         "lightning.gpu",
         wires=num_wires,
         mpi=True,
-        log2_mpi_buf_counts=num_wires,
+        mpi_buf_size=1,
         c_dtype=np.complex128,
     )
 

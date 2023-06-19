@@ -199,6 +199,8 @@ if CPP_BINARY_AVAILABLE:
         """PennyLane-Lightning-GPU device.
         Args:
             wires (int): the number of wires to initialize the device with
+            mpi (bool): is mpi backend
+            mpi_buf_size(int): GPU memory size (in megabytes) for MPI operation. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a limit of 64 MB.
             sync (bool): immediately sync with host-sv after applying operations
             c_dtype: Datatypes for statevector representation. Must be one of ``np.complex64`` or ``np.complex128``.
         """
@@ -229,7 +231,7 @@ if CPP_BINARY_AVAILABLE:
             wires,
             *,
             mpi: bool = False,
-            log2_mpi_buf_counts: int = 0,
+            mpi_buf_size: int = 0,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -255,20 +257,31 @@ if CPP_BINARY_AVAILABLE:
                 self._mpi = True
                 self._mpi_init_helper(self.num_wires)
 
-                if log2_mpi_buf_counts > self._num_local_wires:
-                    w_msg = "MPI buffer size is over the size of local state vector."
-                    warn(
-                        w_msg,
-                        RuntimeWarning,
-                    )
+                if mpi_buf_size < 0:
+                    raise TypeError(f"Unsupported mpi_buf_size value: {mpi_buf_size}")
 
-                if log2_mpi_buf_counts < 0:
-                    raise TypeError(f"Unsupported log2_mpi_buf_counts value: {log2_mpi_buf_counts}")
+                if not mpi_buf_size:
+                    if mpi_buf_size & (mpi_buf_size - 1):
+                        raise TypeError(
+                            f"Unsupported mpi_buf_size value: {mpi_buf_size}. mpi_buf_size should be power of 2."
+                        )
+
+                if not mpi_buf_size:
+                    if c_dtype is np.complex64:
+                        sv_memsize = self._num_local_wires + 3
+                    else:
+                        sv_memsize = self._num_local_wires + 4
+                    if (mpi_buf_size.bit_length() - 1) > (self._num_local_wires - 20):
+                        w_msg = "MPI buffer size is over the size of local state vector."
+                        warn(
+                            w_msg,
+                            RuntimeWarning,
+                        )
 
                 self._gpu_state = _gpu_dtype(c_dtype, mpi)(
                     self._mpi_manager,
                     self._devtag,
-                    log2_mpi_buf_counts,
+                    mpi_buf_size,
                     self._num_global_wires,
                     self._num_local_wires,
                 )
