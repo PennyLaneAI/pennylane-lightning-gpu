@@ -11,7 +11,6 @@ env:
   GCC_VERSION: 11
   OMP_NUM_THREADS: "2"
   CI_CUDA_ARCH: 86
-  MULTI_GPU_SUPPORT_REQUIRED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:use-multi-gpu-runner') || github.event_name == 'workflow_call' }}
 
 concurrency:
   group: gpu-test-openmpi-${{ github.ref }}
@@ -19,7 +18,7 @@ concurrency:
 
 jobs:
   cpp_openmpi_tests:
-    if: env.MULTI_GPU_SUPPORT_REQUIRED == 'true'
+    if: contains(github.event.pull_request.labels.*.name, 'ci:use-multi-gpu-runner') || github.event_name == 'workflow_call'
 
     runs-on:
       - self-hosted
@@ -178,7 +177,7 @@ jobs:
 
 
   python_openmpi_tests:
-    if: env.MULTI_GPU_SUPPORT_REQUIRED == 'true'
+    if: contains(github.event.pull_request.labels.*.name, 'ci:use-multi-gpu-runner') || github.event_name == 'workflow_call'
 
     runs-on:
       - self-hosted
