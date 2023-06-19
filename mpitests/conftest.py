@@ -19,8 +19,6 @@ import pytest
 
 from pennylane import numpy as np
 
-from pennylane_lightning_gpu import LightningGPU
-
 # defaults
 TOL = 1e-4
 

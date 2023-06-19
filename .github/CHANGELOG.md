@@ -2,17 +2,51 @@
 
 ### New features since last release
 
+ * Add multi-node/multi-GPU support to measurement methods, including `expval`, `generate_samples` and `probability`.
+ [(#116)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/116)
+
+ Note that each MPI process will return the overall result of expectation value and sample generation. However, `probability` will 
+ return local probability results. Users should be responsible to collect probability results across the MPI processes.
+ 
+ The workflow for collecting probability results across the MPI processes:
+ ```python
+ from mpi4py import MPI
+ import pennylane as qml
+ import numpy as np
+
+ comm = MPI.COMM_WORLD
+ rank = comm.Get_rank()
+ numQubits = 8
+ dev = qml.device('lightning.gpu', wires=numQubits, mpi=True)
+
+ @qml.qnode(dev)
+ def mpi_circuit():
+   qml.Hadamard(wires=1)
+   return qml.probs(wires=[0, 1])
+
+ local_probs = mpi_circuit
+ 
+ #For data collection across MPI processes.
+ recv_counts = comm.gather(len(local_probs),root=0)
+ if rank == 0:
+    probs = np.zeros(1<<numQubits)
+ else:
+    probs = None
+
+ comm.Gatherv(local_probs,[probs,recv_counts],root=0)
+ if rank == 0:
+    print(probs)
+ ```
 * Add multi-node/multi-gpu support to gate operation.
   [(#112)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/112)
 
   This new feature empowers users to leverage the computational power of multi-node and multi-GPUs for running large-scale applications. It requires both the total number of overall `MPI` processes and the number of `MPI` processes of each node to be the same and power of `2`. Each `MPI` process is responsible for managing one GPU for the moment. 
-  To enable this feature, users can set `mpi=True`. Furthermore, users can fine-tune the performance of `MPI` operations by adjusting the `log2_mpi_buf_counts` parameter. This parameter determines the allocation of GPU memory for storing `2^log2_mpi_buf_counts` complex elements during `MPI` operations. Note that there will be a runtime warning if `log2_mpi_buf_counts` is larger than the number of qubits of the local state vector. 
-  By default (`log2_mpi_buf_counts=0`), the GPU memory allocation for MPI operations is based on `2^num_local_wires`, with a limit of `2^26` bytes.
+  To enable this feature, users can set `mpi=True`. Furthermore, users can fine-tune the performance of `MPI` operations by adjusting the `mpi_buf_size` parameter. This parameter determines the allocation of `mpi_buf_size` MB(megabytes) GPU memory for `MPI` operations. Note that `mpi_buf_size` should be also power of 2 and there will be a runtime warning if GPU memory buffer for MPI operation is larger than the GPU memory allocated for the local state vector. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a limit of 64 MB.
   The workflow for the new feature is:
   ```python
   from mpi4py import MPI
   import pennylane as qml
-  dev = qml.device('lightning.gpu', wires=8, mpi=True, log2_mpi_buf_counts=2)
+  dev = qml.device('lightning.gpu', wires=8, mpi=True, mpi_buf_size=1)
   @qml.qnode(dev)
   def circuit_mpi():
     qml.PauliX(wires=[0])
