@@ -24,7 +24,7 @@ env:
   MULTI_GPU_SUPPORT_REQUIRED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:use-multi-gpu-runner') }}
 
 concurrency:
-  group: gpu-test-${{ github.ref }}
+  group: gpu-test-${{ github.ref }}-${{ inputs.lightning-gpu-version }}-${{ inputs.pennylane-version }}
   cancel-in-progress: true
 
 jobs:
