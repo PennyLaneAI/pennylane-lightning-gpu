@@ -1,5 +1,15 @@
 name: Tests::Linux::x86_64_MPICH
 on:
+  workflow_call:
+    inputs:
+      lightning-gpu-version:
+        type: string
+        required: true
+        description: The version of lightning to use. Valid values are either 'stable' (most recent git-tag) or 'latest' (most recent commit from master)
+      pennylane-version:
+        type: string
+        required: true
+        description: The version of PennyLane to use. Valid values are either 'stable' (most recent git-tag) or 'latest' (most recent commit from master)
   release:
   push:
     branches:
@@ -14,7 +24,7 @@ env:
   MULTI_GPU_SUPPORT_REQUIRED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:use-multi-gpu-runner') }}
 
 concurrency:
-  group: gpu-test-${{ github.ref }}
+  group: gpu-test-mpich-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -47,6 +57,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          # Checkout entire git-history if workflow_call passes 'stable' as we need to find the most recent git-tag
+          fetch-depth: ${{ inputs.lightning-gpu-version == 'stable' && 0 || 1 }}
+
+      - name: Switch to stable build of Lightning-GPU
+        if: inputs.lightning-gpu-version == 'stable'
+        run: git checkout $(git tag | sort -V | tail -1)
 
       - uses: actions/setup-python@v4
         id: setup_python
@@ -114,6 +131,10 @@ jobs:
           which mpicc
           which mpiexec
           module unload mpich
+
+      - name: Install Latest PennyLane
+        if: inputs.pennylane-version == 'latest'
+        run: python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
 
       - name: Build and run unit tests with OpenMPI backend
         run: |
@@ -202,6 +223,13 @@ jobs:
     steps:
       - name: Checkout pennyLane-lightning-gpu
         uses: actions/checkout@v3
+        with:
+          # Checkout entire git-history if workflow_call passes 'stable' as we need to find the most recent git-tag
+          fetch-depth: ${{ inputs.lightning-gpu-version == 'stable' && 0 || 1 }}
+
+      - name: Switch to stable build of Lightning-GPU
+        if: inputs.lightning-gpu-version == 'stable'
+        run: git checkout $(git tag | sort -V | tail -1)
 
       - uses: actions/setup-python@v4
         id: setup_python
@@ -252,9 +280,12 @@ jobs:
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov mpi4py
           # Sync with latest master branches
-          python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
-          
+
+      - name: Install Latest PennyLane
+        if: ${{ inputs.pennylane-version == 'latest' }}
+        run: python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
+
       - name: Build and install package (OpenMPI backend)
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
