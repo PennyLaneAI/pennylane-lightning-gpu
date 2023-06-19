@@ -23,7 +23,7 @@ env:
   CI_CUDA_ARCH: 86
 
 concurrency:
-  group: gpu-test-mpich-${{ github.ref }}
+  group: gpu-test-mpich-${{ github.ref }}-${{ inputs.lightning-gpu-version }}-${{ inputs.pennylane-version }}
   cancel-in-progress: true
 
 jobs:
