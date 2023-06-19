@@ -11,7 +11,7 @@ A ``lightning.gpu`` device can be loaded using:
     import pennylane as qml
     dev = qml.device("lightning.gpu", wires=2)
 
-If the NVIDIA cuQuantum libraries are available, the above device will allow all operations to be perfomed on a CUDA capable GPU of generation SM 7.0 (Volta) and greater. If the libraries are not correctly installed, or available on path, the device will fall-back to ``lightning.qubit`` and perform all simulation on the CPU.
+If the NVIDIA cuQuantum libraries are available, the above device will allow all operations to be performed on a CUDA capable GPU of generation SM 7.0 (Volta) and greater. If the libraries are not correctly installed, or available on path, the device will fall-back to ``lightning.qubit`` and perform all simulation on the CPU.
 
 The ``lightning.gpu`` device also directly supports quantum circuit gradients using the adjoint differentiation method. This can be enabled at the PennyLane QNode level with:
 
@@ -84,7 +84,7 @@ Supported operations and observables
 
 The ``lightning.gpu`` device directly supports the `adjoint differentiation method <https://pennylane.ai/qml/demos/tutorial_adjoint_diff.html>`__, and enables parallelization over the requested observables. This supports direct controlling of observable batching, which can be used to run concurrent calculations across multiple available GPUs.
 
-If you are computing a large number of expectation values, or if you are using a large number of wires on your device, it may be best to evenly divide the number of expectation value calculations across all available GPUs. This will reduce the overall memory cost of the obseravbles per GPU, at the cost of additional compute time. Assuming `m` observables, and `n` GPUs, the default behaviour is to pre-allocate all storage for `n` observables on a single GPU. To divide the workload amongst many GPUs, initialize a ``lightning.gpu`` device with the ``batch_obs=True`` keyword argument, as:
+If you are computing a large number of expectation values, or if you are using a large number of wires on your device, it may be best to evenly divide the number of expectation value calculations across all available GPUs. This will reduce the overall memory cost of the observables per GPU, at the cost of additional compute time. Assuming `m` observables, and `n` GPUs, the default behaviour is to pre-allocate all storage for `n` observables on a single GPU. To divide the workload amongst many GPUs, initialize a ``lightning.gpu`` device with the ``batch_obs=True`` keyword argument, as:
 
 .. code-block:: python
 
