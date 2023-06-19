@@ -34,6 +34,14 @@ namespace Pennylane::MPI {
 
 enum WireStatus { Default, Target, Control };
 
+inline size_t megabytesToBytes(const size_t megabytes) {
+    return megabytes * size_t{1024 * 1024};
+}
+
+inline double bytesToMegabytes(const size_t bytes) {
+    return static_cast<double>(bytes) / (1024.0 * 1024.0);
+}
+
 /**
  * @brief Create wire pairs for bit index swap and transform all control and
  * target wires to local ones.
@@ -52,7 +60,8 @@ inline std::vector<int2> createWirePairs(const int numLocalQubits,
     std::vector<int2> wirePairs;
     int localbit = numLocalQubits - 1, globalbit = numLocalQubits;
     while (localbit >= 0 && globalbit < numTotalQubits) {
-        if (statusWires[localbit] == 0 && statusWires[globalbit] != 0) {
+        if (statusWires[localbit] == WireStatus::Default &&
+            statusWires[globalbit] != WireStatus::Default) {
             int2 wirepair = make_int2(localbit, globalbit);
             wirePairs.push_back(wirepair);
             if (statusWires[globalbit] == WireStatus::Control) {
@@ -79,6 +88,23 @@ inline std::vector<int2> createWirePairs(const int numLocalQubits,
         }
     }
     return wirePairs;
+}
+
+/**
+ * @brief Create wire pairs for bit index swap and transform all target wires to
+ * local ones.
+ *
+ * @param numLocalQubits Number of local qubits.
+ * @param numTotalQubits Number of total qubits.
+ * @param tgts Vector of target wires.
+ * @return wirePairs Wire pairs to be passed to SV bit index swap worker.
+ */
+inline std::vector<int2> createWirePairs(int numLocalQubits, int numTotalQubits,
+                                         std::vector<int> &tgts,
+                                         std::vector<int> &statusWires) {
+    std::vector<int> ctrls;
+    return createWirePairs(numLocalQubits, numTotalQubits, ctrls, tgts,
+                           statusWires);
 }
 
 /**
@@ -131,7 +157,7 @@ inline SharedLocalStream make_shared_local_stream() {
  *
  * @param handle custatevecHandle.
  * @param mpi_manager MPI manager object.
- * @param log2_mpi_buf_counts Size to set MPI buffer.
+ * @param mpi_buf_size Size to set MPI buffer in MB(megabytes).
  * @param sv Pointer to the data requires MPI operation.
  * @param numLocalQubits Number of local qubits.
  * @param localStream Local cuda stream.
@@ -139,7 +165,7 @@ inline SharedLocalStream make_shared_local_stream() {
 template <typename CFP_t>
 inline SharedMPIWorker
 make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
-                       const size_t log2_mpi_buf_counts, CFP_t *sv,
+                       const size_t mpi_buf_size, CFP_t *sv,
                        const size_t numLocalQubits, cudaStream_t localStream) {
 
     custatevecSVSwapWorkerDescriptor_t svSegSwapWorker = nullptr;
@@ -247,7 +273,7 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
     size_t transferWorkspaceSize; // In bytes and its value should be power
                                   // of 2.
 
-    if (log2_mpi_buf_counts == 0) {
+    if (mpi_buf_size == 0) {
         transferWorkspaceSize = size_t{1} << numLocalQubits;
         if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
                       std::is_same_v<CFP_t, double2>) {
@@ -255,18 +281,16 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
         } else {
             transferWorkspaceSize = transferWorkspaceSize * sizeof(float) * 2;
         }
-        // Here 26 is based on the benchmark tests on the Perlmutter.
-        if (transferWorkspaceSize > (size_t{1} << 26)) {
-            transferWorkspaceSize = size_t{1} << 26;
+        // With the default setting, transfer work space is limited to 64 MB
+        // based on the benchmark tests on the Perlmutter.
+        size_t buffer_limit = 64;
+        double transferWorkspaceSizeInMB =
+            bytesToMegabytes(transferWorkspaceSize);
+        if (transferWorkspaceSizeInMB > static_cast<double>(buffer_limit)) {
+            transferWorkspaceSize = megabytesToBytes(buffer_limit);
         }
     } else {
-        transferWorkspaceSize = size_t{1} << log2_mpi_buf_counts;
-        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
-                      std::is_same_v<CFP_t, double2>) {
-            transferWorkspaceSize = transferWorkspaceSize * sizeof(double) * 2;
-        } else {
-            transferWorkspaceSize = transferWorkspaceSize * sizeof(float) * 2;
-        }
+        transferWorkspaceSize = megabytesToBytes(mpi_buf_size);
     }
 
     transferWorkspaceSize =

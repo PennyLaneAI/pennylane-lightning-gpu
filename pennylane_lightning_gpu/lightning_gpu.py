@@ -106,7 +106,7 @@ except (ModuleNotFoundError, ImportError, ValueError, PLException) as e:
 def _gpu_dtype(dtype, mpi=False):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
-    if mpi is False:
+    if not mpi:
         return LightningGPU_C128 if dtype == np.complex128 else LightningGPU_C64
     return LightningGPUMPI_C128 if dtype == np.complex128 else LightningGPUMPI_C64
 
@@ -116,6 +116,10 @@ def _H_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
     return HamiltonianGPU_C128 if dtype == np.complex128 else HamiltonianGPU_C64
+
+
+def _megabytesToBytes(megabytes):
+    return megabytes * 1024 * 1024
 
 
 _name_map = {"PauliX": "X", "PauliY": "Y", "PauliZ": "Z", "Identity": "I"}
@@ -185,6 +189,8 @@ if CPP_BINARY_AVAILABLE:
         """PennyLane-Lightning-GPU device.
         Args:
             wires (int): the number of wires to initialize the device with
+            mpi (bool): is mpi backend
+            mpi_buf_size(int): GPU memory size (in megabytes) for MPI operation. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a limit of 64 MB.
             sync (bool): immediately sync with host-sv after applying operations
             c_dtype: Datatypes for statevector representation. Must be one of ``np.complex64`` or ``np.complex128``.
         """
@@ -215,7 +221,7 @@ if CPP_BINARY_AVAILABLE:
             wires,
             *,
             mpi: bool = False,
-            log2_mpi_buf_counts: int = 0,
+            mpi_buf_size: int = 0,
             sync=False,
             c_dtype=np.complex128,
             shots=None,
@@ -232,27 +238,38 @@ if CPP_BINARY_AVAILABLE:
 
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
-            if mpi is False:
+            if not mpi:
+                self._mpi = False
                 self._num_local_wires = self.num_wires
                 self._gpu_state = _gpu_dtype(c_dtype)(self._num_local_wires)
                 self._batch_obs = batch_obs
             else:
+                self._mpi = True
                 self._mpi_init_helper(self.num_wires)
 
-                if log2_mpi_buf_counts > self._num_local_wires:
-                    w_msg = "MPI buffer size is over the size of local state vector."
-                    warn(
-                        w_msg,
-                        RuntimeWarning,
-                    )
+                if mpi_buf_size < 0:
+                    raise TypeError(f"Unsupported mpi_buf_size value: {mpi_buf_size}")
 
-                if log2_mpi_buf_counts < 0:
-                    raise TypeError(f"Unsupported log2_mpi_buf_counts value: {log2_mpi_buf_counts}")
+                if not mpi_buf_size:
+                    if mpi_buf_size & (mpi_buf_size - 1):
+                        raise TypeError(
+                            f"Unsupported mpi_buf_size value: {mpi_buf_size}. mpi_buf_size should be power of 2."
+                        )
+
+                if not mpi_buf_size:
+                    # Memory size in bytes
+                    sv_memsize = np.dtype(c_dtype).itemsize * (1 << self._num_local_wires)
+                    if _megabytesToBytes(mpi_buf_size) > sv_memsize:
+                        w_msg = "MPI buffer size is over the size of local state vector."
+                        warn(
+                            w_msg,
+                            RuntimeWarning,
+                        )
 
                 self._gpu_state = _gpu_dtype(c_dtype, mpi)(
                     self._mpi_manager,
                     self._devtag,
-                    log2_mpi_buf_counts,
+                    mpi_buf_size,
                     self._num_global_wires,
                     self._num_local_wires,
                 )
@@ -261,7 +278,7 @@ if CPP_BINARY_AVAILABLE:
             self._sync = sync
 
         def _mpi_init_helper(self, num_wires):
-            if MPI_SUPPORT is False:
+            if not MPI_SUPPORT:
                 raise ImportError("MPI related APIs are not found.")
             # initialize MPIManager and config check in the MPIManager ctor
             self._mpi_manager = MPIManager()
@@ -786,32 +803,42 @@ if CPP_BINARY_AVAILABLE:
                 return np.squeeze(np.mean(samples, axis=0))
 
             if observable.name in ["SparseHamiltonian"]:
-                CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
-                return self._gpu_state.ExpectationValue(
-                    CSR_SparseHamiltonian.indptr,
-                    CSR_SparseHamiltonian.indices,
-                    CSR_SparseHamiltonian.data,
-                )
+                if not self._mpi:
+                    CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
+                    return self._gpu_state.ExpectationValue(
+                        CSR_SparseHamiltonian.indptr,
+                        CSR_SparseHamiltonian.indices,
+                        CSR_SparseHamiltonian.data,
+                    )
+                else:
+                    raise RuntimeError(
+                        "LightningGPU-MPI does not currently support SparseHamiltonian."
+                    )
 
             if observable.name in ["Hamiltonian"]:
-                device_wires = self.map_wires(observable.wires)
-                # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
-                if len(device_wires) > 13:
-                    coeffs = observable.coeffs
-                    pauli_words = []
-                    word_wires = []
-                    for word in observable.ops:
-                        compressed_word = []
-                        if isinstance(word.name, list):
-                            for char in word.name:
-                                compressed_word.append(_name_map[char])
-                        else:
-                            compressed_word.append(_name_map[word.name])
-                        word_wires.append(word.wires.tolist())
-                        pauli_words.append("".join(compressed_word))
-                    return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
-
+                if not self._mpi:
+                    device_wires = self.map_wires(observable.wires)
+                    # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
+                    if len(device_wires) > 13:
+                        coeffs = observable.coeffs
+                        pauli_words = []
+                        word_wires = []
+                        for word in observable.ops:
+                            compressed_word = []
+                            if isinstance(word.name, list):
+                                for char in word.name:
+                                    compressed_word.append(_name_map[char])
+                            else:
+                                compressed_word.append(_name_map[word.name])
+                            word_wires.append(word.wires.tolist())
+                            pauli_words.append("".join(compressed_word))
+                        return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
+                    else:
+                        return self._gpu_state.ExpectationValue(
+                            device_wires, qml.matrix(observable).ravel(order="C")
+                        )
                 else:
+                    device_wires = self.map_wires(observable.wires)
                     return self._gpu_state.ExpectationValue(
                         device_wires, qml.matrix(observable).ravel(order="C")
                     )
@@ -853,12 +880,12 @@ if CPP_BINARY_AVAILABLE:
                 )
 
             # Device returns as col-major orderings, so perform transpose on data for bit-index shuffle for now.
-            return (
-                self._gpu_state.Probability(device_wires)
-                .reshape([2] * len(wires))
-                .transpose()
-                .reshape(-1)
-            )
+            local_prob = self._gpu_state.Probability(device_wires)
+            if len(local_prob) > 0:
+                num_local_wires = len(local_prob).bit_length() - 1 if len(local_prob) > 0 else 0
+                return local_prob.reshape([2] * num_local_wires).transpose().reshape(-1)
+            else:
+                return local_prob
 
         def generate_samples(self):
             """Generate samples

@@ -11,7 +11,7 @@ A ``lightning.gpu`` device can be loaded using:
     import pennylane as qml
     dev = qml.device("lightning.gpu", wires=2)
 
-If the NVIDIA cuQuantum libraries are available, the above device will allow all operations to be perfomed on a CUDA capable GPU of generation SM 7.0 (Volta) and greater. If the libraries are not correctly installed, or available on path, the device will fall-back to ``lightning.qubit`` and perform all simulation on the CPU.
+If the NVIDIA cuQuantum libraries are available, the above device will allow all operations to be performed on a CUDA capable GPU of generation SM 7.0 (Volta) and greater. If the libraries are not correctly installed, or available on path, the device will fall-back to ``lightning.qubit`` and perform all simulation on the CPU.
 
 The ``lightning.gpu`` device also directly supports quantum circuit gradients using the adjoint differentiation method. This can be enabled at the PennyLane QNode level with:
 
@@ -84,7 +84,7 @@ Supported operations and observables
 
 The ``lightning.gpu`` device directly supports the `adjoint differentiation method <https://pennylane.ai/qml/demos/tutorial_adjoint_diff.html>`__, and enables parallelization over the requested observables. This supports direct controlling of observable batching, which can be used to run concurrent calculations across multiple available GPUs.
 
-If you are computing a large number of expectation values, or if you are using a large number of wires on your device, it may be best to evenly divide the number of expectation value calculations across all available GPUs. This will reduce the overall memory cost of the obseravbles per GPU, at the cost of additional compute time. Assuming `m` observables, and `n` GPUs, the default behaviour is to pre-allocate all storage for `n` observables on a single GPU. To divide the workload amongst many GPUs, initialize a ``lightning.gpu`` device with the ``batch_obs=True`` keyword argument, as:
+If you are computing a large number of expectation values, or if you are using a large number of wires on your device, it may be best to evenly divide the number of expectation value calculations across all available GPUs. This will reduce the overall memory cost of the observables per GPU, at the cost of additional compute time. Assuming `m` observables, and `n` GPUs, the default behaviour is to pre-allocate all storage for `n` observables on a single GPU. To divide the workload amongst many GPUs, initialize a ``lightning.gpu`` device with the ``batch_obs=True`` keyword argument, as:
 
 .. code-block:: python
 
@@ -101,3 +101,28 @@ Additionally, there can be situations where even with the above distribution, an
     dev = qml.device("lightning.gpu", wires=27, batch_obs=1)
 
 Each problem is unique, so it can often be best to choose the default behaviour up-front, and tune with the above only if necessary.
+
+**Multi-GPU/multi-node support:**
+
+The ``lightning.gpu`` device allows users to leverage the computational power of multi-node and multi-GPUs for running large-scale applications. To enable this feature, the following requirements need to be met:
+1. Both total number of `MPI` processes and `MPI` processes per node must be the same and a power of 2. For example, 2, 4, 8, 16, etc.. 
+2. Each MPI process is responsible for managing one GPU.
+Each `MPI` process is responsible for managing one GPU for the moment. 
+To enable this feature, users can set `mpi=True`, when configuring the lightning.gpu device. 
+
+Furthermore, users can fine-tune the performance of `MPI` operations by adjusting the `mpi_buf_size` parameter. This parameter determines the allocation of `mpi_buf_size` MB(megabytes) GPU memory buffer for `MPI` operations. 
+Note that there will be a runtime warning if GPU memory buffer for MPI operation is larger than the GPU memory allocated for the local state vector. Note `mpi_buf_size` should be also power of 2. Remember to carefully manage the mpi_buf_size parameter, taking into account 
+the available GPU memory and the memory requirements of the local state vector, to avoid memory issues and ensure optimal performance.
+By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a limit of 64 MB(megabytes).
+
+The workflow for the new feature is:
+.. code-block:: python
+
+    from mpi4py import MPI
+    import pennylane as qml
+    dev = qml.device('lightning.gpu', wires=8, mpi=True, mpi_buf_size=1)
+    @qml.qnode(dev)
+    def circuit_mpi():
+      qml.PauliX(wires=[0])
+      return qml.state()
+    local_state_vector = circuit_mpi()

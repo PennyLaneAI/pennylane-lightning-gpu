@@ -934,19 +934,19 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
     std::string class_name = "LightningGPUMPI_C" + bitsize;
 
     py::class_<StateVectorCudaMPI<PrecisionT>>(m, class_name.c_str())
-        .def(py::init(
-            [](MPIManager &mpi_manager, const DevTag<int> devtag_local,
-               std::size_t log2_mpi_buf_counts, std::size_t num_global_qubits,
-               std::size_t num_local_qubits) {
+        .def(
+            py::init([](MPIManager &mpi_manager, const DevTag<int> devtag_local,
+                        std::size_t mpi_buf_size, std::size_t num_global_qubits,
+                        std::size_t num_local_qubits) {
                 return new StateVectorCudaMPI<PrecisionT>(
-                    mpi_manager, devtag_local, log2_mpi_buf_counts,
-                    num_global_qubits, num_local_qubits);
+                    mpi_manager, devtag_local, mpi_buf_size, num_global_qubits,
+                    num_local_qubits);
             })) // qubits, device
         .def(py::init(
-            [](const DevTag<int> devtag_local, std::size_t log2_mpi_buf_counts,
+            [](const DevTag<int> devtag_local, std::size_t mpi_buf_size,
                std::size_t num_global_qubits, std::size_t num_local_qubits) {
                 return new StateVectorCudaMPI<PrecisionT>(
-                    devtag_local, log2_mpi_buf_counts, num_global_qubits,
+                    devtag_local, mpi_buf_size, num_global_qubits,
                     num_local_qubits);
             })) // qubits, device
         .def(
@@ -1282,6 +1282,98 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                 return sv.applyMultiRZ(wires, adjoint, params.front());
             },
             "Apply the MultiRZ gate.")
+        .def(
+            "ExpectationValue",
+            [](StateVectorCudaMPI<PrecisionT> &sv, const std::string &obsName,
+               const std::vector<std::size_t> &wires,
+               [[maybe_unused]] const std::vector<ParamT> &params,
+               [[maybe_unused]] const np_arr_c &gate_matrix) {
+                const auto m_buffer = gate_matrix.request();
+                std::vector<std::complex<ParamT>> conv_matrix;
+                if (m_buffer.size) {
+                    const auto m_ptr =
+                        static_cast<const std::complex<ParamT> *>(m_buffer.ptr);
+                    conv_matrix = std::vector<std::complex<ParamT>>{
+                        m_ptr, m_ptr + m_buffer.size};
+                }
+                // Return the real component only
+                return sv.expval(obsName, wires, params, conv_matrix).x;
+            },
+            "Calculate the expectation value of the given observable.")
+        .def(
+            "ExpectationValue",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::string> &obsName,
+               const std::vector<std::size_t> &wires,
+               [[maybe_unused]] const std::vector<std::vector<ParamT>> &params,
+               [[maybe_unused]] const np_arr_c &gate_matrix) {
+                // internally cache by concatenation of obs names, indicated by
+                // prefixed # for string
+                std::string obs_concat{"#"};
+                for (const auto &sub : obsName) {
+                    obs_concat += sub;
+                }
+                const auto m_buffer = gate_matrix.request();
+                std::vector<std::complex<ParamT>> conv_matrix;
+                if (m_buffer.size) {
+                    const auto m_ptr =
+                        static_cast<const std::complex<ParamT> *>(m_buffer.ptr);
+                    conv_matrix = std::vector<std::complex<ParamT>>{
+                        m_ptr, m_ptr + m_buffer.size};
+                }
+                // Return the real component only & ignore params
+                return sv
+                    .expval(obs_concat, wires, std::vector<ParamT>{},
+                            conv_matrix)
+                    .x;
+            },
+            "Calculate the expectation value of the given observable.")
+
+        .def(
+            "ExpectationValue",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires,
+               const np_arr_c &gate_matrix) {
+                // prefixed # for string
+                const auto m_buffer = gate_matrix.request();
+                std::vector<std::complex<ParamT>> conv_matrix;
+                if (m_buffer.size) {
+                    const auto m_ptr =
+                        static_cast<const std::complex<ParamT> *>(m_buffer.ptr);
+                    conv_matrix = std::vector<std::complex<ParamT>>{
+                        m_ptr, m_ptr + m_buffer.size};
+                }
+                // Return the real component only & ignore params
+                return sv.expval(wires, conv_matrix).x;
+            },
+            "Calculate the expectation value of the Hamiltonian observable "
+            "with custatevecComputeExpectation.")
+        .def(
+            "Probability",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::size_t> &wires) {
+                return py::array_t<ParamT>(py::cast(sv.probability(wires)));
+            },
+            "Calculate the probabilities for given wires. Results returned in "
+            "Col-major order.")
+        .def("GenerateSamples",
+             [](StateVectorCudaMPI<PrecisionT> &sv, size_t num_wires,
+                size_t num_shots) {
+                 auto &&result = sv.generate_samples(num_shots);
+                 const size_t ndim = 2;
+                 const std::vector<size_t> shape{num_shots, num_wires};
+                 constexpr auto sz = sizeof(size_t);
+                 const std::vector<size_t> strides{sz * num_wires, sz};
+                 // return 2-D NumPy array
+                 return py::array(py::buffer_info(
+                     result.data(), /* data as contiguous array  */
+                     sz,            /* size of one scalar        */
+                     py::format_descriptor<size_t>::format(), /* data type */
+                     ndim,   /* number of dimensions      */
+                     shape,  /* shape of the matrix       */
+                     strides /* strides for each axis     */
+                     ));
+             })
         .def(
             "DeviceToDevice",
             [](StateVectorCudaMPI<PrecisionT> &sv,

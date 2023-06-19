@@ -63,7 +63,7 @@ using namespace CUDA;
         using cp_t = std::complex<TestType>;                                   \
         using PrecisionT = TestType;                                           \
         MPIManager mpi_manager(MPI_COMM_WORLD);                                \
-        size_t mpi_buffersize = 26;                                            \
+        size_t mpi_buffersize = 1;                                             \
         size_t nGlobalIndexBits =                                              \
             std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;    \
         size_t nLocalIndexBits = NUM_QUBITS - nGlobalIndexBits;                \
