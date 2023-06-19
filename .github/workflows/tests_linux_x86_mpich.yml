@@ -28,28 +28,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  set_runs_on_values:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Set GPU Label
-        id: gpu_label
-        run: |
-          if [[ "${{ env.MULTI_GPU_SUPPORT_REQUIRED }}" == "true" ]]; then
-            echo "gpu_type=multi-gpu" >> $GITHUB_OUTPUT
-          else
-            echo "gpu_type=gpu" >> $GITHUB_OUTPUT
-          fi
-
-    outputs:
-      gpu_type: ${{ steps.gpu_label.outputs.gpu_type }}
-      runs-on: '["self-hosted", "linux", "x64", "ubuntu-22.04", "${{ steps.gpu_label.outputs.gpu_type }}"]'
-
   cpp_mpich_tests:
-    needs:
-      - set_runs_on_values
+    if: env.MULTI_GPU_SUPPORT_REQUIRED == 'true'
 
-    runs-on: ${{ fromJson(needs.set_runs_on_values.outputs.runs-on) }}
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - ubuntu-22.04
+      - multi-gpu
 
     strategy:
       max-parallel: 1
@@ -212,10 +199,14 @@ jobs:
 
 
   python_mpich_tests:
-    needs:
-      - set_runs_on_values
+    if: env.MULTI_GPU_SUPPORT_REQUIRED == 'true'
 
-    runs-on: ${{ fromJson(needs.set_runs_on_values.outputs.runs-on) }}
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - ubuntu-22.04
+      - multi-gpu
 
     strategy:
       max-parallel: 1
