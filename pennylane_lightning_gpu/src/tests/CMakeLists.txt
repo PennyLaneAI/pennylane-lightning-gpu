@@ -59,10 +59,10 @@ if(PLLGPU_ENABLE_MPI)
     find_package(MPI REQUIRED)
     target_link_libraries(mpi_runner PUBLIC MPI::MPI_CXX)
     target_link_libraries(mpi_runner PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
-    target_sources(mpi_runner PRIVATE #./mpi/Test_StateVectorCudaMPI_Param.cpp 
+    target_sources(mpi_runner PRIVATE ./mpi/Test_StateVectorCudaMPI_Param.cpp 
                                       ./mpi/Test_StateVectorCudaMPI_NonParam.cpp
-                                      #./mpi/Test_MPIManager.cpp
-                                      #./mpi/Test_MPI_AdjointDiffGPU.cpp
+                                      ./mpi/Test_MPIManager.cpp
+                                      ./mpi/Test_MPI_AdjointDiffGPU.cpp
     )
     target_compile_options(mpi_runner PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")
 

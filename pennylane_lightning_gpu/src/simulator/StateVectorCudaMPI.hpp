@@ -1111,11 +1111,11 @@ class StateVectorCudaMPI
         bool allLocal = std::all_of(
             tgtsSwapStatus.begin(), tgtsSwapStatus.end(),
             [&threshold](size_t status) { return status < threshold; });
-        
+
         mpi_manager_.Barrier();
 
         if (allLocal) {
-            expvalOnPauliBasis(pauli_words, tgts, expect_local);
+            expvalOnPauliBasis(pauli_words, tgtsInC, expect_local);
         } else {
             size_t wirePairsIdx = 0;
             for (size_t i = 0; i < pauli_words.size(); i++) {
@@ -1142,7 +1142,7 @@ class StateVectorCudaMPI
                     wirePairsIdx++;
                     expect_local[i] = expval_local[0];
                 } else {
-                
+
                     auto opsNames = pauliStringToOpNames(pauli_words[i]);
                     StateVectorCudaMPI<Precision> tmp(
                         this->getDataBuffer().getDevTag(),
@@ -1163,8 +1163,6 @@ class StateVectorCudaMPI
                             BaseType::getDataBuffer().getDevTag().getStreamID(),
                             this->getCublasCaller())
                             .x;
-                    PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
-                    mpi_manager_.Barrier();
                 }
             }
         }
