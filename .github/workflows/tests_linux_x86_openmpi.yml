@@ -231,6 +231,11 @@ jobs:
           echo "PIP Path => $pip_path"
           echo "pip=$pip_path" >> $GITHUB_OUTPUT
 
+      - name: Install Latest PennyLane
+        # We want to install the latest PL on non workflow_call events
+        if: inputs.pennylane-version == 'latest'  || inputs.pennylane-version == ''
+        run: python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
+
       - name: Install required packages (OpenMPI backend)
         run: |
           source /etc/profile.d/modules.sh
@@ -242,7 +247,6 @@ jobs:
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov mpi4py
           # Sync with latest master branches
-          python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
           
       - name: Build and install package (OpenMPI backend)

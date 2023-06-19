@@ -250,7 +250,8 @@ jobs:
           echo "pip=$pip_path" >> $GITHUB_OUTPUT
 
       - name: Install Latest PennyLane
-        if: inputs.pennylane-version == 'latest'
+        # We want to install the latest PL on non workflow_call events
+        if: inputs.pennylane-version == 'latest'  || inputs.pennylane-version == ''
         run: python -m pip install git+https://github.com/PennyLaneAI/pennylane.git@master
 
       - name: Install required packages
