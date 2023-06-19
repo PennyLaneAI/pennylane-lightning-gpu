@@ -1111,13 +1111,14 @@ class StateVectorCudaMPI
         bool allLocal = std::all_of(
             tgtsSwapStatus.begin(), tgtsSwapStatus.end(),
             [&threshold](size_t status) { return status < threshold; });
+        
+        mpi_manager_.Barrier();
 
         if (allLocal) {
             expvalOnPauliBasis(pauli_words, tgts, expect_local);
         } else {
             size_t wirePairsIdx = 0;
             for (size_t i = 0; i < pauli_words.size(); i++) {
-
                 if (tgtsSwapStatus[i] == WiresSwapStatus::Local) {
                     std::vector<std::string> pauli_words_idx(
                         1, std::string(pauli_words[i]));
@@ -1141,6 +1142,7 @@ class StateVectorCudaMPI
                     wirePairsIdx++;
                     expect_local[i] = expval_local[0];
                 } else {
+                
                     auto opsNames = pauliStringToOpNames(pauli_words[i]);
                     StateVectorCudaMPI<Precision> tmp(
                         this->getDataBuffer().getDevTag(),
@@ -1150,7 +1152,7 @@ class StateVectorCudaMPI
                     for (size_t opsIdx = 0; opsIdx < tgts[i].size(); opsIdx++) {
                         std::vector<size_t> wires = {tgts[i][opsIdx]};
                         tmp.applyOperation({opsNames[opsIdx]},
-                                           {tgts[i][opsIdx]}, {true});
+                                           {tgts[i][opsIdx]}, {false});
                     }
 
                     expect_local[i] =
@@ -1161,6 +1163,8 @@ class StateVectorCudaMPI
                             BaseType::getDataBuffer().getDevTag().getStreamID(),
                             this->getCublasCaller())
                             .x;
+                    PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+                    mpi_manager_.Barrier();
                 }
             }
         }
@@ -1553,27 +1557,6 @@ class StateVectorCudaMPI
             /* const int32_t ** */
             const_cast<const int32_t **>(basisBits_ptr.data()),
             /* const uint32_t */ n_basisBits.data()));
-
-        /*
-        std::complex<Precision> result{0, 0};
-
-        if constexpr (std::is_same_v<Precision, double>) {
-            for (std::size_t idx = 0; idx < expect.size(); idx++) {
-                result += expect[idx];
-            }
-            local_result = std::real(result);
-        } else {
-            std::vector<Precision> expect_cast(expect.size());
-            std::transform(expect.begin(), expect.end(), expect_cast.begin(),
-                           [](double x) { return static_cast<float>(x); });
-
-            for (std::size_t idx = 0; idx < expect_cast.size(); idx++) {
-                result += expect_cast[idx];
-            }
-
-            local_result = std::real(result);
-        }
-        */
     }
 
     /**

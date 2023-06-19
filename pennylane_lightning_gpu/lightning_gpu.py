@@ -870,6 +870,15 @@ if CPP_BINARY_AVAILABLE:
                 )
                 else []
             )
+            
+            if self._mpi:
+                device_wires = self.map_wires(observable.wires)
+                count_local_wires = len([x for x in device_wires if x > self._num_global_wires])
+                if self._num_local_wires < (self._num_global_wires + count_local_wires):
+                    raise ValueError(
+                        "Not enough number of local wires available for MPI operation"
+                    )
+
             return self._gpu_state.ExpectationValue(
                 observable.name,
                 self.wires.indices(observable.wires),
