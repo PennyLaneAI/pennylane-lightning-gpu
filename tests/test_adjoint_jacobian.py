@@ -920,7 +920,7 @@ def test_batching_H(returns):
 
     def circuit(params):
         circuit_ansatz(params, wires=custom_wires)
-        return np.array([qml.expval(r) for r in returns])
+        return qml.math.hstack([qml.expval(r) for r in returns])
 
     n_params = 30
     np.random.seed(1337)

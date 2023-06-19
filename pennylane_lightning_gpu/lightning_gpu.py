@@ -854,12 +854,12 @@ if CPP_BINARY_AVAILABLE:
                                 if char in _name_map:
                                     compressed_word.append(_name_map[char])
                                 else:
-                                    raise ValueError("{char} is not supported in Hamiltionian.")
+                                    raise ValueError("Pauli word only for Hamiltionian expval.")
                         else:
                             if word.name in _name_map:
                                 compressed_word.append(_name_map[word.name])
                             else:
-                                raise ValueError("{word.name} is not supported in Hamiltionian.")
+                                raise ValueError("Pauli word only for Hamiltionian expval.")
                         word_wires.append(word.wires.tolist())
                         pauli_words.append("".join(compressed_word))
                     return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
@@ -872,12 +872,6 @@ if CPP_BINARY_AVAILABLE:
                 )
                 else []
             )
-
-            if self._mpi:
-                device_wires = self.map_wires(observable.wires)
-                count_local_wires = len([x for x in device_wires if x >= self._num_global_wires])
-                if self._num_local_wires < (self._num_global_wires + count_local_wires):
-                    raise ValueError("Not enough number of local wires available for MPI operation")
 
             return self._gpu_state.ExpectationValue(
                 observable.name,

@@ -12,7 +12,7 @@
  ```python
   from mpi4py import MPI
   import pennylane as qml
-  import numpy as np
+  from pennylane import numpy as np
 
   n_wires = 20
   n_layers = 2
@@ -30,7 +30,7 @@
   ```python
   from mpi4py import MPI
   import pennylane as qml
-  import numpy as np
+  from pennylane import numpy as np
 
   n_wires = 20
   n_layers = 2
