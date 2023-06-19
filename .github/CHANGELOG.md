@@ -4,19 +4,44 @@
  * Add multi-node/multi-GPU support to adjoint methods. 
  [(#119)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/119)
  
- Note each MPI process will return the overall result of the adjoint method.
+ Note each MPI process will return the overall result of the adjoint method. The MPI adjoint method has two options:
+ 1. Default method is faster but requires more memory; 2. Memory-optimized method requires less runtime memory but slower.
+ To enable the memory-optimized method, `batch_obs` should be set as `True`.
  
- The workflow for the adjoint method with MPI support:
+ The workflow for the default adjoint method with MPI support:
  ```python
+  from mpi4py import MPI
+  import pennylane as qml
 
+  n_wires = 20
+  n_layers = 2
+  dev = qml.device('lightning.gpu', wires= n_wires, mpi=True, mpi_buf_size=1)
+  @qml.qnode(dev, diff_method="adjoint")
+  def circuit_adj(weights):
+    qml.StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
+    return [qml.expval(qml.PauliZ(i)) for i in range(n_wires)]
+  
+  params = np.random.random(qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
+  jac = qml.jacobian(circuit_adj)(params)
  ```
 
- The workflow for the Default method (Memory-Optimized Method):
+ The workflow for the Memory-Optimized Method:
   ```python
+  from mpi4py import MPI
+  import pennylane as qml
 
+  n_wires = 20
+  n_layers = 2
+  dev = qml.device('lightning.gpu', wires= n_wires, mpi=True, mpi_buf_size=1, batch_obs=True)
+  @qml.qnode(dev, diff_method="adjoint")
+  def circuit_adj(weights):
+    StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
+    return [qml.expval(qml.PauliZ(i)) for i in range(n_wires)]
+  
+  params = np.random.random(StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
+  jac = qml.jacobian(circuit_adj)(params)
  ```
 
- 
  * Add multi-node/multi-GPU support to measurement methods, including `expval`, `generate_samples` and `probability`.
  [(#116)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/116)
 

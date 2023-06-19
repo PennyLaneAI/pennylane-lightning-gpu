@@ -74,7 +74,6 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
     def circuit(*params):
         qml.QubitStateVector(state_vector, wires=range(num_wires))
         operation(*params, wires=Wires)
-        operation(*params, wires=Wires)
         return qml.state()
 
     cpu_qnode = qml.QNode(circuit, dev_cpu)

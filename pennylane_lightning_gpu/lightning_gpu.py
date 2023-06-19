@@ -717,7 +717,7 @@ if CPP_BINARY_AVAILABLE:
                         )
                         jac.extend(jac_chunk)
                 else:
-                    if self._batch_obs == 1:
+                    if self._batch_obs is True:
                         jac = adj.adjoint_jacobian_LM(
                             self._gpu_state,
                             obs_serialized,
