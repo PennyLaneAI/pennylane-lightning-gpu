@@ -38,6 +38,7 @@
 #include "pybind11/stl.h"
 
 #ifdef ENABLE_MPI
+#include "AdjointDiffGPUMPI.hpp"
 #include "MPIManager.hpp"
 #include "StateVectorCudaMPI.hpp"
 #endif
@@ -767,6 +768,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
     //***********************************************************************//
     //                              Operations
     //***********************************************************************//
+
     class_name = "OpsStructGPU_C" + bitsize;
     py::class_<OpsData<PrecisionT>>(m, class_name.c_str(), py::module_local())
         .def(py::init<
@@ -922,6 +924,8 @@ void MPIManager_class_bindings(py::module &m) {
 
 template <class PrecisionT, class ParamT>
 void StateVectorCudaMPI_class_bindings(py::module &m) {
+    using np_arr_r =
+        py::array_t<ParamT, py::array::c_style | py::array::forcecast>;
     using np_arr_c = py::array_t<std::complex<ParamT>,
                                  py::array::c_style | py::array::forcecast>;
     using np_arr_sparse_ind = typename std::conditional<
@@ -1349,6 +1353,21 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
             "Calculate the expectation value of the Hamiltonian observable "
             "with custatevecComputeExpectation.")
         .def(
+            "ExpectationValue",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const std::vector<std::string> &pauli_words,
+               const std::vector<std::vector<std::size_t>> &target_wires,
+               const np_arr_c &coeffs) {
+                py::buffer_info numpyArrayInfo = coeffs.request();
+                auto *coeffs_ptr =
+                    static_cast<complex<PrecisionT> *>(numpyArrayInfo.ptr);
+
+                return sv.getExpectationValuePauliWords(
+                    pauli_words, target_wires, coeffs_ptr);
+            },
+            "Calculate the expectation value of a Hamiltonian composed solely "
+            "from sums of Pauli-words")
+        .def(
             "Probability",
             [](StateVectorCudaMPI<PrecisionT> &sv,
                const std::vector<std::size_t> &wires) {
@@ -1434,7 +1453,200 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
              &StateVectorCudaMPI<PrecisionT>::getNumGlobalQubits)
         .def("dataLength", &StateVectorCudaMPI<PrecisionT>::getLength)
         .def("resetGPU", &StateVectorCudaMPI<PrecisionT>::initSV_MPI);
+
+    //***********************************************************************//
+    //                              Observable
+    //***********************************************************************//
+
+    class_name = "ObservableGPUMPI_C" + bitsize;
+    py::class_<ObservableGPUMPI<PrecisionT>,
+               std::shared_ptr<ObservableGPUMPI<PrecisionT>>>(
+        m, class_name.c_str(), py::module_local());
+
+    class_name = "NamedObsGPUMPI_C" + bitsize;
+    py::class_<NamedObsGPUMPI<PrecisionT>,
+               std::shared_ptr<NamedObsGPUMPI<PrecisionT>>,
+               ObservableGPUMPI<PrecisionT>>(m, class_name.c_str(),
+                                             py::module_local())
+        .def(py::init(
+            [](const std::string &name, const std::vector<size_t> &wires) {
+                return NamedObsGPUMPI<PrecisionT>(name, wires);
+            }))
+        .def("__repr__", &NamedObsGPUMPI<PrecisionT>::getObsName)
+        .def("get_wires", &NamedObsGPUMPI<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const NamedObsGPUMPI<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<NamedObsGPUMPI<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<NamedObsGPUMPI<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "HermitianObsGPUMPI_C" + bitsize;
+    py::class_<HermitianObsGPUMPI<PrecisionT>,
+               std::shared_ptr<HermitianObsGPUMPI<PrecisionT>>,
+               ObservableGPUMPI<PrecisionT>>(m, class_name.c_str(),
+                                             py::module_local())
+        .def(py::init([](const np_arr_c &matrix,
+                         const std::vector<size_t> &wires) {
+            const auto m_buffer = matrix.request();
+            std::vector<std::complex<ParamT>> conv_matrix;
+            if (m_buffer.size) {
+                const auto m_ptr =
+                    static_cast<const std::complex<PrecisionT> *>(m_buffer.ptr);
+                conv_matrix = std::vector<std::complex<PrecisionT>>{
+                    m_ptr, m_ptr + m_buffer.size};
+            }
+            return HermitianObsGPUMPI<PrecisionT>(conv_matrix, wires);
+        }))
+        .def("__repr__", &HermitianObsGPUMPI<PrecisionT>::getObsName)
+        .def("get_wires", &HermitianObsGPUMPI<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const HermitianObsGPUMPI<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<HermitianObsGPUMPI<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<HermitianObsGPUMPI<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "TensorProdObsGPUMPI_C" + bitsize;
+    py::class_<TensorProdObsGPUMPI<PrecisionT>,
+               std::shared_ptr<TensorProdObsGPUMPI<PrecisionT>>,
+               ObservableGPUMPI<PrecisionT>>(m, class_name.c_str(),
+                                             py::module_local())
+        .def(py::init(
+            [](const std::vector<std::shared_ptr<ObservableGPUMPI<PrecisionT>>>
+                   &obs) { return TensorProdObsGPUMPI<PrecisionT>(obs); }))
+        .def("__repr__", &TensorProdObsGPUMPI<PrecisionT>::getObsName)
+        .def("get_wires", &TensorProdObsGPUMPI<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const TensorProdObsGPUMPI<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<TensorProdObsGPUMPI<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<TensorProdObsGPUMPI<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "HamiltonianGPUMPI_C" + bitsize;
+    using ObsPtr = std::shared_ptr<ObservableGPUMPI<PrecisionT>>;
+    py::class_<HamiltonianGPUMPI<PrecisionT>,
+               std::shared_ptr<HamiltonianGPUMPI<PrecisionT>>,
+               ObservableGPUMPI<PrecisionT>>(m, class_name.c_str(),
+                                             py::module_local())
+        .def(py::init(
+            [](const np_arr_r &coeffs, const std::vector<ObsPtr> &obs) {
+                auto buffer = coeffs.request();
+                const auto ptr = static_cast<const ParamT *>(buffer.ptr);
+                return HamiltonianGPUMPI<PrecisionT>{
+                    std::vector(ptr, ptr + buffer.size), obs};
+            }))
+        .def("__repr__", &HamiltonianGPUMPI<PrecisionT>::getObsName)
+        .def("get_wires", &HamiltonianGPUMPI<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const HamiltonianGPUMPI<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<HamiltonianGPUMPI<PrecisionT>>(other)) {
+                    return false;
+                }
+                auto other_cast = other.cast<HamiltonianGPUMPI<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    //***********************************************************************//
+    //                              MPI Adj Jac
+    //***********************************************************************//
+
+    class_name = "AdjointJacobianGPUMPI_C" + bitsize;
+    py::class_<AdjointJacobianGPUMPI<PrecisionT, StateVectorCudaMPI>>(
+        m, class_name.c_str(), py::module_local())
+        .def(py::init<>())
+        .def("create_ops_list",
+             [](AdjointJacobianGPUMPI<PrecisionT, StateVectorCudaMPI> &adj,
+                const std::vector<std::string> &ops_name,
+                const std::vector<np_arr_r> &ops_params,
+                const std::vector<std::vector<size_t>> &ops_wires,
+                const std::vector<bool> &ops_inverses,
+                const std::vector<np_arr_c> &ops_matrices) {
+                 std::vector<std::vector<PrecisionT>> conv_params(
+                     ops_params.size());
+                 std::vector<std::vector<std::complex<PrecisionT>>>
+                     conv_matrices(ops_matrices.size());
+                 static_cast<void>(adj);
+                 for (size_t op = 0; op < ops_name.size(); op++) {
+                     const auto p_buffer = ops_params[op].request();
+                     const auto m_buffer = ops_matrices[op].request();
+                     if (p_buffer.size) {
+                         const auto *const p_ptr =
+                             static_cast<const ParamT *>(p_buffer.ptr);
+                         conv_params[op] =
+                             std::vector<ParamT>{p_ptr, p_ptr + p_buffer.size};
+                     }
+
+                     if (m_buffer.size) {
+                         const auto m_ptr =
+                             static_cast<const std::complex<ParamT> *>(
+                                 m_buffer.ptr);
+                         conv_matrices[op] = std::vector<std::complex<ParamT>>{
+                             m_ptr, m_ptr + m_buffer.size};
+                     }
+                 }
+
+                 return OpsData<PrecisionT>{ops_name, conv_params, ops_wires,
+                                            ops_inverses, conv_matrices};
+             })
+        .def("adjoint_jacobian",
+             &AdjointJacobianGPUMPI<PrecisionT,
+                                    StateVectorCudaMPI>::adjointJacobian)
+        .def("adjoint_jacobian",
+             [](AdjointJacobianGPUMPI<PrecisionT, StateVectorCudaMPI> &adj,
+                const StateVectorCudaMPI<PrecisionT> &sv,
+                const std::vector<std::shared_ptr<ObservableGPUMPI<PrecisionT>>>
+                    &observables,
+                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+                const std::vector<size_t> &trainableParams) {
+                 std::vector<std::vector<PrecisionT>> jac(
+                     observables.size(),
+                     std::vector<PrecisionT>(trainableParams.size(), 0));
+
+                 adj.adjointJacobian(sv, jac, observables, operations,
+                                     trainableParams, false);
+                 return py::array_t<ParamT>(py::cast(jac));
+             })
+        .def("adjoint_jacobian_serial",
+             [](AdjointJacobianGPUMPI<PrecisionT, StateVectorCudaMPI> &adj,
+                const StateVectorCudaMPI<PrecisionT> &sv,
+                const std::vector<std::shared_ptr<ObservableGPUMPI<PrecisionT>>>
+                    &observables,
+                const Pennylane::Algorithms::OpsData<PrecisionT> &operations,
+                const std::vector<size_t> &trainableParams) {
+                 std::vector<std::vector<PrecisionT>> jac(
+                     observables.size(),
+                     std::vector<PrecisionT>(trainableParams.size(), 0));
+
+                 adj.adjointJacobian_serial(sv, jac, observables, operations,
+                                            trainableParams, false);
+                 return py::array_t<ParamT>(py::cast(jac));
+             });
 }
+
 #endif
 
 /**
