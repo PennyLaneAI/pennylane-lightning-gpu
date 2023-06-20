@@ -1,0 +1,22 @@
+name: Compat Check w/PL - stable/stable
+
+on:
+  schedule:
+    - cron: "0 3 * * 1-5"  # Run daily at 3am Mon-Fri
+  workflow_dispatch:
+
+jobs:
+  tests_linux_x86:
+    name: Lightning-GPU Compatibility test (tests_linux_x86) - stable/stable
+    uses: ./.github/workflows/tests_linux_x86.yml
+    with:
+      lightning-gpu-version: stable
+      pennylane-version: stable
+
+  tests_linux_x86_mpich:
+    name: Lightning-GPU Compatibility test (tests_linux_x86_mpich) - stable/stable
+    uses: ./.github/workflows/tests_linux_x86_mpich.yml
+    with:
+      lightning-gpu-version: stable
+      pennylane-version: stable
+
