@@ -25,7 +25,6 @@ import itertools as it
 import math
 
 from pennylane_lightning_gpu.lightning_gpu_qubit_ops import (
-    DevPool,
     NamedObsGPUMPI_C64,
     NamedObsGPUMPI_C128,
     TensorProdObsGPUMPI_C64,
@@ -55,49 +54,23 @@ I, X, Y, Z = (
 )
 
 
-def Rx(theta):
-    r"""One-qubit rotation about the x axis.
-
-    Args:
-        theta (float): rotation angle
-    Returns:
-        array: unitary 2x2 rotation matrix :math:`e^{-i \sigma_x \theta/2}`
-    """
-    return math.cos(theta / 2) * I + 1j * math.sin(-theta / 2) * X
-
-
-def Ry(theta):
-    r"""One-qubit rotation about the y axis.
-
-    Args:
-        theta (float): rotation angle
-    Returns:
-        array: unitary 2x2 rotation matrix :math:`e^{-i \sigma_y \theta/2}`
-    """
-    return math.cos(theta / 2) * I + 1j * math.sin(-theta / 2) * Y
-
-
-def Rz(theta):
-    r"""One-qubit rotation about the z axis.
-
-    Args:
-        theta (float): rotation angle
-    Returns:
-        array: unitary 2x2 rotation matrix :math:`e^{-i \sigma_z \theta/2}`
-    """
-    return math.cos(theta / 2) * I + 1j * math.sin(-theta / 2) * Z
 
 
 class TestAdjointJacobian:
     """Test QNode integration with the adjoint_jacobian method"""
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_not_expval_adj_mpi(self, isBatch_obs):
+    def test_not_expval_adj_mpi(self, isBatch_obs, request):
         """Test if a QuantumFunctionError is raised for a tape with measurements that are not
         expectation values"""
         num_wires = 8
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         with qml.tape.QuantumTape() as tape:
@@ -171,6 +144,7 @@ class TestAdjointJacobian:
 
     @pytest.mark.parametrize("isBatch_obs", [False, True])
     def test_unsupported_hermitian_expectation(self, isBatch_obs):
+        """Test if a QuantumFunctionError is raised for a Hermitian observable"""
         num_wires = 8
         dev_gpumpi = qml.device(
             "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
@@ -794,7 +768,6 @@ def test_integration(returns, isBatch_obs):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations"""
     num_wires = 6
-    comm = MPI.COMM_WORLD
     dev_default = qml.device("default.qubit", wires=range(num_wires))
     dev_gpu = qml.device(
         "lightning.gpu",
@@ -846,7 +819,6 @@ custom_wires = ["alice", 3.14, -1, 0, "bob", "luc"]
 def test_integration_custom_wires(returns, isBatch_obs):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations and when using custom wire labels"""
-    comm = MPI.COMM_WORLD
     dev_lightning = qml.device("lightning.qubit", wires=custom_wires)
     dev_gpu = qml.device(
         "lightning.gpu", wires=custom_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs

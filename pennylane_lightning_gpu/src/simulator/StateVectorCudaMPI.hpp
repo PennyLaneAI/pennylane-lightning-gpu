@@ -1063,8 +1063,8 @@ class StateVectorCudaMPI
 
         std::vector<std::size_t> tgtsSwapStatus;
         std::vector<std::vector<int2>> tgtswirePairs;
-        std::vector<std::vector<size_t>> tgtsInC;
-        tgtsInC.reserve(tgts.size());
+        std::vector<std::vector<size_t>> tgtsIntTrans;
+        tgtsIntTrans.reserve(tgts.size());
 
         for (const auto &vec : tgts) {
             std::vector<size_t> tmpVecInt(
@@ -1074,18 +1074,19 @@ class StateVectorCudaMPI
                            [&](std::size_t x) {
                                return this->getTotalNumQubits() - 1 - x;
                            });
-            tgtsInC.push_back(std::move(tmpVecInt));
+            tgtsIntTrans.push_back(std::move(tmpVecInt));
         }
 
-        std::vector<std::vector<size_t>> localTgtsInC;
-        localTgtsInC.reserve(tgts.size());
+        // Local target wires (required by expvalOnPauliBasis)
+        std::vector<std::vector<size_t>> localTgts;
+        localTgts.reserve(tgts.size());
 
-        for (const auto &vec : tgtsInC) {
+        for (const auto &vec : tgtsIntTrans) {
             std::vector<int> statusWires(this->getTotalNumQubits(),
                                          WireStatus::Default);
 
-            for (size_t i = 0; i < vec.size(); i++) {
-                statusWires[vec[i]] = WireStatus::Target;
+            for (auto &v : vec) {
+                statusWires[v] = WireStatus::Target;
             }
             size_t StatusGlobalWires =
                 std::reduce(statusWires.begin() + this->getNumLocalQubits(),
@@ -1093,7 +1094,7 @@ class StateVectorCudaMPI
 
             if (!StatusGlobalWires) {
                 tgtsSwapStatus.push_back(WiresSwapStatus::Local);
-                localTgtsInC.push_back(vec);
+                localTgts.push_back(vec);
             } else {
                 size_t counts_global_wires = std::count_if(
                     statusWires.begin(),
@@ -1102,7 +1103,8 @@ class StateVectorCudaMPI
                 size_t counts_local_wires_avail =
                     this->getNumLocalQubits() -
                     (vec.size() - counts_global_wires);
-
+                // Check if there are sufficent number of local wires for bit
+                // swap
                 if (counts_global_wires <= counts_local_wires_avail) {
                     tgtsSwapStatus.push_back(WiresSwapStatus::Swappable);
 
@@ -1117,15 +1119,15 @@ class StateVectorCudaMPI
                     std::transform(
                         localVec.begin(), localVec.end(), localVecSizeT.begin(),
                         [&](int x) { return static_cast<size_t>(x); });
-                    localTgtsInC.push_back(localVecSizeT);
+                    localTgts.push_back(localVecSizeT);
                     tgtswirePairs.push_back(wirePairs);
-
                 } else {
                     tgtsSwapStatus.push_back(WiresSwapStatus::UnSwappable);
-                    localTgtsInC.push_back(vec);
+                    localTgts.push_back(vec);
                 }
             }
         }
+        // Check if all target wires are local
         auto threshold = WiresSwapStatus::Swappable;
         bool allLocal = std::all_of(
             tgtsSwapStatus.begin(), tgtsSwapStatus.end(),
@@ -1134,7 +1136,7 @@ class StateVectorCudaMPI
         mpi_manager_.Barrier();
 
         if (allLocal) {
-            expvalOnPauliBasis(pauli_words, tgtsInC, expect_local);
+            expvalOnPauliBasis(pauli_words, localTgts, expect_local);
         } else {
             size_t wirePairsIdx = 0;
             for (size_t i = 0; i < pauli_words.size(); i++) {
@@ -1142,7 +1144,7 @@ class StateVectorCudaMPI
                     std::vector<std::string> pauli_words_idx(
                         1, std::string(pauli_words[i]));
                     std::vector<std::vector<size_t>> tgts_idx;
-                    tgts_idx.push_back(localTgtsInC[i]);
+                    tgts_idx.push_back(localTgts[i]);
                     std::vector<double> expval_local(1);
 
                     expvalOnPauliBasis(pauli_words_idx, tgts_idx, expval_local);
@@ -1151,7 +1153,7 @@ class StateVectorCudaMPI
                     std::vector<std::string> pauli_words_idx(
                         1, std::string(pauli_words[i]));
                     std::vector<std::vector<size_t>> tgts_idx;
-                    tgts_idx.push_back(localTgtsInC[i]);
+                    tgts_idx.push_back(localTgts[i]);
                     std::vector<double> expval_local(1);
 
                     applyMPI_Dispatcher(tgtswirePairs[wirePairsIdx],
@@ -1161,7 +1163,6 @@ class StateVectorCudaMPI
                     wirePairsIdx++;
                     expect_local[i] = expval_local[0];
                 } else {
-
                     auto opsNames = pauliStringToOpNames(pauli_words[i]);
                     StateVectorCudaMPI<Precision> tmp(
                         this->getDataBuffer().getDevTag(),
@@ -1537,7 +1538,6 @@ class StateVectorCudaMPI
         // Note: due to API design, cuStateVec assumes this is always a double.
         // Push NVIDIA to move this to behind API for future releases, and
         // support 32/64 bits.
-        // std::vector<double> expect(pauli_words.size());
 
         std::vector<std::vector<custatevecPauli_t>> pauliOps;
 
