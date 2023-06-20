@@ -149,7 +149,49 @@ class StateVectorCudaMPI
         mpi_manager_.Barrier();
     };
 
+    StateVectorCudaMPI(const DevTag<int> &dev_tag, size_t num_global_qubits,
+                       size_t num_local_qubits, const CFP_t *gpu_data)
+        : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
+              num_local_qubits, dev_tag, true),
+          numGlobalQubits_(num_global_qubits),
+          numLocalQubits_(num_local_qubits), mpi_manager_(MPI_COMM_WORLD),
+          handle_(make_shared_cusv_handle()),
+          cublascaller_(make_shared_cublas_caller()),
+          localStream_(make_shared_local_stream()),
+          svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
+              handle_.get(), mpi_manager_, 0, BaseType::getData(),
+              num_local_qubits, localStream_.get())),
+          gate_cache_(true, dev_tag) {
+        size_t length = 1 << numLocalQubits_;
+        BaseType::CopyGpuDataToGpuIn(gpu_data, length, false);
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize())
+        mpi_manager_.Barrier();
+    }
+
+    StateVectorCudaMPI(const DevTag<int> &dev_tag, size_t num_global_qubits,
+                       size_t num_local_qubits)
+        : StateVectorCudaBase<Precision, StateVectorCudaMPI<Precision>>(
+              num_local_qubits, dev_tag, true),
+          numGlobalQubits_(num_global_qubits),
+          numLocalQubits_(num_local_qubits), mpi_manager_(MPI_COMM_WORLD),
+          handle_(make_shared_cusv_handle()),
+          cublascaller_(make_shared_cublas_caller()),
+          localStream_(make_shared_local_stream()),
+          svSegSwapWorker_(make_shared_mpi_worker<CFP_t>(
+              handle_.get(), mpi_manager_, 0, BaseType::getData(),
+              num_local_qubits, localStream_.get())),
+          gate_cache_(true, dev_tag) {
+        initSV_MPI();
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        mpi_manager_.Barrier();
+    }
+
     ~StateVectorCudaMPI() = default;
+
+    /**
+     * @brief Get MPI manager
+     */
+    auto getMPIManager() const { return mpi_manager_; }
 
     /**
      * @brief Get the total number of wires.
@@ -984,6 +1026,189 @@ class StateVectorCudaMPI
     }
 
     /**
+     * @brief Get expectation value for a sum of Pauli words. This function
+     * accepts a vector of words, where each word contains a set of Pauli
+     * operations along with their corresponding wires and coefficients of the
+     * Hamiltonian. The expval calculation is performed based on the word and
+     * its corresponding target wires. The distribution of target wires can be
+     * categorized into three different types:1. All target wires are local, and
+     * no MPI operation is required. 2. Some target wires are located at the
+     * global wires, and there are sufficient local wires available for bit swap
+     * operations. 3. Some target wires are located at the global wires, and
+     * there are insufficient local wires available for bit swap operations. For
+     * the first scenario, the `expvalOnPauliBasis` method can be called
+     * directly to obtain the `expval`. In the second scenario, bit swap
+     * operations are necessary before and after the `expvalOnPauliBasis`
+     * operation to get the `expval`. In the third scenario, a temporary state
+     * vector is created to calculate the `bra`, and then the inner product is
+     * used to calculate the `expval`. This function here will check the
+     * corresponding target wires of all word first. If all target wires for
+     * each word are local, the `expvalOnPauliBasis` will be called just once.
+     * Otherwise, each word will be looped and corresponding expval calculation
+     * methods will be adopted.
+     *
+     * @param pauli_words Vector of Pauli-words to evaluate expectation value.
+     * @param tgts Coupled qubit index to apply each Pauli term.
+     * @param coeffs Numpy array buffer of size |pauli_words|
+     * @return auto Expectation value.
+     */
+    auto getExpectationValuePauliWords(
+        const std::vector<std::string> &pauli_words,
+        const std::vector<std::vector<std::size_t>> &tgts,
+        const std::complex<Precision> *coeffs) {
+
+        enum WiresSwapStatus : std::size_t { Local, Swappable, UnSwappable };
+
+        std::vector<double> expect_local(pauli_words.size());
+
+        std::vector<std::size_t> tgtsSwapStatus;
+        std::vector<std::vector<int2>> tgtswirePairs;
+        std::vector<std::vector<size_t>> tgtsIntTrans;
+        tgtsIntTrans.reserve(tgts.size());
+
+        for (const auto &vec : tgts) {
+            std::vector<size_t> tmpVecInt(
+                vec.size()); // Reserve memory for efficiency
+
+            std::transform(vec.begin(), vec.end(), tmpVecInt.begin(),
+                           [&](std::size_t x) {
+                               return this->getTotalNumQubits() - 1 - x;
+                           });
+            tgtsIntTrans.push_back(std::move(tmpVecInt));
+        }
+
+        // Local target wires (required by expvalOnPauliBasis)
+        std::vector<std::vector<size_t>> localTgts;
+        localTgts.reserve(tgts.size());
+
+        for (const auto &vec : tgtsIntTrans) {
+            std::vector<int> statusWires(this->getTotalNumQubits(),
+                                         WireStatus::Default);
+
+            for (auto &v : vec) {
+                statusWires[v] = WireStatus::Target;
+            }
+            size_t StatusGlobalWires =
+                std::reduce(statusWires.begin() + this->getNumLocalQubits(),
+                            statusWires.end());
+
+            if (!StatusGlobalWires) {
+                tgtsSwapStatus.push_back(WiresSwapStatus::Local);
+                localTgts.push_back(vec);
+            } else {
+                size_t counts_global_wires = std::count_if(
+                    statusWires.begin(),
+                    statusWires.begin() + this->getNumLocalQubits(),
+                    [](int i) { return i != WireStatus::Default; });
+                size_t counts_local_wires_avail =
+                    this->getNumLocalQubits() -
+                    (vec.size() - counts_global_wires);
+                // Check if there are sufficent number of local wires for bit
+                // swap
+                if (counts_global_wires <= counts_local_wires_avail) {
+                    tgtsSwapStatus.push_back(WiresSwapStatus::Swappable);
+
+                    std::vector<int> localVec(vec.size());
+                    std::transform(
+                        vec.begin(), vec.end(), localVec.begin(),
+                        [&](size_t x) { return static_cast<int>(x); });
+                    auto wirePairs = createWirePairs(this->getNumLocalQubits(),
+                                                     this->getTotalNumQubits(),
+                                                     localVec, statusWires);
+                    std::vector<size_t> localVecSizeT(localVec.size());
+                    std::transform(
+                        localVec.begin(), localVec.end(), localVecSizeT.begin(),
+                        [&](int x) { return static_cast<size_t>(x); });
+                    localTgts.push_back(localVecSizeT);
+                    tgtswirePairs.push_back(wirePairs);
+                } else {
+                    tgtsSwapStatus.push_back(WiresSwapStatus::UnSwappable);
+                    localTgts.push_back(vec);
+                }
+            }
+        }
+        // Check if all target wires are local
+        auto threshold = WiresSwapStatus::Swappable;
+        bool allLocal = std::all_of(
+            tgtsSwapStatus.begin(), tgtsSwapStatus.end(),
+            [&threshold](size_t status) { return status < threshold; });
+
+        mpi_manager_.Barrier();
+
+        if (allLocal) {
+            expvalOnPauliBasis(pauli_words, localTgts, expect_local);
+        } else {
+            size_t wirePairsIdx = 0;
+            for (size_t i = 0; i < pauli_words.size(); i++) {
+                if (tgtsSwapStatus[i] == WiresSwapStatus::Local) {
+                    std::vector<std::string> pauli_words_idx(
+                        1, std::string(pauli_words[i]));
+                    std::vector<std::vector<size_t>> tgts_idx;
+                    tgts_idx.push_back(localTgts[i]);
+                    std::vector<double> expval_local(1);
+
+                    expvalOnPauliBasis(pauli_words_idx, tgts_idx, expval_local);
+                    expect_local[i] = expval_local[0];
+                } else if (tgtsSwapStatus[i] == WiresSwapStatus::Swappable) {
+                    std::vector<std::string> pauli_words_idx(
+                        1, std::string(pauli_words[i]));
+                    std::vector<std::vector<size_t>> tgts_idx;
+                    tgts_idx.push_back(localTgts[i]);
+                    std::vector<double> expval_local(1);
+
+                    applyMPI_Dispatcher(tgtswirePairs[wirePairsIdx],
+                                        &StateVectorCudaMPI::expvalOnPauliBasis,
+                                        pauli_words_idx, tgts_idx,
+                                        expval_local);
+                    wirePairsIdx++;
+                    expect_local[i] = expval_local[0];
+                } else {
+                    auto opsNames = pauliStringToOpNames(pauli_words[i]);
+                    StateVectorCudaMPI<Precision> tmp(
+                        this->getDataBuffer().getDevTag(),
+                        this->getNumGlobalQubits(), this->getNumLocalQubits(),
+                        this->getData());
+
+                    for (size_t opsIdx = 0; opsIdx < tgts[i].size(); opsIdx++) {
+                        std::vector<size_t> wires = {tgts[i][opsIdx]};
+                        tmp.applyOperation({opsNames[opsIdx]},
+                                           {tgts[i][opsIdx]}, {false});
+                    }
+
+                    expect_local[i] =
+                        innerProdC_CUDA(
+                            tmp.getData(), BaseType::getData(),
+                            BaseType::getLength(),
+                            BaseType::getDataBuffer().getDevTag().getDeviceID(),
+                            BaseType::getDataBuffer().getDevTag().getStreamID(),
+                            this->getCublasCaller())
+                            .x;
+                }
+            }
+        }
+
+        auto expect = mpi_manager_.allreduce<double>(expect_local, "sum");
+        std::complex<Precision> result{0, 0};
+
+        if constexpr (std::is_same_v<Precision, double>) {
+            for (std::size_t idx = 0; idx < expect.size(); idx++) {
+                result += expect[idx] * coeffs[idx];
+            }
+            return std::real(result);
+        } else {
+            std::vector<Precision> expect_cast(expect.size());
+            std::transform(expect.begin(), expect.end(), expect_cast.begin(),
+                           [](double x) { return static_cast<float>(x); });
+
+            for (std::size_t idx = 0; idx < expect_cast.size(); idx++) {
+                result += expect_cast[idx] * coeffs[idx];
+            }
+
+            return std::real(result);
+        }
+    }
+
+    /**
      * @brief Utility method for samples.
      *
      * @param num_samples Number of Samples
@@ -1286,6 +1511,69 @@ class StateVectorCudaMPI
                            return BaseType::getNumQubits() - 1 - i;
                        });
         return t_indices;
+    }
+
+    /**
+     * @brief Get expectation value for a sum of Pauli words.
+     *
+     * @param pauli_words Vector of Pauli-words to evaluate expectation value.
+     * @param tgts Coupled qubit index to apply each Pauli term.
+     * @param coeffs Numpy array buffer of size |pauli_words|
+     * @return auto Expectation value.
+     */
+    auto expvalOnPauliBasis(const std::vector<std::string> &pauli_words,
+                            const std::vector<std::vector<std::size_t>> &tgts,
+                            std::vector<double> &local_expect) {
+
+        uint32_t nIndexBits = static_cast<uint32_t>(this->getNumLocalQubits());
+        cudaDataType_t data_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+        } else {
+            data_type = CUDA_C_32F;
+        }
+
+        // Note: due to API design, cuStateVec assumes this is always a double.
+        // Push NVIDIA to move this to behind API for future releases, and
+        // support 32/64 bits.
+
+        std::vector<std::vector<custatevecPauli_t>> pauliOps;
+
+        std::vector<custatevecPauli_t *> pauliOps_ptr;
+
+        for (auto &p_word : pauli_words) {
+            pauliOps.push_back(cuUtil::pauliStringToEnum(p_word));
+            pauliOps_ptr.push_back((*pauliOps.rbegin()).data());
+        }
+
+        std::vector<std::vector<int32_t>> basisBits;
+        std::vector<int32_t *> basisBits_ptr;
+        std::vector<uint32_t> n_basisBits;
+
+        for (auto &wires : tgts) {
+            std::vector<int32_t> wiresInt(wires.size());
+            std::transform(wires.begin(), wires.end(), wiresInt.begin(),
+                           [&](std::size_t x) { return static_cast<int>(x); });
+            basisBits.push_back(wiresInt);
+            basisBits_ptr.push_back((*basisBits.rbegin()).data());
+            n_basisBits.push_back(wiresInt.size());
+        }
+
+        // compute expectation
+        PL_CUSTATEVEC_IS_SUCCESS(custatevecComputeExpectationsOnPauliBasis(
+            /* custatevecHandle_t */ handle_.get(),
+            /* void* */ BaseType::getData(),
+            /* cudaDataType_t */ data_type,
+            /* const uint32_t */ nIndexBits,
+            /* double* */ local_expect.data(),
+            /* const custatevecPauli_t ** */
+            const_cast<const custatevecPauli_t **>(pauliOps_ptr.data()),
+            /* const uint32_t */ static_cast<uint32_t>(pauliOps.size()),
+            /* const int32_t ** */
+            const_cast<const int32_t **>(basisBits_ptr.data()),
+            /* const uint32_t */ n_basisBits.data()));
     }
 
     /**

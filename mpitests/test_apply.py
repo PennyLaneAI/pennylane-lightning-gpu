@@ -643,6 +643,26 @@ class TestExpval:
 
         assert np.allclose(cpu_qnode(), gpumpi_qnode(), atol=tol, rtol=0)
 
+    def test_fail_expval_non_pauli_word_hamiltionian(self):
+        comm = MPI.COMM_WORLD
+        dev_gpumpi = qml.device("lightning.gpu", wires=3, mpi=True)
+
+        theta = 0.432
+        phi = 0.123
+        varphi = -0.543
+
+        @qml.qnode(dev_gpumpi)
+        def circuit():
+            qml.RX(theta, wires=[0])
+            qml.RX(phi, wires=[1])
+            qml.RX(varphi, wires=[2])
+            qml.CNOT(wires=[0, 1])
+            qml.CNOT(wires=[1, 2])
+            return qml.expval(0.5 * qml.Hadamard(2))
+
+        with pytest.raises(ValueError, match="Pauli word only for Hamiltionian expval."):
+            res = circuit()
+
 
 class TestGenerateSample:
     """Tests that samples are properly calculated."""
@@ -1153,7 +1173,7 @@ def test_integration(returns):
 
     def circuit(params):
         circuit_ansatz(params, wires=range(num_wires))
-        return [qml.expval(r) for r in returns]
+        return qml.math.hstack([qml.expval(r) for r in returns])
 
     n_params = 30
     np.random.seed(1337)

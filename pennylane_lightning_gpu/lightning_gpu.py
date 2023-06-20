@@ -76,7 +76,15 @@ try:
         from .lightning_gpu_qubit_ops import (
             LightningGPUMPI_C128,
             LightningGPUMPI_C64,
+            AdjointJacobianGPUMPI_C128,
+            AdjointJacobianGPUMPI_C64,
             MPIManager,
+            NamedObsGPUMPI_C64,
+            NamedObsGPUMPI_C128,
+            TensorProdObsGPUMPI_C64,
+            TensorProdObsGPUMPI_C128,
+            HamiltonianGPUMPI_C64,
+            HamiltonianGPUMPI_C128,
         )
 
         MPI_SUPPORT = True
@@ -116,6 +124,12 @@ def _H_dtype(dtype):
     if dtype not in [np.complex128, np.complex64]:
         raise ValueError(f"Data type is not supported for state-vector computation: {dtype}")
     return HamiltonianGPU_C128 if dtype == np.complex128 else HamiltonianGPU_C64
+
+
+def _adj_dtype(use_csingle, mpi=False):
+    if not mpi:
+        return AdjointJacobianGPU_C64 if use_csingle else AdjointJacobianGPU_C128
+    return AdjointJacobianGPUMPI_C64 if use_csingle else AdjointJacobianGPUMPI_C128
 
 
 def _megabytesToBytes(megabytes):
@@ -242,7 +256,6 @@ if CPP_BINARY_AVAILABLE:
                 self._mpi = False
                 self._num_local_wires = self.num_wires
                 self._gpu_state = _gpu_dtype(c_dtype)(self._num_local_wires)
-                self._batch_obs = batch_obs
             else:
                 self._mpi = True
                 self._mpi_init_helper(self.num_wires)
@@ -273,7 +286,7 @@ if CPP_BINARY_AVAILABLE:
                     self._num_global_wires,
                     self._num_local_wires,
                 )
-                self._batch_obs = False
+            self._batch_obs = batch_obs
             self._create_basis_state_GPU(0)
             self._sync = sync
 
@@ -641,16 +654,14 @@ if CPP_BINARY_AVAILABLE:
                 if not use_device_state:
                     self.reset()
                     self.execute(tape)
-
+            adj = _adj_dtype(self.use_csingle, self._mpi)()
             if self.use_csingle:
-                adj = AdjointJacobianGPU_C64()
                 ket = ket.astype(np.complex64)
-            else:
-                adj = AdjointJacobianGPU_C128()
 
             obs_serialized, obs_offsets = _serialize_observables(
-                tape, self.wire_map, use_csingle=self.use_csingle
+                tape, self.wire_map, use_csingle=self.use_csingle, use_mpi=self._mpi
             )
+
             ops_serialized, use_sp = _serialize_ops(
                 tape, self.wire_map, use_csingle=self.use_csingle
             )
@@ -687,22 +698,32 @@ if CPP_BINARY_AVAILABLE:
             """
 
             if self._batch_obs:
-                num_obs = len(obs_serialized)
-                batch_size = (
-                    num_obs
-                    if isinstance(self._batch_obs, bool)
-                    else self._batch_obs * self._dp.getTotalDevices()
-                )
-                jac = []
-                for chunk in range(0, num_obs, batch_size):
-                    obs_chunk = obs_serialized[chunk : chunk + batch_size]
-                    jac_chunk = adj.adjoint_jacobian_batched(
-                        self._gpu_state,
-                        obs_chunk,
-                        ops_serialized,
-                        tp_shift,
+                if not self._mpi:
+                    num_obs = len(obs_serialized)
+                    batch_size = (
+                        num_obs
+                        if isinstance(self._batch_obs, bool)
+                        else self._batch_obs * self._dp.getTotalDevices()
                     )
-                    jac.extend(jac_chunk)
+                    jac = []
+                    for chunk in range(0, num_obs, batch_size):
+                        obs_chunk = obs_serialized[chunk : chunk + batch_size]
+                        jac_chunk = adj.adjoint_jacobian_batched(
+                            self._gpu_state,
+                            obs_chunk,
+                            ops_serialized,
+                            tp_shift,
+                        )
+                        jac.extend(jac_chunk)
+                else:
+                    if self._batch_obs is True:
+                        jac = adj.adjoint_jacobian_serial(
+                            self._gpu_state,
+                            obs_serialized,
+                            ops_serialized,
+                            tp_shift,
+                        )
+
             else:
                 jac = adj.adjoint_jacobian(
                     self._gpu_state,
@@ -816,32 +837,31 @@ if CPP_BINARY_AVAILABLE:
                     )
 
             if observable.name in ["Hamiltonian"]:
-                if not self._mpi:
-                    device_wires = self.map_wires(observable.wires)
-                    # 16 bytes * (2^13)^2 -> 1GB Hamiltonian limit for GPU transfer before
-                    if len(device_wires) > 13:
-                        coeffs = observable.coeffs
-                        pauli_words = []
-                        word_wires = []
-                        for word in observable.ops:
-                            compressed_word = []
-                            if isinstance(word.name, list):
-                                for char in word.name:
-                                    compressed_word.append(_name_map[char])
-                            else:
-                                compressed_word.append(_name_map[word.name])
-                            word_wires.append(word.wires.tolist())
-                            pauli_words.append("".join(compressed_word))
-                        return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
-                    else:
-                        return self._gpu_state.ExpectationValue(
-                            device_wires, qml.matrix(observable).ravel(order="C")
-                        )
-                else:
-                    device_wires = self.map_wires(observable.wires)
+                device_wires = self.map_wires(observable.wires)
+                if not self._mpi and len(device_wires) < 14:
                     return self._gpu_state.ExpectationValue(
                         device_wires, qml.matrix(observable).ravel(order="C")
                     )
+                else:
+                    coeffs = observable.coeffs
+                    pauli_words = []
+                    word_wires = []
+                    for word in observable.ops:
+                        compressed_word = []
+                        if isinstance(word.name, list):
+                            for char in word.name:
+                                if char in _name_map:
+                                    compressed_word.append(_name_map[char])
+                                else:
+                                    raise ValueError("Pauli word only for Hamiltionian expval.")
+                        else:
+                            if word.name in _name_map:
+                                compressed_word.append(_name_map[word.name])
+                            else:
+                                raise ValueError("Pauli word only for Hamiltionian expval.")
+                        word_wires.append(word.wires.tolist())
+                        pauli_words.append("".join(compressed_word))
+                    return self._gpu_state.ExpectationValue(pauli_words, word_wires, coeffs)
 
             par = (
                 observable.parameters
@@ -851,6 +871,7 @@ if CPP_BINARY_AVAILABLE:
                 )
                 else []
             )
+
             return self._gpu_state.ExpectationValue(
                 observable.name,
                 self.wires.indices(observable.wires),

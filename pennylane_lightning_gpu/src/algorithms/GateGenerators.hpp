@@ -20,6 +20,10 @@
 #include "StateVectorCudaManaged.hpp"
 #include "cuda_helpers.hpp"
 
+#ifdef ENABLE_MPI
+#include "StateVectorCudaMPI.hpp"
+#endif
+
 /// @cond DEV
 namespace {
 using namespace Pennylane::CUDA;

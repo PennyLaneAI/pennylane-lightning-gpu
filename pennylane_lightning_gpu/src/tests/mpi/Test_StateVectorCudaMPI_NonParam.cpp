@@ -154,7 +154,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::SetIthStates",
     SECTION(
         "Set Ith element of the state state on device with data on the host") {
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
-                                          nLocalIndexBits, nLocalIndexBits);
+                                          nGlobalIndexBits, nLocalIndexBits);
         std::complex<PrecisionT> values = {1.0, 0};
         sv.setBasisState(values, index, false);
 
@@ -752,4 +752,177 @@ TEMPLATE_TEST_CASE("Sample", "[LightningGPUMPI_NonParam]", double) {
 
     REQUIRE_THAT(probabilities,
                  Catch::Approx(expected_probabilities).margin(.05));
+}
+
+TEMPLATE_TEST_CASE("StateVectorCudaMPI::Ctor", "[StateVectorCudaMPI_Nonparam]",
+                   float, double) {
+    using PrecisionT = TestType;
+    using cp_t = std::complex<PrecisionT>;
+    MPIManager mpi_manager(MPI_COMM_WORLD);
+
+    size_t mpi_buffersize = 1;
+
+    size_t nGlobalIndexBits =
+        std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
+    size_t nLocalIndexBits = num_qubits - nGlobalIndexBits;
+    size_t svLength = 1 << num_qubits;
+    size_t subSvLength = 1 << nLocalIndexBits;
+    mpi_manager.Barrier();
+
+    std::vector<cp_t> init_sv(svLength);
+    if (mpi_manager.getRank() == 0) {
+        std::mt19937 re{1337};
+        auto random_sv = createRandomState<PrecisionT>(re, num_qubits);
+        init_sv = random_sv;
+    }
+    auto local_state = mpi_manager.scatter(init_sv, 0);
+
+    int nDevices = 0; // Number of GPU devices per node
+    cudaGetDeviceCount(&nDevices);
+    int deviceId = mpi_manager.getRank() % nDevices;
+    cudaSetDevice(deviceId);
+    DevTag<int> dt_local(deviceId, 0);
+
+    SECTION("Test ctor which construct object with gpu data") {
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
+                                          nGlobalIndexBits, nLocalIndexBits);
+        sv.CopyHostDataToGpu(local_state, false);
+
+        StateVectorCudaMPI<PrecisionT> sv0(dt_local, nGlobalIndexBits,
+                                           nLocalIndexBits, sv.getData());
+
+        std::vector<cp_t> created_local_state(subSvLength, {0, 0});
+
+        sv0.CopyGpuDataToHost(created_local_state.data(),
+                              created_local_state.size(), false);
+
+        CHECK(created_local_state == Pennylane::approx(local_state));
+    }
+
+    SECTION("Test ctor which construct object without gpu data") {
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
+                                          nGlobalIndexBits, nLocalIndexBits);
+        sv.initSV_MPI();
+
+        std::vector<cp_t> bench_local_state(subSvLength, {0, 0});
+        sv.CopyGpuDataToHost(bench_local_state.data(), bench_local_state.size(),
+                             false);
+
+        StateVectorCudaMPI<PrecisionT> sv0(dt_local, nGlobalIndexBits,
+                                           nLocalIndexBits);
+
+        std::vector<cp_t> created_local_state(subSvLength, {0, 0});
+        sv0.CopyGpuDataToHost(created_local_state.data(),
+                              created_local_state.size(), false);
+
+        CHECK(created_local_state == Pennylane::approx(bench_local_state));
+    }
+}
+
+TEMPLATE_TEST_CASE("StateVectorCudaMPI::getExpectationValuePauliWords",
+                   "[StateVectorCudaMPI_Nonparam]", double) {
+    using PrecisionT = TestType;
+    using cp_t = std::complex<PrecisionT>;
+    MPIManager mpi_manager(MPI_COMM_WORLD);
+    size_t numqubits = 4;
+    size_t mpi_buffersize = 1;
+
+    size_t nGlobalIndexBits =
+        std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
+    size_t nLocalIndexBits = numqubits - nGlobalIndexBits;
+    mpi_manager.Barrier();
+
+    std::vector<cp_t> init_sv{{0.1653855288944372, 0.08360762242222763},
+                              {0.0731293375604395, 0.13209080879903976},
+                              {0.23742759434160687, 0.2613440813782711},
+                              {0.16768740742688235, 0.2340607179431313},
+                              {0.2247465091396771, 0.052469062762363974},
+                              {0.1595307101966878, 0.018355977199570113},
+                              {0.01433428625707798, 0.18836803047905595},
+                              {0.20447553584586473, 0.02069817884076428},
+                              {0.17324175995006008, 0.12834320562185453},
+                              {0.021542232643170886, 0.2537776554975786},
+                              {0.2917899745322105, 0.30227665008366594},
+                              {0.17082687702494623, 0.013880922806771745},
+                              {0.03801974084659355, 0.2233816291263903},
+                              {0.1991010562067874, 0.2378546697582974},
+                              {0.13833362414043807, 0.0571737109901294},
+                              {0.1960850292216881, 0.22946370987301284}};
+
+    auto local_state = mpi_manager.scatter(init_sv, 0);
+
+    int nDevices = 0; // Number of GPU devices per node
+    cudaGetDeviceCount(&nDevices);
+    int deviceId = mpi_manager.getRank() % nDevices;
+    cudaSetDevice(deviceId);
+    DevTag<int> dt_local(deviceId, 0);
+    mpi_manager.Barrier();
+
+    SECTION("Test getExpectationValuePauliWords (full wires)") {
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
+                                          nGlobalIndexBits, nLocalIndexBits);
+        sv.CopyHostDataToGpu(local_state, false);
+
+        std::vector<std::string> pauli_words = {"XYZI", "ZZXX"};
+        std::vector<std::vector<size_t>> tgts = {{0, 1, 2, 3}, {0, 1, 2, 3}};
+        std::vector<std::complex<PrecisionT>> coeffs = {{0.1, 0.0}, {0.2, 0.0}};
+
+        auto expval_mpi =
+            sv.getExpectationValuePauliWords(pauli_words, tgts, coeffs.data());
+
+        CHECK(expval_mpi == Approx(0.0014895211).margin(1e-7));
+    }
+
+    SECTION("Test getExpectationValuePauliWords (global wires)") {
+
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
+                                          nGlobalIndexBits, nLocalIndexBits);
+        sv.CopyHostDataToGpu(local_state, false);
+
+        std::vector<std::string> pauli_words = {"X", "Y", "Z", "I"};
+        std::vector<std::vector<size_t>> tgts = {{0}, {0}, {0}, {0}};
+        std::vector<std::complex<PrecisionT>> coeffs = {
+            {0.1, 0.0}, {0.2, 0.0}, {0.3, 0.0}, {0.4, 0.0}};
+
+        auto expval_mpi =
+            sv.getExpectationValuePauliWords(pauli_words, tgts, coeffs.data());
+
+        CHECK(expval_mpi == Approx(0.4589167637).margin(1e-7));
+    }
+
+    SECTION("Test getExpectationValuePauliWords (local wires)") {
+
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
+                                          nGlobalIndexBits, nLocalIndexBits);
+        sv.CopyHostDataToGpu(local_state, false);
+
+        std::vector<std::string> pauli_words = {"X", "Y", "Z", "I"};
+        std::vector<std::vector<size_t>> tgts = {
+            {numqubits - 1}, {numqubits - 1}, {numqubits - 1}, {numqubits - 1}};
+        std::vector<std::complex<PrecisionT>> coeffs = {
+            {0.1, 0.0}, {0.2, 0.0}, {0.3, 0.0}, {0.4, 0.0}};
+
+        auto expval_mpi =
+            sv.getExpectationValuePauliWords(pauli_words, tgts, coeffs.data());
+
+        CHECK(expval_mpi == Approx(0.4841317321).margin(1e-7));
+    }
+
+    SECTION("Test getExpectationValuePauliWords (mixed wires)") {
+
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
+                                          nGlobalIndexBits, nLocalIndexBits);
+        sv.CopyHostDataToGpu(local_state, false);
+
+        std::vector<std::string> pauli_words = {"X", "XY", "XYZ", "XYZI"};
+        std::vector<std::vector<size_t>> tgts = {
+            {0}, {0, 1}, {0, 1, 2}, {0, 1, 2, 3}};
+        std::vector<std::complex<PrecisionT>> coeffs = {
+            {0.1, 0.0}, {0.2, 0.0}, {0.3, 0.0}, {0.4, 0.0}};
+
+        auto expval_mpi =
+            sv.getExpectationValuePauliWords(pauli_words, tgts, coeffs.data());
+
+        CHECK(expval_mpi == Approx(-0.0105768395).margin(1e-7));
+    }
 }

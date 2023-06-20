@@ -1,6 +1,43 @@
 # Release 0.31.0-dev
 
 ### New features since last release
+ * Add multi-node/multi-GPU support to adjoint methods. 
+ [(#119)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/119)
+ 
+ Note each MPI process will return the overall result of the adjoint method. The MPI adjoint method has two options:
+ 1. Default method is faster but requires more memory. With the default method, a separate `bra` is created for each observable and `ket` is only updated once for each operation, regardless of the number of observables. This approach may consume more memory due to the creation of multiple `bra`s.  2. Memory-optimized method requires less memory but is slower. The memory-optimized method uses a single `bra` object that is reused for all observables. The `ket` needs to be updated `n` times, where `n` is the number of observables, for each operation. This approach reduces memory consumption as only one bra object is created. However, it may lead to slower execution due to the multiple `ket` updates per gate operation.
+ To enable the memory-optimized method, `batch_obs` should be set as `True`.
+ 
+ The workflow for the default adjoint method with MPI support:
+ ```python
+  from mpi4py import MPI
+  import pennylane as qml
+  from pennylane import numpy as np
+  
+  comm = MPI.COMM_WORLD
+  rank = comm.Get_rank()
+  n_wires = 20
+  n_layers = 2
+  
+  dev = qml.device('lightning.gpu', wires= n_wires, mpi=True, mpi_buf_size=1)
+  @qml.qnode(dev, diff_method="adjoint")
+  def circuit_adj(weights):
+    qml.StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
+    return qml.math.hstack([qml.expval(qml.PauliZ(i)) for i in range(n_wires)])
+  
+  if rank == 0:
+    params = np.random.random(qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
+  else:
+    params = None
+  
+  params = comm.bcast(params, root=0)
+  jac = qml.jacobian(circuit_adj)(params)
+ ```
+
+ The workflow for the Memory-optimized method:
+  ```python
+  dev = qml.device('lightning.gpu', wires= n_wires, mpi=True, mpi_buf_size=1, batch_obs=True)
+ ```
 
  * Add multi-node/multi-GPU support to measurement methods, including `expval`, `generate_samples` and `probability`.
  [(#116)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/116)
