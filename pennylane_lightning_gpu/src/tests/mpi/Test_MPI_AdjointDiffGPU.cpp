@@ -232,7 +232,7 @@ TEST_CASE("AdjointJacobianGPUMPI::AdjointJacobianGPUMPI Op=[RX,RX,RX], "
                                      {{param[0]}, {param[1]}, {param[2]}},
                                      {{0}, {1}, {2}}, {false, false, false});
 
-        adj.adjointJacobian_LM(sv_ref, jacobian, {ham}, ops, tp, true);
+        adj.adjointJacobian_serial(sv_ref, jacobian, {ham}, ops, tp, true);
 
         CAPTURE(jacobian);
 

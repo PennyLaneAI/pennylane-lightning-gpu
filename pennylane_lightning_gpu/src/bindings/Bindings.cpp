@@ -1630,7 +1630,7 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                                      trainableParams, false);
                  return py::array_t<ParamT>(py::cast(jac));
              })
-        .def("adjoint_jacobian_LM",
+        .def("adjoint_jacobian_serial",
              [](AdjointJacobianGPUMPI<PrecisionT, StateVectorCudaMPI> &adj,
                 const StateVectorCudaMPI<PrecisionT> &sv,
                 const std::vector<std::shared_ptr<ObservableGPUMPI<PrecisionT>>>
@@ -1641,8 +1641,8 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                      observables.size(),
                      std::vector<PrecisionT>(trainableParams.size(), 0));
 
-                 adj.adjointJacobian_LM(sv, jac, observables, operations,
-                                        trainableParams, false);
+                 adj.adjointJacobian_serial(sv, jac, observables, operations,
+                                            trainableParams, false);
                  return py::array_t<ParamT>(py::cast(jac));
              });
 }

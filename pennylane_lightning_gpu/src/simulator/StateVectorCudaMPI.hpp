@@ -1026,7 +1026,26 @@ class StateVectorCudaMPI
     }
 
     /**
-     * @brief Get expectation value for a sum of Pauli words.
+     * @brief Get expectation value for a sum of Pauli words. This function
+     * accepts a vector of words, where each word contains a set of Pauli
+     * operations along with their corresponding wires and coefficients of the
+     * Hamiltonian. The expval calculation is performed based on the word and
+     * its corresponding target wires. The distribution of target wires can be
+     * categorized into three different types:1. All target wires are local, and
+     * no MPI operation is required. 2. Some target wires are located at the
+     * global wires, and there are sufficient local wires available for bit swap
+     * operations. 3. Some target wires are located at the global wires, and
+     * there are insufficient local wires available for bit swap operations. For
+     * the first scenario, the `expvalOnPauliBasis` method can be called
+     * directly to obtain the `expval`. In the second scenario, bit swap
+     * operations are necessary before and after the `expvalOnPauliBasis`
+     * operation to get the `expval`. In the third scenario, a temporary state
+     * vector is created to calculate the `bra`, and then the inner product is
+     * used to calculate the `expval`. This function here will check the
+     * corresponding target wires of all word first. If all target wires for
+     * each word are local, the `expvalOnPauliBasis` will be called just once.
+     * Otherwise, each word will be looped and corresponding expval calculation
+     * methods will be adopted.
      *
      * @param pauli_words Vector of Pauli-words to evaluate expectation value.
      * @param tgts Coupled qubit index to apply each Pauli term.
@@ -1038,7 +1057,7 @@ class StateVectorCudaMPI
         const std::vector<std::vector<std::size_t>> &tgts,
         const std::complex<Precision> *coeffs) {
 
-        enum WiresSwapStatus { Local, Swappable, UnSwappable };
+        enum WiresSwapStatus : std::size_t { Local, Swappable, UnSwappable };
 
         std::vector<double> expect_local(pauli_words.size());
 

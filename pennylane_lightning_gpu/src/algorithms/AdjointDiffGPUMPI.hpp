@@ -225,8 +225,14 @@ class AdjointJacobianGPUMPI {
     }
 
     /**
-     * @brief Calculates the Jacobian for the statevector for the selected set
-     * of parametric gates with less memory requirement.
+     * @brief The memory-optimized implementation of the Jacobian calculation
+     * for the statevector is designed to reduce memory consumption at the cost
+     * of speed. This method utilizes a single `bra` object that is reused for
+     * all observables. For each operation, the `ket` needs to be updated `n`
+     * times, where `n` is the number of observables. Although this approach
+     * reduces memory overhead by creating only one `bra` object, it may result
+     * in slower execution due to the necessity of updating the `ket` multiple
+     * times per gate operation.
      *
      * @param ref_sv Reference to a `%SVType<T>` object.
      * @param jac Preallocated vector for Jacobian data results.
@@ -237,7 +243,7 @@ class AdjointJacobianGPUMPI {
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void adjointJacobian_LM(
+    void adjointJacobian_serial(
         const SVType<T> &ref_sv, std::vector<std::vector<T>> &jac,
         const std::vector<std::shared_ptr<ObservableGPUMPI<T>>> &obs,
         const Pennylane::Algorithms::OpsData<T> &ops,
@@ -372,18 +378,6 @@ class AdjointJacobianGPUMPI {
 
         lambda.getMPIManager().Barrier();
 
-        // Create observable-applied state-vectors
-        /*
-        SVType<T> **H_lambda = new SVType<T> *[num_observables];
-
-        for (size_t h_i = 0; h_i < num_observables; h_i++) {
-            H_lambda[h_i] =
-                new SVType<T>(dt_local, lambda.getNumGlobalQubits(),
-                              lambda.getNumLocalQubits(), lambda.getData());
-            applyObservable(*H_lambda[h_i], *obs[h_i]);
-        }
-        */
-
         using SVTypePtr = std::unique_ptr<SVType<T>>;
         std::unique_ptr<SVTypePtr[]> H_lambda(new SVTypePtr[num_observables]);
 
@@ -436,7 +430,6 @@ class AdjointJacobianGPUMPI {
                 applyOperationAdj(*H_lambda[obs_idx], ops, op_idx);
             }
         }
-        // delete[] H_lambda;
     }
 };
 

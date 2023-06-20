@@ -256,7 +256,6 @@ if CPP_BINARY_AVAILABLE:
                 self._mpi = False
                 self._num_local_wires = self.num_wires
                 self._gpu_state = _gpu_dtype(c_dtype)(self._num_local_wires)
-                self._batch_obs = batch_obs
             else:
                 self._mpi = True
                 self._mpi_init_helper(self.num_wires)
@@ -287,7 +286,7 @@ if CPP_BINARY_AVAILABLE:
                     self._num_global_wires,
                     self._num_local_wires,
                 )
-                self._batch_obs = batch_obs
+            self._batch_obs = batch_obs
             self._create_basis_state_GPU(0)
             self._sync = sync
 
@@ -718,7 +717,7 @@ if CPP_BINARY_AVAILABLE:
                         jac.extend(jac_chunk)
                 else:
                     if self._batch_obs is True:
-                        jac = adj.adjoint_jacobian_LM(
+                        jac = adj.adjoint_jacobian_serial(
                             self._gpu_state,
                             obs_serialized,
                             ops_serialized,
