@@ -54,8 +54,6 @@ I, X, Y, Z = (
 )
 
 
-
-
 class TestAdjointJacobian:
     """Test QNode integration with the adjoint_jacobian method"""
 
@@ -172,15 +170,20 @@ class TestAdjointJacobian:
         ):
             dev_gpumpi.adjoint_jacobian(tape)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("theta", np.linspace(-2 * np.pi, 2 * np.pi, 7))
     @pytest.mark.parametrize("G", [qml.RX, qml.RY, qml.RZ])
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_pauli_rotation_gradient(self, G, theta, tol, isBatch_obs):
+    def test_pauli_rotation_gradient(self, G, theta, tol, isBatch_obs, request):
         """Tests that the automatic gradients of Pauli rotations are correct."""
 
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
         dev_cpu = qml.device("default.qubit", wires=3)
 
@@ -196,14 +199,19 @@ class TestAdjointJacobian:
 
         assert np.allclose(calculated_val, expected_val, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("theta", np.linspace(-2 * np.pi, 2 * np.pi, 7))
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_Rot_gradient(self, theta, tol, isBatch_obs):
+    def test_Rot_gradient(self, theta, tol, isBatch_obs, request):
         """Tests that the device gradient of an arbitrary Euler-angle-parameterized gate is
         correct."""
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
         dev_cpu = qml.device("default.qubit", wires=3)
 
@@ -221,13 +229,18 @@ class TestAdjointJacobian:
 
         assert np.allclose(calculated_val, expected_val, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("par", [1, -2, 1.623, -0.051, 0])  # integers, floats, zero
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_ry_gradient(self, par, tol, isBatch_obs):
+    def test_ry_gradient(self, par, tol, isBatch_obs, request):
         """Test that the gradient of the RY gate matches the exact analytic formula."""
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         with qml.tape.QuantumTape() as tape:
@@ -246,12 +259,17 @@ class TestAdjointJacobian:
         assert np.allclose(grad_PS, exact, atol=tol, rtol=0)
         assert np.allclose(grad_A, exact, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_rx_gradient(self, tol, isBatch_obs):
+    def test_rx_gradient(self, tol, isBatch_obs, request):
         """Test that the gradient of the RX gate matches the known formula."""
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         a = 0.7418
@@ -265,12 +283,17 @@ class TestAdjointJacobian:
         expected_jacobian = -np.sin(a)
         assert np.allclose(dev_jacobian, expected_jacobian, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_multiple_rx_gradient(self, tol, isBatch_obs):
+    def test_multiple_rx_gradient(self, tol, isBatch_obs, request):
         """Tests that the gradient of multiple RX gates in a circuit yields the correct result."""
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         params = np.array([np.pi, np.pi / 2, np.pi / 3])
@@ -292,6 +315,7 @@ class TestAdjointJacobian:
         assert np.allclose(grad_PS_gpu, grad_A_gpu, atol=tol, rtol=0)
         assert np.allclose(grad_A_gpu, expected_jacobian, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("obs", [qml.PauliX, qml.PauliY, qml.PauliZ, qml.Identity])
     @pytest.mark.parametrize(
         "op",
@@ -306,13 +330,17 @@ class TestAdjointJacobian:
         ],
     )
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_gradients(self, op, obs, tol, isBatch_obs):
+    def test_gradients(self, op, obs, tol, isBatch_obs, request):
         """Tests that the gradients of circuits match between the param-shift and device
         methods."""
 
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         # op.num_wires and op.num_params must be initialized a priori
@@ -340,12 +368,17 @@ class TestAdjointJacobian:
 
         assert np.allclose(grad_D, grad_PS, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_gradient_gate_with_multiple_parameters(self, tol, isBatch_obs):
+    def test_gradient_gate_with_multiple_parameters(self, tol, isBatch_obs, request):
         """Tests that gates with multiple free parameters yield correct gradients."""
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         x, y, z = [0.5, 0.3, -0.7]
@@ -369,12 +402,17 @@ class TestAdjointJacobian:
         # the different methods agree
         assert np.allclose(grad_D, grad_PS, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_use_device_state(self, tol, isBatch_obs):
+    def test_use_device_state(self, tol, isBatch_obs, request):
         """Tests that when using the device state, the correct answer is still returned."""
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         x, y, z = [0.5, 0.3, -0.7]
@@ -394,12 +432,17 @@ class TestAdjointJacobian:
 
         assert np.allclose(dM1, dM2, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_provide_starting_state(self, tol, isBatch_obs):
+    def test_provide_starting_state(self, tol, isBatch_obs, request):
         """Tests provides correct answer when provided starting state."""
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         x, y, z = [0.5, 0.3, -0.7]
@@ -421,6 +464,7 @@ class TestAdjointJacobian:
 
         assert np.allclose(dM1, dM2, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize(
         "old_obs",
         [
@@ -431,12 +475,16 @@ class TestAdjointJacobian:
         ],
     )
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_op_arithmetic_is_supported(self, old_obs, isBatch_obs, tol):
+    def test_op_arithmetic_is_supported(self, old_obs, isBatch_obs, tol, request):
         """Tests that an arithmetic obs with a PauliRep are supported for adjoint_jacobian."""
 
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         def run_circuit(obs):
@@ -484,12 +532,17 @@ class TestAdjointJacobianQNode:
         ):
             qml.grad(circ)(param)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_qnode(self, mocker, tol, isBatch_obs):
+    def test_qnode(self, mocker, tol, isBatch_obs, request):
         """Test that specifying diff_method allows the adjoint method to be selected"""
         num_wires = 3
         dev_gpumpi = qml.device(
-            "lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+            "lightning.gpu",
+            wires=num_wires,
+            mpi=True,
+            c_dtype=request.params,
+            batch_obs=isBatch_obs,
         )
 
         args = np.array([0.54, 0.1, 0.5], requires_grad=True)
@@ -522,8 +575,9 @@ class TestAdjointJacobianQNode:
 
         assert np.allclose(grad_A, grad_PS, atol=tol, rtol=0)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize("isBatch_obs", [False, True])
-    def test_gradient_repeated_gate_parameters(self, mocker, tol, isBatch_obs):
+    def test_gradient_repeated_gate_parameters(self, mocker, tol, isBatch_obs, request):
         """Tests that repeated use of a free parameter in a multi-parameter gate yields correct
         gradients."""
         num_wires = 3
@@ -655,7 +709,8 @@ class TestAdjointJacobianQNode:
         assert np.allclose(grad_adjoint, grad_ps, atol=1e-7)
 
 
-def test_qchem_expvalcost_correct():
+@pytest.fixture(params=[np.complex64, np.complex128])
+def test_qchem_expvalcost_correct(request):
     """EvpvalCost with qchem Hamiltonian work corectly"""
     from pennylane import qchem
 
@@ -671,7 +726,7 @@ def test_qchem_expvalcost_correct():
         "lightning.gpu",
         wires=range(qubits),
         mpi=True,
-        c_dtype=np.complex128,
+        c_dtype=request.params,
     )
 
     @qml.qnode(dev_lig, diff_method="adjoint")
@@ -728,6 +783,7 @@ def circuit_ansatz(params, wires):
     qml.DoubleExcitation(params[25], wires=[wires[2], wires[0], wires[1], wires[3]])
 
 
+@pytest.fixture(params=[np.complex64, np.complex128])
 @pytest.mark.parametrize(
     "returns",
     [
@@ -764,7 +820,7 @@ def circuit_ansatz(params, wires):
     ],
 )
 @pytest.mark.parametrize("isBatch_obs", [False, True])
-def test_integration(returns, isBatch_obs):
+def test_integration(returns, isBatch_obs, request):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations"""
     num_wires = 6
@@ -773,7 +829,7 @@ def test_integration(returns, isBatch_obs):
         "lightning.gpu",
         wires=range(num_wires),
         mpi=True,
-        c_dtype=np.complex128,
+        c_dtype=request.params,
         batch_obs=isBatch_obs,
     )
 
@@ -803,6 +859,7 @@ def test_integration(returns, isBatch_obs):
 custom_wires = ["alice", 3.14, -1, 0, "bob", "luc"]
 
 
+@pytest.fixture(params=[np.complex64, np.complex128])
 @pytest.mark.parametrize(
     "returns",
     [
@@ -816,12 +873,12 @@ custom_wires = ["alice", 3.14, -1, 0, "bob", "luc"]
     ],
 )
 @pytest.mark.parametrize("isBatch_obs", [False, True])
-def test_integration_custom_wires(returns, isBatch_obs):
+def test_integration_custom_wires(returns, isBatch_obs, request):
     """Integration tests that compare to default.qubit for a large circuit containing parametrized
     operations and when using custom wire labels"""
     dev_lightning = qml.device("lightning.qubit", wires=custom_wires)
     dev_gpu = qml.device(
-        "lightning.gpu", wires=custom_wires, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+        "lightning.gpu", wires=custom_wires, mpi=True, c_dtype=request.params, batch_obs=isBatch_obs
     )
 
     def circuit(params):
@@ -856,12 +913,13 @@ def create_xyz_file(tmp_path_factory):
 
 
 @pytest.mark.slow
+@pytest.fixture(params=[np.complex64, np.complex128])
 @pytest.mark.parametrize(
     "dev_compare",
     list(it.product(["default.qubit", "lightning.qubit"])),
 )
 @pytest.mark.parametrize("isBatch_obs", [False, True])
-def test_integration_H2_Hamiltonian(create_xyz_file, dev_compare, isBatch_obs):
+def test_integration_H2_Hamiltonian(create_xyz_file, dev_compare, isBatch_obs, request):
     skipp_condn = pytest.importorskip("openfermionpyscf")
     n_electrons = 2
     np.random.seed(1337)
@@ -882,7 +940,7 @@ def test_integration_H2_Hamiltonian(create_xyz_file, dev_compare, isBatch_obs):
 
     # Choose different batching supports here
     dev = qml.device(
-        "lightning.gpu", wires=qubits, mpi=True, c_dtype=np.complex128, batch_obs=isBatch_obs
+        "lightning.gpu", wires=qubits, mpi=True, c_dtype=request.params, batch_obs=isBatch_obs
     )
     dev_comp = qml.device(dev_compare, wires=qubits)
 
