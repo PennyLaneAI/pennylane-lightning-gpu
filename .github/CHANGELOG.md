@@ -104,6 +104,9 @@
 
 ### Documentation
 
+* Update `README.rst` and `CHANGLOG.md` for the MPI backend.
+  [(#122)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/122)
+
 ### Bug fixes
 
 ### Contributors
