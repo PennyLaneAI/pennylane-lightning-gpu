@@ -1,7 +1,8 @@
 pip~=22.0
 ninja
 cmake
-cuquantum>=22.3.0
+cuquantum-cu11
+mpi4py
 flaky
 pennylane>=0.28
 pennylane-lightning>=0.28
