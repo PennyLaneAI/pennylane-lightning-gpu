@@ -1,7 +1,7 @@
 pip~=22.0
 ninja
 cmake
-cuquantum-cu11
+custatevec-cu11
 mpi4py
 flaky
 pennylane>=0.28

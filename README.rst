@@ -101,9 +101,8 @@ Build PennyLane-Lightning-GPU with multi-node/multi-gpu support
 Use of PennyLane-Lightning-GPU with multi-node/multi-gpu support also requires explicit installation of the ``NVIDIA cuQuantum SDK`` (current supported 
 cuQuantum version: `cuquantum-cu11 <https://pypi.org/project/cuquantum-cu11/>`_), ``mpi4py`` and ``CUDA-aware MPI`` (Message Passing Interface). 
 ``CUDA-aware MPI`` allows data exchange between GPU memory spaces of different nodes without the need for CPU-mediated transfers. Both ``MPICH`` 
-and ``OpenMPI`` libraries are supported, provided they are compiled with CUDA support.
-The NVIDIA cuQuantum library and MPI library directory may be provided on the ``LD_LIBRARY_PATH`` environment variable, or the ``NVIDIA cuQuantum SDK`` and ``mpi4py``. 
-Python package may be installed within the Python environment ``site-packages`` directory using ``pip`` or ``conda``. 
+and ``OpenMPI`` libraries are supported, provided they are compiled with CUDA support. Path to the ``libmpi.so`` should be added to the ``LD_LIBRARY_PATH`` environment variable.
+It's recommended to install ``NVIDIA cuQuantum SDK`` and ``mpi4py`` Python package within the Python environment ``site-packages`` directory using ``pip`` or ``conda``. 
 Please see the `cuQuantum SDK <https://developer.nvidia.com/cuquantum-sdk>`_ , `mpi4py <https://mpi4py.readthedocs.io/en/stable/install.html>`_, 
 `MPICH <https://www.mpich.org/static/downloads/4.1.1/mpich-4.1.1-README.txt>`_, or `OpenMPI <https://www.open-mpi.org/faq/?category=buildcuda>`_ install guide for more information.
 
