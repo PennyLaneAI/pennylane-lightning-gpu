@@ -112,7 +112,7 @@ added to the ``LD_LIBRARY_PATH`` environment variable, the following requirement
 2. Each MPI process is responsible for managing one GPU. Each MPI process is responsible for managing one GPU for the moment. 
 3. The ``mpi`` keyword argument should be set as ``True`` when initializing a ``lightning.gpu`` device.
 
-The workflow for the multi-node/GPUs feature is:
+The workflow for the multi-node/GPUs feature is as follows:
 
 .. code-block:: python
 

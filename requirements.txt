@@ -2,7 +2,6 @@ pip~=22.0
 ninja
 cmake
 custatevec-cu11
-mpi4py
 flaky
 pennylane>=0.28
 pennylane-lightning>=0.28
