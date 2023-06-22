@@ -15,10 +15,10 @@ COPY ./  /pennylane-lightning-gpu
 RUN cd /pennylane-lightning-gpu \
     && export PATH=$PATH:/usr/local/cuda/bin \
     && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64 \
-    && for i in {7..10}; do python3.${i} -m venv pyenv3.${i}; source pyenv3.${i}/bin/activate && python3 -m pip install auditwheel ninja wheel && python -m pip install --no-deps cuquantum && python3 setup.py build_ext --define=CMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/usr/bin/g++ --define=ENABLE_CLANG_TIDY=0  && python3 setup.py bdist_wheel && deactivate && rm -rf ./build ; done
+    && for i in {8..11}; do python3.${i} -m venv pyenv3.${i}; source pyenv3.${i}/bin/activate && python3 -m pip install auditwheel ninja wheel && python -m pip install --no-deps cuquantum && python3 setup.py build_ext --define=CMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/usr/bin/g++ --define=ENABLE_CLANG_TIDY=0  && python3 setup.py bdist_wheel && deactivate && rm -rf ./build ; done
 
 RUN cd /pennylane-lightning-gpu \
     && export PATH=$PATH:/usr/local/cuda/bin \
-    && source pyenv3.10/bin/activate \
+    && source pyenv3.11/bin/activate \
     && export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:$(python -c "import site; print(site.getsitepackages()[0])")/cuquantum/lib \
     && for i in $(ls ./dist); do /pennylane-lightning-gpu/docker/auditwheel repair -w /wheelhouse /pennylane-lightning-gpu/dist/$i; done

@@ -1,7 +1,7 @@
 pip~=22.0
 ninja
 cmake
-cuquantum>=22.3.0
+custatevec-cu11
 flaky
 pennylane>=0.28
 pennylane-lightning>=0.28

@@ -34,11 +34,11 @@ namespace Pennylane::MPI {
 
 enum WireStatus { Default, Target, Control };
 
-inline size_t megabytesToBytes(const size_t megabytes) {
-    return megabytes * size_t{1024 * 1024};
+inline size_t mebibyteToBytes(const size_t mebibytes) {
+    return mebibytes * size_t{1024 * 1024};
 }
 
-inline double bytesToMegabytes(const size_t bytes) {
+inline double bytesToMebibytes(const size_t bytes) {
     return static_cast<double>(bytes) / (1024.0 * 1024.0);
 }
 
@@ -157,7 +157,7 @@ inline SharedLocalStream make_shared_local_stream() {
  *
  * @param handle custatevecHandle.
  * @param mpi_manager MPI manager object.
- * @param mpi_buf_size Size to set MPI buffer in MB(megabytes).
+ * @param mpi_buf_size Size to set MPI buffer in MiB (mebibytes).
  * @param sv Pointer to the data requires MPI operation.
  * @param numLocalQubits Number of local qubits.
  * @param localStream Local cuda stream.
@@ -281,16 +281,16 @@ make_shared_mpi_worker(custatevecHandle_t handle, MPIManager &mpi_manager,
         } else {
             transferWorkspaceSize = transferWorkspaceSize * sizeof(float) * 2;
         }
-        // With the default setting, transfer work space is limited to 64 MB
+        // With the default setting, transfer work space is limited to 64 MiB
         // based on the benchmark tests on the Perlmutter.
         size_t buffer_limit = 64;
-        double transferWorkspaceSizeInMB =
-            bytesToMegabytes(transferWorkspaceSize);
-        if (transferWorkspaceSizeInMB > static_cast<double>(buffer_limit)) {
-            transferWorkspaceSize = megabytesToBytes(buffer_limit);
+        double transferWorkspaceSizeInMiB =
+            bytesToMebibytes(transferWorkspaceSize);
+        if (transferWorkspaceSizeInMiB > static_cast<double>(buffer_limit)) {
+            transferWorkspaceSize = mebibyteToBytes(buffer_limit);
         }
     } else {
-        transferWorkspaceSize = megabytesToBytes(mpi_buf_size);
+        transferWorkspaceSize = mebibyteToBytes(mpi_buf_size);
     }
 
     transferWorkspaceSize =

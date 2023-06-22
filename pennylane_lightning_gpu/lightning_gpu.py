@@ -132,8 +132,8 @@ def _adj_dtype(use_csingle, mpi=False):
     return AdjointJacobianGPUMPI_C64 if use_csingle else AdjointJacobianGPUMPI_C128
 
 
-def _megabytesToBytes(megabytes):
-    return megabytes * 1024 * 1024
+def _mebibytesToBytes(mebibytes):
+    return mebibytes * 1024 * 1024
 
 
 _name_map = {"PauliX": "X", "PauliY": "Y", "PauliZ": "Z", "Identity": "I"}
@@ -204,7 +204,7 @@ if CPP_BINARY_AVAILABLE:
         Args:
             wires (int): the number of wires to initialize the device with
             mpi (bool): is mpi backend
-            mpi_buf_size(int): GPU memory size (in megabytes) for MPI operation. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a limit of 64 MB.
+            mpi_buf_size(int): GPU memory size (in mebibytes, MiB, 2**20 bytes) for MPI operation. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a upper limit of 64 MiB.
             sync (bool): immediately sync with host-sv after applying operations
             c_dtype: Datatypes for statevector representation. Must be one of ``np.complex64`` or ``np.complex128``.
         """
@@ -272,7 +272,7 @@ if CPP_BINARY_AVAILABLE:
                 if not mpi_buf_size:
                     # Memory size in bytes
                     sv_memsize = np.dtype(c_dtype).itemsize * (1 << self._num_local_wires)
-                    if _megabytesToBytes(mpi_buf_size) > sv_memsize:
+                    if _mebibytesToBytes(mpi_buf_size) > sv_memsize:
                         w_msg = "MPI buffer size is over the size of local state vector."
                         warn(
                             w_msg,

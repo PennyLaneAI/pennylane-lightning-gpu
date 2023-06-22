@@ -37,10 +37,7 @@ Features
 Installation
 ============
 
-Build PennyLane-Lightning-GPU without multi-node/multi-gpu support
-------------------------------------------------------------------
-
-PennyLane-Lightning-GPU requires Python version 3.7 and above. It can be installed using ``pip``:
+PennyLane-Lightning-GPU requires Python version 3.8 and above. It can be installed using ``pip``:
 
 .. code-block:: console
 
@@ -85,7 +82,7 @@ To build using Docker, run the following from the project root directory:
 
     docker build . -f ./docker/Dockerfile -t "lightning-gpu-wheels"
 
-This will build a Python wheel for Python 3.7 up to 3.10 inclusive, and be manylinux2014 (glibc 2.17) compatible.
+This will build a Python wheel for Python 3.8 up to 3.11 inclusive, and be manylinux2014 (glibc 2.17) compatible.
 To acquire the built wheels, use:
 
 .. code-block:: console
@@ -98,11 +95,11 @@ For licensing information, please view ``docker/README.md``.
 Build PennyLane-Lightning-GPU with multi-node/multi-gpu support
 ---------------------------------------------------------------
 
-Use of PennyLane-Lightning-GPU with multi-node/multi-gpu support also requires explicit installation of the NVIDIA cuQuantum SDK, ``mpi4py`` 
-and `CUDA-aware MPI` (Message Passing Interface). `CUDA-aware MPI` allows data exchange between GPU memory spaces of different nodes
-without the need for CPU -mediated transfers. Both `MPICH` and `OpenMPI` libraries are supported, provided they are compiled with CUDA support.
-The NVIDIA cuQuantum library and MPI library directory may be provided on the ``LD_LIBRARY_PATH`` environment variable, or the NVIDIA cuQuantum SDK and ``mpi4py`` 
-Python package may be installed within the Python environment ``site-packages`` directory using ``pip`` or ``conda``. 
+Use of PennyLane-Lightning-GPU with multi-node/multi-gpu support also requires explicit installation of the ``NVIDIA cuQuantum SDK`` (current supported 
+cuQuantum version: `cuquantum-cu11 <https://pypi.org/project/cuquantum-cu11/>`_), ``mpi4py`` and ``CUDA-aware MPI`` (Message Passing Interface). 
+``CUDA-aware MPI`` allows data exchange between GPU memory spaces of different nodes without the need for CPU-mediated transfers. Both ``MPICH`` 
+and ``OpenMPI`` libraries are supported, provided they are compiled with CUDA support. Path to the ``libmpi.so`` should be added to the ``LD_LIBRARY_PATH`` environment variable.
+It's recommended to install ``NVIDIA cuQuantum SDK`` and ``mpi4py`` Python package within the Python environment ``site-packages`` directory using ``pip`` or ``conda``. 
 Please see the `cuQuantum SDK <https://developer.nvidia.com/cuquantum-sdk>`_ , `mpi4py <https://mpi4py.readthedocs.io/en/stable/install.html>`_, 
 `MPICH <https://www.mpich.org/static/downloads/4.1.1/mpich-4.1.1-README.txt>`_, or `OpenMPI <https://www.open-mpi.org/faq/?category=buildcuda>`_ install guide for more information.
 
@@ -126,7 +123,7 @@ The built wheel can now be installed as:
 Testing
 =======
 
-Test PennyLane-Lightning-GPU without multi-node/multi-gpu support
+Test PennyLane-Lightning-GPU
 -----------------------------------------------------------------
 
 To test that the plugin is working correctly you can test the Python code within the cloned
@@ -162,9 +159,9 @@ while the C++ code can be tested with
 .. code-block:: console
 
     rm -rf ./BuildTests
-    cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
-	cmake --build ./BuildTests
-	mpirun -np 2 ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
+    cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=<path to sdk>
+    cmake --build ./BuildTests --verbose
+    mpirun -np 2 ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
 
 .. installation-end-inclusion-marker-do-not-remove
 
