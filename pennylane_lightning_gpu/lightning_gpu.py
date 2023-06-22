@@ -204,7 +204,7 @@ if CPP_BINARY_AVAILABLE:
         Args:
             wires (int): the number of wires to initialize the device with
             mpi (bool): is mpi backend
-            mpi_buf_size(int): GPU memory size (in mebibytes, MiB, 2**20 bytes) for MPI operation. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a limit of 64 MiB.
+            mpi_buf_size(int): GPU memory size (in mebibytes, MiB, 2**20 bytes) for MPI operation. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a upper limit of 64 MiB.
             sync (bool): immediately sync with host-sv after applying operations
             c_dtype: Datatypes for statevector representation. Must be one of ``np.complex64`` or ``np.complex128``.
         """
