@@ -106,10 +106,10 @@ Each problem is unique, so it can often be best to choose the default behaviour 
 
 The ``lightning.gpu`` device allows users to leverage the computational power of multi-node and multi-GPUs for running large-scale simulations. 
 Provided that NVIDIA cuQuantum libraries, a ``CUDA-aware MPI`` library and ``mpi4py`` are properly installed and the path to the ``libmpi.so`` is 
-added to the ``LD_LIBRARY_PATH`` environment variable, the following requirements should be met to enable multi-node and multi-GPUs simulations:
+added to the ``LD_LIBRARY_PATH`` environment variable, the following requirements should be met to enable multi-node and multi-GPU simulations:
 
 1. Both total number of MPI processes and MPI processes per node must be the same and a power of 2. For example, 2, 4, 8, 16, etc.. 
-2. Each MPI process is responsible for managing one GPU. Each MPI process is responsible for managing one GPU for the moment. 
+2. Each MPI process is responsible for managing one GPU. 
 3. The ``mpi`` keyword argument should be set as ``True`` when initializing a ``lightning.gpu`` device.
 
 The workflow for the multi-node/GPUs feature is as follows:
@@ -125,7 +125,7 @@ The workflow for the multi-node/GPUs feature is as follows:
       return qml.state()
     local_state_vector = circuit_mpi()
 
-Currently, a ``lightning.gpu`` device with multi-node and multi-GPUs backend supports all the ``gate operations`` and ``observables`` that a ``lightning.gpu`` device with a single GPU/node backend supports.
+Currently, a ``lightning.gpu`` device with the MPI multi-GPU backend supports all the ``gate operations`` and ``observables`` that a ``lightning.gpu`` device with a single GPU/node backend supports.
 
 By default, each MPI process will return the overall simulation results, except for the ``qml.state()`` and ``qml.prob()`` methods. Each MPI process will only return the local simulation
 results for the ``qml.state()`` and ``qml.prob()`` methods to avoid buffer overflow. It will be the users' responsibity to ensure the safety of data collection for those two methods. Here are examples of collecting
@@ -187,7 +187,7 @@ Then the python script can be executed with the following command:
     
     $ mpirun -np 4 python yourscript.py
 
-Furthermore, users can optimize the performance of their applications by allocating appropriate amount of GPU memory for MPI operation with the ``mpi_buf_size`` keyword argument. To allocate ``n`` megabytes (MB) of GPU memory for MPI operations, initialize a ``lightning.gpu`` device with the ``mpi_buf_size=n`` keyword argument, as follows:
+Furthermore, users can optimize the performance of their applications by allocating the appropriate amount of GPU memory for MPI operations with the ``mpi_buf_size`` keyword argument. To allocate ``n`` megabytes (MB) of GPU memory for MPI operations, initialize a ``lightning.gpu`` device with the ``mpi_buf_size=n`` keyword argument, as follows:
 
 .. code-block:: python
 
@@ -203,7 +203,7 @@ the GPU memory allocated to the local state vector.
 
 **Multi-GPU/multi-node support for adjoint method:**
 
-The ``lightning.gpu`` device with the multi-GPU/multi-node backend also directly supports the `adjoint differentiation method <https://pennylane.ai/qml/demos/tutorial_adjoint_diff.html>`__. Instead of batching observables across the multiple GPUs available within a node, the state vector is distributed among the aviable GPUs with the multi-GPU/multi-node backend.
+The ``lightning.gpu`` device with the multi-GPU/multi-node backend also directly supports the `adjoint differentiation method <https://pennylane.ai/qml/demos/tutorial_adjoint_diff.html>`__. Instead of batching observables across the multiple GPUs available within a node, the state vector is distributed among the available GPUs with the multi-GPU/multi-node backend.
 By default, the adjoint method with MPI support follows the performance-oriented implementation of the single GPU backend. This means that a separate ``bra`` is created for each observable and the ``ket`` is updated only once for each operation, regardless of the number of observables.
 
 The workflow for the default adjoint method with MPI support is as follows:
@@ -233,7 +233,7 @@ The workflow for the default adjoint method with MPI support is as follows:
     params = comm.bcast(params, root=0)
     jac = qml.jacobian(circuit_adj)(params)
 
-If users aim to handle larger system with limited hardware resources, the memory-optimized adjoint method with MPI support is more appropriate. The memory-optimized adjoint method with MPI support employs a single ``bra`` object that is reused for all observables.
+If users aim to handle larger system sizes with limited hardware resources, the memory-optimized adjoint method with MPI support is more appropriate. The memory-optimized adjoint method with MPI support employs a single ``bra`` object that is reused for all observables.
 This approach results in a notable reduction in the required GPU memory when dealing with a large number of observables. However, it's important to note that the reduction in memory requirement may come at the expense of slower execution due to the multiple ``ket`` updates per gate operation.
 
 To enable the memory-optimized adjoint method wiht MPI support, ``batch_obs`` should be set as ``True`` and the workflow follows:
