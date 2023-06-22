@@ -6,9 +6,10 @@
  
  Note each MPI process will return the overall result of the adjoint method. The MPI adjoint method has two options:
  1. Default method is faster but requires more memory. With the default method, a separate `bra` is created for each observable and `ket` is only updated once for each operation, regardless of the number of observables. This approach may consume more memory due to the creation of multiple `bra`s.  2. Memory-optimized method requires less memory but is slower. The memory-optimized method uses a single `bra` object that is reused for all observables. The `ket` needs to be updated `n` times, where `n` is the number of observables, for each operation. This approach reduces memory consumption as only one bra object is created. However, it may lead to slower execution due to the multiple `ket` updates per gate operation.
- To enable the memory-optimized method, `batch_obs` should be set as `True`.
  
- The workflow for the default adjoint method with MPI support:
+ Each ``MPI`` process will return the overall simulation results for the adjoint method.
+
+ The workflow for the default adjoint method with MPI support is as follows:
  ```python
   from mpi4py import MPI
   import pennylane as qml
@@ -19,7 +20,7 @@
   n_wires = 20
   n_layers = 2
   
-  dev = qml.device('lightning.gpu', wires= n_wires, mpi=True, mpi_buf_size=1)
+  dev = qml.device('lightning.gpu', wires= n_wires, mpi=True)
   @qml.qnode(dev, diff_method="adjoint")
   def circuit_adj(weights):
     qml.StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
@@ -34,9 +35,9 @@
   jac = qml.jacobian(circuit_adj)(params)
  ```
 
- The workflow for the Memory-optimized method:
+ To enable the memory-optimized method, `batch_obs` should be set as `True`. The workflow for the memory-optimized method is as follows:
   ```python
-  dev = qml.device('lightning.gpu', wires= n_wires, mpi=True, mpi_buf_size=1, batch_obs=True)
+  dev = qml.device('lightning.gpu', wires= n_wires, mpi=True, batch_obs=True)
  ```
 
  * Add multi-node/multi-GPU support to measurement methods, including `expval`, `generate_samples` and `probability`.
@@ -45,7 +46,7 @@
  Note that each MPI process will return the overall result of expectation value and sample generation. However, `probability` will 
  return local probability results. Users should be responsible to collect probability results across the MPI processes.
  
- The workflow for collecting probability results across the MPI processes:
+ The workflow for collecting probability results across the MPI processes is as follows:
  ```python
  from mpi4py import MPI
  import pennylane as qml
@@ -66,7 +67,7 @@
  #For data collection across MPI processes.
  recv_counts = comm.gather(len(local_probs),root=0)
  if rank == 0:
-    probs = np.zeros(1<<len(prob_wires))
+    probs = np.zeros(2**len(prob_wires))
  else:
     probs = None
 
@@ -79,7 +80,7 @@
 
   This new feature empowers users to leverage the computational power of multi-node and multi-GPUs for running large-scale applications. It requires both the total number of overall `MPI` processes and the number of `MPI` processes of each node to be the same and power of `2`. Each `MPI` process is responsible for managing one GPU for the moment. 
   To enable this feature, users can set `mpi=True`. Furthermore, users can fine-tune the performance of `MPI` operations by adjusting the `mpi_buf_size` parameter. This parameter determines the allocation of `mpi_buf_size` MB(megabytes) GPU memory for `MPI` operations. Note that `mpi_buf_size` should be also power of 2 and there will be a runtime warning if GPU memory buffer for MPI operation is larger than the GPU memory allocated for the local state vector. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a limit of 64 MB.
-  The workflow for the new feature is:
+  The workflow for the new feature is as follows:
   ```python
   from mpi4py import MPI
   import pennylane as qml
@@ -91,6 +92,7 @@
   local_state_vector = circuit_mpi()
   print(local_state_vector)
   ``` 
+  Note that each MPI process will return its local state vector with `qml.state()` here.
 
 ### Breaking changes
 
