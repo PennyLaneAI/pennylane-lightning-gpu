@@ -120,8 +120,8 @@ The workflow for the multi-node/GPUs feature is as follows:
     dev = qml.device('lightning.gpu', wires=8, mpi=True)
     @qml.qnode(dev)
     def circuit_mpi():
-      qml.PauliX(wires=[0])
-      return qml.state()
+        qml.PauliX(wires=[0])
+        return qml.state()
     local_state_vector = circuit_mpi()
 
 Currently, a ``lightning.gpu`` device with the MPI multi-GPU backend supports all the ``gate operations`` and ``observables`` that a ``lightning.gpu`` device with a single GPU/node backend supports.
@@ -141,13 +141,13 @@ The workflow for collecting local state vector (using the ``qml.state()`` method
     dev = qml.device('lightning.gpu', wires=8, mpi=True)
     @qml.qnode(dev)
     def circuit_mpi():
-      qml.PauliX(wires=[0])
-      return qml.state()
+        qml.PauliX(wires=[0])
+        return qml.state()
     local_state_vector = circuit_mpi()
     #rank 0 will collect the local state vector
     state_vector = comm.gather(local_state_vector, root=0)
     if rank == 0:
-      print(state_vector)
+        print(state_vector)
     
 The workflow for collecting local probability (using the ``qml.prob()`` method) to ``rank 0`` is as follows:
 
@@ -164,21 +164,21 @@ The workflow for collecting local probability (using the ``qml.prob()`` method) 
 
     @qml.qnode(dev)
     def mpi_circuit():
-      qml.Hadamard(wires=1)
-      return qml.probs(wires=prob_wires)
+        qml.Hadamard(wires=1)
+        return qml.probs(wires=prob_wires)
 
     local_probs = mpi_circuit()
  
     #For data collection across MPI processes.
     recv_counts = comm.gather(len(local_probs),root=0)
     if rank == 0:
-      probs = np.zeros(2**len(prob_wires))
+        probs = np.zeros(2**len(prob_wires))
     else:
-      probs = None
+        probs = None
 
     comm.Gatherv(local_probs,[probs,recv_counts],root=0)
     if rank == 0:
-      print(probs)
+        print(probs)
 
 Then the python script can be executed with the following command:
 
@@ -186,7 +186,7 @@ Then the python script can be executed with the following command:
     
     $ mpirun -np 4 python yourscript.py
 
-Furthermore, users can optimize the performance of their applications by allocating the appropriate amount of GPU memory for MPI operations with the ``mpi_buf_size`` keyword argument. To allocate ``n`` megabytes (MB) of GPU memory for MPI operations, initialize a ``lightning.gpu`` device with the ``mpi_buf_size=n`` keyword argument, as follows:
+Furthermore, users can optimize the performance of their applications by allocating the appropriate amount of GPU memory for MPI operations with the ``mpi_buf_size`` keyword argument. To allocate ``n`` mebibytes (MiB, `2^20` bytes) of GPU memory for MPI operations, initialize a ``lightning.gpu`` device with the ``mpi_buf_size=n`` keyword argument, as follows:
 
 .. code-block:: python
 
@@ -197,7 +197,7 @@ Furthermore, users can optimize the performance of their applications by allocat
 
 Note the value of ``mpi_buf_size`` should also be a power of ``2``. Remember to carefully manage the ``mpi_buf_size`` parameter, taking into account the available GPU memory and the memory 
 requirements of the local state vector, to prevent memory overflow issues and ensure optimal performance. By default (``mpi_buf_size=0``), the GPU memory allocated for MPI operations 
-will match the size of the local state vector, with a limit of ``64 MB``. Please be aware that a runtime warning will occur if the local GPU memory buffer for MPI operations exceeds
+will match the size of the local state vector, with a limit of ``64 MiB``. Please be aware that a runtime warning will occur if the local GPU memory buffer for MPI operations exceeds
 the GPU memory allocated to the local state vector.
 
 **Multi-GPU/multi-node support for adjoint method:**
@@ -221,13 +221,13 @@ The workflow for the default adjoint method with MPI support is as follows:
     dev = qml.device('lightning.gpu', wires= n_wires, mpi=True)
     @qml.qnode(dev, diff_method="adjoint")
     def circuit_adj(weights):
-      qml.StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
-      return qml.math.hstack([qml.expval(qml.PauliZ(i)) for i in range(n_wires)])
+        qml.StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
+        return qml.math.hstack([qml.expval(qml.PauliZ(i)) for i in range(n_wires)])
   
     if rank == 0:
-      params = np.random.random(qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
+        params = np.random.random(qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
     else:
-      params = None
+        params = None
   
     params = comm.bcast(params, root=0)
     jac = qml.jacobian(circuit_adj)(params)

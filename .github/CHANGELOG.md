@@ -24,13 +24,13 @@
   dev = qml.device('lightning.gpu', wires= n_wires, mpi=True)
   @qml.qnode(dev, diff_method="adjoint")
   def circuit_adj(weights):
-    qml.StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
-    return qml.math.hstack([qml.expval(qml.PauliZ(i)) for i in range(n_wires)])
+      qml.StronglyEntanglingLayers(weights, wires=list(range(n_wires)))
+      return qml.math.hstack([qml.expval(qml.PauliZ(i)) for i in range(n_wires)])
   
   if rank == 0:
-    params = np.random.random(qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
+      params = np.random.random(qml.StronglyEntanglingLayers.shape(n_layers=n_layers, n_wires=n_wires))
   else:
-    params = None
+      params = None
   
   params = comm.bcast(params, root=0)
   jac = qml.jacobian(circuit_adj)(params)
@@ -60,17 +60,17 @@
 
  @qml.qnode(dev)
  def mpi_circuit():
-   qml.Hadamard(wires=1)
-   return qml.probs(wires=prob_wires)
+     qml.Hadamard(wires=1)
+     return qml.probs(wires=prob_wires)
 
  local_probs = mpi_circuit()
  
  #For data collection across MPI processes.
  recv_counts = comm.gather(len(local_probs),root=0)
  if rank == 0:
-    probs = np.zeros(2**len(prob_wires))
+      probs = np.zeros(2**len(prob_wires))
  else:
-    probs = None
+      probs = None
 
  comm.Gatherv(local_probs,[probs,recv_counts],root=0)
  if rank == 0:
@@ -80,7 +80,7 @@
   [(#112)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/112)
 
   This new feature empowers users to leverage the computational power of multi-node and multi-GPUs for running large-scale applications. It requires both the total number of overall `MPI` processes and the number of `MPI` processes of each node to be the same and power of `2`. Each `MPI` process is responsible for managing one GPU for the moment. 
-  To enable this feature, users can set `mpi=True`. Furthermore, users can fine-tune the performance of `MPI` operations by adjusting the `mpi_buf_size` parameter. This parameter determines the allocation of `mpi_buf_size` MiB (mebibytes) GPU memory for `MPI` operations. Note that `mpi_buf_size` should be also power of 2 and there will be a runtime warning if GPU memory buffer for MPI operation is larger than the GPU memory allocated for the local state vector. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a limit of 64 MiB. Note that MiB is different from MB (megabytes). Mebibytes (MiB) are binary units of measurement where 1 MiB is equal to 1,048,576 bytes, while megabytes (MB) are decimal units of measurement where 1 MB is equal to 1,000,000 bytes.
+  To enable this feature, users can set `mpi=True`. Furthermore, users can fine-tune the performance of `MPI` operations by adjusting the `mpi_buf_size` parameter. This parameter determines the allocation of `mpi_buf_size` MiB (mebibytes, `2^20` bytes) GPU memory for `MPI` operations. Note that `mpi_buf_size` should be also power of 2 and there will be a runtime warning if GPU memory buffer for MPI operation is larger than the GPU memory allocated for the local state vector. By default (`mpi_buf_size=0`), the GPU memory allocated for MPI operations will be the same of size of the local state vector, with a limit of 64 MiB. Note that MiB (`2^20` bytes) is different from MB (megabytes, `10^6` bytes).
   The workflow for the new feature is as follows:
   ```python
   from mpi4py import MPI
@@ -88,8 +88,8 @@
   dev = qml.device('lightning.gpu', wires=8, mpi=True, mpi_buf_size=1)
   @qml.qnode(dev)
   def circuit_mpi():
-    qml.PauliX(wires=[0])
-    return qml.state()
+      qml.PauliX(wires=[0])
+      return qml.state()
   local_state_vector = circuit_mpi()
   print(local_state_vector)
   ``` 
