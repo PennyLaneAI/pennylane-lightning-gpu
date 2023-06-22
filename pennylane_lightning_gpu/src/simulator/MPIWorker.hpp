@@ -157,7 +157,7 @@ inline SharedLocalStream make_shared_local_stream() {
  *
  * @param handle custatevecHandle.
  * @param mpi_manager MPI manager object.
- * @param mpi_buf_size Size to set MPI buffer in MiB(mebibyte).
+ * @param mpi_buf_size Size to set MPI buffer in MiB (mebibytes).
  * @param sv Pointer to the data requires MPI operation.
  * @param numLocalQubits Number of local qubits.
  * @param localStream Local cuda stream.
