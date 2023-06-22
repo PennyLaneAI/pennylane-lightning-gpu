@@ -235,7 +235,7 @@ The workflow for the default adjoint method with MPI support is as follows:
 If users aim to handle larger system sizes with limited hardware resources, the memory-optimized adjoint method with MPI support is more appropriate. The memory-optimized adjoint method with MPI support employs a single ``bra`` object that is reused for all observables.
 This approach results in a notable reduction in the required GPU memory when dealing with a large number of observables. However, it's important to note that the reduction in memory requirement may come at the expense of slower execution due to the multiple ``ket`` updates per gate operation.
 
-To enable the memory-optimized adjoint method wiht MPI support, ``batch_obs`` should be set as ``True`` and the workflow follows:
+To enable the memory-optimized adjoint method with MPI support, ``batch_obs`` should be set as ``True`` and the workflow follows:
 
 .. code-block:: python
     
