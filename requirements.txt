@@ -3,8 +3,8 @@ ninja
 cmake
 custatevec-cu11
 flaky
-pennylane>=0.28
-pennylane-lightning>=0.28
+pennylane>=0.30
+pennylane-lightning>=0.30
 pybind11
 pytest
 pytest-cov
