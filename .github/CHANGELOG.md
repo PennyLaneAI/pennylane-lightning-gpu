@@ -123,18 +123,25 @@ This release contains contributions from (in alphabetical order):
 * Use `Operator.name` instead of `Operation.base_name`.
   [(#115)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/115)
 
+* Updated runs-on label for self-hosted runner workflows.
+  [(#117)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/117)
+
+* Update workflow to support multi-gpu self-hosted runner.
+  [(#118)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/118)
+
+* Add compat workflows.
+  [(#121)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/121)
+
 ### Documentation
 
 * Update `README.rst` and `CHANGLOG.md` for the MPI backend.
   [(#122)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/122)
 
-### Bug fixes
-
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
 
-Christina Lee, Shuli Shu
+Christina Lee, Rashid N H M, Shuli Shu
 
 ---
 
@@ -150,10 +157,10 @@ Christina Lee, Shuli Shu
 ### Bug fixes
 
 * Fix CUDA version to 11 for cuquantum dependency in CI. 
-[(#107)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/107)
+  [(#107)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/107)
 
 * Fix the controlled-gate generators, which are now fully used in the adjoint pipeline following PennyLane PR [(#3874)](https://github.com/PennyLaneAI/pennylane/pull/3874).
-[(#101)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/101)
+  [(#101)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/101)
 
 * Updates to use the new call signature for `QuantumScript.get_opeartion`.
   [(#104)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/104)
