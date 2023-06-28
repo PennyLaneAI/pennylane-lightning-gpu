@@ -42,6 +42,7 @@ target_sources(runner_gpu PRIVATE Test_StateVectorCudaManaged_NonParam.cpp
 	                      Test_GateCache.cpp
 	                      Test_Generators.cpp
 	                      Test_DataBuffer.cpp
+	                      Test_DataBufferArena.cpp
 	                      TestHelpers.hpp
 )
 
