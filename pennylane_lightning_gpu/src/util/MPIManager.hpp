@@ -425,6 +425,15 @@ class MPIManager final {
     }
 
     template <typename T>
+    void Reduce(T *sendBuf, T *recvBuf, size_t length, size_t root,
+                const std::string &op_str) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        MPI_Op op = getMPIOpType(op_str);
+        PL_MPI_IS_SUCCESS(MPI_Reduce(sendBuf, recvBuf, length, datatype, op,
+                                     root, this->getComm()));
+    }
+
+    template <typename T>
     void Gather(T &sendBuf, std::vector<T> &recvBuf, size_t root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         PL_MPI_IS_SUCCESS(MPI_Gather(&sendBuf, 1, datatype, recvBuf.data(), 1,
@@ -531,6 +540,41 @@ class MPIManager final {
                                       recvBuf.data(), recvBuf.size(), datatype,
                                       rootInt, this->getComm()));
         return recvBuf;
+    }
+
+    /**
+     * @brief MPI_Send wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer vector.
+     * @param dest Rank of send dest.
+     */
+
+    template <typename T> void Send(std::vector<T> &sendBuf, size_t dest) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        const int tag = 0;
+
+        PL_MPI_IS_SUCCESS(MPI_Send(sendBuf.data(), sendBuf.size(), datatype,
+                                   static_cast<int>(dest), tag,
+                                   this->getComm()));
+    }
+
+    /**
+     * @brief MPI_Recv wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param recvBuf Recv buffer vector.
+     * @param source Rank of data source.
+     */
+
+    template <typename T> void Recv(std::vector<T> &recvBuf, size_t source) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        MPI_Status status;
+        const int tag = 0;
+
+        PL_MPI_IS_SUCCESS(MPI_Recv(recvBuf.data(), recvBuf.size(), datatype,
+                                   static_cast<int>(source), tag,
+                                   this->getComm(), &status));
     }
 
     /**

@@ -64,6 +64,20 @@ extern void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                                const size_t index, bool async,
                                cudaStream_t stream_id);
 
+template <class Precision, class index_type> struct CSRMatrix {
+    std::vector<std::complex<Precision>> values;
+    std::vector<index_type> columns;
+    std::vector<index_type> csrOffsets;
+
+    CSRMatrix(size_t num_rows, size_t nnz) {
+        values = std::vector<std::complex<Precision>>(nnz);
+        columns = std::vector<index_type>(nnz, 0);
+        csrOffsets = std::vector<index_type>(num_rows + 1, 0);
+    }
+
+    CSRMatrix(){};
+};
+
 /**
  * @brief Managed memory CUDA state-vector class using custateVec backed
  * gate-calls.
@@ -939,6 +953,343 @@ class StateVectorCudaMPI
         auto expect_val =
             getExpectationValueDeviceMatrix(matrix_cu.data(), local_wires);
         return expect_val;
+    }
+
+    template <class index_type>
+    auto scatterCSRMatrix(std::vector<CSRMatrix<Precision, index_type>> &matrix,
+                          size_t root) -> CSRMatrix<Precision, index_type> {
+        // Bcast num_rows and num_cols
+        size_t local_num_rows;
+        size_t num_col_blocks;
+        std::vector<size_t> nnzs;
+
+        local_num_rows = size_t{1} << this->getNumLocalQubits();
+        num_col_blocks = mpi_manager_.getSize();
+
+        if (mpi_manager_.getRank() == root) {
+            for (size_t j = 0; j < matrix.size(); j++) {
+                nnzs.push_back(matrix[j].values.size());
+            }
+        }
+
+        size_t local_nnz = mpi_manager_.scatter<size_t>(nnzs, 0)[0];
+
+        CSRMatrix<Precision, index_type> localCSRMatrix(local_num_rows,
+                                                        local_nnz);
+
+        if (mpi_manager_.getRank() == root) {
+            localCSRMatrix.values = matrix[0].values;
+            localCSRMatrix.csrOffsets = matrix[0].csrOffsets;
+            localCSRMatrix.columns = matrix[0].columns;
+        }
+
+        for (size_t k = 1; k < num_col_blocks; k++) {
+            size_t dest = k;
+            size_t source = 0;
+
+            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
+                mpi_manager_.Send<std::complex<Precision>>(matrix[k].values,
+                                                           dest);
+            } else if (mpi_manager_.getRank() == k && local_nnz) {
+                mpi_manager_.Recv<std::complex<Precision>>(
+                    localCSRMatrix.values, source);
+            }
+
+            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
+                mpi_manager_.Send<index_type>(matrix[k].csrOffsets, dest);
+            } else if (mpi_manager_.getRank() == k && local_nnz) {
+                mpi_manager_.Recv<index_type>(localCSRMatrix.csrOffsets,
+                                              source);
+            }
+
+            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
+                mpi_manager_.Send<index_type>(matrix[k].columns, dest);
+            } else if (mpi_manager_.getRank() == k && local_nnz) {
+                mpi_manager_.Recv<index_type>(localCSRMatrix.columns, source);
+            }
+
+            /*
+            int sendtag = 0;
+            int recvtag = 0;
+
+            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
+                MPI_Send(matrix[k].values.data(), matrix[k].values.size(),
+                         MPI_C_DOUBLE_COMPLEX, dest, sendtag,
+                         mpi_manager_.getComm());
+            } else if (mpi_manager_.getRank() == k && local_nnz) {
+                MPI_Recv(localCSRMatrix.values.data(),
+                         localCSRMatrix.values.size(), MPI_C_DOUBLE_COMPLEX,
+                         source, recvtag, mpi_manager_.getComm(),
+                         MPI_STATUS_IGNORE);
+            }
+
+            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
+                MPI_Send(matrix[k].csrOffsets.data(),
+                         matrix[k].csrOffsets.size(), MPI_INT64_T, dest,
+                         sendtag, mpi_manager_.getComm());
+            } else if (mpi_manager_.getRank() == k && local_nnz) {
+                MPI_Recv(localCSRMatrix.csrOffsets.data(),
+                         localCSRMatrix.csrOffsets.size(), MPI_INT64_T, source,
+                         recvtag, mpi_manager_.getComm(), MPI_STATUS_IGNORE);
+            }
+
+            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
+                MPI_Send(matrix[k].columns.data(), matrix[k].columns.size(),
+                         MPI_INT64_T, dest, sendtag, mpi_manager_.getComm());
+            } else if (mpi_manager_.getRank() == k && local_nnz) {
+                MPI_Recv(localCSRMatrix.columns.data(),
+                         localCSRMatrix.columns.size(), MPI_INT64_T, source,
+                         recvtag, mpi_manager_.getComm(), MPI_STATUS_IGNORE);
+            }
+            */
+        }
+        return localCSRMatrix;
+    }
+
+    template <class index_type>
+    auto splitCSRMatrix(const size_t &num_row_blocks,
+                        const size_t &num_col_blocks,
+                        const index_type *csrOffsets_ptr,
+                        const index_type *columns_ptr,
+                        const std::complex<Precision> *values_ptr)
+        -> std::vector<std::vector<CSRMatrix<Precision, index_type>>> {
+
+        std::vector<std::vector<CSRMatrix<Precision, index_type>>>
+            splitSparseMatrix(
+                num_row_blocks,
+                std::vector<CSRMatrix<Precision, index_type>>(num_col_blocks));
+
+        size_t num_rows = size_t{1} << this->getTotalNumQubits();
+        size_t row_block_size = size_t{1} << this->getNumLocalQubits();
+        size_t col_block_size = row_block_size;
+
+        for (size_t row = 0; row < num_rows; row++) {
+            for (size_t col_idx = static_cast<size_t>(csrOffsets_ptr[row]);
+                 col_idx < static_cast<size_t>(csrOffsets_ptr[row + 1]);
+                 col_idx++) {
+
+                size_t current_global_row = row;
+                size_t current_global_col = columns_ptr[col_idx];
+                std::complex<Precision> current_val = values_ptr[col_idx];
+
+                size_t block_row_id = current_global_row / row_block_size;
+                size_t block_col_id = current_global_col / col_block_size;
+
+                size_t local_row_id = current_global_row % row_block_size;
+                size_t local_col_id = current_global_col % col_block_size;
+
+                if (splitSparseMatrix[block_row_id][block_col_id]
+                        .csrOffsets.size() == 0) {
+                    splitSparseMatrix[block_row_id][block_col_id].csrOffsets =
+                        std::vector<index_type>(row_block_size + 1, 0);
+                }
+
+                splitSparseMatrix[block_row_id][block_col_id]
+                    .csrOffsets[local_row_id + 1]++;
+                splitSparseMatrix[block_row_id][block_col_id].columns.push_back(
+                    local_col_id);
+                splitSparseMatrix[block_row_id][block_col_id].values.push_back(
+                    current_val);
+            }
+        }
+
+        for (size_t block_row_id = 0; block_row_id < num_row_blocks;
+             block_row_id++) {
+            for (size_t block_col_id = 0; block_col_id < num_col_blocks;
+                 block_col_id++) {
+                for (size_t i0 = 1;
+                     i0 < splitSparseMatrix[block_row_id][block_col_id]
+                              .csrOffsets.size();
+                     i0++) {
+                    splitSparseMatrix[block_row_id][block_col_id]
+                        .csrOffsets[i0] +=
+                        splitSparseMatrix[block_row_id][block_col_id]
+                            .csrOffsets[i0 - 1];
+                }
+            }
+        }
+
+        return splitSparseMatrix;
+    }
+
+    /**
+     * @brief expval(H) calculation with cuSparseSpMV.
+     *
+     * @tparam index_type Integer type used as indices of the sparse matrix.
+     * @param csr_Offsets_ptr Pointer to the array of row offsets of the sparse
+     * matrix. Array of size csrOffsets_size.
+     * @param csrOffsets_size Number of Row offsets of the sparse matrix.
+     * @param columns_ptr Pointer to the array of column indices of the sparse
+     * matrix. Array of size numNNZ
+     * @param values_ptr Pointer to the array of the non-zero elements
+     * @param numNNZ Number of non-zero elements.
+     * @return auto Expectation value.
+     */
+    template <class index_type>
+    auto
+    getExpectationValueOnSparseSpMV(const index_type *csrOffsets_ptr,
+                                    const index_type *columns_ptr,
+                                    const std::complex<Precision> *values_ptr) {
+        const CFP_t alpha = {1.0, 0.0};
+        const CFP_t beta = {0.0, 0.0};
+
+        Precision local_expect = 0;
+
+        auto device_id = BaseType::getDataBuffer().getDevTag().getDeviceID();
+        auto stream_id = BaseType::getDataBuffer().getDevTag().getStreamID();
+
+        cudaDataType_t data_type;
+        cusparseIndexType_t compute_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+            compute_type = CUSPARSE_INDEX_64I;
+        } else {
+            data_type = CUDA_C_32F;
+            compute_type = CUSPARSE_INDEX_32I;
+        }
+
+        std::vector<std::vector<CSRMatrix<Precision, index_type>>>
+            csrmatrix_blocks;
+
+        size_t num_col_blocks = mpi_manager_.getSize();
+        size_t num_row_blocks = mpi_manager_.getSize();
+
+        if (mpi_manager_.getRank() == 0) {
+            csrmatrix_blocks =
+                splitCSRMatrix(num_col_blocks, num_row_blocks, csrOffsets_ptr,
+                               columns_ptr, values_ptr);
+        }
+
+        const size_t length_local = size_t{1} << this->getNumLocalQubits();
+
+        DataBuffer<CFP_t, int> d_tmp{length_local, device_id, stream_id, true};
+        DataBuffer<CFP_t, int> d_tmp_res{length_local, device_id, stream_id,
+                                         true};
+        d_tmp_res.zeroInit();
+
+        for (size_t i = 0; i < num_row_blocks; i++) {
+            std::vector<CSRMatrix<Precision, index_type>> sparsematices_row;
+
+            if (mpi_manager_.getRank() == 0) {
+                sparsematices_row = csrmatrix_blocks[i];
+            }
+            mpi_manager_.Barrier();
+
+            auto localCSRMatrix = scatterCSRMatrix(sparsematices_row, 0);
+            mpi_manager_.Barrier();
+
+            int64_t num_rows_local =
+                static_cast<int64_t>(localCSRMatrix.csrOffsets.size() - 1);
+            int64_t num_cols_local =
+                static_cast<int64_t>(localCSRMatrix.columns.size());
+            int64_t nnz_local =
+                static_cast<int64_t>(localCSRMatrix.values.size());
+
+            size_t color = 0;
+
+            if (localCSRMatrix.values.size() != 0) {
+                d_tmp.zeroInit();
+
+                DataBuffer<index_type, int> d_csrOffsets{
+                    localCSRMatrix.csrOffsets.size(), device_id, stream_id,
+                    true};
+                DataBuffer<index_type, int> d_columns{
+                    localCSRMatrix.columns.size(), device_id, stream_id, true};
+                DataBuffer<CFP_t, int> d_values{localCSRMatrix.values.size(),
+                                                device_id, stream_id, true};
+
+                d_csrOffsets.CopyHostDataToGpu(localCSRMatrix.csrOffsets.data(),
+                                               localCSRMatrix.csrOffsets.size(),
+                                               false);
+                d_columns.CopyHostDataToGpu(localCSRMatrix.columns.data(),
+                                            localCSRMatrix.columns.size(),
+                                            false);
+                d_values.CopyHostDataToGpu(localCSRMatrix.values.data(),
+                                           localCSRMatrix.values.size(), false);
+
+                // CUSPARSE APIs
+                cusparseSpMatDescr_t mat;
+                cusparseDnVecDescr_t vecX, vecY;
+
+                size_t bufferSize = 0;
+                cusparseHandle_t handle = getCusparseHandle();
+
+                // Create sparse matrix A in CSR format
+                PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
+                    &mat, num_rows_local, num_cols_local, nnz_local,
+                    d_csrOffsets.getData(), d_columns.getData(),
+                    d_values.getData(), compute_type, compute_type,
+                    CUSPARSE_INDEX_BASE_ZERO, data_type));
+
+                // Create dense vector X
+                PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
+                    &vecX, num_cols_local, BaseType::getData(), data_type));
+
+                // Create dense vector y
+                PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
+                    &vecY, num_rows_local, d_tmp.getData(), data_type));
+
+                // allocate an external buffer if needed
+                PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
+                    handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX,
+                    &beta, vecY, data_type, CUSPARSE_SPMV_ALG_DEFAULT,
+                    &bufferSize));
+
+                DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
+                                                        stream_id, true};
+
+                // execute SpMV
+                PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
+                    handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX,
+                    &beta, vecY, data_type, CUSPARSE_SPMV_ALG_DEFAULT,
+                    reinterpret_cast<void *>(dBuffer.getData())));
+
+                // destroy matrix/vector descriptors
+                PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat));
+                PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecX));
+                PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY));
+
+                color = 1;
+            }
+
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+            mpi_manager_.Barrier();
+
+            if (mpi_manager_.getRank() == i) {
+                color = 1;
+            }
+
+            auto new_mpi_manager =
+                mpi_manager_.split(color, mpi_manager_.getRank());
+            int reduce_root_rank = -1;
+
+            if (mpi_manager_.getRank() == i) {
+                reduce_root_rank = new_mpi_manager.getRank();
+            }
+
+            mpi_manager_.Bcast<int>(reduce_root_rank, i);
+
+            if (new_mpi_manager.getComm() != MPI_COMM_NULL) {
+                new_mpi_manager.Reduce<CFP_t>(d_tmp.getData(),
+                                              d_tmp_res.getData(), length_local,
+                                              reduce_root_rank, "sum");
+            }
+        }
+
+        mpi_manager_.Barrier();
+
+        local_expect = innerProdC_CUDA(d_tmp_res.getData(), BaseType::getData(),
+                                       BaseType::getLength(), device_id,
+                                       stream_id, getCublasCaller())
+                           .x;
+
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        mpi_manager_.Barrier();
+
+        auto expect = mpi_manager_.allreduce<Precision>(local_expect, "sum");
+        return expect;
     }
 
     /**
