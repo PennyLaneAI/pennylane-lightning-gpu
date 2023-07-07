@@ -955,6 +955,13 @@ class StateVectorCudaMPI
         return expect_val;
     }
 
+    /**
+     * @brief Scatter a CSR (Compress Sparse Row) format matrix.
+     *
+     * @tparam index_type Integer type used as indices of the sparse matrix.
+     * @param matrix CSR (Compress Sparse Row) format matrix.
+     * @param root Root rank of the scatter operation.
+     */
     template <class index_type>
     auto scatterCSRMatrix(std::vector<CSRMatrix<Precision, index_type>> &matrix,
                           size_t root) -> CSRMatrix<Precision, index_type> {
@@ -1007,45 +1014,25 @@ class StateVectorCudaMPI
             } else if (mpi_manager_.getRank() == k && local_nnz) {
                 mpi_manager_.Recv<index_type>(localCSRMatrix.columns, source);
             }
-
-            /*
-            int sendtag = 0;
-            int recvtag = 0;
-
-            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
-                MPI_Send(matrix[k].values.data(), matrix[k].values.size(),
-                         MPI_C_DOUBLE_COMPLEX, dest, sendtag,
-                         mpi_manager_.getComm());
-            } else if (mpi_manager_.getRank() == k && local_nnz) {
-                MPI_Recv(localCSRMatrix.values.data(),
-                         localCSRMatrix.values.size(), MPI_C_DOUBLE_COMPLEX,
-                         source, recvtag, mpi_manager_.getComm(),
-                         MPI_STATUS_IGNORE);
-            }
-
-            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
-                MPI_Send(matrix[k].csrOffsets.data(),
-                         matrix[k].csrOffsets.size(), MPI_INT64_T, dest,
-                         sendtag, mpi_manager_.getComm());
-            } else if (mpi_manager_.getRank() == k && local_nnz) {
-                MPI_Recv(localCSRMatrix.csrOffsets.data(),
-                         localCSRMatrix.csrOffsets.size(), MPI_INT64_T, source,
-                         recvtag, mpi_manager_.getComm(), MPI_STATUS_IGNORE);
-            }
-
-            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
-                MPI_Send(matrix[k].columns.data(), matrix[k].columns.size(),
-                         MPI_INT64_T, dest, sendtag, mpi_manager_.getComm());
-            } else if (mpi_manager_.getRank() == k && local_nnz) {
-                MPI_Recv(localCSRMatrix.columns.data(),
-                         localCSRMatrix.columns.size(), MPI_INT64_T, source,
-                         recvtag, mpi_manager_.getComm(), MPI_STATUS_IGNORE);
-            }
-            */
         }
         return localCSRMatrix;
     }
 
+    /**
+     * @brief Convert a global CSR (Compress Sparse Row) format matrix into
+     * local blocks. This operation should be conducted on the rank 0.
+     *
+     * @tparam index_type Integer type used as indices of the sparse matrix.
+     * @param num_row_blocks Number of local blocks per global row.
+     * @param num_col_blocks Number of local blocks per global column.
+     * @param csrOffsets_ptr Pointer to the array of row offsets of the sparse
+     * matrix. Array of size csrOffsets_size.
+     * @param columns_ptr Pointer to the array of column indices of the sparse
+     * matrix. Array of size numNNZ
+     * @param values_ptr Pointer to the array of the non-zero elements
+     *
+     * @return auto A vector of vector of CSRMatrix.
+     */
     template <class index_type>
     auto splitCSRMatrix(const size_t &num_row_blocks,
                         const size_t &num_col_blocks,
@@ -1126,10 +1113,15 @@ class StateVectorCudaMPI
      * @return auto Expectation value.
      */
     template <class index_type>
-    auto
-    getExpectationValueOnSparseSpMV(const index_type *csrOffsets_ptr,
-                                    const index_type *columns_ptr,
-                                    const std::complex<Precision> *values_ptr) {
+    auto getExpectationValueOnSparseSpMV(
+        const index_type *csrOffsets_ptr, const index_type csrOffsets_size,
+        const index_type *columns_ptr,
+        const std::complex<Precision> *values_ptr, const index_type numNNZ) {
+        PL_ABORT_IF_NOT(static_cast<size_t>(csrOffsets_size - 1) ==
+                            (size_t{1} << this->getTotalNumQubits()),
+                        "Incorrect size of CSR Offsets.");
+        PL_ABORT_IF_NOT(numNNZ > 0, "Empty CSR matrix.");
+
         const CFP_t alpha = {1.0, 0.0};
         const CFP_t beta = {0.0, 0.0};
 
@@ -1218,33 +1210,60 @@ class StateVectorCudaMPI
 
                 // Create sparse matrix A in CSR format
                 PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
-                    &mat, num_rows_local, num_cols_local, nnz_local,
-                    d_csrOffsets.getData(), d_columns.getData(),
-                    d_values.getData(), compute_type, compute_type,
-                    CUSPARSE_INDEX_BASE_ZERO, data_type));
+                    /* cusparseSpMatDescr_t* */ &mat,
+                    /* int64_t */ num_rows_local,
+                    /* int64_t */ num_cols_local,
+                    /* int64_t */ nnz_local,
+                    /* void* */ d_csrOffsets.getData(),
+                    /* void* */ d_columns.getData(),
+                    /* void* */ d_values.getData(),
+                    /* cusparseIndexType_t */ compute_type,
+                    /* cusparseIndexType_t */ compute_type,
+                    /* cusparseIndexBase_t */ CUSPARSE_INDEX_BASE_ZERO,
+                    /* cudaDataType */ data_type));
 
                 // Create dense vector X
                 PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
-                    &vecX, num_cols_local, BaseType::getData(), data_type));
+                    /* cusparseDnVecDescr_t* */ &vecX,
+                    /* int64_t */ num_cols_local,
+                    /* void* */ BaseType::getData(),
+                    /* cudaDataType */ data_type));
 
                 // Create dense vector y
                 PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
-                    &vecY, num_rows_local, d_tmp.getData(), data_type));
+                    /* cusparseDnVecDescr_t* */ &vecY,
+                    /* int64_t */ num_rows_local,
+                    /* void* */ d_tmp.getData(),
+                    /* cudaDataType */ data_type));
 
                 // allocate an external buffer if needed
                 PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
-                    handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX,
-                    &beta, vecY, data_type, CUSPARSE_SPMV_ALG_DEFAULT,
-                    &bufferSize));
+                    /* cusparseHandle_t */ handle,
+                    /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+                    /* const void* */ &alpha,
+                    /* cusparseSpMatDescr_t */ mat,
+                    /* cusparseDnVecDescr_t */ vecX,
+                    /* const void* */ &beta,
+                    /* cusparseDnVecDescr_t */ vecY,
+                    /* cudaDataType */ data_type,
+                    /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+                    /* size_t* */ &bufferSize));
 
                 DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
                                                         stream_id, true};
 
                 // execute SpMV
                 PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
-                    handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat, vecX,
-                    &beta, vecY, data_type, CUSPARSE_SPMV_ALG_DEFAULT,
-                    reinterpret_cast<void *>(dBuffer.getData())));
+                    /* cusparseHandle_t */ handle,
+                    /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+                    /* const void* */ &alpha,
+                    /* cusparseSpMatDescr_t */ mat,
+                    /* cusparseDnVecDescr_t */ vecX,
+                    /* const void* */ &beta,
+                    /* cusparseDnVecDescr_t */ vecY,
+                    /* cudaDataType */ data_type,
+                    /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+                    /* void* */ reinterpret_cast<void *>(dBuffer.getData())));
 
                 // destroy matrix/vector descriptors
                 PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat));

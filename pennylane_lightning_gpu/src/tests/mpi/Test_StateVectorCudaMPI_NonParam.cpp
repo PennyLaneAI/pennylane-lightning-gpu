@@ -967,15 +967,15 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::Hamiltonian_expval_cuSparse",
             {1.0, 0.0},  {0.0, -1.0}, {1.0, 0.0}, {0.0, 1.0},
             {0.0, -1.0}, {1.0, 0.0},  {0.0, 1.0}, {1.0, 0.0}};
 
-        // index_type num_csrOffsets = 9;
-        // index_type nnz = 16;
+        index_type num_csrOffsets = 9;
+        index_type nnz = 16;
 
         StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
                                           nGlobalIndexBits, nLocalIndexBits);
         sv.CopyHostDataToGpu(local_state, false);
 
         auto results = sv.template getExpectationValueOnSparseSpMV<index_type>(
-            csrOffsets, columns, values);
+            csrOffsets, num_csrOffsets, columns, values, nnz);
 
         TestType expected = 1;
 
