@@ -85,6 +85,8 @@ try:
             TensorProdObsGPUMPI_C128,
             HamiltonianGPUMPI_C64,
             HamiltonianGPUMPI_C128,
+            SparseHamiltonianGPUMPI_C64,
+            SparseHamiltonianGPUMPI_C128,
         )
 
         MPI_SUPPORT = True

@@ -31,6 +31,8 @@ from pennylane_lightning_gpu.lightning_gpu_qubit_ops import (
     TensorProdObsGPUMPI_C128,
     HamiltonianGPUMPI_C64,
     HamiltonianGPUMPI_C128,
+    SparseHamiltonianGPUMPI_C64,
+    SparseHamiltonianGPUMPI_C128,
 )
 from pennylane_lightning_gpu._serialize import _serialize_ob
 
@@ -1043,6 +1045,7 @@ def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns, isBatch_obs):
     with pytest.raises((TypeError, ValueError)):
         j_gpu = qml.jacobian(qnode_gpu)(params)
 
+
 '''
 @pytest.mark.parametrize(
     "returns",
@@ -1090,6 +1093,145 @@ def test_failed_adjoint_SparseHamiltonian(returns):
 
 '''
 
+
+custom_wires0 = ["alice", 3.14, -1, 0, "bob", "luc"]
+""" Important Note: Ensure wires index arranged from high to low
+    qml.SparseHamiltonian(
+        qml.Hamiltonian(
+            [0.1], [qml.PauliX(wires=custom_wires0[1]) @ qml.PauliY(wires=custom_wires0[0])]
+        ).sparse_matrix(custom_wires0.[::-1]),
+    ) 
+"""
+
+
+@pytest.mark.parametrize(
+    "returns",
+    [
+        qml.SparseHamiltonian(
+            qml.Hamiltonian(
+                [0.1], [qml.PauliX(wires=custom_wires0[0]) @ qml.PauliZ(wires=custom_wires0[1])]
+            ).sparse_matrix(custom_wires0[::-1]),
+            wires=custom_wires0,
+        ),
+        qml.SparseHamiltonian(
+            qml.Hamiltonian(
+                [2.0], [qml.PauliX(wires=custom_wires0[2]) @ qml.PauliZ(wires=custom_wires0[0])]
+            ).sparse_matrix(custom_wires0[::-1]),
+            wires=custom_wires0,
+        ),
+        qml.SparseHamiltonian(
+            qml.Hamiltonian(
+                [1.1], [qml.PauliX(wires=custom_wires0[0]) @ qml.PauliZ(wires=custom_wires0[2])]
+            ).sparse_matrix(custom_wires0[::-1]),
+            wires=custom_wires0,
+        ),
+    ],
+)
+def test_adjoint_SparseHamiltonian_custom_wires(returns):
+    """Integration tests that compare to default.qubit for a large circuit containing parametrized
+    operations and when using custom wire labels"""
+
+    comm = MPI.COMM_WORLD
+    dev_gpu = qml.device("lightning.gpu", wires=custom_wires0, mpi=True)
+    dev_cpu = qml.device("default.qubit", wires=custom_wires0)
+
+    def circuit(params):
+        circuit_ansatz(params, wires=custom_wires0)
+        return qml.expval(returns)
+
+    if comm.Get_rank() == 0:
+        n_params = 30
+        np.random.seed(1337)
+        params = np.random.rand(n_params)
+    else:
+        params = None
+
+    params = comm.bcast(params, root=0)
+
+    qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
+    qnode_cpu = qml.QNode(circuit, dev_cpu, diff_method="parameter-shift")
+
+    j_gpu = qml.jacobian(qnode_gpu)(params)
+    j_cpu = qml.jacobian(qnode_cpu)(params)
+
+    assert np.allclose(j_cpu, j_gpu)
+
+
+""" Important Note: Ensure wires index arranged from high to low
+    qml.SparseHamiltonian(
+    qml.Hamiltonian(
+                [0.1],
+                [qml.PauliX(1) @ qml.PauliZ(0)],
+            ).sparse_matrix(range(5, -1, -1)),
+            wires=range(6),
+    )
+"""
+
+
+@pytest.mark.parametrize(
+    "returns",
+    [
+        qml.SparseHamiltonian(
+            qml.Hamiltonian(
+                [0.1],
+                [qml.PauliZ(1) @ qml.PauliX(0) @ qml.Identity(2) @ qml.PauliX(4) @ qml.Identity(5)],
+            ).sparse_matrix(range(5, -1, -1)),
+            wires=range(6),
+        ),
+        qml.SparseHamiltonian(
+            qml.Hamiltonian(
+                [0.1],
+                [qml.PauliX(1) @ qml.PauliZ(0)],
+            ).sparse_matrix(range(5, -1, -1)),
+            wires=range(6),
+        ),
+        qml.SparseHamiltonian(
+            qml.Hamiltonian(
+                [0.1],
+                [qml.PauliX(0) @ qml.PauliZ(1)],
+            ).sparse_matrix(range(5, -1, -1)),
+            wires=range(6),
+        ),
+        qml.SparseHamiltonian(
+            qml.Hamiltonian([2.0], [qml.PauliX(1) @ qml.PauliZ(2)]).sparse_matrix(range(5, -1, -1)),
+            wires=range(6),
+        ),
+        qml.SparseHamiltonian(
+            qml.Hamiltonian([1.1], [qml.PauliX(2) @ qml.PauliZ(0)]).sparse_matrix(range(5, -1, -1)),
+            wires=range(6),
+        ),
+    ],
+)
+def test_adjoint_SparseHamiltonian(returns):
+    """Integration tests that compare to default.qubit for a large circuit containing parametrized
+    operations and when using custom wire labels"""
+
+    comm = MPI.COMM_WORLD
+    dev_gpu = qml.device("lightning.gpu", wires=6, mpi=True)
+    dev_cpu = qml.device("default.qubit", wires=6)
+
+    def circuit(params):
+        circuit_ansatz(params, wires=range(6))
+        return qml.expval(returns)
+
+    if comm.Get_rank() == 0:
+        n_params = 30
+        np.random.seed(1337)
+        params = np.random.rand(n_params)
+    else:
+        params = None
+
+    params = comm.bcast(params, root=0)
+
+    qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
+    qnode_cpu = qml.QNode(circuit, dev_cpu, diff_method="parameter-shift")
+
+    j_gpu = qml.jacobian(qnode_gpu)(params)
+    j_cpu = qml.jacobian(qnode_cpu)(params)
+
+    assert np.allclose(j_cpu, j_gpu)
+
+
 @pytest.mark.parametrize(
     "obs,obs_type_c64,obs_type_c128",
     [
@@ -1101,6 +1243,11 @@ def test_failed_adjoint_SparseHamiltonian(returns):
             qml.PauliZ(0) @ qml.Hadamard(1) @ (0.1 * (qml.PauliZ(2) + qml.PauliX(3))),
             HamiltonianGPUMPI_C64,
             HamiltonianGPUMPI_C128,
+        ),
+        (
+            qml.SparseHamiltonian(qml.Hamiltonian([1], [qml.PauliZ(0)]).sparse_matrix(), wires=[0]),
+            SparseHamiltonianGPUMPI_C64,
+            SparseHamiltonianGPUMPI_C128,
         ),
     ],
 )

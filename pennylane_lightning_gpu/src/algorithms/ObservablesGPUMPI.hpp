@@ -17,6 +17,7 @@
 #include <functional>
 #include <vector>
 
+#include "MPIManager.hpp"
 #include "StateVectorCudaMPI.hpp"
 
 namespace Pennylane::Algorithms {
@@ -362,8 +363,9 @@ class HamiltonianGPUMPI final : public ObservableGPUMPI<T> {
         for (size_t term_idx = 0; term_idx < coeffs_.size(); term_idx++) {
             DevTag<int> dt_local(sv.getDataBuffer().getDevTag());
             dt_local.refresh();
-            StateVectorCudaMPI<T> tmp(dt_local, sv.getNumGlobalQubits(),
-                                      sv.getNumLocalQubits(), sv.getData());
+            StateVectorCudaMPI<PrecisionT> tmp(
+                dt_local, sv.getNumGlobalQubits(), sv.getNumLocalQubits(),
+                sv.getData());
             obs_[term_idx]->applyInPlace(tmp);
             scaleAndAddC_CUDA(std::complex<T>{coeffs_[term_idx], 0.0},
                               tmp.getData(), buffer.getData(), tmp.getLength(),
@@ -402,6 +404,286 @@ class HamiltonianGPUMPI final : public ObservableGPUMPI<T> {
         ss << "]}";
         return ss.str();
     }
+};
+
+/**
+ * @brief Sparse representation of HamiltonianGPUMPI<T>
+ *
+ * @tparam T Floating-point precision.
+ */
+template <typename T>
+class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
+  public:
+    using PrecisionT = T;
+    // cuSparse required index type
+    using IdxT = typename std::conditional<std::is_same<T, float>::value,
+                                           int32_t, int64_t>::type;
+
+  private:
+    std::vector<std::complex<T>> data_;
+    std::vector<IdxT> indices_;
+    std::vector<IdxT> offsets_;
+    std::vector<std::size_t> wires_;
+
+    [[nodiscard]] bool
+    isEqual(const ObservableGPUMPI<T> &other) const override {
+        const auto &other_cast =
+            static_cast<const SparseHamiltonianGPUMPI<T> &>(other);
+
+        if (data_ != other_cast.data_ || indices_ != other_cast.indices_ ||
+            offsets_ != other_cast.offsets_) {
+            return false;
+        }
+
+        return true;
+    }
+
+  public:
+    /**
+     * @brief Create a SparseHamiltonianMPI from data, indices and offsets in
+     * CSR format.
+     *
+     * @param arg1 Arguments to construct data
+     * @param arg2 Arguments to construct indices
+     * @param arg3 Arguments to construct offsets
+     * @param arg4 Arguments to construct wires
+     */
+    template <typename T1, typename T2, typename T3 = T2,
+              typename T4 = std::vector<std::size_t>>
+    SparseHamiltonianGPUMPI(T1 &&arg1, T2 &&arg2, T3 &&arg3, T4 &&arg4)
+        : data_{std::forward<T1>(arg1)}, indices_{std::forward<T2>(arg2)},
+          offsets_{std::forward<T3>(arg3)}, wires_{std::forward<T4>(arg4)} {
+        PL_ASSERT(data_.size() == indices_.size());
+    }
+
+    /**
+     * @brief Convenient wrapper for the constructor as the constructor does not
+     * convert the std::shared_ptr with a derived class correctly.
+     *
+     * This function is useful as std::make_shared does not handle
+     * brace-enclosed initializer list correctly.
+     *
+     * @param arg1 Argument to construct data
+     * @param arg2 Argument to construct indices
+     * @param arg3 Argument to construct ofsets
+     * @param arg4 Argument to construct wires
+     */
+    static auto create(std::initializer_list<T> arg1,
+                       std::initializer_list<IdxT> arg2,
+                       std::initializer_list<IdxT> arg3,
+                       std::initializer_list<std::size_t> arg4)
+        -> std::shared_ptr<SparseHamiltonianGPUMPI<T>> {
+        return std::shared_ptr<SparseHamiltonianGPUMPI<T>>(
+            new SparseHamiltonianGPUMPI<T>{std::move(arg1), std::move(arg2),
+                                           std::move(arg3), std::move(arg4)});
+    }
+
+    /**
+     * @brief Updates the statevector SV:->SV', where SV' = a*H*SV, and where H
+     * is a sparse Hamiltonian.
+     *
+     */
+    inline void applyInPlace(StateVectorCudaMPI<T> &sv) const override {
+        PL_ABORT_IF_NOT(wires_.size() == sv.getTotalNumQubits(),
+                        "SparseH wire count does not match state-vector size");
+        using CFP_t = typename StateVectorCudaMPI<T>::CFP_t;
+        const CFP_t alpha = {1.0, 0.0};
+        const CFP_t beta = {0.0, 0.0};
+
+        auto device_id = sv.getDataBuffer().getDevTag().getDeviceID();
+        auto stream_id = sv.getDataBuffer().getDevTag().getStreamID();
+
+        auto mpi_manager = sv.getMPIManager();
+
+        // clang-format on
+        cudaDataType_t data_type;
+        cusparseIndexType_t compute_type;
+
+        if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
+                      std::is_same_v<CFP_t, double2>) {
+            data_type = CUDA_C_64F;
+            compute_type = CUSPARSE_INDEX_64I;
+        } else {
+            data_type = CUDA_C_32F;
+            compute_type = CUSPARSE_INDEX_32I;
+        }
+
+        std::vector<std::vector<CSRMatrix<PrecisionT, IdxT>>> csrmatrix_blocks;
+
+        size_t num_col_blocks = mpi_manager.getSize();
+        size_t num_row_blocks = mpi_manager.getSize();
+
+        if (mpi_manager.getRank() == 0) {
+            csrmatrix_blocks = sv.template splitCSRMatrix<IdxT>(
+                num_col_blocks, num_row_blocks, offsets_.data(),
+                indices_.data(), data_.data());
+        }
+
+        const size_t length_local = size_t{1} << sv.getNumLocalQubits();
+
+        DevTag<int> dt_local(sv.getDataBuffer().getDevTag());
+        dt_local.refresh();
+        StateVectorCudaMPI<PrecisionT> d_sv_prime(
+            dt_local, sv.getNumGlobalQubits(), sv.getNumLocalQubits(),
+            sv.getData());
+
+        StateVectorCudaMPI<PrecisionT> d_tmp(dt_local, sv.getNumGlobalQubits(),
+                                             sv.getNumLocalQubits(),
+                                             sv.getData());
+
+        for (size_t i = 0; i < num_row_blocks; i++) {
+            std::vector<CSRMatrix<PrecisionT, IdxT>> sparsematices_row;
+
+            if (mpi_manager.getRank() == 0) {
+                sparsematices_row = csrmatrix_blocks[i];
+            }
+
+            auto localCSRMatrix =
+                sv.template scatterCSRMatrix<IdxT>(sparsematices_row, 0);
+
+            int64_t num_rows_local =
+                static_cast<int64_t>(localCSRMatrix.csrOffsets.size() - 1);
+            int64_t num_cols_local =
+                static_cast<int64_t>(localCSRMatrix.columns.size());
+            int64_t nnz_local =
+                static_cast<int64_t>(localCSRMatrix.values.size());
+
+            size_t color = 0;
+
+            if (localCSRMatrix.values.size() != 0) {
+                DataBuffer<IdxT, int> d_csrOffsets{
+                    localCSRMatrix.csrOffsets.size(), device_id, stream_id,
+                    true};
+                DataBuffer<IdxT, int> d_columns{localCSRMatrix.columns.size(),
+                                                device_id, stream_id, true};
+                DataBuffer<CFP_t, int> d_values{localCSRMatrix.values.size(),
+                                                device_id, stream_id, true};
+
+                d_csrOffsets.CopyHostDataToGpu(localCSRMatrix.csrOffsets.data(),
+                                               localCSRMatrix.csrOffsets.size(),
+                                               false);
+                d_columns.CopyHostDataToGpu(localCSRMatrix.columns.data(),
+                                            localCSRMatrix.columns.size(),
+                                            false);
+                d_values.CopyHostDataToGpu(localCSRMatrix.values.data(),
+                                           localCSRMatrix.values.size(), false);
+
+                // CUSPARSE APIs
+                cusparseSpMatDescr_t mat;
+                cusparseDnVecDescr_t vecX, vecY;
+
+                size_t bufferSize = 0;
+                cusparseHandle_t handle = sv.getCusparseHandle();
+
+                // Create sparse matrix A in CSR format
+                PL_CUSPARSE_IS_SUCCESS(cusparseCreateCsr(
+                    /* cusparseSpMatDescr_t* */ &mat,
+                    /* int64_t */ num_rows_local,
+                    /* int64_t */ num_cols_local,
+                    /* int64_t */ nnz_local,
+                    /* void* */ d_csrOffsets.getData(),
+                    /* void* */ d_columns.getData(),
+                    /* void* */ d_values.getData(),
+                    /* cusparseIndexType_t */ compute_type,
+                    /* cusparseIndexType_t */ compute_type,
+                    /* cusparseIndexBase_t */ CUSPARSE_INDEX_BASE_ZERO,
+                    /* cudaDataType */ data_type));
+
+                // Create dense vector X
+                PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
+                    /* cusparseDnVecDescr_t* */ &vecX,
+                    /* int64_t */ num_cols_local,
+                    /* void* */ sv.getData(),
+                    /* cudaDataType */ data_type));
+
+                // Create dense vector y
+                PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
+                    /* cusparseDnVecDescr_t* */ &vecY,
+                    /* int64_t */ num_rows_local,
+                    /* void* */ d_tmp.getData(),
+                    /* cudaDataType */ data_type));
+
+                // allocate an external buffer if needed
+                PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
+                    /* cusparseHandle_t */ handle,
+                    /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+                    /* const void* */ &alpha,
+                    /* cusparseSpMatDescr_t */ mat,
+                    /* cusparseDnVecDescr_t */ vecX,
+                    /* const void* */ &beta,
+                    /* cusparseDnVecDescr_t */ vecY,
+                    /* cudaDataType */ data_type,
+                    /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+                    /* size_t* */ &bufferSize));
+
+                DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
+                                                        stream_id, true};
+
+                // execute SpMV
+                PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
+                    /* cusparseHandle_t */ handle,
+                    /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+                    /* const void* */ &alpha,
+                    /* cusparseSpMatDescr_t */ mat,
+                    /* cusparseDnVecDescr_t */ vecX,
+                    /* const void* */ &beta,
+                    /* cusparseDnVecDescr_t */ vecY,
+                    /* cudaDataType */ data_type,
+                    /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+                    /* void* */ reinterpret_cast<void *>(dBuffer.getData())));
+
+                // destroy matrix/vector descriptors
+                PL_CUSPARSE_IS_SUCCESS(cusparseDestroySpMat(mat));
+                PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecX));
+                PL_CUSPARSE_IS_SUCCESS(cusparseDestroyDnVec(vecY));
+
+                color = 1;
+            }
+
+            if (mpi_manager.getRank() == i) {
+                color = 1;
+            }
+
+            auto new_mpi_manager =
+                mpi_manager.split(color, mpi_manager.getRank());
+            int reduce_root_rank = -1;
+
+            if (mpi_manager.getRank() == i) {
+                reduce_root_rank = new_mpi_manager.getRank();
+            }
+
+            mpi_manager.template Bcast<int>(reduce_root_rank, i);
+
+            if (new_mpi_manager.getComm() != MPI_COMM_NULL) {
+                new_mpi_manager.template Reduce<CFP_t>(
+                    d_tmp.getData(), d_sv_prime.getData(), length_local,
+                    reduce_root_rank, "sum");
+            }
+        }
+        sv.CopyGpuDataToGpuIn(d_sv_prime.getData(), d_sv_prime.getLength());
+    }
+
+    [[nodiscard]] auto getObsName() const -> std::string override {
+        using Pennylane::Util::operator<<;
+        std::ostringstream ss;
+        ss << "SparseHamiltonian: {\n'data' : ";
+        for (const auto &d : data_)
+            ss << d;
+        ss << ",\n'indices' : ";
+        for (const auto &i : indices_)
+            ss << i;
+        ss << ",\n'offsets' : ";
+        for (const auto &o : offsets_)
+            ss << o;
+        ss << "\n}";
+        return ss.str();
+    }
+    /**
+     * @brief Get the wires the observable applies to.
+     */
+    [[nodiscard]] auto getWires() const -> std::vector<size_t> {
+        return wires_;
+    };
 };
 
 } // namespace Pennylane::Algorithms
