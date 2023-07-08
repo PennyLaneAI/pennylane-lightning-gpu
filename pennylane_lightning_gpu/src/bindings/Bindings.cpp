@@ -1352,6 +1352,26 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
             },
             "Calculate the expectation value of the Hamiltonian observable "
             "with custatevecComputeExpectation.")
+
+        .def(
+            "ExpectationValue",
+            [](StateVectorCudaMPI<PrecisionT> &sv,
+               const np_arr_sparse_ind &csrOffsets,
+               const np_arr_sparse_ind &columns, const np_arr_c values) {
+                using index_type = typename std::conditional<
+                    std::is_same<ParamT, float>::value, int32_t, int64_t>::type;
+                return sv.template getExpectationValueOnSparseSpMV<index_type>(
+                    static_cast<index_type *>(csrOffsets.request().ptr),
+                    static_cast<index_type>(
+                        csrOffsets.request()
+                            .size), // num_rows + 1 or csrOffsets
+                    static_cast<index_type *>(columns.request().ptr), // columns
+                    static_cast<std::complex<PrecisionT> *>(
+                        values.request().ptr),
+                    static_cast<index_type>(values.request().size)); // nnz
+            },
+            "Calculate the expectation value of a sparse Hamiltonian.")
+
         .def(
             "ExpectationValue",
             [](StateVectorCudaMPI<PrecisionT> &sv,

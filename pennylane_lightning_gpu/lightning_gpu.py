@@ -832,8 +832,19 @@ if CPP_BINARY_AVAILABLE:
                         CSR_SparseHamiltonian.data,
                     )
                 else:
-                    raise RuntimeError(
-                        "LightningGPU-MPI does not currently support SparseHamiltonian."
+                    # Identity for CSR_SparseHamiltonian to pass to processes with rank != 0 to reduce
+                    # host(cpu) memory requirements
+                    obs = qml.Identity(0)
+                    Hmat = qml.Hamiltonian([1.0], [obs]).sparse_matrix()
+                    H_sparse = qml.SparseHamiltonian(Hmat, wires=range(1))
+                    CSR_SparseHamiltonian = H_sparse.sparse_matrix().tocsr()
+                    # CSR_SparseHamiltonian for rank == 0
+                    if self._mpi_manager.getRank() == 0:
+                        CSR_SparseHamiltonian = observable.sparse_matrix().tocsr()
+                    return self._gpu_state.ExpectationValue(
+                        CSR_SparseHamiltonian.indptr,
+                        CSR_SparseHamiltonian.indices,
+                        CSR_SparseHamiltonian.data,
                     )
 
             if observable.name in ["Hamiltonian"]:
