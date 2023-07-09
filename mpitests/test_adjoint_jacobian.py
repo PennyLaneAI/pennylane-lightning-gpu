@@ -1043,6 +1043,7 @@ def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns, isBatch_obs):
     with pytest.raises((TypeError, ValueError)):
         j_gpu = qml.jacobian(qnode_gpu)(params)
 
+
 '''
 @pytest.mark.parametrize(
     "returns",
@@ -1089,6 +1090,7 @@ def test_failed_adjoint_SparseHamiltonian(returns):
         j_gpu = qml.jacobian(qnode_gpu)(params)
 
 '''
+
 
 @pytest.mark.parametrize(
     "obs,obs_type_c64,obs_type_c128",
