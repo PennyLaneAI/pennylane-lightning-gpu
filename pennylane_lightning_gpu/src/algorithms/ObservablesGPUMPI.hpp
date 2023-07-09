@@ -484,16 +484,19 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
      *
      */
     inline void applyInPlace(StateVectorCudaMPI<T> &sv) const override {
-        PL_ABORT_IF_NOT(wires_.size() == sv.getTotalNumQubits(),
+        auto mpi_manager = sv.getMPIManager();
+
+        if(mpi_manager.getRank() == 0){
+            PL_ABORT_IF_NOT(wires_.size() == sv.getTotalNumQubits(),
                         "SparseH wire count does not match state-vector size");
+        }
+        
         using CFP_t = typename StateVectorCudaMPI<T>::CFP_t;
         const CFP_t alpha = {1.0, 0.0};
         const CFP_t beta = {0.0, 0.0};
 
         auto device_id = sv.getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = sv.getDataBuffer().getDevTag().getStreamID();
-
-        auto mpi_manager = sv.getMPIManager();
 
         // clang-format on
         cudaDataType_t data_type;
