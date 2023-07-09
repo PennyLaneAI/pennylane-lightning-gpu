@@ -75,7 +75,7 @@ template <class Precision, class index_type> struct CSRMatrix {
         csrOffsets = std::vector<index_type>(num_rows + 1, 0);
     }
 
-    CSRMatrix(){};
+    CSRMatrix() = default;;
 };
 
 /**

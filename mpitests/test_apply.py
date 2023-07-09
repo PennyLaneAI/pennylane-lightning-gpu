@@ -554,7 +554,8 @@ class TestApply:
 
 
 class TestSparseHamiltonianExpval:
-    def test_sparse_hamiltonian_expectation(self, tol):
+    @pytest.fixture(params=[np.complex64, np.complex128])
+    def test_sparse_hamiltonian_expectation(self, tol, request):
         comm = MPI.COMM_WORLD
         commSize = comm.Get_size()
         num_global_wires = commSize.bit_length() - 1
@@ -575,13 +576,13 @@ class TestSparseHamiltonianExpval:
                 0.3 + 0.4j,
                 0.4 + 0.5j,
             ],
-            dtype=np.complex128,
+            dtype=request.params,
         )
 
-        local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
+        local_state_vector = np.zeros(1 << num_local_wires).astype(request.params)
         comm.Scatter(state_vector, local_state_vector, root=0)
 
-        dev_gpumpi = qml.device("lightning.gpu", wires=3, mpi=True, c_dtype=np.complex128)
+        dev_gpumpi = qml.device("lightning.gpu", wires=3, mpi=True, c_dtype=request.params)
 
         dev_gpumpi.syncH2D(local_state_vector)
 
@@ -615,6 +616,7 @@ class TestExpval:
         obs = operation(wires)
         expval_single_wire_no_param(tol, obs)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize(
         "obs",
         [
@@ -626,13 +628,13 @@ class TestExpval:
             qml.PauliZ(numQubits - 2) @ qml.PauliZ(numQubits - 1),
         ],
     )
-    def test_expval_multiple_obs(self, obs, tol):
+    def test_expval_multiple_obs(self, obs, request, tol):
         """Test expval with Hamiltonian"""
         num_wires = numQubits
         comm = MPI.COMM_WORLD
 
-        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
-        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=request.params)
+        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=request.params)
 
         def circuit():
             qml.RX(0.4, wires=[0])
