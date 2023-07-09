@@ -1046,54 +1046,6 @@ def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns, isBatch_obs):
         j_gpu = qml.jacobian(qnode_gpu)(params)
 
 
-'''
-@pytest.mark.parametrize(
-    "returns",
-    [
-        qml.SparseHamiltonian(
-            qml.Hamiltonian(
-                [0.1], [qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[1])]
-            ).sparse_matrix(custom_wires),
-            wires=custom_wires,
-        ),
-        qml.SparseHamiltonian(
-            qml.Hamiltonian(
-                [2.0], [qml.PauliX(wires=custom_wires[2]) @ qml.PauliZ(wires=custom_wires[0])]
-            ).sparse_matrix(custom_wires),
-            wires=custom_wires,
-        ),
-        qml.SparseHamiltonian(
-            qml.Hamiltonian(
-                [1.1], [qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[2])]
-            ).sparse_matrix(custom_wires),
-            wires=custom_wires,
-        ),
-    ],
-)
-def test_failed_adjoint_SparseHamiltonian(returns):
-    """Integration tests that compare to default.qubit for a large circuit containing parametrized
-    operations and when using custom wire labels"""
-
-    dev_gpu = qml.device("lightning.gpu", wires=custom_wires, mpi=True)
-
-    def circuit(params):
-        circuit_ansatz(params, wires=custom_wires)
-        return qml.expval(returns)
-
-    n_params = 30
-    np.random.seed(1337)
-    params = np.random.rand(n_params)
-
-    qnode_gpu = qml.QNode(circuit, dev_gpu, diff_method="adjoint")
-
-    with pytest.raises(
-        RuntimeError, match="LightningGPU-MPI does not currently support SparseHamiltonian."
-    ):
-        j_gpu = qml.jacobian(qnode_gpu)(params)
-
-'''
-
-
 custom_wires0 = ["alice", 3.14, -1, 0, "bob", "luc"]
 """ Important Note: Ensure wires index arranged from high to low
     qml.SparseHamiltonian(
@@ -1109,7 +1061,7 @@ custom_wires0 = ["alice", 3.14, -1, 0, "bob", "luc"]
     [
         qml.SparseHamiltonian(
             qml.Hamiltonian(
-                [0.1], [qml.PauliX(wires=custom_wires0[0]) @ qml.PauliZ(wires=custom_wires0[1])]
+                [0.1], [qml.PauliX(wires=custom_wires0[0]) @ qml.PauliY(wires=custom_wires0[1])]
             ).sparse_matrix(custom_wires0[::-1]),
             wires=custom_wires0,
         ),
