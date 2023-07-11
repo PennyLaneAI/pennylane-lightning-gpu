@@ -2,6 +2,18 @@
 
 ### New features since last release
 
+ * Add sparse Hamiltonian support to multi-node/multi-GPU adjoint methods. 
+ [(#128)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/128)
+
+ Note each MPI process will return the overall result of the adjoint method. To ensure wires index arranged in a way aligned with cuQuantum backend, `wires` should be reordered in a descending manner in a python script as follows:
+ ```python
+    qml.SparseHamiltonian(
+        qml.Hamiltonian(
+            [0.1], [qml.PauliX(0) @ qml.PauliY(1)]
+        ).sparse_matrix(wires.[::-1]),
+    )
+ ```
+
 ### Breaking changes
 
 ### Improvements
@@ -14,6 +26,7 @@
 
 This release contains contributions from (in alphabetical order):
 
+Shuli Shu
 ---
 
 # Release 0.31.0
