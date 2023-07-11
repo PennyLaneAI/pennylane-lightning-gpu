@@ -172,7 +172,7 @@ def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool, use_mpi
 
     if use_mpi:
         mpi_manager_local = MPIManager()
-        #Only root 0 needs the overall sparsematrix data
+        # Only root 0 needs the overall sparsematrix data
         if mpi_manager_local.getRank() == 0:
             spm = ob.sparse_matrix()
             data = np.array(spm.data).astype(ctype)
@@ -182,7 +182,7 @@ def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool, use_mpi
             wires_list = ob.wires.tolist()
             wires.extend([wires_map[w] for w in wires_list])
         else:
-        #Other root only needs non-null some sparsematrix data to pass
+            # Other root only needs non-null some sparsematrix data to pass
             obs = qml.Identity(0)
             Hmat = qml.Hamiltonian([1.0], [obs]).sparse_matrix()
             H_sparse = qml.SparseHamiltonian(Hmat, wires=range(1))
