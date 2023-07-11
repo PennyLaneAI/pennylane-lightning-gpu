@@ -65,13 +65,13 @@ extern void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                                cudaStream_t stream_id);
 
 template <class Precision, class index_type> struct CSRMatrix {
-    std::vector<std::complex<Precision>> values;
     std::vector<index_type> columns;
+    std::vector<std::complex<Precision>> values;
     std::vector<index_type> csrOffsets;
 
     CSRMatrix(size_t num_rows, size_t nnz) {
-        values = std::vector<std::complex<Precision>>(nnz);
         columns = std::vector<index_type>(nnz, 0);
+        values = std::vector<std::complex<Precision>>(nnz);
         csrOffsets = std::vector<index_type>(num_rows + 1, 0);
     }
 
@@ -956,10 +956,10 @@ class StateVectorCudaMPI
     }
 
     /**
-     * @brief Scatter a CSR (Compress Sparse Row) format matrix.
+     * @brief Scatter a CSR (Compressed Sparse Row) format matrix.
      *
      * @tparam index_type Integer type used as indices of the sparse matrix.
-     * @param matrix CSR (Compress Sparse Row) format matrix.
+     * @param matrix CSR (Compressed Sparse Row) format matrix.
      * @param root Root rank of the scatter operation.
      */
     template <class index_type>
@@ -1164,14 +1164,14 @@ class StateVectorCudaMPI
         d_tmp_res.zeroInit();
 
         for (size_t i = 0; i < num_row_blocks; i++) {
-            std::vector<CSRMatrix<Precision, index_type>> sparsematices_row;
+            std::vector<CSRMatrix<Precision, index_type>> sparsematrices_row;
 
             if (mpi_manager_.getRank() == 0) {
-                sparsematices_row = csrmatrix_blocks[i];
+                sparsematrices_row = csrmatrix_blocks[i];
             }
             mpi_manager_.Barrier();
 
-            auto localCSRMatrix = scatterCSRMatrix(sparsematices_row, 0);
+            auto localCSRMatrix = scatterCSRMatrix(sparsematrices_row, 0);
             mpi_manager_.Barrier();
 
             int64_t num_rows_local =

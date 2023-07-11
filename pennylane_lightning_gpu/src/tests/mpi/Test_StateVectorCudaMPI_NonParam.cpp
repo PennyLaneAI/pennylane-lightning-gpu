@@ -977,7 +977,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::Hamiltonian_expval_cuSparse",
         auto results = sv.template getExpectationValueOnSparseSpMV<index_type>(
             csrOffsets, num_csrOffsets, columns, values, nnz);
 
-        TestType expected = 1;
+        TestType expected = 1.0;
 
         CHECK(expected == Approx(results).epsilon(1e-7));
     }
