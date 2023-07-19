@@ -69,11 +69,8 @@ template <class Precision, class index_type> struct CSRMatrix {
     std::vector<std::complex<Precision>> values;
     std::vector<index_type> csrOffsets;
 
-    CSRMatrix(size_t num_rows, size_t nnz) {
-        columns = std::vector<index_type>(nnz, 0);
-        values = std::vector<std::complex<Precision>>(nnz);
-        csrOffsets = std::vector<index_type>(num_rows + 1, 0);
-    }
+    CSRMatrix(size_t num_rows, size_t nnz)
+        : columns(nnz, 0), values(nnz), csrOffsets(num_rows + 1, 0) {}
 
     CSRMatrix() = default;
 };
@@ -966,14 +963,12 @@ class StateVectorCudaMPI
     auto scatterCSRMatrix(std::vector<CSRMatrix<Precision, index_type>> &matrix,
                           size_t root) -> CSRMatrix<Precision, index_type> {
         // Bcast num_rows and num_cols
-        size_t local_num_rows;
-        size_t num_col_blocks;
+        size_t local_num_rows = size_t{1} << this->getNumLocalQubits();
+        size_t num_col_blocks = mpi_manager_.getSize();
         std::vector<size_t> nnzs;
 
-        local_num_rows = size_t{1} << this->getNumLocalQubits();
-        num_col_blocks = mpi_manager_.getSize();
-
         if (mpi_manager_.getRank() == root) {
+            nnzs.reserve(matrix.size());
             for (size_t j = 0; j < matrix.size(); j++) {
                 nnzs.push_back(matrix[j].values.size());
             }
@@ -997,21 +992,13 @@ class StateVectorCudaMPI
             if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
                 mpi_manager_.Send<std::complex<Precision>>(matrix[k].values,
                                                            dest);
+                mpi_manager_.Send<index_type>(matrix[k].csrOffsets, dest);
+                mpi_manager_.Send<index_type>(matrix[k].columns, dest);
             } else if (mpi_manager_.getRank() == k && local_nnz) {
                 mpi_manager_.Recv<std::complex<Precision>>(
                     localCSRMatrix.values, source);
-            }
-
-            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
-                mpi_manager_.Send<index_type>(matrix[k].csrOffsets, dest);
-            } else if (mpi_manager_.getRank() == k && local_nnz) {
                 mpi_manager_.Recv<index_type>(localCSRMatrix.csrOffsets,
                                               source);
-            }
-
-            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
-                mpi_manager_.Send<index_type>(matrix[k].columns, dest);
-            } else if (mpi_manager_.getRank() == k && local_nnz) {
                 mpi_manager_.Recv<index_type>(localCSRMatrix.columns, source);
             }
         }
@@ -1019,7 +1006,7 @@ class StateVectorCudaMPI
     }
 
     /**
-     * @brief Convert a global CSR (Compress Sparse Row) format matrix into
+     * @brief Convert a global CSR (Compressed Sparse Row) format matrix into
      * local blocks. This operation should be conducted on the rank 0.
      *
      * @tparam index_type Integer type used as indices of the sparse matrix.
@@ -1293,8 +1280,7 @@ class StateVectorCudaMPI
             mpi_manager_.Bcast<int>(reduce_root_rank, i);
 
             if (new_mpi_manager.getComm() != MPI_COMM_NULL) {
-                new_mpi_manager.Reduce<CFP_t>(d_tmp.getData(),
-                                              d_tmp_res.getData(), length_local,
+                new_mpi_manager.Reduce<CFP_t>(d_tmp, d_tmp_res, length_local,
                                               reduce_root_rank, "sum");
             }
         }

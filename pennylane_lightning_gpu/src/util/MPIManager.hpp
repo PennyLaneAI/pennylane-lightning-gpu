@@ -31,6 +31,13 @@
 #include <vector>
 
 #include "Error.hpp"
+#include "DataBuffer.hpp"
+
+/// @cond DEV
+namespace {
+using namespace Pennylane::CUDA;
+} // namespace
+/// @endcond
 
 namespace Pennylane::MPI {
 inline void errhandler(int errcode, const char *str) {
@@ -425,11 +432,11 @@ class MPIManager final {
     }
 
     template <typename T>
-    void Reduce(T *sendBuf, T *recvBuf, size_t length, size_t root,
+    void Reduce(DataBuffer<T> &sendBuf, DataBuffer<T> &recvBuf, size_t length, size_t root,
                 const std::string &op_str) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Op op = getMPIOpType(op_str);
-        PL_MPI_IS_SUCCESS(MPI_Reduce(sendBuf, recvBuf, length, datatype, op,
+        PL_MPI_IS_SUCCESS(MPI_Reduce(sendBuf.getData(), recvBuf.getData(), length, datatype, op,
                                      root, this->getComm()));
     }
 
