@@ -1037,6 +1037,7 @@ class StateVectorCudaMPI
         size_t row_block_size = size_t{1} << this->getNumLocalQubits();
         size_t col_block_size = row_block_size;
 
+        // Add OpenMP support here later.
         for (size_t row = 0; row < num_rows; row++) {
             for (size_t col_idx = static_cast<size_t>(csrOffsets_ptr[row]);
                  col_idx < static_cast<size_t>(csrOffsets_ptr[row + 1]);
@@ -1067,6 +1068,7 @@ class StateVectorCudaMPI
             }
         }
 
+        // Add OpenMP support here later.
         for (size_t block_row_id = 0; block_row_id < num_row_blocks;
              block_row_id++) {
             for (size_t block_col_id = 0; block_col_id < num_col_blocks;

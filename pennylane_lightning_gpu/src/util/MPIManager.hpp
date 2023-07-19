@@ -30,8 +30,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Error.hpp"
 #include "DataBuffer.hpp"
+#include "Error.hpp"
 
 /// @cond DEV
 namespace {
@@ -432,12 +432,13 @@ class MPIManager final {
     }
 
     template <typename T>
-    void Reduce(DataBuffer<T> &sendBuf, DataBuffer<T> &recvBuf, size_t length, size_t root,
-                const std::string &op_str) {
+    void Reduce(DataBuffer<T> &sendBuf, DataBuffer<T> &recvBuf, size_t length,
+                size_t root, const std::string &op_str) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Op op = getMPIOpType(op_str);
-        PL_MPI_IS_SUCCESS(MPI_Reduce(sendBuf.getData(), recvBuf.getData(), length, datatype, op,
-                                     root, this->getComm()));
+        PL_MPI_IS_SUCCESS(MPI_Reduce(sendBuf.getData(), recvBuf.getData(),
+                                     length, datatype, op, root,
+                                     this->getComm()));
     }
 
     template <typename T>
