@@ -560,7 +560,7 @@ class MPIManager final {
 
     template <typename T> void Send(std::vector<T> &sendBuf, size_t dest) {
         MPI_Datatype datatype = getMPIDatatype<T>();
-        const int tag = 0;
+        const int tag = 6789;
 
         PL_MPI_IS_SUCCESS(MPI_Send(sendBuf.data(), sendBuf.size(), datatype,
                                    static_cast<int>(dest), tag,
@@ -578,7 +578,7 @@ class MPIManager final {
     template <typename T> void Recv(std::vector<T> &recvBuf, size_t source) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Status status;
-        const int tag = 0;
+        const int tag = MPI_ANY_TAG;
 
         PL_MPI_IS_SUCCESS(MPI_Recv(recvBuf.data(), recvBuf.size(), datatype,
                                    static_cast<int>(source), tag,

@@ -70,7 +70,7 @@ template <class Precision, class index_type> struct CSRMatrix {
     std::vector<index_type> csrOffsets;
 
     CSRMatrix(size_t num_rows, size_t nnz)
-        : columns(nnz, 0), values(nnz), csrOffsets(num_rows + 1, 0) {}
+        : columns(nnz, 0), values(nnz), csrOffsets(num_rows + 1, 0){};
 
     CSRMatrix() = default;
 };
@@ -1153,14 +1153,8 @@ class StateVectorCudaMPI
         d_tmp_res.zeroInit();
 
         for (size_t i = 0; i < num_row_blocks; i++) {
-            std::vector<CSRMatrix<Precision, index_type>> sparsematrices_row;
 
-            if (mpi_manager_.getRank() == 0) {
-                sparsematrices_row = csrmatrix_blocks[i];
-            }
-            mpi_manager_.Barrier();
-
-            auto localCSRMatrix = scatterCSRMatrix(sparsematrices_row, 0);
+            auto localCSRMatrix = scatterCSRMatrix(csrmatrix_blocks[i], 0);
             mpi_manager_.Barrier();
 
             int64_t num_rows_local =
