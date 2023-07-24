@@ -65,14 +65,22 @@ extern void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                                cudaStream_t stream_id);
 
 template <class Precision, class index_type> struct CSRMatrix {
+  private:
     std::vector<index_type> columns;
     std::vector<std::complex<Precision>> values;
     std::vector<index_type> csrOffsets;
 
+  public:
     CSRMatrix(size_t num_rows, size_t nnz)
         : columns(nnz, 0), values(nnz), csrOffsets(num_rows + 1, 0){};
 
     CSRMatrix() = default;
+
+    auto getColumns() -> std::vector<index_type> & { return columns; }
+    auto getValues() -> std::vector<std::complex<Precision>> & {
+        return values;
+    }
+    auto getCsrOffsets() -> std::vector<index_type> & { return csrOffsets; }
 };
 
 /**
@@ -970,7 +978,7 @@ class StateVectorCudaMPI
         if (mpi_manager_.getRank() == root) {
             nnzs.reserve(matrix.size());
             for (size_t j = 0; j < matrix.size(); j++) {
-                nnzs.push_back(matrix[j].values.size());
+                nnzs.push_back(matrix[j].getValues().size());
             }
         }
 
@@ -980,26 +988,27 @@ class StateVectorCudaMPI
                                                         local_nnz);
 
         if (mpi_manager_.getRank() == root) {
-            localCSRMatrix.values = matrix[0].values;
-            localCSRMatrix.csrOffsets = matrix[0].csrOffsets;
-            localCSRMatrix.columns = matrix[0].columns;
+            localCSRMatrix.getValues() = matrix[0].getValues();
+            localCSRMatrix.getCsrOffsets() = matrix[0].getCsrOffsets();
+            localCSRMatrix.getColumns() = matrix[0].getColumns();
         }
 
         for (size_t k = 1; k < num_col_blocks; k++) {
             size_t dest = k;
             size_t source = 0;
 
-            if (mpi_manager_.getRank() == 0 && matrix[k].values.size()) {
-                mpi_manager_.Send<std::complex<Precision>>(matrix[k].values,
-                                                           dest);
-                mpi_manager_.Send<index_type>(matrix[k].csrOffsets, dest);
-                mpi_manager_.Send<index_type>(matrix[k].columns, dest);
+            if (mpi_manager_.getRank() == 0 && matrix[k].getValues().size()) {
+                mpi_manager_.Send<std::complex<Precision>>(
+                    matrix[k].getValues(), dest);
+                mpi_manager_.Send<index_type>(matrix[k].getCsrOffsets(), dest);
+                mpi_manager_.Send<index_type>(matrix[k].getColumns(), dest);
             } else if (mpi_manager_.getRank() == k && local_nnz) {
                 mpi_manager_.Recv<std::complex<Precision>>(
-                    localCSRMatrix.values, source);
-                mpi_manager_.Recv<index_type>(localCSRMatrix.csrOffsets,
+                    localCSRMatrix.getValues(), source);
+                mpi_manager_.Recv<index_type>(localCSRMatrix.getCsrOffsets(),
                                               source);
-                mpi_manager_.Recv<index_type>(localCSRMatrix.columns, source);
+                mpi_manager_.Recv<index_type>(localCSRMatrix.getColumns(),
+                                              source);
             }
         }
         return localCSRMatrix;
@@ -1054,17 +1063,21 @@ class StateVectorCudaMPI
                 size_t local_col_id = current_global_col % col_block_size;
 
                 if (splitSparseMatrix[block_row_id][block_col_id]
-                        .csrOffsets.size() == 0) {
-                    splitSparseMatrix[block_row_id][block_col_id].csrOffsets =
+                        .getCsrOffsets()
+                        .size() == 0) {
+                    splitSparseMatrix[block_row_id][block_col_id]
+                        .getCsrOffsets() =
                         std::vector<index_type>(row_block_size + 1, 0);
                 }
 
                 splitSparseMatrix[block_row_id][block_col_id]
-                    .csrOffsets[local_row_id + 1]++;
-                splitSparseMatrix[block_row_id][block_col_id].columns.push_back(
-                    local_col_id);
-                splitSparseMatrix[block_row_id][block_col_id].values.push_back(
-                    current_val);
+                    .getCsrOffsets()[local_row_id + 1]++;
+                splitSparseMatrix[block_row_id][block_col_id]
+                    .getColumns()
+                    .push_back(local_col_id);
+                splitSparseMatrix[block_row_id][block_col_id]
+                    .getValues()
+                    .push_back(current_val);
             }
         }
 
@@ -1075,12 +1088,13 @@ class StateVectorCudaMPI
                  block_col_id++) {
                 for (size_t i0 = 1;
                      i0 < splitSparseMatrix[block_row_id][block_col_id]
-                              .csrOffsets.size();
+                              .getCsrOffsets()
+                              .size();
                      i0++) {
                     splitSparseMatrix[block_row_id][block_col_id]
-                        .csrOffsets[i0] +=
+                        .getCsrOffsets()[i0] +=
                         splitSparseMatrix[block_row_id][block_col_id]
-                            .csrOffsets[i0 - 1];
+                            .getCsrOffsets()[i0 - 1];
                 }
             }
         }
@@ -1147,10 +1161,11 @@ class StateVectorCudaMPI
 
         const size_t length_local = size_t{1} << this->getNumLocalQubits();
 
-        DataBuffer<CFP_t, int> d_tmp{length_local, device_id, stream_id, true};
-        DataBuffer<CFP_t, int> d_tmp_res{length_local, device_id, stream_id,
-                                         true};
-        d_tmp_res.zeroInit();
+        DataBuffer<CFP_t, int> d_res_per_block{length_local, device_id,
+                                               stream_id, true};
+        DataBuffer<CFP_t, int> d_res_per_rowblock{length_local, device_id,
+                                                  stream_id, true};
+        d_res_per_rowblock.zeroInit();
 
         for (size_t i = 0; i < num_row_blocks; i++) {
 
@@ -1158,33 +1173,36 @@ class StateVectorCudaMPI
             mpi_manager_.Barrier();
 
             int64_t num_rows_local =
-                static_cast<int64_t>(localCSRMatrix.csrOffsets.size() - 1);
+                static_cast<int64_t>(localCSRMatrix.getCsrOffsets().size() - 1);
             int64_t num_cols_local =
-                static_cast<int64_t>(localCSRMatrix.columns.size());
+                static_cast<int64_t>(localCSRMatrix.getColumns().size());
             int64_t nnz_local =
-                static_cast<int64_t>(localCSRMatrix.values.size());
+                static_cast<int64_t>(localCSRMatrix.getValues().size());
 
             size_t color = 0;
 
-            if (localCSRMatrix.values.size() != 0) {
-                d_tmp.zeroInit();
+            if (localCSRMatrix.getValues().size() != 0) {
+                d_res_per_block.zeroInit();
 
                 DataBuffer<index_type, int> d_csrOffsets{
-                    localCSRMatrix.csrOffsets.size(), device_id, stream_id,
+                    localCSRMatrix.getCsrOffsets().size(), device_id, stream_id,
                     true};
                 DataBuffer<index_type, int> d_columns{
-                    localCSRMatrix.columns.size(), device_id, stream_id, true};
-                DataBuffer<CFP_t, int> d_values{localCSRMatrix.values.size(),
-                                                device_id, stream_id, true};
+                    localCSRMatrix.getColumns().size(), device_id, stream_id,
+                    true};
+                DataBuffer<CFP_t, int> d_values{
+                    localCSRMatrix.getValues().size(), device_id, stream_id,
+                    true};
 
-                d_csrOffsets.CopyHostDataToGpu(localCSRMatrix.csrOffsets.data(),
-                                               localCSRMatrix.csrOffsets.size(),
-                                               false);
-                d_columns.CopyHostDataToGpu(localCSRMatrix.columns.data(),
-                                            localCSRMatrix.columns.size(),
+                d_csrOffsets.CopyHostDataToGpu(
+                    localCSRMatrix.getCsrOffsets().data(),
+                    localCSRMatrix.getCsrOffsets().size(), false);
+                d_columns.CopyHostDataToGpu(localCSRMatrix.getColumns().data(),
+                                            localCSRMatrix.getColumns().size(),
                                             false);
-                d_values.CopyHostDataToGpu(localCSRMatrix.values.data(),
-                                           localCSRMatrix.values.size(), false);
+                d_values.CopyHostDataToGpu(localCSRMatrix.getValues().data(),
+                                           localCSRMatrix.getValues().size(),
+                                           false);
 
                 // CUSPARSE APIs
                 cusparseSpMatDescr_t mat;
@@ -1218,7 +1236,7 @@ class StateVectorCudaMPI
                 PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
                     /* cusparseDnVecDescr_t* */ &vecY,
                     /* int64_t */ num_rows_local,
-                    /* void* */ d_tmp.getData(),
+                    /* void* */ d_res_per_block.getData(),
                     /* cudaDataType */ data_type));
 
                 // allocate an external buffer if needed
@@ -1276,17 +1294,19 @@ class StateVectorCudaMPI
             mpi_manager_.Bcast<int>(reduce_root_rank, i);
 
             if (new_mpi_manager.getComm() != MPI_COMM_NULL) {
-                new_mpi_manager.Reduce<CFP_t>(d_tmp, d_tmp_res, length_local,
+                new_mpi_manager.Reduce<CFP_t>(d_res_per_block,
+                                              d_res_per_rowblock, length_local,
                                               reduce_root_rank, "sum");
             }
         }
 
         mpi_manager_.Barrier();
 
-        local_expect = innerProdC_CUDA(d_tmp_res.getData(), BaseType::getData(),
-                                       BaseType::getLength(), device_id,
-                                       stream_id, getCublasCaller())
-                           .x;
+        local_expect =
+            innerProdC_CUDA(d_res_per_block.getData(), BaseType::getData(),
+                            BaseType::getLength(), device_id, stream_id,
+                            getCublasCaller())
+                .x;
 
         PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
         mpi_manager_.Barrier();
