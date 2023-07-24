@@ -941,7 +941,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::Hamiltonian_expval_cuSparse",
     mpi_manager.Barrier();
 
     std::vector<cp_t> init_sv{{0.0, 0.0}, {0.0, 0.1}, {0.1, 0.1}, {0.1, 0.2},
-                              {0.2, 0.2}, {0.3, 0.3}, {0.3, 0.4}, {0.4, 0.5}};
+                              {0.2, 0.2}, {0.2, 0.3}, {0.3, 0.3}, {0.3, 0.5}};
 
     using index_type =
         typename std::conditional<std::is_same<TestType, float>::value, int32_t,
@@ -977,7 +977,7 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::Hamiltonian_expval_cuSparse",
         auto results = sv.template getExpectationValueOnSparseSpMV<index_type>(
             csrOffsets, num_csrOffsets, columns, values, nnz);
 
-        TestType expected = 1.0;
+        TestType expected = 0.97;
 
         CHECK(expected == Approx(results).epsilon(1e-7));
     }
