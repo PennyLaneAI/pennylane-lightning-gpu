@@ -1186,8 +1186,8 @@ class StateVectorCudaMPI
         d_res_per_rowblock.zeroInit();
 
         for (size_t i = 0; i < num_row_blocks; i++) {
-            //Need to investigate if non-blocking MPI operation can improve
-            //performace here. 
+            // Need to investigate if non-blocking MPI operation can improve
+            // performace here.
             auto localCSRMatrix = scatterCSRMatrix(csrmatrix_blocks[i], 0);
 
             int64_t num_rows_local =
