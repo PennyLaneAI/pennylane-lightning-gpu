@@ -64,15 +64,15 @@ extern void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                                const size_t index, bool async,
                                cudaStream_t stream_id);
 
-template <class Precision, class index_type> struct CSRMatrix {
+template <class Precision, class index_type> class CSRMatrix {
   private:
     std::vector<index_type> columns;
-    std::vector<std::complex<Precision>> values;
     std::vector<index_type> csrOffsets;
+    std::vector<std::complex<Precision>> values;
 
   public:
     CSRMatrix(size_t num_rows, size_t nnz)
-        : columns(nnz, 0), values(nnz), csrOffsets(num_rows + 1, 0){};
+        : columns(nnz, 0), csrOffsets(num_rows + 1, 0), values(nnz){};
 
     CSRMatrix() = default;
 
@@ -1046,21 +1046,25 @@ class StateVectorCudaMPI
         size_t row_block_size = size_t{1} << this->getNumLocalQubits();
         size_t col_block_size = row_block_size;
 
-        // Add OpenMP support here later.
+        // Add OpenMP support here later. Need to pay attention to
+        // race condition.
+        size_t current_global_row, current_global_col;
+        size_t block_row_id, block_col_id;
+        size_t local_row_id, local_col_id;
         for (size_t row = 0; row < num_rows; row++) {
             for (size_t col_idx = static_cast<size_t>(csrOffsets_ptr[row]);
                  col_idx < static_cast<size_t>(csrOffsets_ptr[row + 1]);
                  col_idx++) {
 
-                size_t current_global_row = row;
-                size_t current_global_col = columns_ptr[col_idx];
+                current_global_row = row;
+                current_global_col = columns_ptr[col_idx];
                 std::complex<Precision> current_val = values_ptr[col_idx];
 
-                size_t block_row_id = current_global_row / row_block_size;
-                size_t block_col_id = current_global_col / col_block_size;
+                block_row_id = current_global_row / row_block_size;
+                block_col_id = current_global_col / col_block_size;
 
-                size_t local_row_id = current_global_row % row_block_size;
-                size_t local_col_id = current_global_col % col_block_size;
+                local_row_id = current_global_row % row_block_size;
+                local_col_id = current_global_col % col_block_size;
 
                 if (splitSparseMatrix[block_row_id][block_col_id]
                         .getCsrOffsets()
@@ -1086,15 +1090,13 @@ class StateVectorCudaMPI
              block_row_id++) {
             for (size_t block_col_id = 0; block_col_id < num_col_blocks;
                  block_col_id++) {
-                for (size_t i0 = 1;
-                     i0 < splitSparseMatrix[block_row_id][block_col_id]
-                              .getCsrOffsets()
-                              .size();
-                     i0++) {
-                    splitSparseMatrix[block_row_id][block_col_id]
-                        .getCsrOffsets()[i0] +=
-                        splitSparseMatrix[block_row_id][block_col_id]
-                            .getCsrOffsets()[i0 - 1];
+                auto &localSpMat =
+                    splitSparseMatrix[block_row_id][block_col_id];
+                size_t local_csr_offset_size =
+                    localSpMat.getCsrOffsets().size();
+                for (size_t i0 = 1; i0 < local_csr_offset_size; i0++) {
+                    localSpMat.getCsrOffsets()[i0] +=
+                        localSpMat.getCsrOffsets()[i0 - 1];
                 }
             }
         }
@@ -1148,9 +1150,10 @@ class StateVectorCudaMPI
 
         cudaDataType_t data_type;
         cusparseIndexType_t compute_type;
-        cusparseOperation_t operation_type = CUSPARSE_OPERATION_NON_TRANSPOSE;
-        cusparseSpMVAlg_t spmvalg_type = CUSPARSE_SPMV_ALG_DEFAULT;
-        cusparseIndexBase_t index_base_type = CUSPARSE_INDEX_BASE_ZERO;
+        const cusparseOperation_t operation_type =
+            CUSPARSE_OPERATION_NON_TRANSPOSE;
+        const cusparseSpMVAlg_t spmvalg_type = CUSPARSE_SPMV_ALG_DEFAULT;
+        const cusparseIndexBase_t index_base_type = CUSPARSE_INDEX_BASE_ZERO;
 
         if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
                       std::is_same_v<CFP_t, double2>) {
@@ -1168,8 +1171,8 @@ class StateVectorCudaMPI
         std::vector<std::vector<CSRMatrix<Precision, index_type>>>
             csrmatrix_blocks;
 
-        size_t num_col_blocks = mpi_manager_.getSize();
-        size_t num_row_blocks = mpi_manager_.getSize();
+        const size_t num_col_blocks = mpi_manager_.getSize();
+        const size_t num_row_blocks = mpi_manager_.getSize();
 
         if (mpi_manager_.getRank() == 0) {
             csrmatrix_blocks =
