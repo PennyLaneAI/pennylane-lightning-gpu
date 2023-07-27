@@ -30,7 +30,14 @@
 #include <unordered_map>
 #include <vector>
 
+#include "DataBuffer.hpp"
 #include "Error.hpp"
+
+/// @cond DEV
+namespace {
+using namespace Pennylane::CUDA;
+} // namespace
+/// @endcond
 
 namespace Pennylane::MPI {
 inline void errhandler(int errcode, const char *str) {
@@ -425,12 +432,13 @@ class MPIManager final {
     }
 
     template <typename T>
-    void Reduce(T *sendBuf, T *recvBuf, size_t length, size_t root,
-                const std::string &op_str) {
+    void Reduce(DataBuffer<T> &sendBuf, DataBuffer<T> &recvBuf, size_t length,
+                size_t root, const std::string &op_str) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Op op = getMPIOpType(op_str);
-        PL_MPI_IS_SUCCESS(MPI_Reduce(sendBuf, recvBuf, length, datatype, op,
-                                     root, this->getComm()));
+        PL_MPI_IS_SUCCESS(MPI_Reduce(sendBuf.getData(), recvBuf.getData(),
+                                     length, datatype, op, root,
+                                     this->getComm()));
     }
 
     template <typename T>
@@ -552,7 +560,7 @@ class MPIManager final {
 
     template <typename T> void Send(std::vector<T> &sendBuf, size_t dest) {
         MPI_Datatype datatype = getMPIDatatype<T>();
-        const int tag = 0;
+        const int tag = 6789;
 
         PL_MPI_IS_SUCCESS(MPI_Send(sendBuf.data(), sendBuf.size(), datatype,
                                    static_cast<int>(dest), tag,
@@ -570,7 +578,7 @@ class MPIManager final {
     template <typename T> void Recv(std::vector<T> &recvBuf, size_t source) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Status status;
-        const int tag = 0;
+        const int tag = MPI_ANY_TAG;
 
         PL_MPI_IS_SUCCESS(MPI_Recv(recvBuf.data(), recvBuf.size(), datatype,
                                    static_cast<int>(source), tag,

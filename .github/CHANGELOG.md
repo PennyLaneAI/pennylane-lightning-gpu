@@ -13,6 +13,10 @@
         ).sparse_matrix(wires.[::-1]),
     )
  ```
+ 
+ * Add Sparse Hamiltonian support for expectation value calculation.
+ [(#127)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/127)
+
 
 ### Breaking changes
 
@@ -27,6 +31,7 @@
 This release contains contributions from (in alphabetical order):
 
 Shuli Shu
+
 ---
 
 # Release 0.31.0
