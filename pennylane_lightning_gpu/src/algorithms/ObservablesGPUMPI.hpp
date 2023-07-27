@@ -502,13 +502,20 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
         // clang-format on
         cudaDataType_t data_type;
         cusparseIndexType_t compute_type;
+        cusparseOperation_t operation_type = CUSPARSE_OPERATION_NON_TRANSPOSE;
+        cusparseSpMVAlg_t spmvalg_type = CUSPARSE_SPMV_ALG_DEFAULT;
+        cusparseIndexBase_t index_base_type = CUSPARSE_INDEX_BASE_ZERO;
 
         if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
                       std::is_same_v<CFP_t, double2>) {
             data_type = CUDA_C_64F;
-            compute_type = CUSPARSE_INDEX_64I;
         } else {
             data_type = CUDA_C_32F;
+        }
+
+        if constexpr (std::is_same_v<index_type, int64_t>) {
+            compute_type = CUSPARSE_INDEX_64I;
+        } else {
             compute_type = CUSPARSE_INDEX_32I;
         }
 
@@ -536,41 +543,35 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
                                              sv.getData());
 
         for (size_t i = 0; i < num_row_blocks; i++) {
-            std::vector<CSRMatrix<PrecisionT, IdxT>> sparsematices_row;
-
-            if (mpi_manager.getRank() == 0) {
-                sparsematices_row = csrmatrix_blocks[i];
-            }
-
             auto localCSRMatrix =
-                sv.template scatterCSRMatrix<IdxT>(sparsematices_row, 0);
+                sv.template scatterCSRMatrix<IdxT>(csrmatrix_blocks[i], 0);
 
             int64_t num_rows_local =
-                static_cast<int64_t>(localCSRMatrix.csrOffsets.size() - 1);
+                static_cast<int64_t>(localCSRMatrix.getCsrOffsets().size() - 1);
             int64_t num_cols_local =
-                static_cast<int64_t>(localCSRMatrix.columns.size());
+                static_cast<int64_t>(localCSRMatrix.getColumns().size());
             int64_t nnz_local =
-                static_cast<int64_t>(localCSRMatrix.values.size());
+                static_cast<int64_t>(localCSRMatrix.getValues().size());
 
             size_t color = 0;
 
             if (localCSRMatrix.values.size() != 0) {
                 DataBuffer<IdxT, int> d_csrOffsets{
-                    localCSRMatrix.csrOffsets.size(), device_id, stream_id,
+                    localCSRMatrix.getCsrOffsets().size(), device_id, stream_id,
                     true};
-                DataBuffer<IdxT, int> d_columns{localCSRMatrix.columns.size(),
+                DataBuffer<IdxT, int> d_columns{localCSRMatrix.getColumns().size(),
                                                 device_id, stream_id, true};
-                DataBuffer<CFP_t, int> d_values{localCSRMatrix.values.size(),
+                DataBuffer<CFP_t, int> d_values{localCSRMatrix.getValues().size(),
                                                 device_id, stream_id, true};
 
-                d_csrOffsets.CopyHostDataToGpu(localCSRMatrix.csrOffsets.data(),
-                                               localCSRMatrix.csrOffsets.size(),
+                d_csrOffsets.CopyHostDataToGpu(localCSRMatrix.getCsrOffsets().data(),
+                                               localCSRMatrix.getCsrOffsets().size(),
                                                false);
-                d_columns.CopyHostDataToGpu(localCSRMatrix.columns.data(),
-                                            localCSRMatrix.columns.size(),
+                d_columns.CopyHostDataToGpu(localCSRMatrix.getColumns().data(),
+                                            localCSRMatrix.getColumns().size(),
                                             false);
-                d_values.CopyHostDataToGpu(localCSRMatrix.values.data(),
-                                           localCSRMatrix.values.size(), false);
+                d_values.CopyHostDataToGpu(localCSRMatrix.getValues().data(),
+                                           localCSRMatrix.getValues().size(), false);
 
                 // CUSPARSE APIs
                 cusparseSpMatDescr_t mat;
@@ -590,7 +591,7 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
                     /* void* */ d_values.getData(),
                     /* cusparseIndexType_t */ compute_type,
                     /* cusparseIndexType_t */ compute_type,
-                    /* cusparseIndexBase_t */ CUSPARSE_INDEX_BASE_ZERO,
+                    /* cusparseIndexBase_t */ index_base_type,
                     /* cudaDataType */ data_type));
 
                 // Create dense vector X
@@ -610,14 +611,14 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
                 // allocate an external buffer if needed
                 PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
                     /* cusparseHandle_t */ handle,
-                    /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+                    /* cusparseOperation_t */ operation_type,
                     /* const void* */ &alpha,
                     /* cusparseSpMatDescr_t */ mat,
                     /* cusparseDnVecDescr_t */ vecX,
                     /* const void* */ &beta,
                     /* cusparseDnVecDescr_t */ vecY,
                     /* cudaDataType */ data_type,
-                    /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+                    /* cusparseSpMVAlg_t */ spmvalg_type,
                     /* size_t* */ &bufferSize));
 
                 DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
@@ -626,14 +627,14 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
                 // execute SpMV
                 PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
                     /* cusparseHandle_t */ handle,
-                    /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+                    /* cusparseOperation_t */ operation_type,
                     /* const void* */ &alpha,
                     /* cusparseSpMatDescr_t */ mat,
                     /* cusparseDnVecDescr_t */ vecX,
                     /* const void* */ &beta,
                     /* cusparseDnVecDescr_t */ vecY,
                     /* cudaDataType */ data_type,
-                    /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+                    /* cusparseSpMVAlg_t */ spmvalg_type,
                     /* void* */ reinterpret_cast<void *>(dBuffer.getData())));
 
                 // destroy matrix/vector descriptors
