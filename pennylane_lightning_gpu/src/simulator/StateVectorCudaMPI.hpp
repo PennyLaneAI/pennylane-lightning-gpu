@@ -1103,8 +1103,19 @@ class StateVectorCudaMPI
     }
 
     /**
-     * @brief expval(H) calculation with cuSparseSpMV.
-     *
+     * @brief expval(H) calculates the expected value using cuSparseSpMV and MPI
+     * to implement distributed Sparse Matrix-Vector multiplication. The dense
+     * vector is distributed across multiple GPU devices and only the MPI rank 0
+     * holds the complete sparse matrix data. The process involves the following
+     * steps: 1. The rank 0 splits the full sparse matrix into n by n blocks,
+     * where n is the size of MPI communicator. Each row of blocks is then
+     * distributed across multiple GPUs. 2. For each GPU, cuSparseSpMV is
+     * invoked to perform the local sparse matrix block and local state vector
+     * multiplication. 3. Each GPU will collect computation results for its
+     * respective row block of the sparse matrix. 4. After all sparse matrix
+     * operations are completed on each GPU, an inner product is performed and
+     * MPI reduce operation is ultilized to obtain the final result for the
+     * expectation value.
      * @tparam index_type Integer type used as indices of the sparse matrix.
      * @param csr_Offsets_ptr Pointer to the array of row offsets of the sparse
      * matrix. Array of size csrOffsets_size.
@@ -1137,13 +1148,20 @@ class StateVectorCudaMPI
 
         cudaDataType_t data_type;
         cusparseIndexType_t compute_type;
+        cusparseOperation_t operation_type = CUSPARSE_OPERATION_NON_TRANSPOSE;
+        cusparseSpMVAlg_t spmvalg_type = CUSPARSE_SPMV_ALG_DEFAULT;
+        cusparseIndexBase_t index_base_type = CUSPARSE_INDEX_BASE_ZERO;
 
         if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
                       std::is_same_v<CFP_t, double2>) {
             data_type = CUDA_C_64F;
-            compute_type = CUSPARSE_INDEX_64I;
         } else {
             data_type = CUDA_C_32F;
+        }
+
+        if constexpr (std::is_same_v<index_type, int32_t>) {
+            compute_type = CUSPARSE_INDEX_64I;
+        } else {
             compute_type = CUSPARSE_INDEX_32I;
         }
 
@@ -1168,9 +1186,7 @@ class StateVectorCudaMPI
         d_res_per_rowblock.zeroInit();
 
         for (size_t i = 0; i < num_row_blocks; i++) {
-
             auto localCSRMatrix = scatterCSRMatrix(csrmatrix_blocks[i], 0);
-            mpi_manager_.Barrier();
 
             int64_t num_rows_local =
                 static_cast<int64_t>(localCSRMatrix.getCsrOffsets().size() - 1);
@@ -1222,7 +1238,7 @@ class StateVectorCudaMPI
                     /* void* */ d_values.getData(),
                     /* cusparseIndexType_t */ compute_type,
                     /* cusparseIndexType_t */ compute_type,
-                    /* cusparseIndexBase_t */ CUSPARSE_INDEX_BASE_ZERO,
+                    /* cusparseIndexBase_t */ index_base_type,
                     /* cudaDataType */ data_type));
 
                 // Create dense vector X
@@ -1242,14 +1258,14 @@ class StateVectorCudaMPI
                 // allocate an external buffer if needed
                 PL_CUSPARSE_IS_SUCCESS(cusparseSpMV_bufferSize(
                     /* cusparseHandle_t */ handle,
-                    /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+                    /* cusparseOperation_t */ operation_type,
                     /* const void* */ &alpha,
                     /* cusparseSpMatDescr_t */ mat,
                     /* cusparseDnVecDescr_t */ vecX,
                     /* const void* */ &beta,
                     /* cusparseDnVecDescr_t */ vecY,
                     /* cudaDataType */ data_type,
-                    /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+                    /* cusparseSpMVAlg_t */ spmvalg_type,
                     /* size_t* */ &bufferSize));
 
                 DataBuffer<cudaDataType_t, int> dBuffer{bufferSize, device_id,
@@ -1258,14 +1274,14 @@ class StateVectorCudaMPI
                 // execute SpMV
                 PL_CUSPARSE_IS_SUCCESS(cusparseSpMV(
                     /* cusparseHandle_t */ handle,
-                    /* cusparseOperation_t */ CUSPARSE_OPERATION_NON_TRANSPOSE,
+                    /* cusparseOperation_t */ operation_type,
                     /* const void* */ &alpha,
                     /* cusparseSpMatDescr_t */ mat,
                     /* cusparseDnVecDescr_t */ vecX,
                     /* const void* */ &beta,
                     /* cusparseDnVecDescr_t */ vecY,
                     /* cudaDataType */ data_type,
-                    /* cusparseSpMVAlg_t */ CUSPARSE_SPMV_ALG_DEFAULT,
+                    /* cusparseSpMVAlg_t */ spmvalg_type,
                     /* void* */ reinterpret_cast<void *>(dBuffer.getData())));
 
                 // destroy matrix/vector descriptors
@@ -1303,7 +1319,7 @@ class StateVectorCudaMPI
         mpi_manager_.Barrier();
 
         local_expect =
-            innerProdC_CUDA(d_res_per_block.getData(), BaseType::getData(),
+            innerProdC_CUDA(d_res_per_rowblock.getData(), BaseType::getData(),
                             BaseType::getLength(), device_id, stream_id,
                             getCublasCaller())
                 .x;
