@@ -513,7 +513,7 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
             data_type = CUDA_C_32F;
         }
 
-        if constexpr (std::is_same_v<index_type, int64_t>) {
+        if constexpr (std::is_same_v<IdxT, int64_t>) {
             compute_type = CUSPARSE_INDEX_64I;
         } else {
             compute_type = CUSPARSE_INDEX_32I;
