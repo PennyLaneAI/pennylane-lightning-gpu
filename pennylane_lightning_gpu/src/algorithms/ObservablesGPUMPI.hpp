@@ -534,6 +534,7 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
 
         DevTag<int> dt_local(sv.getDataBuffer().getDevTag());
         dt_local.refresh();
+
         StateVectorCudaMPI<PrecisionT> d_sv_prime(
             dt_local, sv.getNumGlobalQubits(), sv.getNumLocalQubits(),
             sv.getData());
@@ -555,7 +556,7 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
 
             size_t color = 0;
 
-            if (localCSRMatrix.values.size() != 0) {
+            if (localCSRMatrix.getValues().size() != 0) {
                 DataBuffer<IdxT, int> d_csrOffsets{
                     localCSRMatrix.getCsrOffsets().size(), device_id, stream_id,
                     true};

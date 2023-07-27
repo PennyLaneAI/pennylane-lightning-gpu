@@ -442,6 +442,15 @@ class MPIManager final {
     }
 
     template <typename T>
+    void Reduce(T *sendBuf, T *recvBuf, size_t length, size_t root,
+                const std::string &op_str) {
+        MPI_Datatype datatype = getMPIDatatype<T>();
+        MPI_Op op = getMPIOpType(op_str);
+        PL_MPI_IS_SUCCESS(MPI_Reduce(sendBuf, recvBuf, length, datatype, op,
+                                     root, this->getComm()));
+    }
+
+    template <typename T>
     void Gather(T &sendBuf, std::vector<T> &recvBuf, size_t root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         PL_MPI_IS_SUCCESS(MPI_Gather(&sendBuf, 1, datatype, recvBuf.data(), 1,
