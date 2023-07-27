@@ -1184,7 +1184,6 @@ def test_adjoint_SparseHamiltonian(returns):
     assert np.allclose(j_cpu, j_gpu)
 
 
-
 @pytest.mark.parametrize(
     "obs,obs_type_c64,obs_type_c128",
     [
