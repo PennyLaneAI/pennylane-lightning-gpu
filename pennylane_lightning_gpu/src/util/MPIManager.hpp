@@ -412,6 +412,15 @@ class MPIManager final {
         return recvBuf;
     }
 
+    /**
+     * @brief MPI_Reduce wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer.
+     * @param recvBuf Receive buffer.
+     * @param root Rank of root process.
+     * @param op_str String of MPI_Op.
+     */
     template <typename T>
     void Reduce(T &sendBuf, T &recvBuf, size_t root,
                 const std::string &op_str) {
@@ -421,6 +430,15 @@ class MPIManager final {
                                      this->getComm()));
     }
 
+    /**
+     * @brief MPI_Reduce wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer vector.
+     * @param recvBuf Receive buffer vector.
+     * @param root Rank of root process.
+     * @param op_str String of MPI_Op.
+     */
     template <typename T>
     void Reduce(std::vector<T> &sendBuf, std::vector<T> &recvBuf, size_t root,
                 const std::string &op_str) {
@@ -431,6 +449,15 @@ class MPIManager final {
                                      this->getComm()));
     }
 
+    /**
+     * @brief MPI_Reduce wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer (DataBuffer type).
+     * @param recvBuf Receive buffer (DataBuffer type).
+     * @param root Rank of root process.
+     * @param op_str String of MPI_Op.
+     */
     template <typename T>
     void Reduce(DataBuffer<T> &sendBuf, DataBuffer<T> &recvBuf, size_t length,
                 size_t root, const std::string &op_str) {
@@ -441,6 +468,14 @@ class MPIManager final {
                                      this->getComm()));
     }
 
+    /**
+     * @brief MPI_Reduce wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer.
+     * @param recvBuf Receive buffer vector.
+     * @param root Rank of root process.
+     */
     template <typename T>
     void Gather(T &sendBuf, std::vector<T> &recvBuf, size_t root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -448,6 +483,14 @@ class MPIManager final {
                                      datatype, root, this->getComm()));
     }
 
+    /**
+     * @brief MPI_Reduce wrapper.
+     *
+     * @tparam T C++ data type.
+     * @param sendBuf Send buffer vector.
+     * @param recvBuf Receive buffer vector.
+     * @param root Rank of root process.
+     */
     template <typename T>
     void Gather(std::vector<T> &sendBuf, std::vector<T> &recvBuf, size_t root) {
         MPI_Datatype datatype = getMPIDatatype<T>();
@@ -557,7 +600,6 @@ class MPIManager final {
      * @param sendBuf Send buffer vector.
      * @param dest Rank of send dest.
      */
-
     template <typename T> void Send(std::vector<T> &sendBuf, size_t dest) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         const int tag = 6789;
@@ -574,7 +616,6 @@ class MPIManager final {
      * @param recvBuf Recv buffer vector.
      * @param source Rank of data source.
      */
-
     template <typename T> void Recv(std::vector<T> &recvBuf, size_t source) {
         MPI_Datatype datatype = getMPIDatatype<T>();
         MPI_Status status;
