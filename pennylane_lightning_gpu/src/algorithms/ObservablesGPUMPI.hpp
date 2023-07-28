@@ -513,7 +513,7 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
             data_type = CUDA_C_32F;
         }
 
-        if constexpr (std::is_same_v<index_type, int64_t>) {
+        if constexpr (std::is_same_v<IdxT, int64_t>) {
             compute_type = CUSPARSE_INDEX_64I;
         } else {
             compute_type = CUSPARSE_INDEX_32I;
@@ -534,6 +534,7 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
 
         DevTag<int> dt_local(sv.getDataBuffer().getDevTag());
         dt_local.refresh();
+
         StateVectorCudaMPI<PrecisionT> d_sv_prime(
             dt_local, sv.getNumGlobalQubits(), sv.getNumLocalQubits(),
             sv.getData());
@@ -555,23 +556,26 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
 
             size_t color = 0;
 
-            if (localCSRMatrix.values.size() != 0) {
+            if (localCSRMatrix.getValues().size() != 0) {
                 DataBuffer<IdxT, int> d_csrOffsets{
                     localCSRMatrix.getCsrOffsets().size(), device_id, stream_id,
                     true};
-                DataBuffer<IdxT, int> d_columns{localCSRMatrix.getColumns().size(),
-                                                device_id, stream_id, true};
-                DataBuffer<CFP_t, int> d_values{localCSRMatrix.getValues().size(),
-                                                device_id, stream_id, true};
+                DataBuffer<IdxT, int> d_columns{
+                    localCSRMatrix.getColumns().size(), device_id, stream_id,
+                    true};
+                DataBuffer<CFP_t, int> d_values{
+                    localCSRMatrix.getValues().size(), device_id, stream_id,
+                    true};
 
-                d_csrOffsets.CopyHostDataToGpu(localCSRMatrix.getCsrOffsets().data(),
-                                               localCSRMatrix.getCsrOffsets().size(),
-                                               false);
+                d_csrOffsets.CopyHostDataToGpu(
+                    localCSRMatrix.getCsrOffsets().data(),
+                    localCSRMatrix.getCsrOffsets().size(), false);
                 d_columns.CopyHostDataToGpu(localCSRMatrix.getColumns().data(),
                                             localCSRMatrix.getColumns().size(),
                                             false);
                 d_values.CopyHostDataToGpu(localCSRMatrix.getValues().data(),
-                                           localCSRMatrix.getValues().size(), false);
+                                           localCSRMatrix.getValues().size(),
+                                           false);
 
                 // CUSPARSE APIs
                 cusparseSpMatDescr_t mat;
