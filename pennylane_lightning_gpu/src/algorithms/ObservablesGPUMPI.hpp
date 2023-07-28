@@ -502,9 +502,10 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
         // clang-format on
         cudaDataType_t data_type;
         cusparseIndexType_t compute_type;
-        cusparseOperation_t operation_type = CUSPARSE_OPERATION_NON_TRANSPOSE;
-        cusparseSpMVAlg_t spmvalg_type = CUSPARSE_SPMV_ALG_DEFAULT;
-        cusparseIndexBase_t index_base_type = CUSPARSE_INDEX_BASE_ZERO;
+        const cusparseOperation_t operation_type =
+            CUSPARSE_OPERATION_NON_TRANSPOSE;
+        const cusparseSpMVAlg_t spmvalg_type = CUSPARSE_SPMV_ALG_DEFAULT;
+        const cusparseIndexBase_t index_base_type = CUSPARSE_INDEX_BASE_ZERO;
 
         if constexpr (std::is_same_v<CFP_t, cuDoubleComplex> ||
                       std::is_same_v<CFP_t, double2>) {
@@ -521,8 +522,8 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
 
         std::vector<std::vector<CSRMatrix<PrecisionT, IdxT>>> csrmatrix_blocks;
 
-        size_t num_col_blocks = mpi_manager.getSize();
-        size_t num_row_blocks = mpi_manager.getSize();
+        const size_t num_col_blocks = mpi_manager.getSize();
+        const size_t num_row_blocks = mpi_manager.getSize();
 
         if (mpi_manager.getRank() == 0) {
             csrmatrix_blocks = sv.template splitCSRMatrix<IdxT>(
