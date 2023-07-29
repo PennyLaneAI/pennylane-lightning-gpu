@@ -64,6 +64,14 @@ extern void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                                const size_t index, bool async,
                                cudaStream_t stream_id);
 
+/**
+ * @brief Manage memory of Compressed Sparse Row (CSR) sparse matrix. CSR format
+ * represents a matrix M by three (one-dimensional) arrays, that respectively
+ * contain nonzero values, row offsets, and column indices.
+ *
+ * @tparam Precision Floating-point precision type.
+ * @tparam index_type Integer type.
+ */
 template <class Precision, class index_type> class CSRMatrix {
   private:
     std::vector<index_type> columns;
@@ -76,11 +84,22 @@ template <class Precision, class index_type> class CSRMatrix {
 
     CSRMatrix() = default;
 
+    /**
+     * @brief Get the CSR format index vector of the matrix.
+     */
     auto getColumns() -> std::vector<index_type> & { return columns; }
+
+    /**
+     * @brief Get CSR format offset vector of the matrix.
+     */
+    auto getCsrOffsets() -> std::vector<index_type> & { return csrOffsets; }
+
+    /**
+     * @brief Get CSR format data vector of the matrix.
+     */
     auto getValues() -> std::vector<std::complex<Precision>> & {
         return values;
     }
-    auto getCsrOffsets() -> std::vector<index_type> & { return csrOffsets; }
 };
 
 /**
@@ -1116,7 +1135,7 @@ class StateVectorCudaMPI
      * multiplication. 3. Each GPU will collect computation results for its
      * respective row block of the sparse matrix. 4. After all sparse matrix
      * operations are completed on each GPU, an inner product is performed and
-     * MPI reduce operation is ultilized to obtain the final result for the
+     * MPI reduce operation is utilized to obtain the final result for the
      * expectation value.
      * @tparam index_type Integer type used as indices of the sparse matrix.
      * @param csr_Offsets_ptr Pointer to the array of row offsets of the sparse
