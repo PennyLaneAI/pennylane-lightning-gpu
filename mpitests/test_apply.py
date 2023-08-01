@@ -553,6 +553,52 @@ class TestApply:
         assert np.allclose(local_state_vector, local_expected_output_cpu, atol=tol, rtol=0)
 
 
+class TestSparseHamExpval:
+    """Tests sparse hamiltonian expectation values."""
+
+    def test_sparse_hamiltonian_expectation(self, tol):
+        comm = MPI.COMM_WORLD
+        commSize = comm.Get_size()
+        num_global_wires = commSize.bit_length() - 1
+        num_local_wires = 3 - num_global_wires
+
+        obs = qml.Identity(0) @ qml.PauliX(1) @ qml.PauliY(2)
+        obs1 = qml.Identity(1)
+        Hmat = qml.Hamiltonian([1.0, 1.0], [obs1, obs]).sparse_matrix()
+
+        state_vector = np.array(
+            [
+                0.0 + 0.0j,
+                0.0 + 0.1j,
+                0.1 + 0.1j,
+                0.1 + 0.2j,
+                0.2 + 0.2j,
+                0.2 + 0.3j,
+                0.3 + 0.3j,
+                0.3 + 0.5j,
+            ],
+            dtype=np.complex128,
+        )
+
+        local_state_vector = np.zeros(1 << num_local_wires).astype(np.complex128)
+        comm.Scatter(state_vector, local_state_vector, root=0)
+
+        dev_gpumpi = qml.device("lightning.gpu", wires=3, mpi=True, c_dtype=np.complex128)
+        dev_gpu = qml.device("lightning.gpu", wires=3, mpi=False, c_dtype=np.complex128)
+
+        dev_gpumpi.syncH2D(local_state_vector)
+        dev_gpu.syncH2D(state_vector)
+
+        H_sparse = qml.SparseHamiltonian(Hmat, wires=range(3))
+
+        comm.Barrier()
+
+        res = dev_gpumpi.expval(H_sparse)
+        expected = dev_gpu.expval(H_sparse)
+
+        assert np.allclose(res, expected)
+
+
 class TestExpval:
     """Tests that expectation values are properly calculated or that the proper errors are raised."""
 
@@ -573,6 +619,7 @@ class TestExpval:
         obs = operation(wires)
         expval_single_wire_no_param(tol, obs)
 
+    @pytest.fixture(params=[np.complex64, np.complex128])
     @pytest.mark.parametrize(
         "obs",
         [
@@ -584,13 +631,13 @@ class TestExpval:
             qml.PauliZ(numQubits - 2) @ qml.PauliZ(numQubits - 1),
         ],
     )
-    def test_expval_multiple_obs(self, obs, tol):
+    def test_expval_multiple_obs(self, obs, request, tol):
         """Test expval with Hamiltonian"""
         num_wires = numQubits
         comm = MPI.COMM_WORLD
 
-        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=np.complex128)
-        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
+        dev_cpu = qml.device("default.qubit", wires=num_wires, c_dtype=request.params)
+        dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=request.params)
 
         def circuit():
             qml.RX(0.4, wires=[0])

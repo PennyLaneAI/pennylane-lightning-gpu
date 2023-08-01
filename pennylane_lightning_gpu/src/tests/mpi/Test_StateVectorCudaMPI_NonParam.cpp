@@ -926,3 +926,59 @@ TEMPLATE_TEST_CASE("StateVectorCudaMPI::getExpectationValuePauliWords",
         CHECK(expval_mpi == Approx(-0.0105768395).margin(1e-7));
     }
 }
+
+TEMPLATE_TEST_CASE("StateVectorCudaMPI::Hamiltonian_expval_cuSparse",
+                   "[StateVectorCudaMPI_Nonparam]", float, double) {
+    using PrecisionT = TestType;
+    using cp_t = std::complex<PrecisionT>;
+    MPIManager mpi_manager(MPI_COMM_WORLD);
+    size_t numqubits = 3;
+    size_t mpi_buffersize = 1;
+
+    size_t nGlobalIndexBits =
+        std::bit_width(static_cast<size_t>(mpi_manager.getSize())) - 1;
+    size_t nLocalIndexBits = numqubits - nGlobalIndexBits;
+    mpi_manager.Barrier();
+
+    std::vector<cp_t> init_sv{{0.0, 0.0}, {0.0, 0.1}, {0.1, 0.1}, {0.1, 0.2},
+                              {0.2, 0.2}, {0.2, 0.3}, {0.3, 0.3}, {0.3, 0.5}};
+
+    using index_type =
+        typename std::conditional<std::is_same<TestType, float>::value, int32_t,
+                                  int64_t>::type;
+
+    auto local_state = mpi_manager.scatter<cp_t>(init_sv, 0);
+
+    int nDevices = 0; // Number of GPU devices per node
+    cudaGetDeviceCount(&nDevices);
+    int deviceId = mpi_manager.getRank() % nDevices;
+    cudaSetDevice(deviceId);
+    DevTag<int> dt_local(deviceId, 0);
+    mpi_manager.Barrier();
+
+    SECTION("GetExpectionCuSparse") {
+        index_type csrOffsets[9] = {0, 2, 4, 6, 8, 10, 12, 14, 16};
+        index_type columns[16] = {0, 3, 1, 2, 1, 2, 0, 3,
+                                  4, 7, 5, 6, 5, 6, 4, 7};
+
+        std::complex<TestType> values[16] = {
+            {1.0, 0.0},  {0.0, -1.0}, {1.0, 0.0}, {0.0, 1.0},
+            {0.0, -1.0}, {1.0, 0.0},  {0.0, 1.0}, {1.0, 0.0},
+            {1.0, 0.0},  {0.0, -1.0}, {1.0, 0.0}, {0.0, 1.0},
+            {0.0, -1.0}, {1.0, 0.0},  {0.0, 1.0}, {1.0, 0.0}};
+
+        index_type num_csrOffsets = 9;
+        index_type nnz = 16;
+
+        StateVectorCudaMPI<PrecisionT> sv(mpi_manager, dt_local, mpi_buffersize,
+                                          nGlobalIndexBits, nLocalIndexBits);
+        sv.CopyHostDataToGpu(local_state, false);
+
+        auto results = sv.template getExpectationValueOnSparseSpMV<index_type>(
+            csrOffsets, num_csrOffsets, columns, values, nnz);
+
+        TestType expected = 0.97;
+
+        CHECK(expected == Approx(results).epsilon(1e-7));
+    }
+}

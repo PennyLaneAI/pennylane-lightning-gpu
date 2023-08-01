@@ -1044,6 +1044,7 @@ def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns, isBatch_obs):
         j_gpu = qml.jacobian(qnode_gpu)(params)
 
 
+'''
 @pytest.mark.parametrize(
     "returns",
     [
@@ -1087,6 +1088,8 @@ def test_failed_adjoint_SparseHamiltonian(returns):
         RuntimeError, match="LightningGPU-MPI does not currently support SparseHamiltonian."
     ):
         j_gpu = qml.jacobian(qnode_gpu)(params)
+
+'''
 
 
 @pytest.mark.parametrize(
