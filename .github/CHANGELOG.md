@@ -10,6 +10,8 @@
 
 ### Improvements
 
+* Optimizes the single qubit rotation gate by using a single cuStateVector API call instead of separate Pauli gate applications. Pull Request TBD
+
 ### Documentation
 
 ### Bug fixes
@@ -18,7 +20,7 @@
 
 This release contains contributions from (in alphabetical order):
 
-Shuli Shu
+David Clark (NVIDIA), Shuli Shu
 
 ---
 
