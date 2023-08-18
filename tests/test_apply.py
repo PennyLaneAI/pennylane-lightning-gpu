@@ -246,7 +246,10 @@ class TestApply:
 
         par = np.array(par)
         qubit_device_2_wires.reset()
-        qubit_device_2_wires.apply([operation(par, wires=[0, 1])])
+        ops = [operation(par, wires=[0, 1])]
+
+        qubit_device_2_wires.apply(ops)
+        assert len(ops) == 1  # input not mutated
 
         state_vector = np.zeros(2**qubit_device_2_wires.num_wires).astype(
             qubit_device_2_wires.C_DTYPE

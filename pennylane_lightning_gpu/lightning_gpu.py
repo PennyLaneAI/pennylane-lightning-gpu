@@ -254,6 +254,8 @@ if CPP_BINARY_AVAILABLE:
 
             super().__init__(wires, shots=shots, r_dtype=r_dtype, c_dtype=c_dtype)
 
+            self._dp = DevPool()
+
             if not mpi:
                 self._mpi = False
                 self._num_local_wires = self.num_wires
@@ -297,7 +299,6 @@ if CPP_BINARY_AVAILABLE:
                 raise ImportError("MPI related APIs are not found.")
             # initialize MPIManager and config check in the MPIManager ctor
             self._mpi_manager = MPIManager()
-            self._dp = DevPool()
             # check if number of GPUs per node is larger than
             # number of processes per node
             numDevices = self._dp.getTotalDevices()
@@ -559,10 +560,10 @@ if CPP_BINARY_AVAILABLE:
                     self._apply_state_vector_GPU(
                         operations[0].parameters[0].copy(), operations[0].wires
                     )
-                    del operations[0]
+                    operations = operations[1:]
                 elif isinstance(operations[0], BasisState):
                     self._apply_basis_state_GPU(operations[0].parameters[0], operations[0].wires)
-                    del operations[0]
+                    operations = operations[1:]
 
             for operation in operations:
                 if isinstance(operation, (QubitStateVector, BasisState)):
