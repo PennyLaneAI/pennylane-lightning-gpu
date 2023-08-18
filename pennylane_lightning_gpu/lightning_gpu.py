@@ -559,11 +559,9 @@ if CPP_BINARY_AVAILABLE:
                         operations[0].parameters[0].copy(), operations[0].wires
                     )
                     operations = operations[1:]
-                    # del operations[0]
                 elif isinstance(operations[0], BasisState):
                     self._apply_basis_state_GPU(operations[0].parameters[0], operations[0].wires)
                     operations = operations[1:]
-                    # del operations[0]
 
             for operation in operations:
                 if isinstance(operation, (QubitStateVector, BasisState)):
