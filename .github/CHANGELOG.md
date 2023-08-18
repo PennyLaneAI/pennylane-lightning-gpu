@@ -5,7 +5,6 @@
  * Add Sparse Hamiltonian support for expectation value calculation.
  [(#127)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/127)
 
-
 ### Breaking changes
 
 ### Improvements
@@ -16,6 +15,9 @@
 ### Documentation
 
 ### Bug fixes
+* `apply` no longer mutates the inputted list of operations and 
+ add the missing `_dp` to the LightningGPU class with single GPU backend.
+ [(#133)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/133)
 
 ### Contributors
 
