@@ -22,6 +22,16 @@
 
 namespace Pennylane::Algorithms {
 
+inline size_t reverseBits(size_t num, size_t nbits){
+    size_t reversed = 0;
+    for(size_t i = 0; i < nbits; ++i){
+        //ith bit value
+        size_t bit = num & (1 << i);
+        reversed += bit << (nbits - i);
+    }
+    return reversed
+} 
+
 /**
  * @brief A base class for all observable classes.
  *
@@ -420,10 +430,12 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
                                            int32_t, int64_t>::type;
 
   private:
+    MPIManager mpi_manager_;
     std::vector<std::complex<T>> data_;
     std::vector<IdxT> indices_;
     std::vector<IdxT> offsets_;
     std::vector<std::size_t> wires_;
+    
 
     [[nodiscard]] bool
     isEqual(const ObservableGPUMPI<T> &other) const override {
@@ -450,10 +462,32 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
      */
     template <typename T1, typename T2, typename T3 = T2,
               typename T4 = std::vector<std::size_t>>
-    SparseHamiltonianGPUMPI(T1 &&arg1, T2 &&arg2, T3 &&arg3, T4 &&arg4)
-        : data_{std::forward<T1>(arg1)}, indices_{std::forward<T2>(arg2)},
-          offsets_{std::forward<T3>(arg3)}, wires_{std::forward<T4>(arg4)} {
-        PL_ASSERT(data_.size() == indices_.size());
+    SparseHamiltonianGPUMPI(T1 &&arg1, T2 &&arg2, T3 &&arg3, T4 &&arg4):mpi_manager_(MPI_COMM_WORLD){
+        if(mpi_manager_.getRank() == 0){
+            std::<std::complex<T>> data_tmp = std::move(arg1);
+            std::vector<IdxT> indices_tmp = std::move(arg2);
+            std::vector<IdxT> offsets_tmp = std::move(arg3);
+            std::vector<std::size_t> wires_tmp = std::move(arg4);
+            PL_ASSERT(data_tmp.size() == indices_tmp.size());
+
+            offsets_.push_back(0);
+            //sort sparseMV
+            for(size_t i = 0; i < offsets_tmp.size() - 1; i++){
+                size_t target_row = reverseBits(i,wire_tmp.size());
+                size_t offset = offsets_tmp[target_row];
+                size_t local_col_size = offsets_tmp[target_row+1] - offset;
+                offset_.push_back(offsets_.back()+local_col_size);
+                //get unsorted column indices
+                std::vector<IdxT> local_col_indices(indices_.begin()+offset,indices_tmp.begin()+offset+local_col_size+1);
+                for(size_t j = 0; j < local_col_indices.size(); j++){
+                    size_t target_col = reverseBits(local_col_indices[i],wire_tmp.size());
+                    local_col_indices[i] = target_col;
+                }
+                //sort indices and get the rank of column index
+
+                //sort data
+            }
+        }
     }
 
     /**
