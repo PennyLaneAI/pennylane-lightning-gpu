@@ -10,5 +10,5 @@ endif()
 add_library(lightning_gpu_algorithms STATIC ${GPU_ALGORITHM_FILES})
 
 target_include_directories(lightning_gpu_algorithms PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
-target_link_libraries(lightning_gpu_algorithms PUBLIC pennylane_lightning lightning_gpu_simulator lightning_gpu_utils) 
+target_link_libraries(lightning_gpu_algorithms PUBLIC pennylane_lightning lightning_algorithms lightning_qubit lightning_gpu_simulator lightning_gpu_utils) 
 set_property(TARGET lightning_gpu_algorithms PROPERTY POSITION_INDEPENDENT_CODE ON)

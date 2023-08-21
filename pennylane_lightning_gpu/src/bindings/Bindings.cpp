@@ -21,14 +21,14 @@
 
 #include "AdjointJacobianLQubit.hpp"
 #include "AdjointDiffGPU.hpp"
-#include "JacobianTape.hpp"
+#include "JacobianData.hpp"
 
 #include "DevTag.hpp"
 #include "DevicePool.hpp"
 #include "Error.hpp"
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorManagedCPU.hpp"
-#include "StateVectorRawCPU.hpp"
+#include "StateVectorLQubitManaged.hpp"
+#include "StateVectorLQubitRaw.hpp"
 #include "cuGateCache.hpp"
 #include "cuda_helpers.hpp"
 
@@ -557,7 +557,7 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
                bool async) { sv.updateData(other, async); },
             "Synchronize data from another GPU device to current device.")
         .def("DeviceToHost",
-             py::overload_cast<StateVectorManagedCPU<PrecisionT> &, bool>(
+             py::overload_cast<StateVectorLQubitManaged<PrecisionT> &, bool>(
                  &StateVectorCudaManaged<PrecisionT>::CopyGpuDataToHost,
                  py::const_),
              "Synchronize data from the GPU device to host.")
@@ -1421,7 +1421,7 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
             "Synchronize data from another GPU device to current device.")
         .def(
             "DeviceToHost",
-            py::overload_cast<StateVectorManagedCPU<PrecisionT> &, bool>(
+            py::overload_cast<StateVectorLQubitManaged<PrecisionT> &, bool>(
                 &StateVectorCudaMPI<PrecisionT>::CopyGpuDataToHost, py::const_),
             "Synchronize data from the GPU device to host.")
         .def(

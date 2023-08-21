@@ -27,12 +27,13 @@
 #include "DevTag.hpp"
 #include "Error.hpp"
 #include "StateVectorBase.hpp"
-#include "StateVectorManagedCPU.hpp"
+#include "StateVectorLQubitManaged.hpp"
 #include "cuda_helpers.hpp"
 
 /// @cond DEV
 namespace {
 namespace cuUtil = Pennylane::CUDA::Util;
+using Pennylane::LightningQubit::StateVectorLQubitManaged;
 } // namespace
 /// @endcond
 
@@ -100,7 +101,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      *
      * @param sv StateVector host data class.
      */
-    inline void CopyHostDataToGpu(const StateVectorManagedCPU<Precision> &sv,
+    inline void CopyHostDataToGpu(const StateVectorLQubitManaged<Precision> &sv,
                                   bool async = false) {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for Host and GPU data");
@@ -170,7 +171,7 @@ class StateVectorCudaBase : public StateVectorBase<Precision, Derived> {
      *
      * @param sv StateVector to receive data from device.
      */
-    inline void CopyGpuDataToHost(StateVectorManagedCPU<Precision> &sv,
+    inline void CopyGpuDataToHost(StateVectorLQubitManaged<Precision> &sv,
                                   bool async = false) const {
         PL_ABORT_IF_NOT(BaseType::getNumQubits() == sv.getNumQubits(),
                         "Sizes do not match for Host and GPU data");

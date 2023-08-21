@@ -19,7 +19,7 @@
 
 #include "DevTag.hpp"
 #include "GateGenerators.hpp"
-#include "JacobianTape.hpp"
+#include "JacobianData.hpp"
 #include "ObservablesGPUMPI.hpp"
 #include "StateVectorCudaMPI.hpp"
 #include <memory>

@@ -73,6 +73,8 @@ class StateVectorCudaManaged
     using BaseType = StateVectorCudaBase<Precision, StateVectorCudaManaged>;
 
   public:
+    using PrecisionT = Precision;
+    using ComplexT = std::complex<PrecisionT>;
     using CFP_t =
         typename StateVectorCudaBase<Precision,
                                      StateVectorCudaManaged<Precision>>::CFP_t;
