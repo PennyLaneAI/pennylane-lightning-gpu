@@ -67,7 +67,7 @@ def one_qubit_block(wires=None):
     qml.PauliX(wires=wires)
 
 
-@pytest.mark.usefixtures("lightning_qubit_dev", "lightning_gpu_qubit_dev")
+@pytest.mark.usefixtures("default_qubit_dev", "lightning_gpu_qubit_dev")
 class TestComparison:
     """A test that compares the output states of ``lightning.gpu`` and ``default.qubit`` for a
     variety of different circuits. This uses ``default.qubit`` as a gold standard to compare
@@ -76,7 +76,7 @@ class TestComparison:
     @pytest.mark.parametrize("basis_state", itertools.product(*[(0, 1)] * 1))
     @pytest.mark.parametrize("wires", [1])
     def test_one_qubit_circuit(
-        self, wires, lightning_qubit_dev, lightning_gpu_qubit_dev, basis_state
+        self, wires, default_qubit_dev, lightning_gpu_qubit_dev, basis_state
     ):
         """Test a single-qubit circuit"""
 
@@ -87,11 +87,11 @@ class TestComparison:
             one_qubit_block(wires=0)
             return qml.expval(qml.PauliZ(0))
 
-        lightning = qml.QNode(circuit, lightning_qubit_dev)
+        default = qml.QNode(circuit, default_qubit_dev)
         lightninggpu = qml.QNode(circuit, lightning_gpu_qubit_dev)
 
-        lightning()
-        lightning_state = lightning_qubit_dev.state
+        default()
+        default_state = default_qubit_dev.state
 
         lightninggpu()
 
@@ -100,12 +100,12 @@ class TestComparison:
         )
         lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
-        assert np.allclose(lightning_state, lightninggpu_state)
+        assert np.allclose(default_state, lightninggpu_state)
 
     @pytest.mark.parametrize("basis_state", itertools.product(*[(0, 1)] * 2))
     @pytest.mark.parametrize("wires", [2])
     def test_two_qubit_circuit(
-        self, wires, lightning_qubit_dev, lightning_gpu_qubit_dev, basis_state
+        self, wires, default_qubit_dev, lightning_gpu_qubit_dev, basis_state
     ):
         """Test a two-qubit circuit"""
 
@@ -126,11 +126,11 @@ class TestComparison:
             qml.CRot(0.2, 0.3, 0.7, wires=[0, 1])
             return qml.expval(qml.PauliZ(0))
 
-        lightning = qml.QNode(circuit, lightning_qubit_dev)
+        default = qml.QNode(circuit, default_qubit_dev)
         lightninggpu = qml.QNode(circuit, lightning_gpu_qubit_dev)
 
-        lightning()
-        lightning_state = lightning_qubit_dev.state
+        default()
+        default_state = default_qubit_dev.state
 
         lightninggpu()
         lightninggpu_state = np.zeros(2**lightning_gpu_qubit_dev.num_wires).astype(
@@ -138,12 +138,12 @@ class TestComparison:
         )
         lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
-        assert np.allclose(lightning_state, lightninggpu_state)
+        assert np.allclose(default_state, lightninggpu_state)
 
     @pytest.mark.parametrize("basis_state", itertools.product(*[(0, 1)] * 3))
     @pytest.mark.parametrize("wires", [3])
     def test_three_qubit_circuit(
-        self, wires, lightning_qubit_dev, lightning_gpu_qubit_dev, basis_state
+        self, wires, default_qubit_dev, lightning_gpu_qubit_dev, basis_state
     ):
         """Test a three-qubit circuit"""
 
@@ -172,11 +172,11 @@ class TestComparison:
             qml.Toffoli(wires=[2, 1, 0])
             return qml.expval(qml.PauliZ(0))
 
-        lightning = qml.QNode(circuit, lightning_qubit_dev)
+        default = qml.QNode(circuit, default_qubit_dev)
         lightninggpu = qml.QNode(circuit, lightning_gpu_qubit_dev)
 
-        lightning()
-        lightning_state = lightning_qubit_dev.state
+        default()
+        default_state = default_qubit_dev.state
 
         lightninggpu()
         lightninggpu_state = np.zeros(2**lightning_gpu_qubit_dev.num_wires).astype(
@@ -184,12 +184,12 @@ class TestComparison:
         )
         lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
-        assert np.allclose(lightning_state, lightninggpu_state)
+        assert np.allclose(default_state, lightninggpu_state)
 
     @pytest.mark.parametrize("basis_state", itertools.product(*[(0, 1)] * 4))
     @pytest.mark.parametrize("wires", [4])
     def test_four_qubit_circuit(
-        self, wires, lightning_qubit_dev, lightning_gpu_qubit_dev, basis_state
+        self, wires, default_qubit_dev, lightning_gpu_qubit_dev, basis_state
     ):
         """Test a four-qubit circuit"""
 
@@ -223,11 +223,11 @@ class TestComparison:
             qml.Toffoli(wires=[2, 1, 0])
             return qml.expval(qml.PauliZ(0))
 
-        lightning = qml.QNode(circuit, lightning_qubit_dev)
+        default = qml.QNode(circuit, default_qubit_dev)
         lightninggpu = qml.QNode(circuit, lightning_gpu_qubit_dev)
 
-        lightning()
-        lightning_state = lightning_qubit_dev.state
+        default()
+        default_state = default_qubit_dev.state
 
         lightninggpu()
         lightninggpu_state = np.zeros(2**lightning_gpu_qubit_dev.num_wires).astype(
@@ -235,13 +235,13 @@ class TestComparison:
         )
         lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
-        assert np.allclose(lightning_state, lightninggpu_state)
+        assert np.allclose(default_state, lightninggpu_state)
 
     @pytest.mark.parametrize("wires", range(1, 17))
-    def test_n_qubit_circuit(self, wires, lightning_qubit_dev, lightning_gpu_qubit_dev):
+    def test_n_qubit_circuit(self, wires, default_qubit_dev, lightning_gpu_qubit_dev):
         """Test an n-qubit circuit"""
 
-        vec = np.array([1] * (2**wires)) / np.sqrt(2**wires)
+        vec = np.array([1 + 0.0j] * (2**wires)) / np.sqrt(2**wires)
         shape = qml.StronglyEntanglingLayers.shape(2, wires)
         w = np.random.uniform(high=2 * np.pi, size=shape)
 
@@ -252,11 +252,11 @@ class TestComparison:
             qml.StronglyEntanglingLayers(w, wires=range(wires))
             return qml.expval(qml.PauliZ(0))
 
-        lightning = qml.QNode(circuit, lightning_qubit_dev)
+        default = qml.QNode(circuit, default_qubit_dev)
         lightninggpu = qml.QNode(circuit, lightning_gpu_qubit_dev)
 
-        lightning()
-        lightning_state = lightning_qubit_dev.state
+        default()
+        default_state = default_qubit_dev.state
 
         lightninggpu()
         lightninggpu_state = np.zeros(2**lightning_gpu_qubit_dev.num_wires).astype(
@@ -264,4 +264,4 @@ class TestComparison:
         )
         lightning_gpu_qubit_dev.syncD2H(lightninggpu_state)  # Copy GPU data to CPU
 
-        assert np.allclose(lightning_state, lightninggpu_state)
+        assert np.allclose(default_state, lightninggpu_state)
