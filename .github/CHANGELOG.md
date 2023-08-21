@@ -9,6 +9,9 @@
 
 ### Improvements
 
+ * Optimizes the single qubit rotation gate by using a single cuStateVector API call instead of separate Pauli gate applications. 
+ [(#132)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/132)
+
 ### Documentation
 
 ### Bug fixes
@@ -20,7 +23,7 @@
 
 This release contains contributions from (in alphabetical order):
 
-Shuli Shu
+David Clark (NVIDIA), Shuli Shu
 
 ---
 
