@@ -223,16 +223,16 @@ class TestApply:
             (qml.BasisState, [0, 0, 1, 0], [1, 0]),
             (qml.BasisState, [0, 0, 1, 0], [1, 0]),
             (qml.BasisState, [0, 0, 0, 1], [1, 1]),
-            (qml.QubitStateVector, [0, 0, 1, 0], [0, 0, 1, 0]),
-            (qml.QubitStateVector, [0, 0, 1, 0], [0, 0, 1, 0]),
-            (qml.QubitStateVector, [0, 0, 0, 1], [0, 0, 0, 1]),
+            (qml.StatePrep, [0, 0, 1, 0], [0, 0, 1, 0]),
+            (qml.StatePrep, [0, 0, 1, 0], [0, 0, 1, 0]),
+            (qml.StatePrep, [0, 0, 0, 1], [0, 0, 0, 1]),
             (
-                qml.QubitStateVector,
+                qml.StatePrep,
                 [1 / math.sqrt(3), 0, 1 / math.sqrt(3), 1 / math.sqrt(3)],
                 [1 / math.sqrt(3), 0, 1 / math.sqrt(3), 1 / math.sqrt(3)],
             ),
             (
-                qml.QubitStateVector,
+                qml.StatePrep,
                 [1 / math.sqrt(3), 0, -1 / math.sqrt(3), 1 / math.sqrt(3)],
                 [1 / math.sqrt(3), 0, -1 / math.sqrt(3), 1 / math.sqrt(3)],
             ),
@@ -480,24 +480,24 @@ class TestApply:
     def test_apply_errors_qubit_state_vector(self, qubit_device_2_wires):
         """Test that apply fails for incorrect state preparation, and > 2 qubit gates"""
         with pytest.raises(ValueError, match="Sum of amplitudes-squared does not equal one."):
-            qubit_device_2_wires.apply([qml.QubitStateVector(np.array([1, -1]), wires=[0])])
+            qubit_device_2_wires.apply([qml.StatePrep(np.array([1, -1]), wires=[0])])
 
         with pytest.raises(
             ValueError,
             match=r"State vector must have shape \(2\*\*wires,\) or \(batch_size, 2\*\*wires\).",
         ):
             p = np.array([1, 0, 1, 1, 0]) / np.sqrt(3)
-            qubit_device_2_wires.apply([qml.QubitStateVector(p, wires=[0, 1])])
+            qubit_device_2_wires.apply([qml.StatePrep(p, wires=[0, 1])])
 
         with pytest.raises(
             DeviceError,
-            match="Operation QubitStateVector cannot be used after other Operations have already been applied ",
+            match="Operation StatePrep cannot be used after other Operations have already been applied ",
         ):
             qubit_device_2_wires.reset()
             qubit_device_2_wires.apply(
                 [
                     qml.RZ(0.5, wires=[0]),
-                    qml.QubitStateVector(np.array([0, 1, 0, 0]), wires=[0, 1]),
+                    qml.StatePrep(np.array([0, 1, 0, 0]), wires=[0, 1]),
                 ]
             )
 
@@ -554,7 +554,7 @@ class TestExpval:
 
         qubit_device_1_wire.reset()
         qubit_device_1_wire.apply(
-            [qml.QubitStateVector(np.array(input), wires=[0])],
+            [qml.StatePrep(np.array(input), wires=[0])],
             rotations=obs.diagonalizing_gates(),
         )
         res = qubit_device_1_wire.expval(obs)
@@ -594,7 +594,7 @@ class TestVar:
 
         qubit_device_1_wire.reset()
         qubit_device_1_wire.apply(
-            [qml.QubitStateVector(np.array(input), wires=[0])],
+            [qml.StatePrep(np.array(input), wires=[0])],
             rotations=obs.diagonalizing_gates(),
         )
         res = qubit_device_1_wire.var(obs)
@@ -759,7 +759,7 @@ class TestLightningGPUIntegration:
 
         @qml.qnode(qubit_device_2_wires)
         def circuit():
-            qml.QubitStateVector(np.array([1 / 2, 0, 0, math.sqrt(3) / 2]), wires=[0, 1])
+            qml.StatePrep(np.array([1 / 2, 0, 0, math.sqrt(3) / 2]), wires=[0, 1])
             op(wires=[0, 1])
             return qml.expval(qml.PauliZ(0)), qml.expval(qml.PauliZ(1))
 
@@ -799,9 +799,9 @@ class TestLightningGPUIntegration:
             ("BasisState", [0, 0], [1, 1]),
             ("BasisState", [1, 0], [-1, 1]),
             ("BasisState", [0, 1], [1, -1]),
-            ("QubitStateVector", [1, 0, 0, 0], [1, 1]),
-            ("QubitStateVector", [0, 0, 1, 0], [-1, 1]),
-            ("QubitStateVector", [0, 1, 0, 0], [1, -1]),
+            ("StatePrep", [1, 0, 0, 0], [1, 1]),
+            ("StatePrep", [0, 0, 1, 0], [-1, 1]),
+            ("StatePrep", [0, 1, 0, 0], [1, -1]),
         ],
     )
     def test_supported_state_preparation(
@@ -847,11 +847,11 @@ class TestLightningGPUIntegration:
     @pytest.mark.parametrize(
         "name,par,wires,expected_output",
         [
-            ("QubitStateVector", [0, 1], [1], [1, -1]),
-            ("QubitStateVector", [0, 1], [0], [-1, 1]),
-            ("QubitStateVector", [1.0 / np.sqrt(2), 1.0 / np.sqrt(2)], [1], [1, 0]),
-            ("QubitStateVector", [1j / 2.0, np.sqrt(3) / 2.0], [1], [1, -0.5]),
-            ("QubitStateVector", [(2 - 1j) / 3.0, 2j / 3.0], [0], [1 / 9.0, 1]),
+            ("StatePrep", [0, 1], [1], [1, -1]),
+            ("StatePrep", [0, 1], [0], [-1, 1]),
+            ("StatePrep", [1.0 / np.sqrt(2), 1.0 / np.sqrt(2)], [1], [1, 0]),
+            ("StatePrep", [1j / 2.0, np.sqrt(3) / 2.0], [1], [1, -0.5]),
+            ("StatePrep", [(2 - 1j) / 3.0, 2j / 3.0], [0], [1 / 9.0, 1]),
         ],
     )
     def test_state_vector_2_qubit_subset(
@@ -875,7 +875,7 @@ class TestLightningGPUIntegration:
         "name,par,wires,expected_output",
         [
             (
-                "QubitStateVector",
+                "StatePrep",
                 [
                     1j / np.sqrt(10),
                     (1 - 2j) / np.sqrt(10),
@@ -890,32 +890,32 @@ class TestLightningGPUIntegration:
                 [1 / 5.0, 1.0, -4 / 5.0],
             ),
             (
-                "QubitStateVector",
+                "StatePrep",
                 [1 / np.sqrt(2), 0, 0, 1 / np.sqrt(2)],
                 [0, 2],
                 [0.0, 1.0, 0.0],
             ),
             (
-                "QubitStateVector",
+                "StatePrep",
                 [1 / np.sqrt(2), 0, 0, 1 / np.sqrt(2)],
                 [0, 1],
                 [0.0, 0.0, 1.0],
             ),
-            ("QubitStateVector", [0, 1, 0, 0, 0, 0, 0, 0], [2, 1, 0], [-1.0, 1.0, 1.0]),
+            ("StatePrep", [0, 1, 0, 0, 0, 0, 0, 0], [2, 1, 0], [-1.0, 1.0, 1.0]),
             (
-                "QubitStateVector",
+                "StatePrep",
                 [0, 1j, 0, 0, 0, 0, 0, 0],
                 [0, 2, 1],
                 [1.0, -1.0, 1.0],
             ),
             (
-                "QubitStateVector",
+                "StatePrep",
                 [0, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)],
                 [1, 0],
                 [-1.0, 0.0, 1.0],
             ),
             (
-                "QubitStateVector",
+                "StatePrep",
                 [0, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)],
                 [0, 1],
                 [0.0, -1.0, 1.0],
@@ -1032,7 +1032,7 @@ class TestLightningGPUIntegration:
 
         @qml.qnode(qubit_device_2_wires)
         def circuit():
-            qml.QubitStateVector(np.array([1 / 2, 0, 0, math.sqrt(3) / 2]), wires=[0, 1])
+            qml.StatePrep(np.array([1 / 2, 0, 0, math.sqrt(3) / 2]), wires=[0, 1])
             op(*par, wires=[0, 1])
             return qml.expval(qml.PauliZ(0)), qml.expval(qml.PauliZ(1))
 
@@ -1066,7 +1066,7 @@ class TestLightningGPUIntegration:
 
         @qml.qnode(qubit_device_1_wire)
         def circuit():
-            qml.QubitStateVector(np.array(state), wires=[0])
+            qml.StatePrep(np.array(state), wires=[0])
             return qml.expval(obs(wires=[0]))
 
         assert np.isclose(circuit(), expected_output, atol=tol, rtol=0)
@@ -1090,7 +1090,7 @@ class TestLightningGPUIntegration:
 
         @qml.qnode(qubit_device_1_wire)
         def circuit():
-            qml.QubitStateVector(np.array(state), wires=[0])
+            qml.StatePrep(np.array(state), wires=[0])
             return qml.expval(obs(*par, wires=[0]))
 
         assert np.isclose(circuit(), expected_output, atol=tol, rtol=0)

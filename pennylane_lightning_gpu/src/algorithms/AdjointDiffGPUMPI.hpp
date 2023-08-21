@@ -300,7 +300,7 @@ class AdjointJacobianGPUMPI {
                 PL_ABORT_IF(ops.getOpsParams()[op_idx].size() > 1,
                             "The operation is not supported using the adjoint "
                             "differentiation method");
-                if ((ops_name[op_idx] == "QubitStateVector") ||
+                if ((ops_name[op_idx] == "StatePrep") ||
                     (ops_name[op_idx] == "BasisState")) {
                     continue;
                 }
@@ -396,7 +396,7 @@ class AdjointJacobianGPUMPI {
             PL_ABORT_IF(ops.getOpsParams()[op_idx].size() > 1,
                         "The operation is not supported using the adjoint "
                         "differentiation method");
-            if ((ops_name[op_idx] == "QubitStateVector") ||
+            if ((ops_name[op_idx] == "StatePrep") ||
                 (ops_name[op_idx] == "BasisState")) {
                 continue;
             }

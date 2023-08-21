@@ -248,7 +248,7 @@ class TestComparison:
         def circuit():
             """Prepares the equal superposition state and then applies StronglyEntanglingLayers
             and concludes with a simple PauliZ measurement"""
-            qml.QubitStateVector(vec, wires=range(wires))
+            qml.StatePrep(vec, wires=range(wires))
             qml.StronglyEntanglingLayers(w, wires=range(wires))
             return qml.expval(qml.PauliZ(0))
 
