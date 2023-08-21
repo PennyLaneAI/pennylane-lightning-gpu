@@ -131,17 +131,18 @@ class AdjointJacobianGPUMPI {
 
     /**
      * @brief Utility method to apply all operations from given
-     * `%Pennylane::Algorithms::OpsData<T>` object to
+     * `%Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>` object to
      * `%SVType<T>`
      *
      * @param state Statevector to be updated.
      * @param operations Operations to apply.
      * @param adj Take the adjoint of the given operations.
      */
-    inline void
-    applyOperations(SVType<T> &state,
-                    const Pennylane::Algorithms::OpsData<T> &operations,
-                    bool adj = false) {
+    inline void applyOperations(
+        SVType<T> &state,
+        const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>
+            &operations,
+        bool adj = false) {
         for (size_t op_idx = 0; op_idx < operations.getOpsName().size();
              op_idx++) {
             state.applyOperation(operations.getOpsName()[op_idx],
@@ -153,17 +154,18 @@ class AdjointJacobianGPUMPI {
 
     /**
      * @brief Utility method to apply the adjoint indexed operation from
-     * `%Pennylane::Algorithms::OpsData<T>` object to
+     * `%Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>` object to
      * `%SVType<T>`.
      *
      * @param state Statevector to be updated.
      * @param operations Operations to apply.
      * @param op_idx Adjointed operation index to apply.
      */
-    inline void
-    applyOperationAdj(SVType<T> &state,
-                      const Pennylane::Algorithms::OpsData<T> &operations,
-                      size_t op_idx) {
+    inline void applyOperationAdj(
+        SVType<T> &state,
+        const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>
+            &operations,
+        size_t op_idx) {
         state.applyOperation(operations.getOpsName()[op_idx],
                              operations.getOpsWires()[op_idx],
                              !operations.getOpsInverses()[op_idx],
@@ -212,7 +214,7 @@ class AdjointJacobianGPUMPI {
      * @param ops_inverses Indicate whether to take adjoint of each operation in
      * ops_name.
      * @param ops_matrices Matrix definition of an operation if unsupported.
-     * @return const Pennylane::Algorithms::OpsData<T>
+     * @return const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>
      */
     auto createOpsData(
         const std::vector<std::string> &ops_name,
@@ -220,7 +222,7 @@ class AdjointJacobianGPUMPI {
         const std::vector<std::vector<size_t>> &ops_wires,
         const std::vector<bool> &ops_inverses,
         const std::vector<std::vector<std::complex<T>>> &ops_matrices = {{}})
-        -> Pennylane::Algorithms::OpsData<T> {
+        -> Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>> {
         return {ops_name, ops_params, ops_wires, ops_inverses, ops_matrices};
     }
 
@@ -246,7 +248,7 @@ class AdjointJacobianGPUMPI {
     void adjointJacobian_serial(
         const SVType<T> &ref_sv, std::vector<std::vector<T>> &jac,
         const std::vector<std::shared_ptr<ObservableGPUMPI<T>>> &obs,
-        const Pennylane::Algorithms::OpsData<T> &ops,
+        const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>> &ops,
         const std::vector<size_t> &trainableParams,
         bool apply_operations = false) {
         PL_ABORT_IF(trainableParams.empty(),
@@ -346,7 +348,7 @@ class AdjointJacobianGPUMPI {
     void adjointJacobian(
         const SVType<T> &ref_sv, std::vector<std::vector<T>> &jac,
         const std::vector<std::shared_ptr<ObservableGPUMPI<T>>> &obs,
-        const Pennylane::Algorithms::OpsData<T> &ops,
+        const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>> &ops,
         const std::vector<size_t> &trainableParams,
         bool apply_operations = false) {
         PL_ABORT_IF(trainableParams.empty(),

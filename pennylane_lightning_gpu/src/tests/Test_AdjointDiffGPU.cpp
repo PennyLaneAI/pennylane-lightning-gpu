@@ -210,9 +210,9 @@ TEST_CASE("Algorithms::adjointJacobian Op=[RX,RX,RX], Obs=[ZZZ]",
                                                   std::vector<size_t>{1}),
             std::make_shared<NamedObsGPU<double>>("PauliZ",
                                                   std::vector<size_t>{2}));
-        auto ops = OpsData<double>({"RX", "RX", "RX"},
-                                   {{param[0]}, {param[1]}, {param[2]}},
-                                   {{0}, {1}, {2}}, {false, false, false});
+        auto ops = OpsData<StateVectorCudaManaged<double>>(
+            {"RX", "RX", "RX"}, {{param[0]}, {param[1]}, {param[2]}},
+            {{0}, {1}, {2}}, {false, false, false});
 
         adj.adjointJacobian(psi.cuda_sv.getData(), psi.cuda_sv.getLength(),
                             jacobian, {obs}, ops, tp, true);
@@ -490,7 +490,8 @@ TEST_CASE("Algorithms::adjointJacobian Op=RX, Obs=Ham[Z0+Z1]", "[Algorithms]") {
 
         auto ham = HamiltonianGPU<double>::create({0.3, 0.7}, {obs1, obs2});
 
-        auto ops = OpsData<double>({"RX"}, {{param[0]}}, {{0}}, {false});
+        auto ops = OpsData<StateVectorCudaManaged<double>>({"RX"}, {{param[0]}},
+                                                           {{0}}, {false});
 
         adj.adjointJacobian(psi.cuda_sv.getData(), psi.cuda_sv.getLength(),
                             jacobian, {ham}, ops, tp, true);
