@@ -10,7 +10,7 @@
 #include <catch2/catch.hpp>
 
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorRawCPU.hpp"
+#include "StateVectorLQubitRaw.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"

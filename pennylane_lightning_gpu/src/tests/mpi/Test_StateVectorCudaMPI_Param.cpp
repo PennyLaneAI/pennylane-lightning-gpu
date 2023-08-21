@@ -15,7 +15,7 @@
 
 #include "StateVectorCudaMPI.hpp"
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorRawCPU.hpp"
+#include "StateVectorLQubitRaw.hpp"
 
 #include "MPIManager.hpp"
 
