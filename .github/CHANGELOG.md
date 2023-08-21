@@ -6,6 +6,9 @@
  [(#127)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/127)
 
 ### Breaking changes
+ 
+ * Rename `QubistStateVector` to `StatePrep` in the `LightningGPU` class.
+ [#134] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
 
 ### Improvements
 
