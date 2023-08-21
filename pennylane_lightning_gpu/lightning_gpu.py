@@ -27,7 +27,7 @@ from pennylane import (
     math,
     QubitDevice,
     BasisState,
-    QubitStateVector,
+    StatePrep,
     DeviceError,
     Projector,
     Hermitian,
@@ -141,7 +141,7 @@ _name_map = {"PauliX": "X", "PauliY": "Y", "PauliZ": "Z", "Identity": "I"}
 allowed_operations = {
     "Identity",
     "BasisState",
-    "QubitStateVector",
+    "StatePrep",
     "QubitUnitary",
     "ControlledQubitUnitary",
     "MultiControlledX",
@@ -554,7 +554,7 @@ if CPP_BINARY_AVAILABLE:
         def apply(self, operations, **kwargs):
             # State preparation is currently done in Python
             if operations:  # make sure operations[0] exists
-                if isinstance(operations[0], QubitStateVector):
+                if isinstance(operations[0], StatePrep):
                     self._apply_state_vector_GPU(
                         operations[0].parameters[0].copy(), operations[0].wires
                     )
@@ -564,7 +564,7 @@ if CPP_BINARY_AVAILABLE:
                     operations = operations[1:]
 
             for operation in operations:
-                if isinstance(operation, (QubitStateVector, BasisState)):
+                if isinstance(operation, (StatePrep, BasisState)):
                     raise DeviceError(
                         "Operation {} cannot be used after other Operations have already been "
                         "applied on a {} device.".format(operation.name, self.short_name)
@@ -678,7 +678,7 @@ if CPP_BINARY_AVAILABLE:
                 # get op_idx-th operator among differentiable operators
                 op, _, _ = tape.get_operation(op_idx)
 
-                if isinstance(op, Operation) and not isinstance(op, (BasisState, QubitStateVector)):
+                if isinstance(op, Operation) and not isinstance(op, (BasisState, StatePrep)):
                     # We now just ignore non-op or state preps
                     tp_shift.append(tp)
                     record_tp_rows.append(all_params)
