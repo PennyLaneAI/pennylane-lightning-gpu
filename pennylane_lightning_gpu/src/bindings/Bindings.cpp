@@ -19,7 +19,7 @@
 
 #include "cuda.h"
 
-#include "AdjointDiff.hpp"
+#include "AdjointJacobianLQubit.hpp"
 #include "AdjointDiffGPU.hpp"
 #include "JacobianTape.hpp"
 

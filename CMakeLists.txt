@@ -108,8 +108,8 @@ set(BUILD_TESTS OFF)
 set(ENABLE_KOKKOS OFF)
 FetchContent_Declare(
     pennylane_lightning
-    GIT_REPOSITORY  https://github.com/PennyLaneAI/pennylane-lightning.git
-    GIT_TAG         update/nested_cmake_paths
+    GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
+    GIT_TAG       "${LIGHTNING_RELEASE_TAG}"
 )
 FetchContent_MakeAvailable(pennylane_lightning)
 
