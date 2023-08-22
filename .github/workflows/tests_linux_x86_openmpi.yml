@@ -247,7 +247,7 @@ jobs:
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov mpi4py
           # Sync with latest master branches
-          python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
+          python -m pip install git+https://github.com/PennyLaneAI/pennylane-lightning.git@bugfix/numbers --force-reinstall --no-deps
           
       - name: Build and install package (OpenMPI backend)
         env: 

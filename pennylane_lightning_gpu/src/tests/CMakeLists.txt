@@ -62,7 +62,7 @@ if(PLLGPU_ENABLE_MPI)
     add_executable(mpi_runner ./mpi/mpi_runner_main.cpp)
     find_package(MPI REQUIRED)
     target_link_libraries(mpi_runner PUBLIC MPI::MPI_CXX)
-    target_link_libraries(mpi_runner PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
+    target_link_libraries(mpi_runner PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_qubit)
     target_sources(mpi_runner PRIVATE ./mpi/Test_StateVectorCudaMPI_Param.cpp 
                                       ./mpi/Test_StateVectorCudaMPI_NonParam.cpp
                                       ./mpi/Test_MPIManager.cpp
