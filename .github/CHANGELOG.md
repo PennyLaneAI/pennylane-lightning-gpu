@@ -7,6 +7,9 @@
 
 ### Breaking changes
 
+* Remove suport for Python 3.9.
+  [(#135)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/135)
+
 ### Improvements
 
  * Optimizes the single qubit rotation gate by using a single cuStateVector API call instead of separate Pauli gate applications. 
@@ -15,6 +18,10 @@
 ### Documentation
 
 ### Bug fixes
+
+* Pin `lightning.qubit` build version to v0.31.0 due to new package architecture.
+  [(#135)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/135)
+
 * `apply` no longer mutates the inputted list of operations and 
  add the missing `_dp` to the LightningGPU class with single GPU backend.
  [(#133)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/133)
