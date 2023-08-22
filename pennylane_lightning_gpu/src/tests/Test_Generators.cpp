@@ -7,7 +7,7 @@
 
 #include "GateGenerators.hpp"
 #include "StateVectorCudaManaged.hpp"
-#include "TestHelpers.hpp"
+#include "TestHelpersLGPU.hpp"
 
 using namespace Pennylane::CUDA;
 using namespace Pennylane::CUDA::Generators;

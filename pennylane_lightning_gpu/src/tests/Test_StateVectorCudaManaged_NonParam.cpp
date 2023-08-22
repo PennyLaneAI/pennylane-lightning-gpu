@@ -15,7 +15,7 @@
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"
 
-#include "TestHelpers.hpp"
+#include "TestHelpersLGPU.hpp"
 
 using namespace Pennylane;
 using namespace CUDA;

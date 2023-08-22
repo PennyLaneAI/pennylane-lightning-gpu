@@ -13,14 +13,19 @@
 #include "AdjointDiffGPU.hpp"
 #include "StateVectorCudaManaged.hpp"
 #include "TestHelpers.hpp"
+#include "TestHelpersLGPU.hpp"
 #include "Util.hpp"
 
 #ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
 #endif
 
+/// @cond DEV
+namespace {
 using namespace Pennylane::CUDA;
 using namespace Pennylane::Algorithms;
+} // namespace
+/// @endcond
 
 /**
  * @brief Tests the constructability of the AdjointDiff.hpp classes.
@@ -285,13 +290,13 @@ TEST_CASE("AdjointJacobianGPU::adjointJacobian Decomposed Rot gate, non "
 
         const auto thetas = Pennylane::Util::linspace(-2 * M_PI, 2 * M_PI, 7);
         std::unordered_map<double, std::vector<double>> expec_results{
-            {thetas[0], {0, -9.90819496e-01, 0}},
-            {thetas[1], {-8.18996553e-01, 1.62526544e-01, 0}},
-            {thetas[2], {-0.203949, 0.48593716, 0}},
-            {thetas[3], {0, 1, 0}},
-            {thetas[4], {-2.03948985e-01, 4.85937177e-01, 0}},
-            {thetas[5], {-8.18996598e-01, 1.62526487e-01, 0}},
-            {thetas[6], {0, -9.90819511e-01, 0}}};
+            {thetas[0], {0.0, -9.90819496e-01, 0.0}},
+            {thetas[1], {-8.18996553e-01, 1.62526544e-01, 0.0}},
+            {thetas[2], {-0.203949, 0.48593716, 0.0}},
+            {thetas[3], {0.0, 1.0, 0.0}},
+            {thetas[4], {-2.03948985e-01, 4.85937177e-01, 0.0}},
+            {thetas[5], {-8.18996598e-01, 1.62526487e-01, 0.0}},
+            {thetas[6], {0.0, -9.90819511e-01, 0.0}}};
 
         for (const auto &theta : thetas) {
             std::vector<double> local_params{theta, std::pow(theta, 3),
@@ -574,6 +579,6 @@ TEST_CASE("AdjointJacobianGPU::AdjointJacobianGPU Test HermitianObs",
         adj.adjointJacobian(psi.cuda_sv.getData(), psi.cuda_sv.getLength(),
                             jacobian2, {obs2}, ops, t_params, true);
 
-        CHECK((jacobian1[0] == PLApprox(jacobian2[0]).margin(1e-7)));
+        CHECK((jacobian1[0] == Pennylane::PLApprox(jacobian2[0]).margin(1e-7)));
     }
 }

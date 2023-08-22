@@ -85,13 +85,13 @@ ifndef CUQUANTUM_SDK
 	@test $(CUQUANTUM_SDK)
 endif
 	rm -rf ./BuildTests
-	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
+	cmake . -BBuildTests -G Ninja -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
 	cmake --build ./BuildTests
 	./BuildTests/pennylane_lightning_gpu/src/tests/runner_gpu
 
 test-cpp-mpi:
 	rm -rf ./BuildTests
-	cmake . -BBuildTests -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
+	cmake . -BBuildTests -G Ninja -DBUILD_TESTS=1 -DPLLGPU_BUILD_TESTS=1 -DPLLGPU_ENABLE_MPI=On -DCUQUANTUM_SDK=$(CUQUANTUM_SDK)
 	cmake --build ./BuildTests
 	$(MPILAUNCHER) -np $(NUMPROCS) ./BuildTests/pennylane_lightning_gpu/src/tests/mpi_runner
 
@@ -121,5 +121,5 @@ endif
 .PHONY: check-tidy
 check-tidy:
 	rm -rf ./Build
-	cmake . -BBuild -DENABLE_CLANG_TIDY=ON -DBUILD_TESTS=1
+	cmake . -BBuild -G Ninja -DENABLE_CLANG_TIDY=ON -DBUILD_TESTS=1
 	cmake --build ./Build

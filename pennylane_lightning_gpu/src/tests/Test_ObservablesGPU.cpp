@@ -12,7 +12,7 @@
 
 #include "AdjointDiffGPU.hpp"
 #include "StateVectorCudaManaged.hpp"
-#include "TestHelpers.hpp"
+#include "TestHelpersLGPU.hpp"
 #include "Util.hpp"
 
 #ifndef _USE_MATH_DEFINES
