@@ -141,6 +141,7 @@ _name_map = {"PauliX": "X", "PauliY": "Y", "PauliZ": "Z", "Identity": "I"}
 allowed_operations = {
     "Identity",
     "BasisState",
+    "QubitStateVector",
     "StatePrep",
     "QubitUnitary",
     "ControlledQubitUnitary",

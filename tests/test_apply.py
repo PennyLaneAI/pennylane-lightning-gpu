@@ -221,9 +221,9 @@ class TestApply:
         "operation,expected_output,par",
         [
             (qml.BasisState, [0, 0, 1, 0], [1, 0]),
-            (qml.BasisState, [0, 0, 1, 0], [1, 0]),
             (qml.BasisState, [0, 0, 0, 1], [1, 1]),
-            (qml.StatePrep, [0, 0, 1, 0], [0, 0, 1, 0]),
+            (qml.QubitStateVector, [0, 0, 1, 0], [0, 0, 1, 0]),
+            (qml.QubitStateVector, [0, 0, 0, 1], [0, 0, 0, 1]),
             (qml.StatePrep, [0, 0, 1, 0], [0, 0, 1, 0]),
             (qml.StatePrep, [0, 0, 0, 1], [0, 0, 0, 1]),
             (
@@ -477,17 +477,18 @@ class TestApply:
 
         assert np.allclose(state_vector, np.array(expected_output), atol=tol, rtol=0)
 
-    def test_apply_errors_qubit_state_vector(self, qubit_device_2_wires):
+    @pytest.mark.parametrize("stateprep", [qml.QubitStateVector, qml.StatePrep])
+    def test_apply_errors_qubit_state_vector(self, stateprep, qubit_device_2_wires):
         """Test that apply fails for incorrect state preparation, and > 2 qubit gates"""
         with pytest.raises(ValueError, match="Sum of amplitudes-squared does not equal one."):
-            qubit_device_2_wires.apply([qml.StatePrep(np.array([1, -1]), wires=[0])])
+            qubit_device_2_wires.apply([stateprep(np.array([1, -1]), wires=[0])])
 
         with pytest.raises(
             ValueError,
             match=r"State vector must have shape \(2\*\*wires,\) or \(batch_size, 2\*\*wires\).",
         ):
             p = np.array([1, 0, 1, 1, 0]) / np.sqrt(3)
-            qubit_device_2_wires.apply([qml.StatePrep(p, wires=[0, 1])])
+            qubit_device_2_wires.apply([stateprep(p, wires=[0, 1])])
 
         with pytest.raises(
             DeviceError,
@@ -497,7 +498,7 @@ class TestApply:
             qubit_device_2_wires.apply(
                 [
                     qml.RZ(0.5, wires=[0]),
-                    qml.StatePrep(np.array([0, 1, 0, 0]), wires=[0, 1]),
+                    stateprep(np.array([0, 1, 0, 0]), wires=[0, 1]),
                 ]
             )
 
@@ -545,8 +546,9 @@ class TestExpval:
             (qml.Identity, [1 / math.sqrt(2), -1 / math.sqrt(2)], 1),
         ],
     )
+    @pytest.mark.parametrize("stateprep", [qml.QubitStateVector, qml.StatePrep])
     def test_expval_single_wire_no_parameters(
-        self, qubit_device_1_wire, tol, operation, input, expected_output
+        self, stateprep, qubit_device_1_wire, tol, operation, input, expected_output
     ):
         """Tests that expectation values are properly calculated for single-wire observables without parameters."""
 
@@ -554,7 +556,7 @@ class TestExpval:
 
         qubit_device_1_wire.reset()
         qubit_device_1_wire.apply(
-            [qml.StatePrep(np.array(input), wires=[0])],
+            [stateprep(np.array(input), wires=[0])],
             rotations=obs.diagonalizing_gates(),
         )
         res = qubit_device_1_wire.expval(obs)
@@ -585,8 +587,9 @@ class TestVar:
             (qml.Identity, [1 / math.sqrt(2), -1 / math.sqrt(2)], 0),
         ],
     )
+    @pytest.mark.parametrize("stateprep", [qml.QubitStateVector, qml.StatePrep])
     def test_var_single_wire_no_parameters(
-        self, qubit_device_1_wire, tol, operation, input, expected_output
+        self, stateprep, qubit_device_1_wire, tol, operation, input, expected_output
     ):
         """Tests that variances are properly calculated for single-wire observables without parameters."""
 
@@ -594,7 +597,7 @@ class TestVar:
 
         qubit_device_1_wire.reset()
         qubit_device_1_wire.apply(
-            [qml.StatePrep(np.array(input), wires=[0])],
+            [stateprep(np.array(input), wires=[0])],
             rotations=obs.diagonalizing_gates(),
         )
         res = qubit_device_1_wire.var(obs)
@@ -749,8 +752,9 @@ class TestLightningGPUIntegration:
             ("CZ", [-1 / 2, -1 / 2]),
         ],
     )
+    @pytest.mark.parametrize("stateprep", [qml.QubitStateVector, qml.StatePrep])
     def test_supported_gate_two_wires_no_parameters(
-        self, qubit_device_2_wires, tol, name, expected_output
+        self, stateprep, qubit_device_2_wires, tol, name, expected_output
     ):
         """Tests supported gates that act on two wires that are not parameterized"""
 
@@ -759,7 +763,7 @@ class TestLightningGPUIntegration:
 
         @qml.qnode(qubit_device_2_wires)
         def circuit():
-            qml.StatePrep(np.array([1 / 2, 0, 0, math.sqrt(3) / 2]), wires=[0, 1])
+            stateprep(np.array([1 / 2, 0, 0, math.sqrt(3) / 2]), wires=[0, 1])
             op(wires=[0, 1])
             return qml.expval(qml.PauliZ(0)), qml.expval(qml.PauliZ(1))
 

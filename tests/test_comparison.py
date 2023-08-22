@@ -238,7 +238,8 @@ class TestComparison:
         assert np.allclose(default_state, lightninggpu_state)
 
     @pytest.mark.parametrize("wires", range(1, 17))
-    def test_n_qubit_circuit(self, wires, default_qubit_dev, lightning_gpu_qubit_dev):
+    @pytest.mark.parametrize("stateprep", [qml.QubitStateVector, qml.StatePrep])
+    def test_n_qubit_circuit(self, stateprep, wires, default_qubit_dev, lightning_gpu_qubit_dev):
         """Test an n-qubit circuit"""
 
         vec = np.array([1 + 0.0j] * (2**wires)) / np.sqrt(2**wires)
@@ -248,7 +249,7 @@ class TestComparison:
         def circuit():
             """Prepares the equal superposition state and then applies StronglyEntanglingLayers
             and concludes with a simple PauliZ measurement"""
-            qml.StatePrep(vec, wires=range(wires))
+            stateprep(vec, wires=range(wires))
             qml.StronglyEntanglingLayers(w, wires=range(wires))
             return qml.expval(qml.PauliZ(0))
 

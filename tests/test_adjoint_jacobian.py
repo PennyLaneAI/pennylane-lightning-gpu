@@ -192,11 +192,12 @@ class TestAdjointJacobian:
 
     @pytest.mark.parametrize("theta", np.linspace(-2 * np.pi, 2 * np.pi, 7))
     @pytest.mark.parametrize("G", [qml.RX, qml.RY, qml.RZ])
-    def test_pauli_rotation_gradient(self, G, theta, tol, dev_cpu, dev_gpu):
+    @pytest.mark.parametrize("stateprep", [qml.QubitStateVector, qml.StatePrep])
+    def test_pauli_rotation_gradient(self, stateprep, G, theta, tol, dev_cpu, dev_gpu):
         """Tests that the automatic gradients of Pauli rotations are correct."""
 
         with qml.tape.QuantumTape() as tape:
-            qml.StatePrep(np.array([1.0, -1.0]) / np.sqrt(2), wires=0)
+            stateprep(np.array([1.0, -1.0]) / np.sqrt(2), wires=0)
             G(theta, wires=[0])
             qml.expval(qml.PauliZ(0))
 
@@ -208,13 +209,14 @@ class TestAdjointJacobian:
         assert np.allclose(calculated_val, expected_val, atol=tol, rtol=0)
 
     @pytest.mark.parametrize("theta", np.linspace(-2 * np.pi, 2 * np.pi, 7))
-    def test_Rot_gradient(self, theta, tol, dev_cpu, dev_gpu):
+    @pytest.mark.parametrize("stateprep", [qml.QubitStateVector, qml.StatePrep])
+    def test_Rot_gradient(self, stateprep, theta, tol, dev_cpu, dev_gpu):
         """Tests that the device gradient of an arbitrary Euler-angle-parameterized gate is
         correct."""
         params = np.array([theta, theta**3, np.sqrt(2) * theta])
 
         with qml.tape.QuantumTape() as tape:
-            qml.StatePrep(np.array([1.0, -1.0]) / np.sqrt(2), wires=0)
+            stateprep(np.array([1.0, -1.0]) / np.sqrt(2), wires=0)
             qml.Rot(*params, wires=[0])
             qml.expval(qml.PauliZ(0))
 
