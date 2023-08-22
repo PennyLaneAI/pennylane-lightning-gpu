@@ -1,7 +1,7 @@
 pip==23.0
 ninja
 cmake
-custatevec-cu11
+custatevec-cu12
 flaky
 pennylane>=0.30
 pennylane-lightning>=0.30

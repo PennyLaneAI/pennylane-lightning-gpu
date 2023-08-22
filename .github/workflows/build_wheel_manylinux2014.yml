@@ -61,10 +61,11 @@ jobs:
           # Python build settings
           CIBW_BEFORE_BUILD: |
             python -m pip install ninja cmake~=3.24.3 auditwheel
-            python -m pip install custatevec-cu11
+            python -m pip install custatevec-cu12
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
             yum clean all
-            yum -y install cuda-11-5 git openssh wget
+            yum -y install nvidia-driver-latest-dkms
+            yum -y install cuda git openssh wget
 
           # ensure nvcc is available
           CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")

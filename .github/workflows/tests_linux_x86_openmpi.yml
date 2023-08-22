@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  pull_request:
+  # pull_request:
 
 env:
   COVERAGE_FLAGS: "--cov=pennylane_lightning_gpu --cov-report=term-missing --cov-report=xml:./coverage.xml --no-flaky-report -p no:warnings --tb=native" 
@@ -73,7 +73,7 @@ jobs:
 
       - name: Install required packages
         run: |
-          python -m pip install ninja cmake custatevec-cu11 
+          python -m pip install ninja cmake custatevec-cu12 
 
       - name: Validate GPU version and installed compiler
         run: |
@@ -245,7 +245,7 @@ jobs:
           export PATH=$PATH:/usr/local/cuda/bin:/opt/mpi/openmpi/include:/opt/mpi/openmpi/bin 
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/opt/mpi/openmpi/lib:$(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
           python -m pip install pip~=22.0
-          python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov mpi4py
+          python -m pip install ninja cmake custatevec-cu12 pytest pytest-mock flaky pytest-cov mpi4py
           # Sync with latest master branches
           python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
           
