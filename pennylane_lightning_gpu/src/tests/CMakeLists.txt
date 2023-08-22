@@ -33,7 +33,7 @@ if(PLLGPU_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
 	target_link_libraries(runner_gpu INTERFACE OpenMP::OpenMP_CXX)
 endif()
-target_link_libraries(runner_gpu PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator)
+target_link_libraries(runner_gpu PUBLIC pennylane_lightning_gpu Catch2::Catch2 lightning_simulator lightning_gates lightning_utils)
 
 target_sources(runner_gpu PRIVATE Test_StateVectorCudaManaged_NonParam.cpp
 	                      Test_StateVectorCudaManaged_Param.cpp
