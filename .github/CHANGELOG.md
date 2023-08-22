@@ -10,7 +10,7 @@
  * Rename `QubistStateVector` to `StatePrep` in the `LightningGPU` class.
  [#134] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
 
-* Remove suport for Python 3.9.
+* Remove support for Python 3.8.
   [(#135)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/135)
 
 ### Improvements
