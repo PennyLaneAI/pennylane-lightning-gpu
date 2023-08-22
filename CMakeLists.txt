@@ -99,7 +99,7 @@ FetchContent_MakeAvailable(pybind11)
 
 # Add PennyLane-Lightning
 if (NOT DEFINED LIGHTNING_RELEASE_TAG)
-  set(LIGHTNING_RELEASE_TAG "latest_release")
+  set(LIGHTNING_RELEASE_TAG "v0.31.0")
 endif()
 
 # Disable non-required lengthy build-steps from PennyLane Lightning
