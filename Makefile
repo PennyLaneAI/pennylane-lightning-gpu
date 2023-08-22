@@ -30,7 +30,7 @@ ifndef CUQUANTUM_SDK
 	@test $(CUQUANTUM_SDK)
 endif
 ifndef PYTHON3
-	@echo "To install PennyLane-Lightning-GPU you must have Python 3.8+ installed."
+	@echo "To install PennyLane-Lightning-GPU you must have Python 3.9+ installed."
 endif
 	$(PYTHON) setup.py build_ext --cuquantum=$(CUQUANTUM_SDK) --verbose
 	$(PYTHON) setup.py install
