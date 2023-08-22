@@ -6,8 +6,14 @@
  [(#127)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/127)
 
 ### Breaking changes
- 
+
  * Rename `QubitStateVector` to `StatePrep` in the `LightningGPU` class.
+ [#134] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
+
+ * Deprecate Python 3.8.
+ [#134] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
+
+ * Update PennyLane-Lightning imports following the [(#472)] (https://github.com/PennyLaneAI/pennylane-lightning/pull/472) refactoring.
  [#134] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
 
 ### Improvements
@@ -26,7 +32,7 @@
 
 This release contains contributions from (in alphabetical order):
 
-David Clark (NVIDIA), Shuli Shu
+David Clark (NVIDIA), Vincent Michaud-Rioux, Shuli Shu
 
 ---
 
