@@ -6,5 +6,5 @@ exhale
 pybind11
 cmake
 ninja
-pennylane
+git+https://github.com/PennyLaneAI/pennylane.git@master
 pennylane-sphinx-theme
