@@ -109,7 +109,7 @@ set(ENABLE_KOKKOS OFF)
 FetchContent_Declare(
     pennylane_lightning
     GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
-    GIT_TAG        bugfix/numbers
+    GIT_TAG        master
 )
 FetchContent_MakeAvailable(pennylane_lightning)
 
