@@ -492,7 +492,7 @@ class TestApply:
 
         with pytest.raises(
             DeviceError,
-            match="Operation StatePrep cannot be used after other Operations have already been applied ",
+            match=f"Operation {stateprep(np.array([0, 1, 0, 0]), wires=[0, 1]).name} cannot be used after other Operations have already been applied ",
         ):
             qubit_device_2_wires.reset()
             qubit_device_2_wires.apply(
