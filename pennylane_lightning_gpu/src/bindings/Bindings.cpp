@@ -39,6 +39,7 @@
 
 #ifdef ENABLE_MPI
 #include "AdjointDiffGPUMPI.hpp"
+#include "CSRMatrix.hpp"
 #include "MPIManager.hpp"
 #include "StateVectorCudaMPI.hpp"
 #endif
@@ -1608,13 +1609,24 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
 
             const py::buffer_info buffer_offsets = offsets.request();
             const auto *offsets_ptr = static_cast<SpIDX *>(buffer_offsets.ptr);
+            
+            MPIManager mpi_manager(MPI_COMM_WORLD);
 
+            CSRMatrix<PrecisionT, SpIDX> sparseMat(offsets.size() - 1, data.size(), indices_ptr, offsets_ptr, data_ptr);
+            auto sparseMatReorder = sparseMat.matrixReorder();
+
+            mpi_manager.Barrier();
+
+            return SparseHamiltonianGPUMPI<PrecisionT>{sparseMatReorder.getValues(), sparseMatReorder.getColumns(), sparseMatReorder.getCsrOffsets(), wires};
+
+           /*
             return SparseHamiltonianGPUMPI<PrecisionT>{
                 std::vector<complex<PrecisionT>>(
                     {data_ptr, data_ptr + data.size()}),
                 std::vector<SpIDX>({indices_ptr, indices_ptr + indices.size()}),
                 std::vector<SpIDX>({offsets_ptr, offsets_ptr + offsets.size()}),
                 wires};
+            */
         }))
         .def("__repr__", &SparseHamiltonianGPUMPI<PrecisionT>::getObsName)
         .def("get_wires", &SparseHamiltonianGPUMPI<PrecisionT>::getWires,

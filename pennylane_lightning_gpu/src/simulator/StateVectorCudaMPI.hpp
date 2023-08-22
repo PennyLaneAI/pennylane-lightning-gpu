@@ -27,6 +27,7 @@
 #include <cuda.h>
 #include <custatevec.h> // custatevecApplyMatrix
 
+#include "CSRMatrix.hpp"
 #include "Constant.hpp"
 #include "Error.hpp"
 #include "MPIManager.hpp"
@@ -63,44 +64,6 @@ extern void setBasisState_CUDA(cuComplex *sv, cuComplex &value,
 extern void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                                const size_t index, bool async,
                                cudaStream_t stream_id);
-
-/**
- * @brief Manage memory of Compressed Sparse Row (CSR) sparse matrix. CSR format
- * represents a matrix M by three (one-dimensional) arrays, that respectively
- * contain nonzero values, row offsets, and column indices.
- *
- * @tparam Precision Floating-point precision type.
- * @tparam index_type Integer type.
- */
-template <class Precision, class index_type> class CSRMatrix {
-  private:
-    std::vector<index_type> columns;
-    std::vector<index_type> csrOffsets;
-    std::vector<std::complex<Precision>> values;
-
-  public:
-    CSRMatrix(size_t num_rows, size_t nnz)
-        : columns(nnz, 0), csrOffsets(num_rows + 1, 0), values(nnz){};
-
-    CSRMatrix() = default;
-
-    /**
-     * @brief Get the CSR format index vector of the matrix.
-     */
-    auto getColumns() -> std::vector<index_type> & { return columns; }
-
-    /**
-     * @brief Get CSR format offset vector of the matrix.
-     */
-    auto getCsrOffsets() -> std::vector<index_type> & { return csrOffsets; }
-
-    /**
-     * @brief Get CSR format data vector of the matrix.
-     */
-    auto getValues() -> std::vector<std::complex<Precision>> & {
-        return values;
-    }
-};
 
 /**
  * @brief Managed memory CUDA state-vector class using custateVec backed
