@@ -37,7 +37,7 @@ Features
 Installation
 ============
 
-PennyLane-Lightning-GPU requires Python version 3.8 and above. It can be installed using ``pip``:
+PennyLane-Lightning-GPU requires Python version 3.9 and above. It can be installed using ``pip``:
 
 .. code-block:: console
 
@@ -82,7 +82,7 @@ To build using Docker, run the following from the project root directory:
 
     docker build . -f ./docker/Dockerfile -t "lightning-gpu-wheels"
 
-This will build a Python wheel for Python 3.8 up to 3.11 inclusive, and be manylinux2014 (glibc 2.17) compatible.
+This will build a Python wheel for Python 3.9 up to 3.11 inclusive, and be manylinux2014 (glibc 2.17) compatible.
 To acquire the built wheels, use:
 
 .. code-block:: console
