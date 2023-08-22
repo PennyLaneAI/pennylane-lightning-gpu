@@ -62,6 +62,7 @@ jobs:
           CIBW_BEFORE_BUILD: |
             yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo -y
             yum clean all
+            yum -y remove devtoolset-10
             yum -y install devtoolset-11
             yum -y install cuda git openssh wget
             python -m pip install ninja cmake~=3.24.3 auditwheel
