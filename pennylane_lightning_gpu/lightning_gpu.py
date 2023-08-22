@@ -27,6 +27,7 @@ from pennylane import (
     math,
     QubitDevice,
     BasisState,
+    QubitStateVector,
     StatePrep,
     DeviceError,
     Projector,
