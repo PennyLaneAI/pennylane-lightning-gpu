@@ -1361,6 +1361,7 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                const np_arr_sparse_ind &columns, const np_arr_c values) {
                 using index_type = typename std::conditional<
                     std::is_same<ParamT, float>::value, int32_t, int64_t>::type;
+
                 return sv.template getExpectationValueOnSparseSpMV<index_type>(
                     static_cast<index_type *>(csrOffsets.request().ptr),
                     static_cast<index_type>(

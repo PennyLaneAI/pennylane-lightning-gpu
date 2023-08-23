@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <bit>
 #include <complex>
-#include <map>
 #include <vector>
 
 #include "MPIManager.hpp"
@@ -14,36 +13,6 @@ using namespace Pennylane::CUDA;
 } // namespace
 /// @endcond
 namespace Pennylane::MPI {
-
-inline size_t reverseBits(size_t num, size_t nbits) {
-    size_t reversed = 0;
-    for (size_t i = 0; i < nbits; ++i) {
-        // ith bit value
-        size_t bit = (num & (1 << i)) >> i;
-        reversed += bit << (nbits - i - 1);
-    }
-    return reversed;
-}
-
-template <class index_type>
-inline std::tuple<std::vector<index_type>, std::vector<index_type>>
-rankVector(const std::vector<index_type> &input) {
-    // Create a copy of the input vector for sorting
-    std::vector<index_type> sortedInput = input;
-
-    // Sort the copy in ascending order
-    std::sort(sortedInput.begin(), sortedInput.end());
-
-    std::vector<index_type> ranks(input.size());
-    for (size_t i = 0; i < input.size(); ++i) {
-        auto it =
-            std::lower_bound(sortedInput.begin(), sortedInput.end(), input[i]);
-        ranks[i] = std::distance(sortedInput.begin(), it);
-    }
-
-    return {sortedInput, ranks};
-}
-
 /**
  * @brief Manage memory of Compressed Sparse Row (CSR) sparse matrix. CSR format
  * represents a matrix M by three (one-dimensional) arrays, that respectively
@@ -62,8 +31,8 @@ template <class Precision, class index_type> class CSRMatrix {
     CSRMatrix(size_t num_rows, size_t nnz)
         : columns_(nnz, 0), csrOffsets_(num_rows + 1, 0), values_(nnz){};
 
-    CSRMatrix(size_t num_rows, size_t nnz, const index_type *column_ptr,
-              const index_type *csrOffsets_ptr, const std::complex<Precision> *value_ptr)
+    CSRMatrix(size_t num_rows, size_t nnz, index_type *column_ptr,
+              index_type *csrOffsets_ptr, std::complex<Precision> *value_ptr)
         : columns_(column_ptr, column_ptr + nnz),
           csrOffsets_(csrOffsets_ptr, csrOffsets_ptr + num_rows + 1),
           values_(value_ptr, value_ptr + nnz){};
@@ -86,46 +55,131 @@ template <class Precision, class index_type> class CSRMatrix {
     auto getValues() -> std::vector<std::complex<Precision>> & {
         return values_;
     }
+};
 
-    auto matrixReorder() -> CSRMatrix<Precision, index_type>  {
-        size_t num_rows = this->getCsrOffsets().size() - 1;
-        size_t nnz = this->getColumns().size();
-        size_t nbits = std::bit_width(num_rows) - 1;
-        CSRMatrix<Precision, index_type> reorderedMatrix(num_rows, nnz);
+template <class Precision, class index_type>
+auto splitCSRMatrix(MPIManager &mpi_manager, const size_t &num_rows,
+                    const index_type *csrOffsets_ptr,
+                    const index_type *columns_ptr,
+                    const std::complex<Precision> *values_ptr)
+    -> std::vector<std::vector<CSRMatrix<Precision, index_type>>> {
 
-        for (size_t row_idx = 0; row_idx < num_rows; row_idx++) {
-            size_t org_row_idx = reverseBits(row_idx, nbits);
+    size_t num_row_blocks = mpi_manager.getSize();
+    size_t num_col_blocks = num_row_blocks;
 
-            size_t org_offset = this->getCsrOffsets()[org_row_idx];
-            size_t local_col_size =
-                this->getCsrOffsets()[org_row_idx + 1] - org_offset;
+    std::vector<std::vector<CSRMatrix<Precision, index_type>>>
+        splitSparseMatrix(
+            num_row_blocks,
+            std::vector<CSRMatrix<Precision, index_type>>(num_col_blocks));
 
-            reorderedMatrix.getCsrOffsets()[row_idx + 1] =
-                local_col_size + reorderedMatrix.getCsrOffsets()[row_idx];
+    size_t row_block_size = num_rows / num_row_blocks;
+    size_t col_block_size = row_block_size;
 
-            // get unsorted column indices
-            std::vector<index_type> local_col_indices(
-                this->getColumns().begin() + org_offset,
-                this->getColumns().begin() + org_offset + local_col_size);
-            for (size_t i = 0; i < local_col_indices.size(); i++) {
-                size_t col_idx = reverseBits(local_col_indices[i], nbits);
-                local_col_indices[i] = col_idx;
+    // Add OpenMP support here later. Need to pay attention to
+    // race condition.
+    size_t current_global_row, current_global_col;
+    size_t block_row_id, block_col_id;
+    size_t local_row_id, local_col_id;
+    for (size_t row = 0; row < num_rows; row++) {
+        for (size_t col_idx = static_cast<size_t>(csrOffsets_ptr[row]);
+             col_idx < static_cast<size_t>(csrOffsets_ptr[row + 1]);
+             col_idx++) {
+
+            current_global_row = row;
+            current_global_col = columns_ptr[col_idx];
+            std::complex<Precision> current_val = values_ptr[col_idx];
+
+            block_row_id = current_global_row / row_block_size;
+            block_col_id = current_global_col / col_block_size;
+
+            local_row_id = current_global_row % row_block_size;
+            local_col_id = current_global_col % col_block_size;
+
+            if (splitSparseMatrix[block_row_id][block_col_id]
+                    .getCsrOffsets()
+                    .size() == 0) {
+                splitSparseMatrix[block_row_id][block_col_id].getCsrOffsets() =
+                    std::vector<index_type>(row_block_size + 1, 0);
             }
 
-            auto [sorted_col_indices, ranks] =
-                rankVector<index_type>(local_col_indices);
+            splitSparseMatrix[block_row_id][block_col_id]
+                .getCsrOffsets()[local_row_id + 1]++;
+            splitSparseMatrix[block_row_id][block_col_id]
+                .getColumns()
+                .push_back(local_col_id);
+            splitSparseMatrix[block_row_id][block_col_id].getValues().push_back(
+                current_val);
+        }
+    }
 
-            for (size_t i = 0; i < sorted_col_indices.size(); i++) {
-                reorderedMatrix
-                    .getColumns()[reorderedMatrix.getCsrOffsets()[row_idx] +
-                                  i] = sorted_col_indices[i];
-                reorderedMatrix
-                    .getValues()[reorderedMatrix.getCsrOffsets()[row_idx] + i] =
-                    this->getValues()[org_offset + ranks[i]];
-
+    // Add OpenMP support here later.
+    for (size_t block_row_id = 0; block_row_id < num_row_blocks;
+         block_row_id++) {
+        for (size_t block_col_id = 0; block_col_id < num_col_blocks;
+             block_col_id++) {
+            auto &localSpMat = splitSparseMatrix[block_row_id][block_col_id];
+            size_t local_csr_offset_size = localSpMat.getCsrOffsets().size();
+            for (size_t i0 = 1; i0 < local_csr_offset_size; i0++) {
+                localSpMat.getCsrOffsets()[i0] +=
+                    localSpMat.getCsrOffsets()[i0 - 1];
             }
         }
-        return reorderedMatrix;
     }
-};
+
+    return splitSparseMatrix;
+}
+
+/**
+ * @brief Scatter a CSR (Compressed Sparse Row) format matrix.
+ *
+ * @tparam index_type Integer type used as indices of the sparse matrix.
+ * @param matrix CSR (Compressed Sparse Row) format matrix.
+ * @param root Root rank of the scatter operation.
+ */
+template <class Precision, class index_type>
+auto scatterCSRMatrix(MPIManager &mpi_manager,
+                      std::vector<CSRMatrix<Precision, index_type>> &matrix,
+                      size_t local_num_rows, size_t root)
+    -> CSRMatrix<Precision, index_type> {
+    // Bcast num_rows and num_cols
+    size_t num_col_blocks = mpi_manager.getSize();
+
+    std::vector<size_t> nnzs;
+
+    if (mpi_manager.getRank() == root) {
+        nnzs.reserve(matrix.size());
+        for (size_t j = 0; j < matrix.size(); j++) {
+            nnzs.push_back(matrix[j].getValues().size());
+        }
+    }
+
+    size_t local_nnz = mpi_manager.scatter<size_t>(nnzs, 0)[0];
+
+    CSRMatrix<Precision, index_type> localCSRMatrix(local_num_rows, local_nnz);
+
+    if (mpi_manager.getRank() == root) {
+        localCSRMatrix.getValues() = matrix[0].getValues();
+        localCSRMatrix.getCsrOffsets() = matrix[0].getCsrOffsets();
+        localCSRMatrix.getColumns() = matrix[0].getColumns();
+    }
+
+    for (size_t k = 1; k < num_col_blocks; k++) {
+        size_t dest = k;
+        size_t source = root;
+
+        if (mpi_manager.getRank() == 0 && matrix[k].getValues().size()) {
+            mpi_manager.Send<std::complex<Precision>>(matrix[k].getValues(),
+                                                      dest);
+            mpi_manager.Send<index_type>(matrix[k].getCsrOffsets(), dest);
+            mpi_manager.Send<index_type>(matrix[k].getColumns(), dest);
+        } else if (mpi_manager.getRank() == k && local_nnz) {
+            mpi_manager.Recv<std::complex<Precision>>(
+                localCSRMatrix.getValues(), source);
+            mpi_manager.Recv<index_type>(localCSRMatrix.getCsrOffsets(),
+                                         source);
+            mpi_manager.Recv<index_type>(localCSRMatrix.getColumns(), source);
+        }
+    }
+    return localCSRMatrix;
+}
 } // namespace Pennylane::MPI
