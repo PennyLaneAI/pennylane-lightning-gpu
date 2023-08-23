@@ -91,7 +91,7 @@ class TestAdjointJacobian:
     """Tests for the adjoint_jacobian method"""
 
     from pennylane_lightning_gpu import LightningGPU as lg
-    from pennylane_lightning import LightningQubit as lq
+    from pennylane_lightning.lightning_qubit import LightningQubit as lq
 
     @pytest.fixture
     def dev_gpu(self):
@@ -192,11 +192,12 @@ class TestAdjointJacobian:
 
     @pytest.mark.parametrize("theta", np.linspace(-2 * np.pi, 2 * np.pi, 7))
     @pytest.mark.parametrize("G", [qml.RX, qml.RY, qml.RZ])
-    def test_pauli_rotation_gradient(self, G, theta, tol, dev_cpu, dev_gpu):
+    @pytest.mark.parametrize("stateprep", [qml.QubitStateVector, qml.StatePrep])
+    def test_pauli_rotation_gradient(self, stateprep, G, theta, tol, dev_cpu, dev_gpu):
         """Tests that the automatic gradients of Pauli rotations are correct."""
 
         with qml.tape.QuantumTape() as tape:
-            qml.QubitStateVector(np.array([1.0, -1.0]) / np.sqrt(2), wires=0)
+            stateprep(np.array([1.0, -1.0]) / np.sqrt(2), wires=0)
             G(theta, wires=[0])
             qml.expval(qml.PauliZ(0))
 
@@ -208,13 +209,14 @@ class TestAdjointJacobian:
         assert np.allclose(calculated_val, expected_val, atol=tol, rtol=0)
 
     @pytest.mark.parametrize("theta", np.linspace(-2 * np.pi, 2 * np.pi, 7))
-    def test_Rot_gradient(self, theta, tol, dev_cpu, dev_gpu):
+    @pytest.mark.parametrize("stateprep", [qml.QubitStateVector, qml.StatePrep])
+    def test_Rot_gradient(self, stateprep, theta, tol, dev_cpu, dev_gpu):
         """Tests that the device gradient of an arbitrary Euler-angle-parameterized gate is
         correct."""
         params = np.array([theta, theta**3, np.sqrt(2) * theta])
 
         with qml.tape.QuantumTape() as tape:
-            qml.QubitStateVector(np.array([1.0, -1.0]) / np.sqrt(2), wires=0)
+            stateprep(np.array([1.0, -1.0]) / np.sqrt(2), wires=0)
             qml.Rot(*params, wires=[0])
             qml.expval(qml.PauliZ(0))
 
@@ -687,7 +689,7 @@ def test_qchem_expvalcost_correct():
 
 def circuit_ansatz(params, wires):
     """Circuit ansatz containing all the parametrized gates"""
-    qml.QubitStateVector(unitary_group.rvs(2**4, random_state=0)[0], wires=wires)
+    qml.StatePrep(unitary_group.rvs(2**4, random_state=0)[0], wires=wires)
     qml.RX(params[0], wires=wires[0])
     qml.RY(params[1], wires=wires[1])
     qml.adjoint(qml.RX(params[2], wires=wires[2]))

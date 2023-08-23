@@ -16,7 +16,7 @@
 #include <cuComplex.h> // cuDoubleComplex
 #include <cuda.h>
 
-#include "TestHelpers.hpp"
+#include "TestHelpersLGPU.hpp"
 
 using namespace Pennylane;
 using namespace CUDA;

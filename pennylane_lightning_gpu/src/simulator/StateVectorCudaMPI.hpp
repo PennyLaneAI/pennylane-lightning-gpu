@@ -316,7 +316,7 @@ class StateVectorCudaMPI
 
         for (size_t i = 0; i < static_cast<size_t>(num_indices); i++) {
             int index = indices[i];
-            assert(index >= 0);
+            PL_ASSERT(index >= 0);
             size_t rankId =
                 static_cast<size_t>(index) >> BaseType::getNumQubits();
 

@@ -72,7 +72,7 @@ def apply_operation_gates_qnode_param(tol, operation, par, Wires):
     )
 
     def circuit(*params):
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        qml.StatePrep(state_vector, wires=range(num_wires))
         operation(*params, wires=Wires)
         return qml.state()
 
@@ -105,7 +105,7 @@ def apply_operation_gates_apply_param(tol, operation, par, Wires):
 
     @qml.qnode(dev_cpu)
     def circuit(*params):
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        qml.StatePrep(state_vector, wires=range(num_wires))
         operation(*params, wires=Wires)
         return qml.state()
 
@@ -153,7 +153,7 @@ def apply_operation_gates_qnode_nonparam(tol, operation, Wires):
     )
 
     def circuit():
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        qml.StatePrep(state_vector, wires=range(num_wires))
         operation(wires=Wires)
         return qml.state()
 
@@ -186,7 +186,7 @@ def apply_operation_gates_apply_nonparam(tol, operation, Wires):
 
     @qml.qnode(dev_cpu)
     def circuit():
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        qml.StatePrep(state_vector, wires=range(num_wires))
         operation(wires=Wires)
         return qml.state()
 
@@ -225,7 +225,7 @@ def expval_single_wire_no_param(tol, obs):
     dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
     def circuit():
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        qml.StatePrep(state_vector, wires=range(num_wires))
         return qml.expval(obs)
 
     cpu_qnode = qml.QNode(circuit, dev_cpu)
@@ -252,7 +252,7 @@ def apply_probs_nonparam(tol, operation, GateWires, Wires):
     dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
     def circuit():
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        qml.StatePrep(state_vector, wires=range(num_wires))
         operation(wires=GateWires)
         return qml.probs(wires=Wires)
 
@@ -292,7 +292,7 @@ def apply_probs_param(tol, operation, par, GateWires, Wires):
     dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
     def circuit():
-        qml.QubitStateVector(state_vector, wires=range(num_wires))
+        qml.StatePrep(state_vector, wires=range(num_wires))
         operation(*par, wires=GateWires)
         return qml.probs(wires=Wires)
 
@@ -501,7 +501,7 @@ class TestApply:
         dev_gpumpi = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
         def circuit():
-            qml.QubitStateVector(par, wires=Wires)
+            qml.StatePrep(par, wires=Wires)
             return qml.state()
 
         cpu_qnode = qml.QNode(circuit, dev_cpu)
@@ -1152,7 +1152,7 @@ class TestProbs:
 
 def circuit_ansatz(params, wires):
     """Circuit ansatz containing all the parametrized gates"""
-    qml.QubitStateVector(unitary_group.rvs(2**numQubits, random_state=0)[0], wires=wires)
+    qml.StatePrep(unitary_group.rvs(2**numQubits, random_state=0)[0], wires=wires)
     qml.RX(params[0], wires=wires[0])
     qml.RY(params[1], wires=wires[1])
     qml.adjoint(qml.RX(params[2], wires=wires[2]))

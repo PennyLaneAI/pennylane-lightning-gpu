@@ -47,6 +47,7 @@ Supported operations and observables
     ~pennylane.PhaseShift
     ~pennylane.ControlledPhaseShift
     ~pennylane.QubitStateVector
+    ~pennylane.StatePrep
     ~pennylane.Rot
     ~pennylane.RX
     ~pennylane.RY

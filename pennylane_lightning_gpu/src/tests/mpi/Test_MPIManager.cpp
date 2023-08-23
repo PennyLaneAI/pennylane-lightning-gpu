@@ -10,7 +10,7 @@
 
 #include "MPIManager.hpp"
 
-#include "../TestHelpers.hpp"
+#include "../TestHelpersLGPU.hpp"
 
 using namespace Pennylane;
 using namespace Pennylane::MPI;

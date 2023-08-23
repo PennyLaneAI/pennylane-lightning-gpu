@@ -10,7 +10,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "../TestHelpers.hpp"
+#include "../TestHelpersLGPU.hpp"
 #include "AdjointDiffGPUMPI.hpp"
 #include "StateVectorCudaMPI.hpp"
 #include "Util.hpp"
