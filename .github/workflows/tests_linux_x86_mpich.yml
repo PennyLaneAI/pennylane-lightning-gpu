@@ -55,7 +55,7 @@ jobs:
         id: setup_python
         name: Install Python
         with:
-          python-version: '3.8'
+          python-version: '3.9'
 
       # Since the self-hosted runner can be re-used. It is best to set up all package
       # installations in a virtual environment that gets cleaned at the end of each workflow run
@@ -225,7 +225,7 @@ jobs:
         id: setup_python
         name: Install Python
         with:
-          python-version: '3.8'
+          python-version: '3.9'
 
       # Since the self-hosted runner can be re-used. It is best to set up all package
       # installations in a virtual environment that gets cleaned at the end of each workflow run
@@ -275,7 +275,7 @@ jobs:
           python -m pip install pip~=22.0
           python -m pip install ninja cmake custatevec-cu11 pytest pytest-mock flaky pytest-cov mpi4py
           # Sync with latest master branches
-          python -m pip install --index-url https://test.pypi.org/simple/ pennylane-lightning --pre --force-reinstall --no-deps
+          python -m pip install git+https://github.com/PennyLaneAI/pennylane-lightning.git@master --force-reinstall --no-deps
           
       - name: Build and install package (MPICH backend)
         env: 

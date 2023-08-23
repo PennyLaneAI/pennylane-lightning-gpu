@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Xanadu Quantum Technologies Inc.
+// Copyright 2022-2023 Xanadu Quantum Technologies Inc. and contributors.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -279,7 +279,7 @@ class StateVectorCudaMPI
 
         for (size_t i = 0; i < static_cast<size_t>(num_indices); i++) {
             int index = indices[i];
-            assert(index >= 0);
+            PL_ASSERT(index >= 0);
             size_t rankId =
                 static_cast<size_t>(index) >> BaseType::getNumQubits();
 
@@ -348,13 +348,13 @@ class StateVectorCudaMPI
                                      adjoint);
         } else if (opName == "Rot" || opName == "CRot") {
             if (adjoint) {
-                applyParametricPauliGate({"RZ"}, ctrls, tgts, params[2], true);
-                applyParametricPauliGate({"RY"}, ctrls, tgts, params[1], true);
-                applyParametricPauliGate({"RZ"}, ctrls, tgts, params[0], true);
+                auto rot_matrix =
+                    cuGates::getRot<CFP_t>(params[2], params[1], params[0]);
+                applyHostMatrixGate(rot_matrix, ctrls, tgts, true);
             } else {
-                applyParametricPauliGate({"RZ"}, ctrls, tgts, params[0], false);
-                applyParametricPauliGate({"RY"}, ctrls, tgts, params[1], false);
-                applyParametricPauliGate({"RZ"}, ctrls, tgts, params[2], false);
+                auto rot_matrix =
+                    cuGates::getRot<CFP_t>(params[0], params[1], params[2]);
+                applyHostMatrixGate(rot_matrix, ctrls, tgts, false);
             }
         } else if (par_gates_.find(opName) != par_gates_.end()) {
             par_gates_.at(opName)(wires, adjoint, params);
@@ -522,15 +522,9 @@ class StateVectorCudaMPI
     }
     inline void applyRot(const std::vector<std::size_t> &wires, bool adjoint,
                          Precision param0, Precision param1, Precision param2) {
-        if (!adjoint) {
-            applyRZ(wires, false, param0);
-            applyRY(wires, false, param1);
-            applyRZ(wires, false, param2);
-        } else {
-            applyRZ(wires, true, param2);
-            applyRY(wires, true, param1);
-            applyRZ(wires, true, param0);
-        }
+        const std::string opName = "Rot";
+        const std::vector<Precision> params = {param0, param1, param2};
+        applyOperation(opName, wires, adjoint, params);
     }
     inline void applyRot(const std::vector<std::size_t> &wires, bool adjoint,
                          const std::vector<Precision> &params) {
@@ -599,15 +593,9 @@ class StateVectorCudaMPI
     inline void applyCRot(const std::vector<std::size_t> &wires, bool adjoint,
                           Precision param0, Precision param1,
                           Precision param2) {
-        if (!adjoint) {
-            applyCRZ(wires, false, param0);
-            applyCRY(wires, false, param1);
-            applyCRZ(wires, false, param2);
-        } else {
-            applyCRZ(wires, true, param2);
-            applyCRY(wires, true, param1);
-            applyCRZ(wires, true, param0);
-        }
+        const std::string opName = "CRot";
+        const std::vector<Precision> params = {param0, param1, param2};
+        applyOperation(opName, wires, adjoint, params);
     }
 
     inline void applyCRX(const std::vector<std::size_t> &wires, bool adjoint,

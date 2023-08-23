@@ -9,16 +9,22 @@
 
 #include <catch2/catch.hpp>
 
+#include "Gates.hpp"
+#include "TestHelpers.hpp"
+
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorRawCPU.hpp"
+#include "StateVectorLQubitRaw.hpp"
+#include "TestHelpersLGPU.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"
 
-#include "TestHelpers.hpp"
-
+/// @cond DEV
+namespace {
 using namespace Pennylane;
 using namespace CUDA;
+} // namespace
+/// @endcond
 
 TEMPLATE_TEST_CASE("LightningGPU::applyRX", "[LightningGPU_Param]", double) {
     using cp_t = std::complex<TestType>;
@@ -172,7 +178,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRZ", "[LightningGPU_Param]", float,
     std::vector<std::vector<cp_t>> rz_data;
     rz_data.reserve(angles.size());
     for (auto &a : angles) {
-        rz_data.push_back(Gates::getRZ<TestType>(a));
+        rz_data.push_back(Gates::getRZ<std::complex, TestType>(a));
     }
 
     std::vector<std::vector<cp_t>> expected_results = {
@@ -236,7 +242,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyPhaseShift", "[LightningGPU_Param]",
     std::vector<std::vector<cp_t>> ps_data;
     ps_data.reserve(angles.size());
     for (auto &a : angles) {
-        ps_data.push_back(Gates::getPhaseShift<TestType>(a));
+        ps_data.push_back(Gates::getPhaseShift<std::complex, TestType>(a));
     }
 
     std::vector<std::vector<cp_t>> expected_results = {
@@ -300,7 +306,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyControlledPhaseShift",
     std::vector<std::vector<cp_t>> ps_data;
     ps_data.reserve(angles.size());
     for (auto &a : angles) {
-        ps_data.push_back(Gates::getPhaseShift<TestType>(a));
+        ps_data.push_back(Gates::getPhaseShift<std::complex, TestType>(a));
     }
 
     std::vector<std::vector<cp_t>> expected_results = {
@@ -350,8 +356,8 @@ TEMPLATE_TEST_CASE("LightningGPU::applyRot", "[LightningGPU_Param]", float,
         std::vector<cp_t>(0b1 << num_qubits)};
 
     for (size_t i = 0; i < angles.size(); i++) {
-        const auto rot_mat =
-            Gates::getRot<TestType>(angles[i][0], angles[i][1], angles[i][2]);
+        const auto rot_mat = Gates::getRot<std::complex, TestType>(
+            angles[i][0], angles[i][1], angles[i][2]);
         expected_results[i][0] = rot_mat[0];
         expected_results[i][0b1 << (num_qubits - i - 1)] = rot_mat[2];
     }
@@ -389,7 +395,7 @@ TEMPLATE_TEST_CASE("LightningGPU::applyCRot", "[LightningGPU_Param]", float,
 
     std::vector<cp_t> expected_results(8);
     const auto rot_mat =
-        Gates::getRot<TestType>(angles[0], angles[1], angles[2]);
+        Gates::getRot<std::complex, TestType>(angles[0], angles[1], angles[2]);
     expected_results[0b1 << (num_qubits - 1)] = rot_mat[0];
     expected_results[(0b1 << num_qubits) - 2] = rot_mat[2];
 

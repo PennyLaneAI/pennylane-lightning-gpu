@@ -15,11 +15,11 @@
 
 #include "StateVectorCudaMPI.hpp"
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorRawCPU.hpp"
+#include "StateVectorLQubitRaw.hpp"
 
 #include "MPIManager.hpp"
 
-#include "../TestHelpers.hpp"
+#include "../TestHelpersLGPU.hpp"
 
 using namespace Pennylane;
 using namespace Pennylane::MPI;

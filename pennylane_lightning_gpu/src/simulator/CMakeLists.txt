@@ -17,7 +17,7 @@ add_library(lightning_gpu_simulator STATIC ${SIMULATOR_FILES})
 get_filename_component(CUSTATEVEC_INC_DIR ${CUSTATEVEC_INC} DIRECTORY)
 target_include_directories(lightning_gpu_simulator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CUDA_INCLUDE_DIRS} ${CUSTATEVEC_INC_DIR})
 
-target_link_libraries(lightning_gpu_simulator PUBLIC lightning_simulator lightning_gates lightning_utils lightning_gpu_utils )
+target_link_libraries(lightning_gpu_simulator PUBLIC lightning_qubit lightning_gates lightning_utils lightning_gpu_utils)
 target_link_libraries(lightning_gpu_simulator PUBLIC ${CUDA_SHARED_RT} ${CUSTATEVEC_LIB})
 set_target_properties(lightning_gpu_simulator PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

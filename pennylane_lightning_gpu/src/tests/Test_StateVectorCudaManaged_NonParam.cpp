@@ -10,12 +10,12 @@
 #include <catch2/catch.hpp>
 
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorRawCPU.hpp"
+#include "StateVectorLQubitRaw.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"
 
-#include "TestHelpers.hpp"
+#include "TestHelpersLGPU.hpp"
 
 using namespace Pennylane;
 using namespace CUDA;

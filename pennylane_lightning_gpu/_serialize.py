@@ -24,7 +24,7 @@ from pennylane import (
     PauliY,
     PauliZ,
     Identity,
-    QubitStateVector,
+    StatePrep,
     Rot,
 )
 from pennylane.operation import Tensor
@@ -305,7 +305,7 @@ def _serialize_ops(
     sv_py = _sv_py_dtype(use_csingle, use_mpi)
 
     for o in tape.operations:
-        if isinstance(o, (BasisState, QubitStateVector)):
+        if isinstance(o, (BasisState, StatePrep)):
             uses_stateprep = True
             continue
         elif isinstance(o, Rot):

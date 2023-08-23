@@ -26,7 +26,7 @@
 #include "DevTag.hpp"
 #include "DevicePool.hpp"
 #include "GateGenerators.hpp"
-#include "JacobianTape.hpp"
+#include "JacobianData.hpp"
 #include "ObservablesGPU.hpp"
 #include "StateVectorCudaManaged.hpp"
 
@@ -163,17 +163,18 @@ template <class T = double> class AdjointJacobianGPU {
 
     /**
      * @brief Utility method to apply all operations from given
-     * `%Pennylane::Algorithms::OpsData<T>` object to
+     * `%Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>` object to
      * `%StateVectorCudaManaged<T>`
      *
      * @param state Statevector to be updated.
      * @param operations Operations to apply.
      * @param adj Take the adjoint of the given operations.
      */
-    inline void
-    applyOperations(StateVectorCudaManaged<T> &state,
-                    const Pennylane::Algorithms::OpsData<T> &operations,
-                    bool adj = false) {
+    inline void applyOperations(
+        StateVectorCudaManaged<T> &state,
+        const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>
+            &operations,
+        bool adj = false) {
         for (size_t op_idx = 0; op_idx < operations.getOpsName().size();
              op_idx++) {
             state.applyOperation(operations.getOpsName()[op_idx],
@@ -185,17 +186,18 @@ template <class T = double> class AdjointJacobianGPU {
 
     /**
      * @brief Utility method to apply the adjoint indexed operation from
-     * `%Pennylane::Algorithms::OpsData<T>` object to
+     * `%Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>` object to
      * `%StateVectorCudaManaged<T>`.
      *
      * @param state Statevector to be updated.
      * @param operations Operations to apply.
      * @param op_idx Adjointed operation index to apply.
      */
-    inline void
-    applyOperationAdj(StateVectorCudaManaged<T> &state,
-                      const Pennylane::Algorithms::OpsData<T> &operations,
-                      size_t op_idx) {
+    inline void applyOperationAdj(
+        StateVectorCudaManaged<T> &state,
+        const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>
+            &operations,
+        size_t op_idx) {
         state.applyOperation(operations.getOpsName()[op_idx],
                              operations.getOpsWires()[op_idx],
                              !operations.getOpsInverses()[op_idx],
@@ -274,10 +276,11 @@ template <class T = double> class AdjointJacobianGPU {
      * @param op_idx Index of given operation within operations list to take
      * adjoint of.
      */
-    inline void
-    applyOperationsAdj(std::vector<StateVectorCudaManaged<T>> &states,
-                       const Pennylane::Algorithms::OpsData<T> &operations,
-                       size_t op_idx) {
+    inline void applyOperationsAdj(
+        std::vector<StateVectorCudaManaged<T>> &states,
+        const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>
+            &operations,
+        size_t op_idx) {
         // clang-format off
         // Globally scoped exception value to be captured within OpenMP block.
         // See the following for OpenMP design decisions:
@@ -358,7 +361,7 @@ template <class T = double> class AdjointJacobianGPU {
      * @param ops_inverses Indicate whether to take adjoint of each operation in
      * ops_name.
      * @param ops_matrices Matrix definition of an operation if unsupported.
-     * @return const Pennylane::Algorithms::OpsData<T>
+     * @return const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>>
      */
     auto createOpsData(
         const std::vector<std::string> &ops_name,
@@ -366,7 +369,7 @@ template <class T = double> class AdjointJacobianGPU {
         const std::vector<std::vector<size_t>> &ops_wires,
         const std::vector<bool> &ops_inverses,
         const std::vector<std::vector<std::complex<T>>> &ops_matrices = {{}})
-        -> Pennylane::Algorithms::OpsData<T> {
+        -> Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>> {
         return {ops_name, ops_params, ops_wires, ops_inverses, ops_matrices};
     }
 
@@ -390,7 +393,7 @@ template <class T = double> class AdjointJacobianGPU {
         const CFP_t *ref_data, std::size_t length,
         std::vector<std::vector<T>> &jac,
         const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
-        const Pennylane::Algorithms::OpsData<T> &ops,
+        const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>> &ops,
         const std::vector<size_t> &trainableParams,
         bool apply_operations = false) {
 
@@ -493,14 +496,13 @@ template <class T = double> class AdjointJacobianGPU {
      * @param apply_operations Indicate whether to apply operations to psi prior
      * to calculation.
      */
-    void
-    adjointJacobian(const CFP_t *ref_data, std::size_t length,
-                    std::vector<std::vector<T>> &jac,
-                    const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
-                    const Pennylane::Algorithms::OpsData<T> &ops,
-                    const std::vector<size_t> &trainableParams,
-                    bool apply_operations = false,
-                    CUDA::DevTag<int> dev_tag = {0, 0}) {
+    void adjointJacobian(
+        const CFP_t *ref_data, std::size_t length,
+        std::vector<std::vector<T>> &jac,
+        const std::vector<std::shared_ptr<ObservableGPU<T>>> &obs,
+        const Pennylane::Algorithms::OpsData<StateVectorCudaManaged<T>> &ops,
+        const std::vector<size_t> &trainableParams,
+        bool apply_operations = false, CUDA::DevTag<int> dev_tag = {0, 0}) {
         PL_ABORT_IF(trainableParams.empty(),
                     "No trainable parameters provided.");
 
@@ -561,6 +563,7 @@ template <class T = double> class AdjointJacobianGPU {
                         "The operation is not supported using the adjoint "
                         "differentiation method");
             if ((ops_name[op_idx] == "QubitStateVector") ||
+                (ops_name[op_idx] == "StatePrep") ||
                 (ops_name[op_idx] == "BasisState")) {
                 continue;
             }

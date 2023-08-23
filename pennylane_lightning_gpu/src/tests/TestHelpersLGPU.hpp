@@ -3,7 +3,7 @@
 
 #include "AdjointDiffGPU.hpp"
 #include "StateVectorCudaManaged.hpp"
-#include "StateVectorManagedCPU.hpp"
+#include "StateVectorLQubitManaged.hpp"
 #include "cuGateCache.hpp"
 #include "cuGates_host.hpp"
 #include "cuda_helpers.hpp"
@@ -145,7 +145,7 @@ auto createRandomState(RandomEngine &re, size_t num_qubits)
  */
 template <typename fp_t> struct SVDataGPU {
     std::size_t num_qubits_;
-    StateVectorManagedCPU<fp_t> sv;
+    StateVectorLQubitManaged<fp_t> sv;
     StateVectorCudaManaged<fp_t> cuda_sv;
 
     SVDataGPU() = delete;

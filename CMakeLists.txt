@@ -109,7 +109,7 @@ set(ENABLE_KOKKOS OFF)
 FetchContent_Declare(
     pennylane_lightning
     GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
-    GIT_TAG       "${LIGHTNING_RELEASE_TAG}"
+    GIT_TAG        master
 )
 FetchContent_MakeAvailable(pennylane_lightning)
 
@@ -200,12 +200,12 @@ endif()
 
 # Create binding module
 if(PLLGPU_ENABLE_PYTHON)
-    pybind11_add_module(lightning_gpu_qubit_ops     "pennylane_lightning_gpu/src/bindings/Bindings.cpp")
-    target_link_libraries(lightning_gpu_qubit_ops PRIVATE pennylane_lightning_gpu)
-    set_target_properties(lightning_gpu_qubit_ops PROPERTIES CXX_VISIBILITY_PRESET hidden)
-    set_target_properties(lightning_gpu_qubit_ops PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
-    target_compile_options(lightning_gpu_qubit_ops PRIVATE "$<$<CONFIG:RELEASE>:-W>")
-    target_compile_definitions(lightning_gpu_qubit_ops PRIVATE VERSION_INFO=${VERSION_STRING})
+    pybind11_add_module(lightning_gpu_qubit_ops "pennylane_lightning_gpu/src/bindings/Bindings.cpp")
+    target_link_libraries(lightning_gpu_qubit_ops   PRIVATE lightning_algorithms lightning_qubit lightning_qubit_algorithms pennylane_lightning_gpu)
+    set_target_properties(lightning_gpu_qubit_ops   PROPERTIES CXX_VISIBILITY_PRESET hidden)
+    set_target_properties(lightning_gpu_qubit_ops   PROPERTIES INSTALL_RPATH "$ORIGIN/../cuquantum/lib:$ORIGIN/../cuquantum/lib64:$ORIGIN/")
+    target_compile_options(lightning_gpu_qubit_ops  PRIVATE "$<$<CONFIG:RELEASE>:-W>")
+    target_compile_definitions(lightning_gpu_qubit_ops  PRIVATE VERSION_INFO=${VERSION_STRING})
     if(PLLGPU_ENABLE_MPI)
         option(ENABLE_MPI "Enable MPI support" ON)
         target_compile_definitions(lightning_gpu_qubit_ops PRIVATE ENABLE_MPI)
