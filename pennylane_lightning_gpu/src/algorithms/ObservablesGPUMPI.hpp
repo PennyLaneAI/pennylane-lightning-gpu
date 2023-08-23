@@ -17,6 +17,7 @@
 #include <functional>
 #include <vector>
 
+#include "CSRMatrix.hpp"
 #include "MPIManager.hpp"
 #include "StateVectorCudaMPI.hpp"
 
@@ -493,6 +494,28 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
                 "SparseH wire count does not match state-vector size");
         }
 
+        // Distribute sparse matrix across multi-nodes/multi-gpus
+        size_t num_rows = size_t{1} << sv.getTotalNumQubits();
+        size_t local_num_rows = size_t{1} << sv.getNumLocalQubits();
+
+        std::vector<std::vector<CSRMatrix<PrecisionT, IdxT>>> csrmatrix_blocks;
+
+        if (mpi_manager.getRank() == 0) {
+            csrmatrix_blocks = splitCSRMatrix<PrecisionT, IdxT>(
+                mpi_manager, num_rows, offsets_.data(), indices_.data(),
+                data_.data());
+        }
+        mpi_manager.Barrier();
+
+        std::vector<CSRMatrix<PrecisionT, IdxT>> localCSRMatVector;
+        for (size_t i = 0; i < mpi_manager.getSize(); i++) {
+            auto localCSRMat = scatterCSRMatrix<PrecisionT, IdxT>(
+                mpi_manager, csrmatrix_blocks[i], local_num_rows, 0);
+            localCSRMatVector.push_back(localCSRMat);
+        }
+
+        mpi_manager.Barrier();
+
         using CFP_t = typename StateVectorCudaMPI<T>::CFP_t;
         const CFP_t alpha = {1.0, 0.0};
         const CFP_t beta = {0.0, 0.0};
@@ -521,38 +544,24 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
             compute_type = CUSPARSE_INDEX_32I;
         }
 
-        std::vector<std::vector<CSRMatrix<PrecisionT, IdxT>>> csrmatrix_blocks;
-
-        const size_t num_col_blocks = mpi_manager.getSize();
-        const size_t num_row_blocks = mpi_manager.getSize();
-
-        if (mpi_manager.getRank() == 0) {
-            csrmatrix_blocks = sv.template splitCSRMatrix<IdxT>(
-                num_col_blocks, num_row_blocks, offsets_.data(),
-                indices_.data(), data_.data());
-        }
-
         const size_t length_local = size_t{1} << sv.getNumLocalQubits();
 
-        DevTag<int> dt_local(sv.getDataBuffer().getDevTag());
-        dt_local.refresh();
+        std::unique_ptr<DataBuffer<CFP_t>> d_sv_prime =
+            std::make_unique<DataBuffer<CFP_t>>(length_local, device_id,
+                                                stream_id, true);
+        std::unique_ptr<DataBuffer<CFP_t>> d_tmp =
+            std::make_unique<DataBuffer<CFP_t>>(length_local, device_id,
+                                                stream_id, true);
+        d_sv_prime->zeroInit();
+        PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+        mpi_manager.Barrier();
 
-        StateVectorCudaMPI<PrecisionT> d_sv_prime(
-            dt_local, sv.getNumGlobalQubits(), sv.getNumLocalQubits(),
-            sv.getData());
-
-        StateVectorCudaMPI<PrecisionT> d_tmp(dt_local, sv.getNumGlobalQubits(),
-                                             sv.getNumLocalQubits(),
-                                             sv.getData());
-
-        for (size_t i = 0; i < num_row_blocks; i++) {
-            auto localCSRMatrix =
-                sv.template scatterCSRMatrix<IdxT>(csrmatrix_blocks[i], 0);
+        for (size_t i = 0; i < mpi_manager.getSize(); i++) {
+            auto &localCSRMatrix = localCSRMatVector[i];
 
             int64_t num_rows_local =
                 static_cast<int64_t>(localCSRMatrix.getCsrOffsets().size() - 1);
-            int64_t num_cols_local =
-                static_cast<int64_t>(localCSRMatrix.getColumns().size());
+            int64_t num_cols_local = num_rows_local;
             int64_t nnz_local =
                 static_cast<int64_t>(localCSRMatrix.getValues().size());
 
@@ -611,7 +620,7 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
                 PL_CUSPARSE_IS_SUCCESS(cusparseCreateDnVec(
                     /* cusparseDnVecDescr_t* */ &vecY,
                     /* int64_t */ num_rows_local,
-                    /* void* */ d_tmp.getData(),
+                    /* void* */ d_tmp->getData(),
                     /* cudaDataType */ data_type));
 
                 // allocate an external buffer if needed
@@ -650,10 +659,17 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
 
                 color = 1;
             }
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+            mpi_manager.Barrier();
 
             if (mpi_manager.getRank() == i) {
                 color = 1;
+                if (localCSRMatrix.getValues().size() == 0) {
+                    d_tmp->zeroInit();
+                }
             }
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+            mpi_manager.Barrier();
 
             auto new_mpi_manager =
                 mpi_manager.split(color, mpi_manager.getRank());
@@ -667,11 +683,14 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
 
             if (new_mpi_manager.getComm() != MPI_COMM_NULL) {
                 new_mpi_manager.template Reduce<CFP_t>(
-                    d_tmp.getData(), d_sv_prime.getData(), length_local,
+                    d_tmp->getData(), d_sv_prime->getData(), length_local,
                     reduce_root_rank, "sum");
             }
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+            mpi_manager.Barrier();
         }
-        sv.CopyGpuDataToGpuIn(d_sv_prime.getData(), d_sv_prime.getLength());
+        sv.CopyGpuDataToGpuIn(d_sv_prime->getData(), d_sv_prime->getLength());
+        mpi_manager.Barrier();
     }
 
     [[nodiscard]] auto getObsName() const -> std::string override {

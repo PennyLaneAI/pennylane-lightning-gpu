@@ -57,6 +57,21 @@ template <class Precision, class index_type> class CSRMatrix {
     }
 };
 
+/**
+ * @brief Convert a global CSR (Compressed Sparse Row) format matrix into
+ * local blocks. This operation should be conducted on the rank 0.
+ *
+ * @tparam index_type Integer type used as indices of the sparse matrix.
+ * @param num_row_blocks Number of local blocks per global row.
+ * @param num_col_blocks Number of local blocks per global column.
+ * @param csrOffsets_ptr Pointer to the array of row offsets of the sparse
+ * matrix. Array of size csrOffsets_size.
+ * @param columns_ptr Pointer to the array of column indices of the sparse
+ * matrix. Array of size numNNZ
+ * @param values_ptr Pointer to the array of the non-zero elements
+ *
+ * @return auto A vector of vector of CSRMatrix.
+ */
 template <class Precision, class index_type>
 auto splitCSRMatrix(MPIManager &mpi_manager, const size_t &num_rows,
                     const index_type *csrOffsets_ptr,

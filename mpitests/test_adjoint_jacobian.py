@@ -1046,23 +1046,13 @@ def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns, isBatch_obs):
         j_gpu = qml.jacobian(qnode_gpu)(params)
 
 
-""" Important Note: Ensure wires index arranged from high to low if
-    there is a global target wire.
-    qml.SparseHamiltonian(
-        qml.Hamiltonian(
-            [0.1], [qml.PauliX(wires=custom_wires[1]) @ qml.PauliY(wires=custom_wires[0])]
-        ).sparse_matrix(custom_wires.[::-1]),
-    ) 
-"""
-
-
 @pytest.mark.parametrize(
     "returns",
     [
         qml.SparseHamiltonian(
             qml.Hamiltonian(
                 [0.1], [qml.PauliX(wires=custom_wires[0]) @ qml.PauliY(wires=custom_wires[1])]
-            ).sparse_matrix(custom_wires[::-1]),
+            ).sparse_matrix(custom_wires),
             wires=custom_wires,
         ),
         qml.SparseHamiltonian(
@@ -1080,7 +1070,7 @@ def test_fail_adjoint_mixed_Hamiltonian_Hermitian(returns, isBatch_obs):
         qml.SparseHamiltonian(
             qml.Hamiltonian(
                 [1.1], [qml.PauliX(wires=custom_wires[0]) @ qml.PauliZ(wires=custom_wires[2])]
-            ).sparse_matrix(custom_wires[::-1]),
+            ).sparse_matrix(custom_wires),
             wires=custom_wires,
         ),
     ],
@@ -1115,18 +1105,6 @@ def test_adjoint_SparseHamiltonian_custom_wires(returns):
     assert np.allclose(j_cpu, j_gpu)
 
 
-""" Important Note: Ensure wires index arranged from high to low if
-    there is a global target wire.
-    qml.SparseHamiltonian(
-    qml.Hamiltonian(
-                [0.1],
-                [qml.PauliX(0) @ qml.PauliZ(1)],
-            ).sparse_matrix(range(5, -1, -1)),
-            wires=range(6),
-    )
-"""
-
-
 @pytest.mark.parametrize(
     "returns",
     [
@@ -1134,7 +1112,7 @@ def test_adjoint_SparseHamiltonian_custom_wires(returns):
             qml.Hamiltonian(
                 [0.1],
                 [qml.PauliZ(1) @ qml.PauliX(0) @ qml.Identity(2) @ qml.PauliX(4) @ qml.Identity(5)],
-            ).sparse_matrix(range(5, -1, -1)),
+            ).sparse_matrix(range(6)),
             wires=range(6),
         ),
         qml.SparseHamiltonian(
@@ -1148,7 +1126,7 @@ def test_adjoint_SparseHamiltonian_custom_wires(returns):
             qml.Hamiltonian(
                 [0.1],
                 [qml.PauliX(0)],
-            ).sparse_matrix(range(5, -1, -1)),
+            ).sparse_matrix(range(6)),
             wires=range(6),
         ),
         qml.SparseHamiltonian(
@@ -1162,7 +1140,7 @@ def test_adjoint_SparseHamiltonian_custom_wires(returns):
             qml.Hamiltonian(
                 [0.1],
                 [qml.PauliX(0) @ qml.PauliZ(1)],
-            ).sparse_matrix(range(5, -1, -1)),
+            ).sparse_matrix(range(6)),
             wires=range(6),
         ),
         qml.SparseHamiltonian(

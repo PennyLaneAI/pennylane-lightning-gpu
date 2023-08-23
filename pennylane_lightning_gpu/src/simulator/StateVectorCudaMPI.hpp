@@ -1010,12 +1010,11 @@ class StateVectorCudaMPI
         // Distribute sparse matrix across multi-nodes/multi-gpus
         size_t num_rows = size_t{1} << this->getTotalNumQubits();
         size_t local_num_rows = size_t{1} << this->getNumLocalQubits();
-        size_t root = 0;
 
         std::vector<std::vector<CSRMatrix<Precision, index_type>>>
             csrmatrix_blocks;
 
-        if (mpi_manager_.getRank() == root) {
+        if (mpi_manager_.getRank() == 0) {
             csrmatrix_blocks = splitCSRMatrix<Precision, index_type>(
                 mpi_manager_, num_rows, csrOffsets_ptr, columns_ptr,
                 values_ptr);
@@ -1025,7 +1024,7 @@ class StateVectorCudaMPI
         std::vector<CSRMatrix<Precision, index_type>> localCSRMatVector;
         for (size_t i = 0; i < mpi_manager_.getSize(); i++) {
             auto localCSRMat = scatterCSRMatrix<Precision, index_type>(
-                mpi_manager_, csrmatrix_blocks[i], local_num_rows, root);
+                mpi_manager_, csrmatrix_blocks[i], local_num_rows, 0);
             localCSRMatVector.push_back(localCSRMat);
         }
 
@@ -1151,7 +1150,13 @@ class StateVectorCudaMPI
 
             if (mpi_manager_.getRank() == i) {
                 color = 1;
+                if (localCSRMatrix.getValues().size() == 0) {
+                    d_res_per_block.zeroInit();
+                }
             }
+
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+            mpi_manager_.Barrier();
 
             auto new_mpi_manager =
                 mpi_manager_.split(color, mpi_manager_.getRank());

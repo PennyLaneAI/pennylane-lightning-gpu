@@ -4,16 +4,9 @@
 
  * Add sparse Hamiltonian support to multi-node/multi-GPU adjoint methods. 
  [(#128)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/128)
-
- Note each MPI process will return the overall result of the adjoint method. If there is a global target wire when constructing the sparse Hamiltonian, `wires` should be reordered in a descending manner in a python script as follows:
- ```python
-    qml.SparseHamiltonian(
-        qml.Hamiltonian(
-            [0.1], [qml.PauliX(0) @ qml.PauliY(1)]
-        ).sparse_matrix(wires.[::-1]),
-    )
+ Note each MPI process will return the overall result of the adjoint method. 
  ```
- 
+
  * Add Sparse Hamiltonian support for expectation value calculation.
  [(#127)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/127)
 
