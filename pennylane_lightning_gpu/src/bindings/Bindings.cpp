@@ -1361,39 +1361,16 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                const np_arr_sparse_ind &columns, const np_arr_c values) {
                 using index_type = typename std::conditional<
                     std::is_same<ParamT, float>::value, int32_t, int64_t>::type;
-                //Distribute sparse matrix across multi-nodes/multi-gpus
-                size_t num_rows =
-                    static_cast<index_type>(csrOffsets.request().size) - 1;
-                size_t local_num_rows = size_t{1} << sv.getNumLocalQubits();
-                size_t root = 0;
-
-                MPIManager mpi_manager = sv.getMPIManager();
-
-                std::vector<std::vector<CSRMatrix<PrecisionT, index_type>>>
-                    csrmatrix_blocks;
-
-                if (mpi_manager.getRank() == root) {
-                    csrmatrix_blocks = splitCSRMatrix<PrecisionT, index_type>(
-                        mpi_manager, num_rows,
-                        static_cast<index_type *>(csrOffsets.request().ptr),
-                        static_cast<index_type *>(columns.request().ptr),
-                        static_cast<std::complex<PrecisionT> *>(
-                            values.request().ptr));
-                }
-                mpi_manager.Barrier();
-
-                std::vector<CSRMatrix<PrecisionT, index_type>>
-                    localCSRMatVector;
-                for (size_t i = 0; i < mpi_manager.getSize(); i++) {
-                    auto localCSRMat = scatterCSRMatrix<PrecisionT, index_type>(
-                        mpi_manager, csrmatrix_blocks[i], local_num_rows, root);
-                    localCSRMatVector.push_back(localCSRMat);
-                }
-
-                mpi_manager.Barrier();
 
                 return sv.template getExpectationValueOnSparseSpMV<index_type>(
-                    localCSRMatVector);
+                    static_cast<index_type *>(csrOffsets.request().ptr),
+                    static_cast<index_type>(
+                        csrOffsets.request()
+                            .size), // num_rows + 1 or csrOffsets
+                    static_cast<index_type *>(columns.request().ptr), // columns
+                    static_cast<std::complex<PrecisionT> *>(
+                        values.request().ptr),
+                    static_cast<index_type>(values.request().size)); // nnz
             },
             "Calculate the expectation value of a sparse Hamiltonian.")
 

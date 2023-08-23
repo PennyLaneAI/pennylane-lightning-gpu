@@ -968,7 +968,16 @@ class StateVectorCudaMPI
      */
     template <class index_type>
     auto getExpectationValueOnSparseSpMV(
-        std::vector<CSRMatrix<Precision, index_type>> &CSRMatVector) {
+        const index_type *csrOffsets_ptr, const index_type csrOffsets_size,
+        const index_type *columns_ptr,
+        const std::complex<Precision> *values_ptr, const index_type numNNZ) {
+
+        if (mpi_manager_.getRank() == 0) {
+            PL_ABORT_IF_NOT(static_cast<size_t>(csrOffsets_size - 1) ==
+                                (size_t{1} << this->getTotalNumQubits()),
+                            "Incorrect size of CSR Offsets.");
+            PL_ABORT_IF_NOT(numNNZ > 0, "Empty CSR matrix.");
+        }
 
         const CFP_t alpha = {1.0, 0.0};
         const CFP_t beta = {0.0, 0.0};
@@ -998,6 +1007,30 @@ class StateVectorCudaMPI
             compute_type = CUSPARSE_INDEX_32I;
         }
 
+        // Distribute sparse matrix across multi-nodes/multi-gpus
+        size_t num_rows = size_t{1} << this->getTotalNumQubits();
+        size_t local_num_rows = size_t{1} << this->getNumLocalQubits();
+        size_t root = 0;
+
+        std::vector<std::vector<CSRMatrix<Precision, index_type>>>
+            csrmatrix_blocks;
+
+        if (mpi_manager_.getRank() == root) {
+            csrmatrix_blocks = splitCSRMatrix<Precision, index_type>(
+                mpi_manager_, num_rows, csrOffsets_ptr, columns_ptr,
+                values_ptr);
+        }
+        mpi_manager_.Barrier();
+
+        std::vector<CSRMatrix<Precision, index_type>> localCSRMatVector;
+        for (size_t i = 0; i < mpi_manager_.getSize(); i++) {
+            auto localCSRMat = scatterCSRMatrix<Precision, index_type>(
+                mpi_manager_, csrmatrix_blocks[i], local_num_rows, root);
+            localCSRMatVector.push_back(localCSRMat);
+        }
+
+        mpi_manager_.Barrier();
+
         const size_t length_local = size_t{1} << this->getNumLocalQubits();
 
         DataBuffer<CFP_t, int> d_res_per_block{length_local, device_id,
@@ -1009,12 +1042,10 @@ class StateVectorCudaMPI
         for (size_t i = 0; i < mpi_manager_.getSize(); i++) {
             // Need to investigate if non-blocking MPI operation can improve
             // performace here.
-            auto &localCSRMatrix = CSRMatVector[i];
+            auto &localCSRMatrix = localCSRMatVector[i];
 
-            int64_t num_rows_local =
-                static_cast<int64_t>(localCSRMatrix.getCsrOffsets().size() - 1);
-            int64_t num_cols_local =
-                static_cast<int64_t>(localCSRMatrix.getColumns().size());
+            int64_t num_rows_local = local_num_rows;
+            int64_t num_cols_local = num_rows_local;
             int64_t nnz_local =
                 static_cast<int64_t>(localCSRMatrix.getValues().size());
 

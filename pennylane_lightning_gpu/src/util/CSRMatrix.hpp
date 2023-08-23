@@ -33,7 +33,7 @@ template <class Precision, class index_type> class CSRMatrix {
 
     CSRMatrix(size_t num_rows, size_t nnz, index_type *column_ptr,
               index_type *csrOffsets_ptr, std::complex<Precision> *value_ptr)
-        : columns_(column_ptr, column_ptr + num_rows),
+        : columns_(column_ptr, column_ptr + nnz),
           csrOffsets_(csrOffsets_ptr, csrOffsets_ptr + num_rows + 1),
           values_(value_ptr, value_ptr + nnz){};
 
