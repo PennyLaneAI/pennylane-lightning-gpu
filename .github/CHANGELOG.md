@@ -2,6 +2,10 @@
 
 ### New features since last release
 
+ * Add sparse Hamiltonian support to multi-node/multi-GPU adjoint methods. 
+ [(#128)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/128)
+ Note each MPI process will return the overall result of the adjoint method. 
+
  * Add Sparse Hamiltonian support for expectation value calculation.
  [(#127)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/127)
 

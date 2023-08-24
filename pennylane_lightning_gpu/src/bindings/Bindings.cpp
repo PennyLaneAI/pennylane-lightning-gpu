@@ -39,6 +39,7 @@
 
 #ifdef ENABLE_MPI
 #include "AdjointDiffGPUMPI.hpp"
+#include "CSRMatrix.hpp"
 #include "MPIManager.hpp"
 #include "StateVectorCudaMPI.hpp"
 #endif
@@ -1591,6 +1592,49 @@ void StateVectorCudaMPI_class_bindings(py::module &m) {
                     return false;
                 }
                 auto other_cast = other.cast<HamiltonianGPUMPI<PrecisionT>>();
+                return self == other_cast;
+            },
+            "Compare two observables");
+
+    class_name = "SparseHamiltonianGPUMPI_C" + bitsize;
+    using SpIDX = typename SparseHamiltonianGPUMPI<PrecisionT>::IdxT;
+    py::class_<SparseHamiltonianGPUMPI<PrecisionT>,
+               std::shared_ptr<SparseHamiltonianGPUMPI<PrecisionT>>,
+               ObservableGPUMPI<PrecisionT>>(m, class_name.c_str(),
+                                             py::module_local())
+        .def(py::init([](const np_arr_c &data, const np_arr_sparse_ind &indices,
+                         const np_arr_sparse_ind &offsets,
+                         const std::vector<std::size_t> &wires) {
+            const py::buffer_info buffer_data = data.request();
+            const auto *data_ptr =
+                static_cast<complex<PrecisionT> *>(buffer_data.ptr);
+
+            const py::buffer_info buffer_indices = indices.request();
+            const auto *indices_ptr = static_cast<SpIDX *>(buffer_indices.ptr);
+
+            const py::buffer_info buffer_offsets = offsets.request();
+            const auto *offsets_ptr = static_cast<SpIDX *>(buffer_offsets.ptr);
+
+            return SparseHamiltonianGPUMPI<PrecisionT>{
+                std::vector<complex<PrecisionT>>(
+                    {data_ptr, data_ptr + data.size()}),
+                std::vector<SpIDX>({indices_ptr, indices_ptr + indices.size()}),
+                std::vector<SpIDX>({offsets_ptr, offsets_ptr + offsets.size()}),
+                wires};
+        }))
+        .def("__repr__", &SparseHamiltonianGPUMPI<PrecisionT>::getObsName)
+        .def("get_wires", &SparseHamiltonianGPUMPI<PrecisionT>::getWires,
+             "Get wires of observables")
+        .def(
+            "__eq__",
+            [](const SparseHamiltonianGPUMPI<PrecisionT> &self,
+               py::handle other) -> bool {
+                if (!py::isinstance<SparseHamiltonianGPUMPI<PrecisionT>>(
+                        other)) {
+                    return false;
+                }
+                auto other_cast =
+                    other.cast<SparseHamiltonianGPUMPI<PrecisionT>>();
                 return self == other_cast;
             },
             "Compare two observables");

@@ -64,6 +64,8 @@ try:
             TensorProdObsGPUMPI_C128,
             HamiltonianGPUMPI_C64,
             HamiltonianGPUMPI_C128,
+            SparseHamiltonianGPUMPI_C64,
+            SparseHamiltonianGPUMPI_C128,
             HermitianObsGPUMPI_C64,
             HermitianObsGPUMPI_C128,
         )
@@ -117,6 +119,20 @@ def _hamiltonian_ob_dtype(use_csingle, use_mpi: bool):
     )
 
 
+def _sparsehamiltonian_ob_dtype(use_csingle, use_mpi: bool):
+    if not use_mpi:
+        return (
+            [SparseHamiltonianGPU_C64, np.complex64, np.int32]
+            if use_csingle
+            else [SparseHamiltonianGPU_C128, np.complex128, np.int64]
+        )
+    return (
+        [SparseHamiltonianGPUMPI_C64, np.complex64, np.int32]
+        if use_csingle
+        else [SparseHamiltonianGPUMPI_C128, np.complex128, np.int64]
+    )
+
+
 def _sv_py_dtype(use_csingle, use_mpi: bool):
     if not use_mpi:
         return LightningGPU_C64 if use_csingle else LightningGPU_C128
@@ -151,24 +167,27 @@ def _serialize_hamiltonian(
     return hamiltonian_obs(coeffs, terms)
 
 
-def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool):
-    if use_csingle:
-        ctype = np.complex64
-        rtype = np.int32
-        sparsehamiltonian_obs = SparseHamiltonianGPU_C64
-    else:
-        ctype = np.complex128
-        rtype = np.int64
-        sparsehamiltonian_obs = SparseHamiltonianGPU_C128
-
-    spm = ob.sparse_matrix()
-    data = np.array(spm.data).astype(ctype)
-    indices = np.array(spm.indices).astype(rtype)
-    offsets = np.array(spm.indptr).astype(rtype)
-
+def _serialize_sparsehamiltonian(ob, wires_map: dict, use_csingle: bool, use_mpi: bool):
+    sparsehamiltonian_obs, ctype, rtype = _sparsehamiltonian_ob_dtype(use_csingle, use_mpi)
     wires = []
     wires_list = ob.wires.tolist()
     wires.extend([wires_map[w] for w in wires_list])
+    if use_mpi:
+        mpi_manager_local = MPIManager()
+        # Other root only needs non-null some sparsematrix data to pass
+        obs = qml.Identity(0)
+        Hmat = qml.Hamiltonian([1.0], [obs]).sparse_matrix()
+        H_sparse = qml.SparseHamiltonian(Hmat, wires=range(1))
+        spm = H_sparse.sparse_matrix()
+        # Only root 0 needs the overall sparsematrix data
+        if mpi_manager_local.getRank() == 0:
+            spm = ob.sparse_matrix()
+        mpi_manager_local.Barrier()
+    else:
+        spm = ob.sparse_matrix()
+    data = np.array(spm.data).astype(ctype)
+    indices = np.array(spm.indices).astype(rtype)
+    offsets = np.array(spm.indptr).astype(rtype)
 
     return sparsehamiltonian_obs(data, indices, offsets, wires)
 
@@ -214,9 +233,7 @@ def _serialize_ob(ob, wires_map, use_csingle, use_mpi: bool = False, use_splitti
     elif ob.name == "Hamiltonian":
         return _serialize_hamiltonian(ob, wires_map, use_csingle, use_mpi, use_splitting)
     elif ob.name == "SparseHamiltonian":
-        if use_mpi:
-            raise TypeError("SparseHamiltonian is not supported for MPI backend.")
-        return _serialize_sparsehamiltonian(ob, wires_map, use_csingle)
+        return _serialize_sparsehamiltonian(ob, wires_map, use_csingle, use_mpi)
     elif isinstance(ob, (PauliX, PauliY, PauliZ, Identity, Hadamard)):
         return _serialize_named_ob(ob, wires_map, use_csingle, use_mpi)
     elif ob._pauli_rep is not None:
@@ -240,9 +257,10 @@ def _serialize_observables(
         tape (QuantumTape): the input quantum tape
         wires_map (dict): a dictionary mapping input wires to the device's backend wires
         use_csingle (bool): whether to use np.complex64 instead of np.complex128
+        use_mpi (bool): whether MPI is used or not
 
     Returns:
-        list(ObservableGPU_C64 or ObservableGPU_C128): A list of observable objects compatible with the C++ backend
+        list(ObservableGPU_C64/128 or ObservableGPUMPI_C64/128): A list of observable objects compatible with the C++ backend
     """
     output = []
     offsets = [0]
@@ -259,7 +277,7 @@ def _serialize_observables(
 
 
 def _serialize_ops(
-    tape: QuantumTape, wires_map: dict, use_csingle: bool = False
+    tape: QuantumTape, wires_map: dict, use_csingle: bool = False, use_mpi: bool = False
 ) -> Tuple[List[List[str]], List[np.ndarray], List[List[int]], List[bool], List[np.ndarray]]:
     """Serializes the operations of an input tape.
 
@@ -269,6 +287,7 @@ def _serialize_ops(
         tape (QuantumTape): the input quantum tape
         wires_map (dict): a dictionary mapping input wires to the device's backend wires
         use_csingle (bool): whether to use np.complex64 instead of np.complex128
+        use_mpi (bool): whether MPI is used or not
 
     Returns:
         Tuple[list, list, list, list, list]: A serialization of the operations, containing a list
@@ -283,7 +302,7 @@ def _serialize_ops(
 
     uses_stateprep = False
 
-    sv_py = LightningGPU_C64 if use_csingle else LightningGPU_C128
+    sv_py = _sv_py_dtype(use_csingle, use_mpi)
 
     for o in tape.operations:
         if isinstance(o, (BasisState, StatePrep)):

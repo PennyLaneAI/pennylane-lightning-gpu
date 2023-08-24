@@ -85,6 +85,8 @@ try:
             TensorProdObsGPUMPI_C128,
             HamiltonianGPUMPI_C64,
             HamiltonianGPUMPI_C128,
+            SparseHamiltonianGPUMPI_C64,
+            SparseHamiltonianGPUMPI_C128,
         )
 
         MPI_SUPPORT = True
@@ -665,7 +667,7 @@ if CPP_BINARY_AVAILABLE:
             )
 
             ops_serialized, use_sp = _serialize_ops(
-                tape, self.wire_map, use_csingle=self.use_csingle
+                tape, self.wire_map, use_csingle=self.use_csingle, use_mpi=self._mpi
             )
             ops_serialized = adj.create_ops_list(*ops_serialized)
 

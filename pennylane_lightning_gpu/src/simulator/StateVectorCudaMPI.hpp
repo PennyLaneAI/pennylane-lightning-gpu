@@ -27,6 +27,7 @@
 #include <cuda.h>
 #include <custatevec.h> // custatevecApplyMatrix
 
+#include "CSRMatrix.hpp"
 #include "Constant.hpp"
 #include "Error.hpp"
 #include "MPIManager.hpp"
@@ -63,44 +64,6 @@ extern void setBasisState_CUDA(cuComplex *sv, cuComplex &value,
 extern void setBasisState_CUDA(cuDoubleComplex *sv, cuDoubleComplex &value,
                                const size_t index, bool async,
                                cudaStream_t stream_id);
-
-/**
- * @brief Manage memory of Compressed Sparse Row (CSR) sparse matrix. CSR format
- * represents a matrix M by three (one-dimensional) arrays, that respectively
- * contain nonzero values, row offsets, and column indices.
- *
- * @tparam Precision Floating-point precision type.
- * @tparam index_type Integer type.
- */
-template <class Precision, class index_type> class CSRMatrix {
-  private:
-    std::vector<index_type> columns;
-    std::vector<index_type> csrOffsets;
-    std::vector<std::complex<Precision>> values;
-
-  public:
-    CSRMatrix(size_t num_rows, size_t nnz)
-        : columns(nnz, 0), csrOffsets(num_rows + 1, 0), values(nnz){};
-
-    CSRMatrix() = default;
-
-    /**
-     * @brief Get the CSR format index vector of the matrix.
-     */
-    auto getColumns() -> std::vector<index_type> & { return columns; }
-
-    /**
-     * @brief Get CSR format offset vector of the matrix.
-     */
-    auto getCsrOffsets() -> std::vector<index_type> & { return csrOffsets; }
-
-    /**
-     * @brief Get CSR format data vector of the matrix.
-     */
-    auto getValues() -> std::vector<std::complex<Precision>> & {
-        return values;
-    }
-};
 
 /**
  * @brief Managed memory CUDA state-vector class using custateVec backed
@@ -968,150 +931,6 @@ class StateVectorCudaMPI
     }
 
     /**
-     * @brief Scatter a CSR (Compressed Sparse Row) format matrix.
-     *
-     * @tparam index_type Integer type used as indices of the sparse matrix.
-     * @param matrix CSR (Compressed Sparse Row) format matrix.
-     * @param root Root rank of the scatter operation.
-     */
-    template <class index_type>
-    auto scatterCSRMatrix(std::vector<CSRMatrix<Precision, index_type>> &matrix,
-                          size_t root) -> CSRMatrix<Precision, index_type> {
-        // Bcast num_rows and num_cols
-        size_t local_num_rows = size_t{1} << this->getNumLocalQubits();
-        size_t num_col_blocks = mpi_manager_.getSize();
-        std::vector<size_t> nnzs;
-
-        if (mpi_manager_.getRank() == root) {
-            nnzs.reserve(matrix.size());
-            for (size_t j = 0; j < matrix.size(); j++) {
-                nnzs.push_back(matrix[j].getValues().size());
-            }
-        }
-
-        size_t local_nnz = mpi_manager_.scatter<size_t>(nnzs, 0)[0];
-
-        CSRMatrix<Precision, index_type> localCSRMatrix(local_num_rows,
-                                                        local_nnz);
-
-        if (mpi_manager_.getRank() == root) {
-            localCSRMatrix.getValues() = matrix[0].getValues();
-            localCSRMatrix.getCsrOffsets() = matrix[0].getCsrOffsets();
-            localCSRMatrix.getColumns() = matrix[0].getColumns();
-        }
-
-        for (size_t k = 1; k < num_col_blocks; k++) {
-            size_t dest = k;
-            size_t source = 0;
-
-            if (mpi_manager_.getRank() == 0 && matrix[k].getValues().size()) {
-                mpi_manager_.Send<std::complex<Precision>>(
-                    matrix[k].getValues(), dest);
-                mpi_manager_.Send<index_type>(matrix[k].getCsrOffsets(), dest);
-                mpi_manager_.Send<index_type>(matrix[k].getColumns(), dest);
-            } else if (mpi_manager_.getRank() == k && local_nnz) {
-                mpi_manager_.Recv<std::complex<Precision>>(
-                    localCSRMatrix.getValues(), source);
-                mpi_manager_.Recv<index_type>(localCSRMatrix.getCsrOffsets(),
-                                              source);
-                mpi_manager_.Recv<index_type>(localCSRMatrix.getColumns(),
-                                              source);
-            }
-        }
-        return localCSRMatrix;
-    }
-
-    /**
-     * @brief Convert a global CSR (Compressed Sparse Row) format matrix into
-     * local blocks. This operation should be conducted on the rank 0.
-     *
-     * @tparam index_type Integer type used as indices of the sparse matrix.
-     * @param num_row_blocks Number of local blocks per global row.
-     * @param num_col_blocks Number of local blocks per global column.
-     * @param csrOffsets_ptr Pointer to the array of row offsets of the sparse
-     * matrix. Array of size csrOffsets_size.
-     * @param columns_ptr Pointer to the array of column indices of the sparse
-     * matrix. Array of size numNNZ
-     * @param values_ptr Pointer to the array of the non-zero elements
-     *
-     * @return auto A vector of vector of CSRMatrix.
-     */
-    template <class index_type>
-    auto splitCSRMatrix(const size_t &num_row_blocks,
-                        const size_t &num_col_blocks,
-                        const index_type *csrOffsets_ptr,
-                        const index_type *columns_ptr,
-                        const std::complex<Precision> *values_ptr)
-        -> std::vector<std::vector<CSRMatrix<Precision, index_type>>> {
-
-        std::vector<std::vector<CSRMatrix<Precision, index_type>>>
-            splitSparseMatrix(
-                num_row_blocks,
-                std::vector<CSRMatrix<Precision, index_type>>(num_col_blocks));
-
-        size_t num_rows = size_t{1} << this->getTotalNumQubits();
-        size_t row_block_size = size_t{1} << this->getNumLocalQubits();
-        size_t col_block_size = row_block_size;
-
-        // Add OpenMP support here later. Need to pay attention to
-        // race condition.
-        size_t current_global_row, current_global_col;
-        size_t block_row_id, block_col_id;
-        size_t local_row_id, local_col_id;
-        for (size_t row = 0; row < num_rows; row++) {
-            for (size_t col_idx = static_cast<size_t>(csrOffsets_ptr[row]);
-                 col_idx < static_cast<size_t>(csrOffsets_ptr[row + 1]);
-                 col_idx++) {
-
-                current_global_row = row;
-                current_global_col = columns_ptr[col_idx];
-                std::complex<Precision> current_val = values_ptr[col_idx];
-
-                block_row_id = current_global_row / row_block_size;
-                block_col_id = current_global_col / col_block_size;
-
-                local_row_id = current_global_row % row_block_size;
-                local_col_id = current_global_col % col_block_size;
-
-                if (splitSparseMatrix[block_row_id][block_col_id]
-                        .getCsrOffsets()
-                        .size() == 0) {
-                    splitSparseMatrix[block_row_id][block_col_id]
-                        .getCsrOffsets() =
-                        std::vector<index_type>(row_block_size + 1, 0);
-                }
-
-                splitSparseMatrix[block_row_id][block_col_id]
-                    .getCsrOffsets()[local_row_id + 1]++;
-                splitSparseMatrix[block_row_id][block_col_id]
-                    .getColumns()
-                    .push_back(local_col_id);
-                splitSparseMatrix[block_row_id][block_col_id]
-                    .getValues()
-                    .push_back(current_val);
-            }
-        }
-
-        // Add OpenMP support here later.
-        for (size_t block_row_id = 0; block_row_id < num_row_blocks;
-             block_row_id++) {
-            for (size_t block_col_id = 0; block_col_id < num_col_blocks;
-                 block_col_id++) {
-                auto &localSpMat =
-                    splitSparseMatrix[block_row_id][block_col_id];
-                size_t local_csr_offset_size =
-                    localSpMat.getCsrOffsets().size();
-                for (size_t i0 = 1; i0 < local_csr_offset_size; i0++) {
-                    localSpMat.getCsrOffsets()[i0] +=
-                        localSpMat.getCsrOffsets()[i0 - 1];
-                }
-            }
-        }
-
-        return splitSparseMatrix;
-    }
-
-    /**
      * @brief expval(H) calculates the expected value using cuSparseSpMV and MPI
      * to implement distributed Sparse Matrix-Vector multiplication. The dense
      * vector is distributed across multiple GPU devices and only the MPI rank 0
@@ -1175,17 +994,28 @@ class StateVectorCudaMPI
             compute_type = CUSPARSE_INDEX_32I;
         }
 
+        // Distribute sparse matrix across multi-nodes/multi-gpus
+        size_t num_rows = size_t{1} << this->getTotalNumQubits();
+        size_t local_num_rows = size_t{1} << this->getNumLocalQubits();
+
         std::vector<std::vector<CSRMatrix<Precision, index_type>>>
             csrmatrix_blocks;
 
-        const size_t num_col_blocks = mpi_manager_.getSize();
-        const size_t num_row_blocks = mpi_manager_.getSize();
-
         if (mpi_manager_.getRank() == 0) {
-            csrmatrix_blocks =
-                splitCSRMatrix(num_col_blocks, num_row_blocks, csrOffsets_ptr,
-                               columns_ptr, values_ptr);
+            csrmatrix_blocks = splitCSRMatrix<Precision, index_type>(
+                mpi_manager_, num_rows, csrOffsets_ptr, columns_ptr,
+                values_ptr);
         }
+        mpi_manager_.Barrier();
+
+        std::vector<CSRMatrix<Precision, index_type>> localCSRMatVector;
+        for (size_t i = 0; i < mpi_manager_.getSize(); i++) {
+            auto localCSRMat = scatterCSRMatrix<Precision, index_type>(
+                mpi_manager_, csrmatrix_blocks[i], local_num_rows, 0);
+            localCSRMatVector.push_back(localCSRMat);
+        }
+
+        mpi_manager_.Barrier();
 
         const size_t length_local = size_t{1} << this->getNumLocalQubits();
 
@@ -1195,15 +1025,13 @@ class StateVectorCudaMPI
                                                   stream_id, true};
         d_res_per_rowblock.zeroInit();
 
-        for (size_t i = 0; i < num_row_blocks; i++) {
+        for (size_t i = 0; i < mpi_manager_.getSize(); i++) {
             // Need to investigate if non-blocking MPI operation can improve
             // performace here.
-            auto localCSRMatrix = scatterCSRMatrix(csrmatrix_blocks[i], 0);
+            auto &localCSRMatrix = localCSRMatVector[i];
 
-            int64_t num_rows_local =
-                static_cast<int64_t>(localCSRMatrix.getCsrOffsets().size() - 1);
-            int64_t num_cols_local =
-                static_cast<int64_t>(localCSRMatrix.getColumns().size());
+            int64_t num_rows_local = local_num_rows;
+            int64_t num_cols_local = num_rows_local;
             int64_t nnz_local =
                 static_cast<int64_t>(localCSRMatrix.getValues().size());
 
@@ -1309,7 +1137,13 @@ class StateVectorCudaMPI
 
             if (mpi_manager_.getRank() == i) {
                 color = 1;
+                if (localCSRMatrix.getValues().size() == 0) {
+                    d_res_per_block.zeroInit();
+                }
             }
+
+            PL_CUDA_IS_SUCCESS(cudaDeviceSynchronize());
+            mpi_manager_.Barrier();
 
             auto new_mpi_manager =
                 mpi_manager_.split(color, mpi_manager_.getRank());
