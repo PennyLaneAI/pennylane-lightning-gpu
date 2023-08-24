@@ -1216,8 +1216,6 @@ def test_integration(returns):
     dev_default = qml.device("default.qubit", wires=range(num_wires))
     dev_gpu = qml.device("lightning.gpu", wires=num_wires, mpi=True, c_dtype=np.complex128)
 
-    qml.enable_return()
-
     def circuit(params):
         circuit_ansatz(params, wires=range(num_wires))
         return qml.math.hstack([qml.expval(r) for r in returns])

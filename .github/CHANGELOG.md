@@ -32,6 +32,9 @@
  add the missing `_dp` to the LightningGPU class with single GPU backend.
  [(#133)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/133)
 
+* Ensure active return check doesn't break CI.
+ [(#136)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/136)
+
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
