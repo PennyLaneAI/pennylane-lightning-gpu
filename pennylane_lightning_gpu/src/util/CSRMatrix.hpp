@@ -61,9 +61,10 @@ template <class Precision, class index_type> class CSRMatrix {
  * @brief Convert a global CSR (Compressed Sparse Row) format matrix into
  * local blocks. This operation should be conducted on the rank 0.
  *
+ * @tparam Precision Floating-point precision type.
  * @tparam index_type Integer type used as indices of the sparse matrix.
- * @param num_row_blocks Number of local blocks per global row.
- * @param num_col_blocks Number of local blocks per global column.
+ * @param mpi_manager MPIManager object.
+ * @param num_rows Number of rows of the CSR matrix.
  * @param csrOffsets_ptr Pointer to the array of row offsets of the sparse
  * matrix. Array of size csrOffsets_size.
  * @param columns_ptr Pointer to the array of column indices of the sparse
@@ -147,8 +148,11 @@ auto splitCSRMatrix(MPIManager &mpi_manager, const size_t &num_rows,
 /**
  * @brief Scatter a CSR (Compressed Sparse Row) format matrix.
  *
+ * @tparam Precision Floating-point precision type.
  * @tparam index_type Integer type used as indices of the sparse matrix.
- * @param matrix CSR (Compressed Sparse Row) format matrix.
+ * @param mpi_manager MPIManager object.
+ * @param matrix CSR (Compressed Sparse Row) format matrix vector.
+ * @param local_num_rows Number of rows of local CSR matrix.
  * @param root Root rank of the scatter operation.
  */
 template <class Precision, class index_type>
@@ -156,7 +160,6 @@ auto scatterCSRMatrix(MPIManager &mpi_manager,
                       std::vector<CSRMatrix<Precision, index_type>> &matrix,
                       size_t local_num_rows, size_t root)
     -> CSRMatrix<Precision, index_type> {
-    // Bcast num_rows and num_cols
     size_t num_col_blocks = mpi_manager.getSize();
 
     std::vector<size_t> nnzs;

@@ -959,7 +959,6 @@ class StateVectorCudaMPI
         const index_type *csrOffsets_ptr, const index_type csrOffsets_size,
         const index_type *columns_ptr,
         const std::complex<Precision> *values_ptr, const index_type numNNZ) {
-
         if (mpi_manager_.getRank() == 0) {
             PL_ABORT_IF_NOT(static_cast<size_t>(csrOffsets_size - 1) ==
                                 (size_t{1} << this->getTotalNumQubits()),
