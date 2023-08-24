@@ -522,7 +522,6 @@ class SparseHamiltonianGPUMPI final : public ObservableGPUMPI<T> {
         auto device_id = sv.getDataBuffer().getDevTag().getDeviceID();
         auto stream_id = sv.getDataBuffer().getDevTag().getStreamID();
 
-        // clang-format on
         cudaDataType_t data_type;
         cusparseIndexType_t compute_type;
         const cusparseOperation_t operation_type =
