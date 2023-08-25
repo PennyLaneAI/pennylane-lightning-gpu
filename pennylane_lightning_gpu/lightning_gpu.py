@@ -747,7 +747,9 @@ if CPP_BINARY_AVAILABLE:
                 else:
                     jac_r[idx, :] = jac[obs_offsets[idx] : obs_offsets[idx + 1], :]
 
-            return self._adjoint_jacobian_processing(jac_r) if qml.active_return() else jac_r
+            if hasattr(qml, "active_return"):
+                return self._adjoint_jacobian_processing(jac_r) if qml.active_return() else jac_r
+            return self._adjoint_jacobian_processing(jac_r)
 
         @staticmethod
         def _adjoint_jacobian_processing(jac):
