@@ -115,7 +115,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-${{ env.GCC_VERSION }})" \
-              -DLIGHTNING_RELEASE_TAG="master" \
+              -DLIGHTNING_RELEASE_TAG="latest_release" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
@@ -147,7 +147,7 @@ jobs:
               -DPLLGPU_BUILD_TESTS=ON \
               -DPLLGPU_ENABLE_COVERAGE=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-${{ env.GCC_VERSION }})" \
-              -DLIGHTNING_RELEASE_TAG="master" \
+              -DLIGHTNING_RELEASE_TAG="latest_release" \
               -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
@@ -253,7 +253,7 @@ jobs:
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
-          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});CMAKE_PREFIX_PATH=/opt/mpi/openmpi;PLLGPU_ENABLE_MPI=On;LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});CMAKE_PREFIX_PATH=/opt/mpi/openmpi;PLLGPU_ENABLE_MPI=On;LIGHTNING_RELEASE_TAG=latest_release;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
           python -m pip install -e . --verbose
 
       - name: Run PennyLane-Lightning-GPU unit tests (OpenMPI backend)
