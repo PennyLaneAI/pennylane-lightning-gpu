@@ -3,37 +3,35 @@
 ### New features since last release
 
  * Add sparse Hamiltonian support to multi-node/multi-GPU adjoint methods. 
- [(#128)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/128)
+ [(#128)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/128)
  Note each MPI process will return the overall result of the adjoint method. 
 
  * Add Sparse Hamiltonian support for expectation value calculation.
- [(#127)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/127)
+ [(#127)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/127)
 
 ### Breaking changes
 
  * Rename `QubitStateVector` to `StatePrep` in the `LightningGPU` class.
- [#134] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
+ [#134](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
 
  * Deprecate Python 3.8.
- [#134] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
+ [#134](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
 
  * Update PennyLane-Lightning imports following the [(#472)] (https://github.com/PennyLaneAI/pennylane-lightning/pull/472) refactoring.
- [#134] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
+ [#134](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/134)
 
 ### Improvements
 
  * Optimizes the single qubit rotation gate by using a single cuStateVector API call instead of separate Pauli gate applications. 
- [(#132)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/132)
-
-### Documentation
+ [(#132)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/132)
 
 ### Bug fixes
 * `apply` no longer mutates the inputted list of operations and 
  add the missing `_dp` to the LightningGPU class with single GPU backend.
- [(#133)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/133)
+ [(#133)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/133)
 
 * Ensure active return check doesn't break CI.
- [(#136)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/136)
+ [(#136)](https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/136)
 
 ### Contributors
 
