@@ -109,7 +109,7 @@ set(ENABLE_KOKKOS OFF)
 FetchContent_Declare(
     pennylane_lightning
     GIT_REPOSITORY https://github.com/PennyLaneAI/pennylane-lightning.git
-    GIT_TAG        master
+    GIT_TAG        ${LIGHTNING_RELEASE_TAG}
 )
 FetchContent_MakeAvailable(pennylane_lightning)
 
