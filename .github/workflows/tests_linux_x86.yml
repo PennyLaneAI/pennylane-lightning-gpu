@@ -111,9 +111,10 @@ jobs:
           source /etc/profile.d/modules.sh
           module use /opt/modules
           module load cuda/11.8
-          nvidia-smi
+          ls -l /opt/modules/cuda/11.8
           which -a nvcc
           /usr/local/cuda/bin/nvcc --version
+          nvidia-smi
 
       - name: Validate Multi-GPU packages
         if: needs.set_runs_on_values.outputs.gpu_type == 'multi-gpu'
