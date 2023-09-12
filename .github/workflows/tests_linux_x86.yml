@@ -112,9 +112,9 @@ jobs:
           source /etc/profile.d/modules.sh
           module use /opt/modules
           module load cuda/11.8
-          which -a nvcc
+          which nvcc
           /usr/local/cuda-11.8/bin/nvcc --version
-          which -a nvidia-smi
+          which nvidia-smi
           ls -l /usr/bin/nvidia-smi
           nvidia-smi
 
