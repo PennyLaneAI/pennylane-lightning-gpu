@@ -115,7 +115,8 @@ jobs:
           which -a nvcc
           /usr/local/cuda/bin/nvcc --version
           ls -l /usr/local/cuda/bin
-          /usr/local/cuda/bin/nvidia-smi
+          ls -l /usr/bin
+          /usr/bin/nvidia-smi
 
       - name: Validate Multi-GPU packages
         if: needs.set_runs_on_values.outputs.gpu_type == 'multi-gpu'
