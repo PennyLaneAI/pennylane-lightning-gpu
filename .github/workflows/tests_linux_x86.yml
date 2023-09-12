@@ -108,6 +108,7 @@ jobs:
 
       - name: Validate GPU version and installed compiler
         run: |
+          set -x
           source /etc/profile.d/modules.sh
           module use /opt/modules
           module load cuda/11.8
@@ -140,6 +141,7 @@ jobs:
 
       - name: Build and run unit tests
         run: |
+            set -x
             cmake . -BBuild \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
@@ -149,13 +151,9 @@ jobs:
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
               -G Ninja
-            echo cmake --build ./Build
             cmake --build ./Build
-            echo cd ./Build
             cd ./Build
-            echo mkdir -p ./tests/results
             mkdir -p ./tests/results
-            echo ./pennylane_lightning_gpu/src/tests/runner_gpu --order lex --reporter junit --out ./tests/results/report_${{ github.job }}.xml
             ./pennylane_lightning_gpu/src/tests/runner_gpu --order lex --reporter junit --out ./tests/results/report_${{ github.job }}.xml
 
       - name: Upload test results
