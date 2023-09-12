@@ -112,7 +112,7 @@ jobs:
           module use /opt/modules
           module load cuda/11.8
           # nvidia-smi
-          /usr/local/cuda/bin/nvcc --version
+          /usr/local/cuda-11.8/bin/nvcc --version
 
       - name: Validate Multi-GPU packages
         if: needs.set_runs_on_values.outputs.gpu_type == 'multi-gpu'
@@ -142,7 +142,7 @@ jobs:
               -DPLLGPU_BUILD_TESTS=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-${{ env.GCC_VERSION }})" \
               -DLIGHTNING_RELEASE_TAG="master" \
-              -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
+              -DCMAKE_CUDA_COMPILER="/usr/local/cuda-11.8/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
               -G Ninja
@@ -166,7 +166,7 @@ jobs:
               -DPLLGPU_ENABLE_COVERAGE=ON \
               -DCMAKE_CXX_COMPILER="$(which g++-${{ env.GCC_VERSION }})" \
               -DLIGHTNING_RELEASE_TAG="master" \
-              -DCMAKE_CUDA_COMPILER="/usr/local/cuda/bin/nvcc" \
+              -DCMAKE_CUDA_COMPILER="/usr/local/cuda-11.8/bin/nvcc" \
               -DCMAKE_CUDA_ARCHITECTURES="86" \
               -DPython_EXECUTABLE:FILE="${{ steps.python_path.outputs.python }}" \
               -G Ninja
@@ -268,7 +268,7 @@ jobs:
         env: 
           CUQUANTUM_SDK: $(python -c "import site; print( f'{site.getsitepackages()[0]}/cuquantum/lib')")
         run: |
-          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
+          python setup.py build_ext -i --define="CMAKE_CXX_COMPILER=$(which g++-${{ env.GCC_VERSION }});LIGHTNING_RELEASE_TAG=master;CMAKE_CUDA_COMPILER=/usr/local/cuda-11.8/bin/nvcc;CMAKE_CUDA_ARCHITECTURES=${{ env.CI_CUDA_ARCH }};Python_EXECUTABLE=${{ steps.python_path.outputs.python }}"
           python -m pip install -e . --verbose
 
       - name: Run PennyLane-Lightning-GPU unit tests
