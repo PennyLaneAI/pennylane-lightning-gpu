@@ -137,6 +137,8 @@ jobs:
 
       - name: Build and run unit tests
         run: |
+            export PATH=/usr/local/cuda-11.8/bin:$PATH
+            export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
             cmake . -BBuild \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DPLLGPU_BUILD_TESTS=ON \
@@ -160,6 +162,8 @@ jobs:
 
       - name: Build and run unit tests for code coverage
         run: |
+            export PATH=/usr/local/cuda-11.8/bin:$PATH
+            export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
             cmake . -BBuildCov \
               -DCMAKE_BUILD_TYPE=Debug \
               -DPLLGPU_BUILD_TESTS=ON \
