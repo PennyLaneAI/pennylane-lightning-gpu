@@ -69,7 +69,6 @@ try:
         SparseHamiltonianGPU_C128,
         OpsStructGPU_C128,
         OpsStructGPU_C64,
-        PLException,
     )
 
     try:
@@ -108,7 +107,7 @@ try:
         raise ValueError(f"CUDA device is an unsupported version: {get_gpu_arch()}")
 
     CPP_BINARY_AVAILABLE = True
-except (ModuleNotFoundError, ImportError, ValueError, PLException) as e:
+except (ModuleNotFoundError, ImportError, ValueError) as e:
     warn(str(e), UserWarning)
     CPP_BINARY_AVAILABLE = False
 

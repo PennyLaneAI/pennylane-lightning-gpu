@@ -92,8 +92,8 @@ with open("pennylane_lightning_gpu/_version.py") as f:
     version = f.readlines()[-1].split()[-1].strip("\"'")
 
 requirements = [
-    "pennylane-lightning>=0.30",
-    "pennylane>=0.30",
+    "pennylane-lightning>=0.32",
+    "pennylane>=0.32",
 ]
 
 info = {
