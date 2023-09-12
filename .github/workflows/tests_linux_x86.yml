@@ -108,7 +108,11 @@ jobs:
 
       - name: Validate GPU version and installed compiler
         run: |
+          source /etc/profile.d/modules.sh
+          module use /opt/modules
+          module load cuda/11.8
           nvidia-smi
+          which -a nvcc
           /usr/local/cuda/bin/nvcc --version
 
       - name: Validate Multi-GPU packages
