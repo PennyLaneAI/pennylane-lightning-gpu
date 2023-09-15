@@ -186,7 +186,6 @@ allowed_operations = {
     "IsingXX",
     "IsingYY",
     "IsingZZ",
-    "IsingXY",
     "SingleExcitation",
     "SingleExcitationPlus",
     "SingleExcitationMinus",

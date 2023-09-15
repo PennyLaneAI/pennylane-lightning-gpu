@@ -53,7 +53,7 @@ def op(op_name):
         "CSWAP": [qml.CSWAP, [], {"wires": [0, 1, 2]}],
         "PauliRot": [qml.PauliRot, [0.123], {"pauli_word": "Y", "wires": [0]}],
         "IsingXX": [qml.IsingXX, [], {"phi": 0.123, "wires": [0, 1]}],
-        "IsingXY": [qml.IsingXY, [], {"phi": 0.123, "wires": [0, 1]}],
+        #"IsingXY": [qml.IsingXY, [], {"phi": 0.123, "wires": [0, 1]}],
         "IsingYY": [qml.IsingYY, [], {"phi": 0.123, "wires": [0, 1]}],
         "IsingZZ": [qml.IsingZZ, [], {"phi": 0.123, "wires": [0, 1]}],
         "Identity": [qml.Identity, [], {"wires": [0]}],
