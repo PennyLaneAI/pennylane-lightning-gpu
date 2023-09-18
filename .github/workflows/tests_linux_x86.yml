@@ -277,6 +277,9 @@ jobs:
           python -m pip install -e . --verbose
 
       - name: Run PennyLane-Lightning-GPU unit tests
+        env: 
+          OMP_NUM_THREADS: 1
+          OMP_PROC_BIND: false
         run: |
           python -m pytest ./tests/ ${{ env.COVERAGE_FLAGS }}
           pl-device-test --device lightning.gpu --skip-ops --shots=20000 ${{ env.COVERAGE_FLAGS }} --cov-append
