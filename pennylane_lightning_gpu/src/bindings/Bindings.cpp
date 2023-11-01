@@ -533,6 +533,15 @@ void StateVectorCudaManaged_class_bindings(py::module &m) {
             },
             "Calculate the probabilities for given wires. Results returned in "
             "Col-major order.")
+        .def(
+            "dotWithBraReal",
+            [](StateVectorCudaManaged<PrecisionT> &sv,
+               const StateVectorCudaManaged<PrecisionT> &bra) {
+                // Real only
+                return (sv.innerProductWithSV(bra)).x;
+            },
+            "Calculate the dot product of the statevector with another bra "
+            "statevector and take the real value only.")
         .def("GenerateSamples",
              [](StateVectorCudaManaged<PrecisionT> &sv, size_t num_wires,
                 size_t num_shots) {

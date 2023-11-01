@@ -2,6 +2,10 @@
 
 ### New features since last release
 
+  * Implement dotWithBraReal.
+  [(#143)] (https://github.com/PennyLaneAI/pennylane-lightning-gpu/pull/143)
+  This is used to speed up adjoint differentiation.
+
 ### Breaking changes
 
 ### Improvements

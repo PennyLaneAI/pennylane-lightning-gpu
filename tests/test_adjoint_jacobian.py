@@ -420,6 +420,10 @@ class TestAdjointJacobian:
         res_new = run_circuit(new_obs)
         assert np.allclose(res_old, res_new, atol=tol, rtol=0)
 
+    def test_dotWithBraReal(self, dev_gpu):
+        actual = dev_gpu._gpu_state.dotWithBraReal(dev_gpu._gpu_state)
+        assert np.isclose(actual, 1)
+
 
 class TestAdjointJacobianQNode:
     """Test QNode integration with the adjoint_jacobian method"""
