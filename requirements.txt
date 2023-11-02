@@ -1,4 +1,4 @@
-pip==23.0
+pip==23.3
 ninja
 cmake
 custatevec-cu11
