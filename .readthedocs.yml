@@ -10,18 +10,18 @@ python:
     - requirements: requirements.txt
     - method: pip
       path: .
-  system_packages: true
 
 build:
-  os: ubuntu-20.04
+  os: ubuntu-22.04
   tools:
-    python: "3.8"
+    python: "3.9"
   apt_packages:
     - cmake
     - build-essential
     - libopenblas-base
     - libopenblas-dev
     - graphviz
+    - nvidia-cuda-toolkit
   jobs:
     pre_install:
       - echo "setuptools~=66.0\npip~=22.0" >> ci_build_requirements.txt
