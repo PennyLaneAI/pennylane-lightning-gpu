@@ -1,6 +1,18 @@
 PennyLane-Lightning-GPU Plugin
 ##############################
 
+.. header-start-inclusion-marker-do-not-remove
+
+❗ Warning
+==========
+
+The PennyLaneAI organization has archived this repository, which is a snapshot of PennyLane-Lightning-GPU v0.32.
+This backend was integrated into `PennyLane-Lightning <https://github.com/PennyLaneAI/pennylane-lightning>`_ where its development continues.
+We direct users and developers to `PennyLane-Lightning <https://github.com/PennyLaneAI/pennylane-lightning>`_ to report `issues <https://github.com/PennyLaneAI/pennylane-lightning/issues>`_, make `pull requests <https://github.com/PennyLaneAI/pennylane-lightning/pulls>`_, etc.
+
+About
+=====
+
 .. image:: https://readthedocs.com/projects/xanaduai-pennylane-lightning-gpu/badge/?version=latest&style=flat-square
     :alt: Read the Docs
     :target: https://docs.pennylane.ai/projects/lightning-gpu
