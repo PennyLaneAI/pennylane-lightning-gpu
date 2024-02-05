@@ -107,6 +107,16 @@ exhale_args = {
     ),
 }
 
+
+rst_prolog = """.. attention::
+❗ Warning
+The PennyLaneAI organization has archived this repository, which is a snapshot of PennyLane-Lightning-GPU v0.32.
+This backend was integrated into `PennyLane-Lightning <https://github.com/PennyLaneAI/pennylane-lightning>`_ where its development continues.
+We direct users and developers to `PennyLane-Lightning <https://github.com/PennyLaneAI/pennylane-lightning>`_ to report `issues <https://github.com/PennyLaneAI/pennylane-lightning/issues>`_, make `pull requests <https://github.com/PennyLaneAI/pennylane-lightning/pulls>`_, etc.
+"""
+
+
+
 # Add any paths that contain templates here, relative to this directory.
 from pennylane_sphinx_theme import templates_dir
 templates_path = [templates_dir()]
