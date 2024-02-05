@@ -52,8 +52,8 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx.ext.inheritance_diagram",
-    'sphinx.ext.viewcode',
-    'sphinx.ext.graphviz',
+    "sphinx.ext.viewcode",
+    "sphinx.ext.graphviz",
     "sphinx.ext.intersphinx",
     "sphinx_automodapi.automodapi",
     "sphinx_automodapi.smart_resolver",
@@ -72,7 +72,9 @@ automodsumm_inherited_members = True
 breathe_projects = {"PennyLane-Lightning-GPU": "./doxyoutput/xml"}
 breathe_default_project = "PennyLane-Lightning-GPU"
 
-mathjax_path = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
+mathjax_path = (
+    "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
+)
 
 # Exhale extension
 # Setup the exhale extension
@@ -107,18 +109,9 @@ exhale_args = {
     ),
 }
 
-
-rst_prolog = """.. attention::
-❗ Warning
-The PennyLaneAI organization has archived this repository, which is a snapshot of PennyLane-Lightning-GPU v0.32.
-This backend was integrated into `PennyLane-Lightning <https://github.com/PennyLaneAI/pennylane-lightning>`_ where its development continues.
-We direct users and developers to `PennyLane-Lightning <https://github.com/PennyLaneAI/pennylane-lightning>`_ to report `issues <https://github.com/PennyLaneAI/pennylane-lightning/issues>`_, make `pull requests <https://github.com/PennyLaneAI/pennylane-lightning/pulls>`_, etc.
-"""
-
-
-
 # Add any paths that contain templates here, relative to this directory.
 from pennylane_sphinx_theme import templates_dir
+
 templates_path = [templates_dir()]
 
 # The suffix(es) of source filenames.
@@ -196,11 +189,10 @@ html_theme_options = {
     "navbar_name": "Lightning GPU",
     "navbar_active_link": 3,
     "extra_copyrights": [
-        "TensorFlow, the TensorFlow logo, and any related marks are trademarks "
-        "of Google Inc."
+        "TensorFlow, the TensorFlow logo, and any related marks are trademarks " "of Google Inc."
     ],
     "google_analytics_tracking_id": "G-C480Z9JL0D",
-    "toc_overview": True
+    "toc_overview": True,
 }
 
 edit_on_github_project = "PennyLaneAI/pennylane-lightning-gpu"
